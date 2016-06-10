@@ -4,7 +4,7 @@ import (
 	"github.com/urfave/cli"
 	"fmt"
 	"github.com/gruntwork-io/boilerplate/config"
-	"github.com/gruntwork-io/boilerplate/generator"
+	"github.com/gruntwork-io/boilerplate/templates"
 	"strings"
 	"github.com/gruntwork-io/boilerplate/errors"
 )
@@ -81,7 +81,12 @@ func runApp(cliContext *cli.Context) error {
 		return err
 	}
 
-	return generator.Run(options, boilerplateConfig)
+	variables, err := config.GetVariables(options, boilerplateConfig)
+	if err != nil {
+		return err
+	}
+
+	return templates.ProcessTemplateFolder(options.TemplateFolder, options.OutputFolder, variables)
 }
 
 // Parse the command line options provided by the user
