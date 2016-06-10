@@ -13,6 +13,8 @@ import (
 	"io/ioutil"
 )
 
+// Copy all the files and folders in templateFolder to outputFolder, passing text files through the Go template engine
+// with the given set of variables as the data.
 func ProcessTemplateFolder(templateFolder string, outputFolder string, variables map[string]string) error {
 	util.Logger.Printf("Processing templates in %s and outputting generated files to %s", templateFolder, outputFolder)
 
@@ -32,6 +34,8 @@ func ProcessTemplateFolder(templateFolder string, outputFolder string, variables
 	})
 }
 
+// Copy the given path, which is in the folder templateFolder, to the outputFolder, passing it through the Go template
+// engine with the given set of variables as the data if it's a text file.
 func processFile(path string, templateFolder string, outputFolder string, variables map[string]string) error {
 	isText, err := util.IsTextFile(path)
 	if err != nil {
@@ -45,24 +49,29 @@ func processFile(path string, templateFolder string, outputFolder string, variab
 	}
 }
 
+// Create the given directory, which is in templateFolder, in the given outputFolder
 func createOutputDir(dir string, templateFolder string, outputFolder string) error {
 	destination := outPath(dir, templateFolder, outputFolder)
 	util.Logger.Printf("Creating folder %s", destination)
 	return os.MkdirAll(destination, 0777)
 }
 
+// Compute the path where the given file, which is in templateFolder, should be copied in outputFolder
 func outPath(file string, templateFolder string, outputFolder string) string {
 	// TODO process template syntax in paths
 	relativePath := strings.TrimPrefix(file, templateFolder)
 	return path.Join(outputFolder, relativePath)
 }
 
+// Copy the given file, which is in templateFolder, to outputFolder
 func copyFile(file string, templateFolder string, outputFolder string, variables map[string]string) error {
 	destination := outPath(file, templateFolder, outputFolder)
 	util.Logger.Printf("Copying %s to %s", file, destination)
 	return util.CopyFile(file, destination)
 }
 
+// Run the template at templatePath, which is in templateFolder, through the Go template engine with the given
+// variables as data and write the result to outputFolder
 func processTemplate(templatePath string, templateFolder string, outputFolder string, variables map[string]string) error {
 	destination := outPath(templatePath, templateFolder, outputFolder)
 	util.Logger.Printf("Processing template %s and writing to %s", templatePath, destination)
@@ -80,10 +89,13 @@ func processTemplate(templatePath string, templateFolder string, outputFolder st
 	return util.WriteFileWithSamePermissions(templatePath, destination, []byte(out))
 }
 
+// Return true if this is a path that should not be copied
 func shouldSkipPath(path string, templateFolder string) bool {
 	return path == templateFolder || path == config.BoilerPlateConfigPath(templateFolder)
 }
 
+// Render the template at templatePath, with contents templateContents, using the Go template engine, passing in the
+// given variables as data.
 func renderTemplate(templatePath string, templateContents string, variables map[string]string) (string, error) {
 	tmpl, err := template.New(templatePath).Funcs(CreateTemplateHelpers(templatePath)).Parse(templateContents)
 	if err != nil {

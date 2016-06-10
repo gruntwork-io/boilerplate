@@ -16,6 +16,7 @@ const OPT_OUTPUT_FOLDER = "output-folder"
 const OPT_NON_INTERACTIVE = "non-interactive"
 const OPT_VAR = "var"
 
+// The command-line options for the boilerplate app
 type BoilerplateOptions struct {
 	TemplateFolder 	string
 	OutputFolder 	string
@@ -23,6 +24,7 @@ type BoilerplateOptions struct {
 	Vars		map[string]string
 }
 
+// Validate that the options have reasonable values and return an error if they don't
 func (options *BoilerplateOptions) Validate() error {
 	if options.TemplateFolder == "" {
 		return errors.WithStackTrace(TemplateFolderCannotBeEmpty)
@@ -39,20 +41,24 @@ func (options *BoilerplateOptions) Validate() error {
 	return nil
 }
 
+// The contents of a boilerplate.yml config file
 type BoilerplateConfig struct {
 	Variables []Variable
 }
 
+// A single variable defined in a boilerplate.yml config file
 type Variable struct {
 	Name 	string
 	Prompt 	string
 	Default	string
 }
 
+// Return the default path for a boilerplate.yml config file in the given folder
 func BoilerPlateConfigPath(templateFolder string) string {
 	return path.Join(templateFolder, BOILERPLATE_CONFIG_FILE)
 }
 
+// Load the boilerplate.yml config contents for the folder specified in the given options
 func LoadBoilerPlateConfig(options *BoilerplateOptions) (*BoilerplateConfig, error) {
 	configPath := BoilerPlateConfigPath(options.TemplateFolder)
 
@@ -70,6 +76,7 @@ func LoadBoilerPlateConfig(options *BoilerplateOptions) (*BoilerplateConfig, err
 	}
 }
 
+// Parse the given configContents as a boilerplate.yml config file
 func ParseBoilerplateConfig(configContents []byte) (*BoilerplateConfig, error) {
 	boilerplateConfig := &BoilerplateConfig{}
 
@@ -84,6 +91,7 @@ func ParseBoilerplateConfig(configContents []byte) (*BoilerplateConfig, error) {
 	return boilerplateConfig, nil
 }
 
+// Validate that the config file has reasonable contents and return an error if there is a problem
 func (boilerplateConfig BoilerplateConfig) validate() error {
 	for _, variable := range boilerplateConfig.Variables {
 		if variable.Name == "" {

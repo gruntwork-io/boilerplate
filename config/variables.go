@@ -6,6 +6,8 @@ import (
 	"github.com/gruntwork-io/boilerplate/errors"
 )
 
+// Get a value for each of the variables specified in boilerplateConfig. The value can come from the user (if the
+// non-interactive option isn't set), the default value in the default value in the config, or a command line option.
 func GetVariables(options *BoilerplateOptions, boilerplateConfig *BoilerplateConfig) (map[string]string, error) {
 	variables := map[string]string{}
 
@@ -20,6 +22,8 @@ func GetVariables(options *BoilerplateOptions, boilerplateConfig *BoilerplateCon
 	return variables, nil
 }
 
+// Get a value for the given variable. The value can come from the user (if the non-interactive option isn't set), the
+// default value in the default value in the config, or a command line option.
 func getVariable(variable Variable, options *BoilerplateOptions) (string, error) {
 	valueFromVars, valueSpecifiedInVars := getVariableFromVars(variable, options)
 
@@ -37,6 +41,7 @@ func getVariable(variable Variable, options *BoilerplateOptions) (string, error)
 	}
 }
 
+// Return the value of the given variable from vars passed in as command line options
 func getVariableFromVars(variable Variable, options *BoilerplateOptions) (string, bool) {
 	for name, value := range options.Vars {
 		if name == variable.Name {
@@ -47,6 +52,7 @@ func getVariableFromVars(variable Variable, options *BoilerplateOptions) (string
 	return "", false
 }
 
+// Get the value for the given variable by prompting the user
 func getVariableFromUser(variable Variable, options *BoilerplateOptions) (string, error) {
 	prompt := fmt.Sprintf("Enter a value for variable '%s'", variable.Name)
 

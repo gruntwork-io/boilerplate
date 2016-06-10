@@ -53,11 +53,18 @@ func snippet(templatePath string, args ... string) (string, error) {
 	}
 }
 
+// Returns the given path relative to the given templatePath.
+//
+// Example:
+//
+// pathRelativeToTemplate("/foo/bar/template-file.txt, "../src/code.java")
+//   Returns: "/foo/src/code.java"
 func pathRelativeToTemplate(templatePath string, path string) string {
 	basePath := filepath.Base(templatePath)
 	return filepath.Join(basePath, path)
 }
 
+// Returns the contents of path, relative to templatePath, as a string
 func readFile(templatePath, path string) (string, error) {
 	relativePath := pathRelativeToTemplate(templatePath, path)
 	bytes, err := ioutil.ReadFile(relativePath)
@@ -67,6 +74,7 @@ func readFile(templatePath, path string) (string, error) {
 	return string(bytes), nil
 }
 
+// Returns the contents of snippet snippetName from the file at path, relative to templatePath.
 func readSnippetFromFile(templatePath string, path string, snippetName string) (string, error) {
 	relativePath := pathRelativeToTemplate(templatePath, path)
 	file, err := os.Open(relativePath)
