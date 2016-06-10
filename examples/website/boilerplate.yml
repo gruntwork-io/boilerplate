@@ -1,0 +1,11 @@
+# boilerplate-snippet: all
+variables:
+  - name: Title
+
+  - name: WelcomeText
+    prompt: Enter the welcome text for the website
+
+  - name: ShowLogo
+    prompt: Should the webiste show the logo?
+    default: true
+# boilerplate-snippet: all
