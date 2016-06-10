@@ -14,6 +14,12 @@ func PathExists(path string) bool {
 	return err == nil
 }
 
+// Return true if the path points to a directory
+func IsDir(path string) bool {
+	fileInfo, err := os.Stat(path)
+	return err == nil && fileInfo.IsDir()
+}
+
 // Return true if the file at the given path is a "text file" as opposed to a "binary file". See here for details on
 // how this works: https://groups.google.com/forum/#!topic/golang-nuts/YeLL7L7SwWs
 func IsTextFile(path string) (bool, error) {

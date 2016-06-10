@@ -58,7 +58,7 @@ Boilerplate copies any files from the `--template-folder` into the `--output-fol
 following contents:
 
 ```html
-{{snippet "../test/examples-expected-output/website/index.html" "all"}}
+{{snippet "../test-fixtures/examples-expected-output/website/index.html" "all"}}
 ```
 
 You can also run Boilerplate non-interactively, which is great for automation:
@@ -133,6 +133,9 @@ with the following fields:
   default value, if one is provided. If running Boilerplate with the `--non-interactive` flag, the default is
   used for this value if no value is provided via the `--var` option.
 
+Note: the `boilerplate.yml` file is optional. If you don't specify it, you can still use Go templating in your
+templates, but no variables will be available.
+
 #### Templates
 
 Boilerplate puts all the variables into a Go map where the key is the name of the variable and the value is what
@@ -141,21 +144,29 @@ non-binary file through the [Go Template](https://golang.org/pkg/text/template) 
 data structure.
 
 * If you had a variable called `Title` in your `boilerplate.yml` file, then you could access that variable in any
-  of your templates using the syntax `{{.Title}}`.
+  of your templates using the syntax `&#123;&#123;.Title&#124;&#124;`.
 * You can also use the Go template syntax in the names of the files and folders. For example, if you had a file
-  called `website-{{.title}}.html` and the user set the variable `title` to "example", the resulting file would be
-  called `website-example.html`.
+  called `website-&#123;&#123;.title&#124;&#124;.html` and the user set the variable `title` to "example", the
+  resulting file would be called `website-example.html`.
 
 #### Template helpers
 
 Your templates have access to all the standard functionality in [Go Template](https://golang.org/pkg/text/template/),
 including conditionals, loops, and functions. Boilerplate also includes several custom helpers that you can access:
 
-1. `snippet(path string, name string)`: Returns the contents of the file at `path` as a string, extracting the snippet
-   with the name `name`. To define a snippet, include the text `boilerplate-snippet: NAME` on a line before and after
-   the snippet (typically using the comment syntax for the language). Check out the [examples folder](/examples) for
-   examples.
-1. `file(path string)`: Returns the contents of the file at `path` as a string.
+1. `snippet <PATH> [NAME]`: Returns the contents of the file at `PATH` as a string. If you specify the second argument,
+   `NAME`, only the contents of the snippet with that name will be returned. A snippet is any text in the file
+   surrounded by a line on each side of the format "boilerplate-snippet: NAME" (typically using the comment syntax for
+   the language). For example, here is how you could define a snippet named "foo" in a Java file:
+
+   ```java
+   String str = "this is not part of the snippet";
+
+   // boilerplate-snippet: foo
+   String str2 = "this is part of the snippet";
+   return str2;
+   // boilerplate-snippet: foo
+   ```
 
 ## Alternative project generators
 

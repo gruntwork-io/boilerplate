@@ -24,13 +24,15 @@ func ProcessTemplateFolder(templateFolder string, outputFolder string, variables
 		if shouldSkipPath(path, templateFolder) {
 			util.Logger.Printf("Skipping %s", path)
 			return nil
+		} else if util.IsDir(path) {
+			return createOutputDir(path, templateFolder, outputFolder)
 		} else {
-			return processPath(path, templateFolder, outputFolder, variables)
+			return processFile(path, templateFolder, outputFolder, variables)
 		}
 	})
 }
 
-func processPath(path string, templateFolder string, outputFolder string, variables map[string]string) error {
+func processFile(path string, templateFolder string, outputFolder string, variables map[string]string) error {
 	isText, err := util.IsTextFile(path)
 	if err != nil {
 		return err
@@ -41,6 +43,12 @@ func processPath(path string, templateFolder string, outputFolder string, variab
 	} else {
 		return copyFile(path, templateFolder, outputFolder, variables)
 	}
+}
+
+func createOutputDir(dir string, templateFolder string, outputFolder string) error {
+	destination := outPath(dir, templateFolder, outputFolder)
+	util.Logger.Printf("Creating folder %s", destination)
+	return os.MkdirAll(destination, 0777)
 }
 
 func outPath(file string, templateFolder string, outputFolder string) string {
@@ -76,9 +84,8 @@ func shouldSkipPath(path string, templateFolder string) bool {
 	return path == templateFolder || path == config.BoilerPlateConfigPath(templateFolder)
 }
 
-func renderTemplate(templateName string, templateContents string, variables map[string]string) (string, error) {
-	// TODO: add file and snippet helpers
-	tmpl, err := template.New(templateName).Parse(templateContents)
+func renderTemplate(templatePath string, templateContents string, variables map[string]string) (string, error) {
+	tmpl, err := template.New(templatePath).Funcs(CreateTemplateHelpers(templatePath)).Parse(templateContents)
 	if err != nil {
 		return "", errors.WithStackTrace(err)
 	}

@@ -55,14 +55,19 @@ func BoilerPlateConfigPath(templateFolder string) string {
 
 func LoadBoilerPlateConfig(options *BoilerplateOptions) (*BoilerplateConfig, error) {
 	configPath := BoilerPlateConfigPath(options.TemplateFolder)
-	util.Logger.Printf("Loading boilerplate config from %s", configPath)
 
-	bytes, err := ioutil.ReadFile(configPath)
-	if err != nil {
-		return nil, err
+	if util.PathExists(configPath) {
+		util.Logger.Printf("Loading boilerplate config from %s", configPath)
+		bytes, err := ioutil.ReadFile(configPath)
+		if err != nil {
+			return nil, err
+		}
+
+		return ParseBoilerplateConfig(bytes)
+	} else {
+		util.Logger.Printf("Warning: boilerplate config file not found at %s. Variables are not supported.", configPath)
+		return &BoilerplateConfig{}, nil
 	}
-
-	return ParseBoilerplateConfig(bytes)
 }
 
 func ParseBoilerplateConfig(configContents []byte) (*BoilerplateConfig, error) {
