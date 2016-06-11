@@ -4,13 +4,12 @@ import (
 	"text/template"
 	"bytes"
 	"github.com/gruntwork-io/boilerplate/errors"
-	"path"
-	"strings"
 	"os"
 	"path/filepath"
 	"github.com/gruntwork-io/boilerplate/config"
 	"github.com/gruntwork-io/boilerplate/util"
 	"io/ioutil"
+	"path"
 )
 
 // Copy all the files and folders in templateFolder to outputFolder, passing text files through the Go template engine
@@ -51,21 +50,43 @@ func processFile(path string, templateFolder string, outputFolder string, variab
 
 // Create the given directory, which is in templateFolder, in the given outputFolder
 func createOutputDir(dir string, templateFolder string, outputFolder string) error {
-	destination := outPath(dir, templateFolder, outputFolder)
+	destination, err := outPath(dir, templateFolder, outputFolder)
+	if err != nil {
+		return err
+	}
+
 	util.Logger.Printf("Creating folder %s", destination)
 	return os.MkdirAll(destination, 0777)
 }
 
 // Compute the path where the given file, which is in templateFolder, should be copied in outputFolder
-func outPath(file string, templateFolder string, outputFolder string) string {
+func outPath(file string, templateFolder string, outputFolder string) (string, error) {
 	// TODO process template syntax in paths
-	relativePath := strings.TrimPrefix(file, templateFolder)
-	return path.Join(outputFolder, relativePath)
+	templateFolderAbsPath, err := filepath.Abs(templateFolder)
+	if err != nil {
+		return "", errors.WithStackTrace(err)
+	}
+
+	fileAbsPath, err := filepath.Abs(file)
+	if err != nil {
+		return "", errors.WithStackTrace(err)
+	}
+
+	relPath, err := filepath.Rel(templateFolderAbsPath, fileAbsPath)
+	if err != nil {
+		return "", errors.WithStackTrace(err)
+	}
+
+	return path.Join(outputFolder, relPath), nil
 }
 
 // Copy the given file, which is in templateFolder, to outputFolder
 func copyFile(file string, templateFolder string, outputFolder string, variables map[string]string) error {
-	destination := outPath(file, templateFolder, outputFolder)
+	destination, err := outPath(file, templateFolder, outputFolder)
+	if err != nil {
+		return err
+	}
+
 	util.Logger.Printf("Copying %s to %s", file, destination)
 	return util.CopyFile(file, destination)
 }
@@ -73,9 +94,12 @@ func copyFile(file string, templateFolder string, outputFolder string, variables
 // Run the template at templatePath, which is in templateFolder, through the Go template engine with the given
 // variables as data and write the result to outputFolder
 func processTemplate(templatePath string, templateFolder string, outputFolder string, variables map[string]string) error {
-	destination := outPath(templatePath, templateFolder, outputFolder)
-	util.Logger.Printf("Processing template %s and writing to %s", templatePath, destination)
+	destination, err := outPath(templatePath, templateFolder, outputFolder)
+	if err != nil {
+		return err
+	}
 
+	util.Logger.Printf("Processing template %s and writing to %s", templatePath, destination)
 	bytes, err := ioutil.ReadFile(templatePath)
 	if err != nil {
 		return errors.WithStackTrace(err)
