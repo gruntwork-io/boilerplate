@@ -23,7 +23,15 @@ Note: the README for this project is generated using boilerplate! Check out the 
 Create a folder called `website-boilerplate` and put a file called `boilerplate.yml` in it:
 
 ```json
-{{snippet "../website/boilerplate.yml" "all"}}
+variables:
+  - name: Title
+
+  - name: WelcomeText
+    prompt: Enter the welcome text for the website
+
+  - name: ShowLogo
+    prompt: Should the webiste show the logo?
+    default: true
 ```
 
 This file defines 3 variables: `Title`, `WelcomeText`, and `ShowLogo`. When you run Boilerplate, it will prompt
@@ -33,7 +41,15 @@ Next, create an `index.html` in the `website-boilerplate` folder that uses these
 Template](https://golang.org/pkg/text/template) syntax:
 
 ```html
-{{snippet "../website/index.html" "all"}}
+<html>
+  <head>
+    <title>{{.Title}}</title>
+  </head>
+  <body>
+    <h1>{{.WelcomeText}}</h1>
+    {{if .ShowLogo}}<img src="logo.png">{{end}}
+  </body>
+</html>
 ```
 
 Copy an image into the `website-boilerplate` folder and call it `logo.png`.
@@ -58,7 +74,15 @@ Boilerplate copies any files from the `--template-folder` into the `--output-fol
 following contents:
 
 ```html
-{{snippet "../../test-fixtures/examples-expected-output/website/index.html" "all"}}
+<html>
+  <head>
+    <title>Boilerplate</title>
+  </head>
+  <body>
+    <h1>Welcome!</h1>
+    <img src="logo.png">
+  </body>
+</html>
 ```
 
 You can also run Boilerplate non-interactively, which is great for automation:

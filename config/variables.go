@@ -31,7 +31,7 @@ func getVariable(variable Variable, options *BoilerplateOptions) (string, error)
 	valueFromVars, valueSpecifiedInVars := getVariableFromVars(variable, options)
 
 	if valueSpecifiedInVars {
-		util.Logger.Printf("Using value specified via the --%s flag for variable '%s': %s", OPT_VAR, variable.Name, valueFromVars)
+		util.Logger.Printf("Using value specified via command line options for variable '%s': %s", variable.Name, valueFromVars)
 		return valueFromVars, nil
 	} else if options.NonInteractive && variable.Default != "" {
 		// TODO: how to disambiguate between a default not being specified and a default set to an empty string?
