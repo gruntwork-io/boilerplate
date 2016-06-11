@@ -120,5 +120,5 @@ func WriteFileWithSamePermissions(source string, destination string, contents []
 
 type NoSuchFile string
 func (path NoSuchFile) Error() string {
-	return fmt.Sprintf("File %s does not exist", path)
+	return fmt.Sprintf("File %s does not exist", string(path))
 }

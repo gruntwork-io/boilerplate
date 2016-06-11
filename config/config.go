@@ -112,6 +112,6 @@ var OutputFolderCannotBeEmpty = fmt.Errorf("The --%s option cannot be empty", OP
 
 type TemplateFolderDoesNotExist string
 func (err TemplateFolderDoesNotExist) Error() string {
-	return fmt.Sprintf("Folder %s does not exist", err)
+	return fmt.Sprintf("Folder %s does not exist", string(err))
 }
 

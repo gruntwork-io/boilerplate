@@ -132,5 +132,5 @@ func parseVars(varsList []string) (map[string] string, error) {
 
 type InvalidVarSyntax string
 func (varSyntax InvalidVarSyntax) Error() string {
-	return fmt.Sprintf("Invalid syntax for variable. Expected NAME=VALUE but got %s", varSyntax)
+	return fmt.Sprintf("Invalid syntax for variable. Expected NAME=VALUE but got %s", string(varSyntax))
 }

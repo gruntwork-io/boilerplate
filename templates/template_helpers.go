@@ -10,6 +10,7 @@ import (
 	"text/template"
 	"path/filepath"
 	"strings"
+	"path"
 )
 
 var SNIPPET_MARKER_REGEX = regexp.MustCompile("boilerplate-snippet:\\s*(.+?)(?:\\s|$)")
@@ -53,18 +54,23 @@ func snippet(templatePath string, args ... string) (string, error) {
 	}
 }
 
-// Returns the given path relative to the given templatePath.
+// Returns the given filePath relative to the given templatePath. If filePath is already an absolute path, returns it
+// unchanged.
 //
 // Example:
 //
 // pathRelativeToTemplate("/foo/bar/template-file.txt, "../src/code.java")
 //   Returns: "/foo/src/code.java"
-func pathRelativeToTemplate(templatePath string, path string) string {
-	basePath := filepath.Base(templatePath)
-	return filepath.Join(basePath, path)
+func pathRelativeToTemplate(templatePath string, filePath string) string {
+	if path.IsAbs(filePath) {
+		return filePath
+	} else {
+		templateDir := filepath.Dir(templatePath)
+		return filepath.Join(templateDir, filePath)
+	}
 }
 
-// Returns the contents of path, relative to templatePath, as a string
+// Returns the contents of the file at path, relative to templatePath, as a string
 func readFile(templatePath, path string) (string, error) {
 	relativePath := pathRelativeToTemplate(templatePath, path)
 	bytes, err := ioutil.ReadFile(relativePath)
@@ -84,6 +90,11 @@ func readSnippetFromFile(templatePath string, path string, snippetName string) (
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
+	return readSnippetFromScanner(scanner, snippetName)
+}
+
+// Returns the content of snippet snippetName from the given scanner
+func readSnippetFromScanner(scanner *bufio.Scanner, snippetName string) (string, error) {
 	scanner.Split(bufio.ScanLines)
 
 	snippetLines := []string{}
@@ -91,8 +102,8 @@ func readSnippetFromFile(templatePath string, path string, snippetName string) (
 
 	for scanner.Scan() {
 		line := scanner.Text()
-		snippetName, isSnippet := extractSnippetName(line)
-		if isSnippet && snippetName == snippetName {
+		foundSnippetName, isSnippet := extractSnippetName(line)
+		if isSnippet && foundSnippetName == snippetName {
 			if inSnippet {
 				return strings.Join(snippetLines, "\n"), nil
 			} else {
@@ -115,7 +126,8 @@ func readSnippetFromFile(templatePath string, path string, snippetName string) (
 func extractSnippetName(line string) (string, bool) {
 	match := SNIPPET_MARKER_REGEX.FindStringSubmatch(line)
 	if len(match) == 2 {
-		return match[1], true
+		snippetName := strings.TrimSpace(match[1])
+		return snippetName, snippetName != ""
 	} else {
 		return "", false
 	}
@@ -125,15 +137,15 @@ func extractSnippetName(line string) (string, bool) {
 
 type SnippetNotFound string
 func (snippetName SnippetNotFound) Error() string {
-	return fmt.Sprintf("Could not find a snippet named %s", snippetName)
+	return fmt.Sprintf("Could not find a snippet named %s", string(snippetName))
 }
 
 type SnippetNotTerminated string
 func (snippetName SnippetNotTerminated) Error() string {
-	return fmt.Sprintf("Snippet %s has an opening boilerplate-snippet marker, but not a closing one", snippetName)
+	return fmt.Sprintf("Snippet %s has an opening boilerplate-snippet marker, but not a closing one", string(snippetName))
 }
 
 type InvalidSnippetArguments []string
 func (args InvalidSnippetArguments) Error() string {
-	return fmt.Sprintf("The snippet helper expects the following args: snippet <TEMPLATE_PATH> <PATH> [SNIPPET_NAME]. Instead, got args: %s", args)
+	return fmt.Sprintf("The snippet helper expects the following args: snippet <TEMPLATE_PATH> <PATH> [SNIPPET_NAME]. Instead, got args: %s", []string(args))
 }
