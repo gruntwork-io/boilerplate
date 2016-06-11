@@ -54,16 +54,7 @@ func getVariableFromVars(variable Variable, options *BoilerplateOptions) (string
 
 // Get the value for the given variable by prompting the user
 func getVariableFromUser(variable Variable, options *BoilerplateOptions) (string, error) {
-	prompt := fmt.Sprintf("Enter a value for variable '%s'", variable.Name)
-
-	if variable.Prompt != "" {
-		prompt = variable.Prompt
-	}
-	if variable.Default != "" {
-		prompt = fmt.Sprintf("%s (default: %s)", prompt, variable.Default)
-	}
-
-	value, err := util.PromptUserForInput(prompt)
+	value, err := util.PromptUserForInput(formatPrompt(variable, options))
 	if err != nil {
 		return "", err
 	}
@@ -75,6 +66,20 @@ func getVariableFromUser(variable Variable, options *BoilerplateOptions) (string
 	} else {
 		return value, nil
 	}
+}
+
+// Return the text that prompts the user to enter a value for the given variable
+func formatPrompt(variable Variable, options *BoilerplateOptions) string {
+	prompt := fmt.Sprintf("Enter a value for variable '%s'", variable.Name)
+
+	if variable.Prompt != "" {
+		prompt = variable.Prompt
+	}
+	if variable.Default != "" {
+		prompt = fmt.Sprintf("%s (default: '%s')", prompt, variable.Default)
+	}
+
+	return prompt
 }
 
 // Custom error types

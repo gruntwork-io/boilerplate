@@ -1,0 +1,9 @@
+variables:
+  - name: foo
+
+  - name: bar
+    prompt: prompt
+
+  - name: baz
+    prompt: prompt
+    default: default

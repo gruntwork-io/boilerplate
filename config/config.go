@@ -71,7 +71,7 @@ func LoadBoilerPlateConfig(options *BoilerplateOptions) (*BoilerplateConfig, err
 
 		return ParseBoilerplateConfig(bytes)
 	} else {
-		util.Logger.Printf("Warning: boilerplate config file not found at %s. Variables are not supported.", configPath)
+		util.Logger.Printf("Warning: boilerplate config file not found at %s. No variables will be available while generating.", configPath)
 		return &BoilerplateConfig{}, nil
 	}
 }
