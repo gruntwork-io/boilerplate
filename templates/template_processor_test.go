@@ -66,27 +66,28 @@ func TestRenderTemplate(t *testing.T) {
 	assert.Nil(t, err, "Couldn't get working directory")
 
 	testCases := []struct {
-		templateContents string
-		variables   	 map[string]string
-		expectedError    error
-		expectedOutput   string
+		templateContents  string
+		variables   	  map[string]string
+		expectedErrorText string
+		expectedOutput    string
 	}{
-		{"", map[string]string{}, nil, ""},
-		{"plain text template", map[string]string{}, nil, "plain text template"},
-		{"variable lookup: {{.Foo}}", map[string]string{"Foo": "bar"}, nil, "variable lookup: bar"},
-		{"missing variable lookup: {{.Foo}}", map[string]string{}, nil, "missing variable lookup: <no value>"},
-		{EMBED_WHOLE_FILE_TEMPLATE, map[string]string{}, nil, EMBED_WHOLE_FILE_TEMPLATE_OUTPUT},
-		{EMBED_SNIPPET_TEMPLATE, map[string]string{}, nil, EMBED_SNIPPET_TEMPLATE_OUTPUT},
+		{"", map[string]string{}, "", ""},
+		{"plain text template", map[string]string{}, "", "plain text template"},
+		{"variable lookup: {{.Foo}}", map[string]string{"Foo": "bar"}, "", "variable lookup: bar"},
+		{"missing variable lookup: {{.Foo}}", map[string]string{}, "", "missing variable lookup: <no value>"},
+		{EMBED_WHOLE_FILE_TEMPLATE, map[string]string{}, "", EMBED_WHOLE_FILE_TEMPLATE_OUTPUT},
+		{EMBED_SNIPPET_TEMPLATE, map[string]string{}, "", EMBED_SNIPPET_TEMPLATE_OUTPUT},
+		{"Invalid template syntax: {{.Foo", map[string]string{}, "unclosed action", ""},
 	}
 
 	for _, testCase := range testCases {
 		actualOutput, err := renderTemplate(pwd + "/template.txt", testCase.templateContents, testCase.variables)
-		if testCase.expectedError == nil {
+		if testCase.expectedErrorText == "" {
 			assert.Nil(t, err)
 			assert.Equal(t, testCase.expectedOutput, actualOutput)
 		} else {
 			assert.NotNil(t, err)
-			// TODO: check expectedError == err
+			assert.Contains(t, err.Error(), testCase.expectedErrorText)
 		}
 	}
 }
