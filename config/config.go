@@ -15,6 +15,7 @@ const OPT_TEMPLATE_FOLDER = "template-folder"
 const OPT_OUTPUT_FOLDER = "output-folder"
 const OPT_NON_INTERACTIVE = "non-interactive"
 const OPT_VAR = "var"
+const OPT_VAR_FILE = "var-file"
 
 // The command-line options for the boilerplate app
 type BoilerplateOptions struct {

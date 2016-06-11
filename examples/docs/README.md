@@ -101,12 +101,51 @@ To install Boilerplate, just download the binary for your OS from the
 
 When you run Boilerplate, it performs the following steps:
 
-1. Read the `boilerplate.yml` file in the folder specified by the `--template-folder` option and prompt the user
-   for any variables defined in the `variables` section (unless the `--non-interactive` flag is specified).
-1. Copy each file from `--template-folder` to `--output-folder`, passing each non-binary file through the Go
-   Template engine, passing a map of user-specified variables as the data structure.
+1. Read the `boilerplate.yml` file in the folder specified by the `--template-folder` option to find all defined
+   varaibles.
+1. Gather values for the variables from any `--var` and `--var-file` options that were passed in and prompting the user
+   for the rest (unless the `--non-interactive` flag is specified).
+1. Copy each file from `--template-folder` to `--output-folder`, running each non-binary file through the Go
+   Template engine with the map of variables as the data structure.
 
-Learn more about each step below.
+Learn more about boilerplate in the following sections:
+
+1. [Boilerplate command line options](#boilerplate-command-line-options)
+1. [The boilerplate.yml file](#the-boilerplate.yml-file)
+1. [Variables](#variables)
+1. [Templates](#templates)
+1. [Template helpers](#template-helpers)
+
+#### Boilerplate command line options
+
+The `boilerplate` binary supports the following options:
+
+* `--template-folder FOLDER` (required): Generate the project from the templates in `FOLDER`.
+* `--output-folder` (required): Create the output files and folders in `FOLDER`.
+* `--non-interactive` (optional): Do not prompt for input variables. All variables must be set via `--var` and
+  `--var-file` options instead.
+* `--var NAME=VALUE` (optional): Use `NAME=VALUE` to set variable `NAME` to `VALUE`. May be specified more than once.
+* `--var-file FILE` (optional): Load variable values from the YAML file `FILE`. May be specified more than once.
+
+Some examples:
+
+Generate a project in ~/output from the templates in ~/templates:
+
+```
+boilerplate --template-folder ~/templates --output-folder ~/output
+```
+
+Generate a project in ~/output from the templates in ~/templates, using variables passed in via the command line:
+
+```
+boilerplate --template-folder ~/templates --output-folder ~/output --var "Title=Boilerplate" --var "ShowLogo=false"
+```
+
+Generate a project in ~/output from the templates in ~/templates, using variables read from a file:
+
+```
+boilerplate --template-folder ~/templates --output-folder ~/output --var-file vars.yml
+```
 
 #### The boilerplate.yml file
 
@@ -131,10 +170,28 @@ with the following fields:
   "Enter a value for <VARIABLE_NAME>".
 * `default` (Optional): A default value for this variable. The user can just hit ENTER at the command line to use the
   default value, if one is provided. If running Boilerplate with the `--non-interactive` flag, the default is
-  used for this value if no value is provided via the `--var` option.
+  used for this value if no value is provided via the `--var` or `--var-file` options.
 
 Note: the `boilerplate.yml` file is optional. If you don't specify it, you can still use Go templating in your
 templates, but no variables will be available.
+
+#### Variables
+
+You must provide a value for every variable defined in `boilerplate.yml`, or project generation will fail. There are
+four ways to provide a value for a variable:
+
+1. `--var` option(s) you pass in when calling boilerplate. Example: `boilerplate --var Title=Boilerplate --var ShowLogo=false`.
+1. `--var-file` option(s) you pass in when calling boilerplate. Example: `boilerplate --var-file vars.yml`. The vars
+   file must be a simple YAML file that defines key value pairs. Example:
+
+   ```yaml
+   Title: Boilerplate
+   ShowLogo: false
+   ```
+1. Manual input. If no value is specified via the `--var` or `--var-file` flags, Boilerplate will interactively prompt
+   the user to provide a value. Note that the `--non-interactive` flag disables this functionality.
+1. Defaults defined in `boilerplate.yml`. The final fallback is the optional `default` that you can include as part of
+   the variable definition in `boilerplate.yml`.
 
 #### Templates
 

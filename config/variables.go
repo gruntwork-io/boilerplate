@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"github.com/gruntwork-io/boilerplate/util"
 	"github.com/gruntwork-io/boilerplate/errors"
+	"strings"
+	"io/ioutil"
+	"gopkg.in/yaml.v2"
 )
 
 // Get a value for each of the variables specified in boilerplateConfig. The value can come from the user (if the
@@ -82,9 +85,77 @@ func formatPrompt(variable Variable, options *BoilerplateOptions) string {
 	return prompt
 }
 
+// Parse a list of NAME=VALUE pairs into a map.
+func ParseVariablesFromKeyValuePairs(varsList []string)  (map[string]string, error) {
+	vars := map[string]string{}
+
+	for _, variable := range varsList {
+		variableParts := strings.Split(variable, "=")
+		if len(variableParts) != 2 {
+			return vars, errors.WithStackTrace(InvalidVarSyntax(variable))
+		}
+
+		key := variableParts[0]
+		value := variableParts[1]
+		if key == "" {
+			return vars, errors.WithStackTrace(VariableNameCannotBeEmpty(variable))
+		}
+
+		vars[key] = value
+	}
+
+	return vars, nil
+}
+
+// Parse a list of YAML files that define variables into a map.
+func ParseVariablesFromVarFiles(varFileList []string) (map[string]string, error) {
+	vars := map[string]string{}
+
+	for _, varFile := range varFileList {
+		varsInFile, err := ParseVariablesFromVarFile(varFile)
+		if err != nil {
+			return vars, err
+		}
+		vars = util.MergeMaps(vars, varsInFile)
+	}
+
+	return vars, nil
+}
+
+// Parse the NAME: VALUE pairs in the given YAML file into a map
+func ParseVariablesFromVarFile(varFilePath string) (map[string]string, error) {
+	bytes, err := ioutil.ReadFile(varFilePath)
+	if err != nil {
+		return map[string]string{}, errors.WithStackTrace(err)
+	}
+	return parseVariablesFromVarFileContents(bytes)
+}
+
+// Parse the NAME: VALUE pairs in the given YAML file contents into a map
+func parseVariablesFromVarFileContents(varFileContents []byte)(map[string]string, error) {
+	vars := map[string]string{}
+
+	err := yaml.Unmarshal(varFileContents, &vars)
+	if err != nil {
+		return vars, errors.WithStackTrace(err)
+	}
+
+	return vars, nil
+}
+
 // Custom error types
 
 type MissingVariableWithNonInteractiveMode string
 func (variableName MissingVariableWithNonInteractiveMode) Error() string {
 	return fmt.Sprintf("Variable '%s' does not have a default, no value was specified at the command line using the --%s option, and the --%s flag is set, so cannot prompt user for a value.", string(variableName), OPT_VAR, OPT_NON_INTERACTIVE)
+}
+
+type InvalidVarSyntax string
+func (varSyntax InvalidVarSyntax) Error() string {
+	return fmt.Sprintf("Invalid syntax for variable. Expected NAME=VALUE but got %s", string(varSyntax))
+}
+
+type VariableNameCannotBeEmpty string
+func (varSyntax VariableNameCannotBeEmpty) Error() string {
+	return fmt.Sprintf("Variable name cannot be empty. Expected NAME=VALUE but got %s", string(varSyntax))
 }

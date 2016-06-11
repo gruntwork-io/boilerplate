@@ -5,8 +5,7 @@ import (
 	"fmt"
 	"github.com/gruntwork-io/boilerplate/config"
 	"github.com/gruntwork-io/boilerplate/templates"
-	"strings"
-	"github.com/gruntwork-io/boilerplate/errors"
+	"github.com/gruntwork-io/boilerplate/util"
 )
 
 // Customize the --help text for the app so we don't show extraneous info
@@ -15,13 +14,27 @@ const CUSTOM_HELP_TEXT = `NAME:
 
 USAGE:
    {{if .UsageText}}{{.UsageText}}{{else}}{{.HelpName}} {{if .VisibleFlags}}[global options]{{end}}{{if .Commands}} command [command options]{{end}} {{if .ArgsUsage}}{{.ArgsUsage}}{{else}}[arguments...]{{end}}{{end}}
-   {{if .Version}}{{if not .HideVersion}}
-VERSION:
-   {{.Version}}
-   {{end}}{{end}}{{if .VisibleFlags}}
+   {{if .VisibleFlags}}
 OPTIONS:
    {{range .VisibleFlags}}{{.}}
    {{end}}{{end}}{{if len .Authors}}
+EXAMPLES:
+   Generate a project in ~/output from the templates in ~/templates:
+
+       boilerplate --template-folder ~/templates --output-folder ~/output
+
+   Generate a project in ~/output from the templates in ~/templates, using variables passed in via the command line:
+
+       boilerplate --template-folder ~/templates --output-folder ~/output --var "Title=Boilerplate" --var "ShowLogo=false"
+
+   Generate a project in ~/output from the templates in ~/templates, using variables read from a file:
+
+       boilerplate --template-folder ~/templates --output-folder ~/output --var-file vars.yml
+
+   {{if .Version}}{{if not .HideVersion}}
+VERSION:
+   {{.Version}}
+   {{end}}{{end}}
 AUTHOR(S):
    {{range .Authors}}{{.}}{{end}}
    {{end}}{{if .Copyright}}
@@ -44,7 +57,7 @@ func CreateBoilerplateCli(version string) *cli.App {
 	app.Flags = []cli.Flag {
 		cli.StringFlag{
 			Name: config.OPT_TEMPLATE_FOLDER,
-			Usage: "Look for the project templates in `FOLDER`.",
+			Usage: "Generate the project from the templates in `FOLDER`.",
 		},
 		cli.StringFlag{
 			Name: config.OPT_OUTPUT_FOLDER,
@@ -52,11 +65,15 @@ func CreateBoilerplateCli(version string) *cli.App {
 		},
 		cli.BoolFlag{
 			Name: config.OPT_NON_INTERACTIVE,
-			Usage: fmt.Sprintf("Do not prompt for input variables. All variables must be set via --%s options instead.", config.OPT_VAR),
+			Usage: fmt.Sprintf("Do not prompt for input variables. All variables must be set via --%s and --%s options instead.", config.OPT_VAR, config.OPT_VAR_FILE),
 		},
 		cli.StringSliceFlag{
 			Name: config.OPT_VAR,
-			Usage: "Use `NAME=VALUE` to set variable NAME is to VALUE. May be specified more than once.",
+			Usage: "Use `NAME=VALUE` to set variable NAME to VALUE. May be specified more than once.",
+		},
+		cli.StringSliceFlag{
+			Name: config.OPT_VAR_FILE,
+			Usage: "Load variable values from the YAML file `FILE`. May be specified more than once.",
 		},
 	}
 
@@ -91,7 +108,7 @@ func runApp(cliContext *cli.Context) error {
 
 // Parse the command line options provided by the user
 func parseOptions(cliContext *cli.Context) (*config.BoilerplateOptions, error) {
-	vars, err := parseVars(cliContext.StringSlice(config.OPT_VAR))
+	vars, err := parseVars(cliContext.StringSlice(config.OPT_VAR), cliContext.StringSlice(config.OPT_VAR_FILE))
 	if err != nil {
 		return nil, err
 	}
@@ -110,27 +127,21 @@ func parseOptions(cliContext *cli.Context) (*config.BoilerplateOptions, error) {
 	return options, nil
 }
 
-// Parse a list of NAME=VALUE variable pairs into a map
-func parseVars(varsList []string) (map[string] string, error) {
-	vars := map[string]string{}
+// Parse variables passed in via command line flags, either as a list of NAME=VALUE variable pairs in varsList, or a
+// list of paths to YAML files that define NAME: VALUE pairs. Return a map of the NAME: VALUE pairs.
+func parseVars(varsList []string, varFileList[]string) (map[string]string, error) {
+	variables := map[string]string{}
 
-	for _, variable := range varsList {
-		variableParts := strings.Split(variable, "=")
-		if len(variableParts) != 2 {
-			return vars, errors.WithStackTrace(InvalidVarSyntax(variable))
-		}
-
-		key := variableParts[0]
-		value := variableParts[1]
-		vars[key] = value
+	varsFromVarsList, err := config.ParseVariablesFromKeyValuePairs(varsList)
+	if err != nil {
+		return variables, err
 	}
 
-	return vars, nil
+	varsFromVarFiles, err := config.ParseVariablesFromVarFiles(varFileList)
+	if err != nil {
+		return variables, err
+	}
+
+	return util.MergeMaps(varsFromVarsList, varsFromVarFiles), nil
 }
 
-// Custom error types
-
-type InvalidVarSyntax string
-func (varSyntax InvalidVarSyntax) Error() string {
-	return fmt.Sprintf("Invalid syntax for variable. Expected NAME=VALUE but got %s", string(varSyntax))
-}
