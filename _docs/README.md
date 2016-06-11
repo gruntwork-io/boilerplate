@@ -1,8 +1,6 @@
 # Boilerplate
 
-Boilerplate is a tool for generating files and folders ("boilerplate") from a set of templates. It interactively
-prompts the user for a set of input variables which, along with lots of handy helpers, can be used by the templates
-using [Go Template](https://golang.org/pkg/text/template) syntax.
+Boilerplate is a tool for generating files and folders ("boilerplate") from a set of templates.  
 
 Example use cases:
 
