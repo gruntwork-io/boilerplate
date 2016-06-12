@@ -1,6 +1,6 @@
 # Boilerplate
 
-Boilerplate is a tool for generating files and folders ("boilerplate") from a set of templates.  
+Boilerplate is a tool for generating files and folders ("boilerplate") from a set of templates.
 
 Example use cases:
 
