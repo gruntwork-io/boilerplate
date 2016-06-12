@@ -1,4 +1,3 @@
-# boilerplate-snippet: all
 variables:
   - name: Title
 
@@ -8,4 +7,3 @@ variables:
   - name: ShowLogo
     prompt: Should the webiste show the logo?
     default: true
-# boilerplate-snippet: all

@@ -16,7 +16,6 @@ passed in using the `--var` option.
 Here is how to use the `snippet` helper to embed files or parts of files from source code:
 
 ```html
-<!-- boilerplate-snippet: all -->
 <html>
   <head>
     <title>{{.Title}}</title>
@@ -26,6 +25,4 @@ Here is how to use the `snippet` helper to embed files or parts of files from so
     {{if .ShowLogo}}<img src="logo.png">{{end}}
   </body>
 </html>
-<!-- boilerplate-snippet: all -->
-
 ```

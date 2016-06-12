@@ -19,7 +19,7 @@ Note: the README for this project is generated using boilerplate! Check out the 
 Create a folder called `website-boilerplate` and put a file called `boilerplate.yml` in it:
 
 ```json
-{{snippet "../examples/website/boilerplate.yml" "all"}}
+{{snippet "../examples/website/boilerplate.yml"}}
 ```
 
 This file defines 3 variables: `Title`, `WelcomeText`, and `ShowLogo`. When you run Boilerplate, it will prompt
@@ -29,7 +29,7 @@ Next, create an `index.html` in the `website-boilerplate` folder that uses these
 Template](https://golang.org/pkg/text/template) syntax:
 
 ```html
-{{snippet "../examples/website/index.html" "all"}}
+{{snippet "../examples/website/index.html"}}
 ```
 
 Copy an image into the `website-boilerplate` folder and call it `logo.png`.
@@ -54,7 +54,7 @@ Boilerplate copies any files from the `--template-folder` into the `--output-fol
 following contents:
 
 ```html
-{{snippet "../test-fixtures/examples-expected-output/website/index.html" "all"}}
+{{snippet "../test-fixtures/examples-expected-output/website/index.html"}}
 ```
 
 You can also run Boilerplate non-interactively, which is great for automation:
