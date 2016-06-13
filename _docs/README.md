@@ -269,3 +269,7 @@ inspiring many of the ideas in Boilerplate and so you can try out other projects
    ```
 1. Consider open sourcing boilerplate. To do that, we may also want to open source the
    `gruntwork-module-circleci-helpers` it uses in `circle.yml`.
+1. Support a list of `ignore` files in `boilerplate.yml` or even a `.boilerplate-ignore` file for files that should be
+   skipped over while generating code.
+1. Consider supporting different types for variables. Currently, all variables are strings, but there may be value
+   in specifying a `type` in `boilerplate.yml`. Useful types: string, int, bool, float, list, map.
