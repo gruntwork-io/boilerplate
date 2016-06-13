@@ -78,8 +78,9 @@ for full documentation.
 
 ## Install
 
-To install Boilerplate, just download the binary for your OS from the
-[Releases Page](https://github.com/gruntwork-io/usage-patterns/releases).
+Download the latest binary for your OS here: [boilerplate {{.Version}}](/releases/tag/{{.Version}}).
+
+You can find older versions on the [Releases Page](https://github.com/gruntwork-io/usage-patterns/releases).
 
 ## Features
 
@@ -122,6 +123,8 @@ The `boilerplate` binary supports the following options:
   `--var-file` options instead.
 * `--var NAME=VALUE` (optional): Use `NAME=VALUE` to set variable `NAME` to `VALUE`. May be specified more than once.
 * `--var-file FILE` (optional): Load variable values from the YAML file `FILE`. May be specified more than once.
+* `--help`: Show the help text and exit.
+* `--version`: Show the version and exit.
 
 Some examples:
 
@@ -264,3 +267,5 @@ inspiring many of the ideas in Boilerplate and so you can try out other projects
      file: echo "Boilerplate is processing file $1"
      end: echo "Boilerplate finished generating files in $2 from templates in $1"
    ```
+1. Consider open sourcing boilerplate. To do that, we may also want to open source the
+   `gruntwork-module-circleci-helpers` it uses in `circle.yml`.
