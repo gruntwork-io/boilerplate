@@ -12,7 +12,7 @@ Example use cases:
    are built & tested, and embed parts of those files dynamically in your docs.
 
 Note: the README for this project is generated using boilerplate! Check out the templates for it in the
-[examples/docs](/examples/docs) folder and the build job configuration in [circle.yml](/circle.yml).
+[_docs folder](/_docs) and the build job configuration in [circle.yml](/circle.yml).
 
 ## Example: creating a new template
 
