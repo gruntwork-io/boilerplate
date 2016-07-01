@@ -18,7 +18,7 @@ Note: the README for this project is generated using boilerplate! Check out the 
 
 Create a folder called `website-boilerplate` and put a file called `boilerplate.yml` in it:
 
-```json
+```yml
 variables:
   - name: Title
 
@@ -103,7 +103,7 @@ for full documentation.
 
 ## Install
 
-Download the latest binary for your OS here: [boilerplate v0.0.1](/releases/tag/v0.0.1).
+Download the latest binary for your OS here: [boilerplate v0.0.2](https://github.com/gruntwork-io/boilerplate/releases/tag/v0.0.2).
 
 You can find older versions on the [Releases Page](https://github.com/gruntwork-io/usage-patterns/releases).
 
@@ -225,7 +225,7 @@ non-binary file through the [Go Template](https://golang.org/pkg/text/template) 
 data structure.
 
 For example, if you had a variable called `Title` in your `boilerplate.yml` file, then you could access that variable
-in any of your templates using the syntax `&#123;&#123;.Title&#124;&#124;`.
+in any of your templates using the syntax `{{.Title}}`.
 
 #### Template helpers
 
