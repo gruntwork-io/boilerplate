@@ -1,0 +1,5 @@
+Hi
+boilerplate-snippet: foo
+Hello, World!
+boilerplate-snippet: foo
+Bye
