@@ -274,6 +274,10 @@ inspiring many of the ideas in Boilerplate and so you can try out other projects
   code snippets to be loaded from external files. Great for ensuring the code snippets in your docs are from files that
   are compiled and tested, but does not work as a general-purpose project generator.
 
+## License
+
+This code is released under the MIT License. See LICENSE.txt.
+
 ## TODO
 
 1. Add support for using Go template syntax in the paths of files so they can be copied dynamically.
