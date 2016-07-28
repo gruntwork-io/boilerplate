@@ -26,7 +26,7 @@ func GetVariables(options *BoilerplateOptions, boilerplateConfig *BoilerplateCon
 }
 
 // Get a value for the given variable. The value can come from the user (if the non-interactive option isn't set), the
-// default value in the default value in the config, or a command line option.
+// default value in the config, or a command line option.
 func getVariable(variable Variable, options *BoilerplateOptions) (string, error) {
 	valueFromVars, valueSpecifiedInVars := getVariableFromVars(variable, options)
 
