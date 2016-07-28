@@ -10,7 +10,7 @@ import (
 )
 
 // Get a value for each of the variables specified in boilerplateConfig. The value can come from the user (if the
-// non-interactive option isn't set), the default value in the default value in the config, or a command line option.
+// non-interactive option isn't set), the default value in the config, or a command line option.
 func GetVariables(options *BoilerplateOptions, boilerplateConfig *BoilerplateConfig) (map[string]string, error) {
 	variables := map[string]string{}
 
