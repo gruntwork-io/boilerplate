@@ -91,6 +91,7 @@ func TestRenderTemplate(t *testing.T) {
 		{"Snake case test: {{ .Foo | snakeCase }}", map[string]string{"Foo": "foo BAR baz!"}, "", "Snake case test: foo_bar_baz"},
 		{"Camel case test: {{ .Foo | camelCase }}", map[string]string{"Foo": "foo BAR baz!"}, "", "Camel case test: FooBARBaz"},
 		{"Camel case lower test: {{ .Foo | camelCaseLower }}", map[string]string{"Foo": "foo BAR baz!"}, "", "Camel case lower test: fooBARBaz"},
+		{"Filter chain test: {{ .Foo | downcase | replaceAll \" \" \"\" }}", map[string]string{"Foo": "foo BAR baz!"}, "", "Filter chain test: foobarbaz!"},
 	}
 
 	for _, testCase := range testCases {
