@@ -11,9 +11,27 @@ import (
 	"path/filepath"
 	"strings"
 	"path"
+	"math"
+	"strconv"
+	"unicode"
 )
 
 var SNIPPET_MARKER_REGEX = regexp.MustCompile("boilerplate-snippet:\\s*(.+?)(?:\\s|$)")
+
+var WHITESPACE_REGEX = regexp.MustCompile("[[:space:]]+")
+
+var PUNCTUATION_OR_WHITESPACE_REGEX = regexp.MustCompile("([[:space:]]|[[:punct:]])+")
+
+// This regex can be used to split CamelCase strings into "words". That is, given a string like FooBarBaz, you can use
+// this regex to split it into an array ["Foo", "Bar", "Baz"]. It also handles lower camel case, which is the same as
+// camel case, except it starts with a lower case word, such as fooBarBaz.
+//
+// To capture lowercase camel case, we just look for words that consist of lower case letters and digits at the start
+// of the string. To capture all other camel case, we look for "words" that start with one or more consecutive upper
+// case letters followed by one or more lower case letters or digits.
+var CAMEL_CASE_REGEX = regexp.MustCompile(
+	"(^([[:lower:]]|[[:digit:]])+)|" +             // Handle lower camel case
+	"([[:upper:]]*([[:lower:]]|[[:digit:]]|$)*)")  // Handle normal camel case
 
 // All boilerplate template helpers implement this signature. They get the path of the template they are rendering as
 // the first arg and then any arguments the user passed when calling the helper.
@@ -23,6 +41,19 @@ type TemplateHelper func(templatePath string, args ... string) (string, error)
 func CreateTemplateHelpers(templatePath string) template.FuncMap {
 	return map[string]interface{}{
 		"snippet": wrapWithTemplatePath(templatePath, snippet),
+		"downcase": strings.ToLower,
+		"upcase": strings.ToUpper,
+		"capitalize": strings.Title,
+		"replace": func(old string, new string, str string) string { return strings.Replace(str, old, new, 1) },
+		"replaceAll": func(old string, new string, str string) string { return strings.Replace(str, old, new, -1) },
+		"trim": strings.TrimSpace,
+		"round": wrapFloatToIntFunction(round),
+		"ceil": wrapFloatToFloatFunction(math.Ceil),
+		"floor": wrapFloatToFloatFunction(math.Floor),
+		"dasherize": dasherize,
+		"snakeCase": snakeCase,
+		"camelCase": camelCase,
+		"camelCaseLower": camelCaseLower,
 	}
 }
 
@@ -131,6 +162,123 @@ func extractSnippetName(line string) (string, bool) {
 	} else {
 		return "", false
 	}
+}
+
+// Wrap a function that uses float64 as input and output so it can take a string as input and return a string as output
+func wrapFloatToFloatFunction(f func(float64) float64) func(string) (string, error) {
+	return func(valueAsString string) (string, error) {
+		valueAsFloat, err := strconv.ParseFloat(valueAsString, 64)
+		if err != nil {
+			return "", errors.WithStackTrace(err)
+		}
+		return strconv.Itoa(int(f(valueAsFloat))), nil
+	}
+}
+
+// Wrap a function that uses float64 as input and int as output so it can take a string as input and return a string as
+// output
+func wrapFloatToIntFunction(f func(float64) int) func(string) (string, error) {
+	return func(valueAsString string) (string, error) {
+		valueAsFloat, err := strconv.ParseFloat(valueAsString, 64)
+		if err != nil {
+			return "", errors.WithStackTrace(err)
+		}
+		return strconv.Itoa(f(valueAsFloat)), nil
+	}
+}
+
+// Go's math package does not include a round function. This is because Go is a shitty language. Many people complained
+// in this issue: https://github.com/golang/go/issues/4594. However, it was closed as "wontfix". Note the half dozen
+// attempts to implement this function, most of which are wrong. This seems to be the right solution:
+func round(f float64) int {
+	if math.Abs(f) < 0.5 {
+		return 0
+	}
+	return int(f + math.Copysign(0.5, f))
+}
+
+// Convert a string to an all lowercase, dash-delimited string, dropping all other punctuation and whitespace. E.g.
+// "foo BAR baz!" becomes "foo-bar-baz".
+func dasherize(str string) string {
+	return toDelimitedString(str, "-")
+}
+
+// Convert a string to an all lower case, underscore-delimited string, dropping all other punctuation and whitespace.
+// E.g. "foo BAR baz!" becomes "foo_bar_baz".
+func snakeCase(str string) string {
+	return toDelimitedString(str, "_")
+}
+
+// Convert a string to camel case, dropping all punctuation and whitespace. E.g. "foo BAR baz!" becomes "FooBarBaz".
+func camelCase(str string) string {
+	// First, we strip any leading or trailing white space, underscores, or dashes
+	trimmed := trimWhiteSpaceAndPunctuation(str)
+
+	// Next, any time we find whitespace or punctuation repeated consecutively more than once, we replace
+	// them with a single space.
+	collapsed := collapseWhiteSpaceAndPunctuationToDelimiter(trimmed, " ")
+
+	// Now we split on whitespace to find all the words in the string
+	words := WHITESPACE_REGEX.Split(collapsed, -1)
+
+	// Capitalize each word
+	capitalized := []string{}
+	for _, word := range words {
+		capitalized = append(capitalized, strings.Title(word))
+	}
+
+	// Join everything back together into a string
+	return strings.Join(capitalized, "")
+}
+
+// Convert a string to camel case where the first letter is lower case, dropping all punctuation and whitespace. E.g.
+// "foo BAR baz!" becomes "fooBarBaz".
+func camelCaseLower(str string) string {
+	return lowerFirst(camelCase(str))
+}
+
+// Returns a copy of str with the first character converted to lower case. E.g. "FOO" becomes "fOO".
+func lowerFirst(str string) string {
+	if len(str) == 0 {
+		return str
+	}
+
+	chars := []rune(str)
+	chars[0] = unicode.ToLower(chars[0])
+	return string(chars)
+}
+
+// This function converts a string to an all lower case string delimited with the given delimiter, dropping all other
+// punctuation and whitespace. For example, "foo BAR baz" and the delimiter "-" would become "foo-bar-baz".
+// TODO: handle all punctuation
+func toDelimitedString(str string, delimiter string) string {
+	// Although this function doesn't look terribly complicated, the reason why it's written this way,
+	// unfortunately, isn't terribly obvious, so I'm going to use copious comments to try to build some intuition.
+
+	// First, we strip any leading or trailing whitespace or punctuation
+	trimmed := trimWhiteSpaceAndPunctuation(str)
+
+	// Next, any time we find whitespace or punctuation repeated consecutively more than once, we replace
+	// them with a single space. This space is really just being used as a placeholder between "words." In the next
+	// step, these placeholders will be replaced with the delimiter.
+	collapsed := collapseWhiteSpaceAndPunctuationToDelimiter(trimmed, " ")
+
+	// The final step is to split the string into individual camel case "words" (see the comments on
+	// CAMEL_CASE_REGEX for details on how it works) so that something like "FooBarBaz" becomes the array
+	// ["Foo", "Bar", "Baz"]. We then combine all these words with the delimiter in between them ("Foo-Bar-Baz")
+	// and convert the entire string to lower case ("foo-bar-baz").
+	return strings.ToLower(strings.Join(CAMEL_CASE_REGEX.FindAllString(collapsed, -1), delimiter))
+}
+
+// Returns str with all leading and trailing whitespace and punctuation removed. E.g. "   foo!!!" becomes "foo".
+func trimWhiteSpaceAndPunctuation(str string) string {
+	return strings.TrimFunc(str, func(r rune) bool { return unicode.IsSpace(r) || unicode.IsPunct(r) })
+}
+
+// Returns str with all consecutive whitespace and punctuation in it collapsed to the given delimiter. E.g.
+// "foo.....bar_____baz" with a delimiter "-" becomes "foo-bar-baz".
+func collapseWhiteSpaceAndPunctuationToDelimiter(str string, delimiter string) string {
+	return PUNCTUATION_OR_WHITESPACE_REGEX.ReplaceAllString(str, delimiter)
 }
 
 // Custom errors

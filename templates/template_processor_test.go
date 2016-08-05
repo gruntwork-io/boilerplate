@@ -78,6 +78,19 @@ func TestRenderTemplate(t *testing.T) {
 		{EMBED_WHOLE_FILE_TEMPLATE, map[string]string{}, "", EMBED_WHOLE_FILE_TEMPLATE_OUTPUT},
 		{EMBED_SNIPPET_TEMPLATE, map[string]string{}, "", EMBED_SNIPPET_TEMPLATE_OUTPUT},
 		{"Invalid template syntax: {{.Foo", map[string]string{}, "unclosed action", ""},
+		{"Uppercase test: {{ .Foo | upcase }}", map[string]string{"Foo": "some text"}, "", "Uppercase test: SOME TEXT"},
+		{"Lowercase test: {{ .Foo | downcase }}", map[string]string{"Foo": "SOME TEXT"}, "", "Lowercase test: some text"},
+		{"Capitalize test: {{ .Foo | capitalize }}", map[string]string{"Foo": "some text"}, "", "Capitalize test: Some Text"},
+		{"Replace test: {{ .Foo | replace \"foo\" \"bar\" }}", map[string]string{"Foo": "hello foo, how are foo"}, "", "Replace test: hello bar, how are foo"},
+		{"Replace all test: {{ .Foo | replaceAll \"foo\" \"bar\" }}", map[string]string{"Foo": "hello foo, how are foo"}, "", "Replace all test: hello bar, how are bar"},
+		{"Trim test: {{ .Foo | trim }}", map[string]string{"Foo": "   some text     \t"}, "", "Trim test: some text"},
+		{"Round test: {{ .Foo | round }}", map[string]string{"Foo": "0.45"}, "", "Round test: 0"},
+		{"Ceil test: {{ .Foo | ceil }}", map[string]string{"Foo": "0.45"}, "", "Ceil test: 1"},
+		{"Floor test: {{ .Foo | floor }}", map[string]string{"Foo": "0.45"}, "", "Floor test: 0"},
+		{"Dasherize test: {{ .Foo | dasherize }}", map[string]string{"Foo": "foo BAR baz!"}, "", "Dasherize test: foo-bar-baz"},
+		{"Snake case test: {{ .Foo | snakeCase }}", map[string]string{"Foo": "foo BAR baz!"}, "", "Snake case test: foo_bar_baz"},
+		{"Camel case test: {{ .Foo | camelCase }}", map[string]string{"Foo": "foo BAR baz!"}, "", "Camel case test: FooBARBaz"},
+		{"Camel case lower test: {{ .Foo | camelCaseLower }}", map[string]string{"Foo": "foo BAR baz!"}, "", "Camel case lower test: fooBARBaz"},
 	}
 
 	for _, testCase := range testCases {
