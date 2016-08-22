@@ -103,7 +103,7 @@ for full documentation.
 
 ## Install
 
-Download the latest binary for your OS here: [boilerplate v0.0.3](https://github.com/gruntwork-io/boilerplate/releases/tag/v0.0.3).
+Download the latest binary for your OS here: [boilerplate v0.0.4](https://github.com/gruntwork-io/boilerplate/releases/tag/v0.0.4).
 
 You can find older versions on the [Releases Page](https://github.com/gruntwork-io/usage-patterns/releases).
 
@@ -245,6 +245,22 @@ including conditionals, loops, and functions. Boilerplate also includes several 
    return str2;
    // boilerplate-snippet: foo
    ```
+1. `downcase STRING`: Convert `STRING` to lower case. E.g. "FOO" becomes "foo".
+1. `upcase STRING`: Convert `STRING` to upper case. E.g. "foo" becomes "FOO".
+1. `capitalize STRING`: Capitalize the first letter of each word in `STRING`. E.g. "foo bar baz" becomes "Foo Bar Baz".
+1. `replace OLD NEW`: Replace the first occurrence of `OLD` with `NEW`. This is a literal replace, not regex.
+1. `replaceAll OLD NEW`: Replace all occurrences of `OLD` with `NEW`. This is a literal replace, not regex.
+1. `trim STRING`: Remove leading and trailing whitespace from `STRING`.
+1. `round FLOAT`: Round `FLOAT` to the nearest integer. E.g. 1.5 becomes 2.
+1. `ceil FLOAT`: Round up `FLOAT` to the nearest integer. E.g. 1.5 becomes 2.
+1. `floor FLOAT`: Round down `FLOAT` to the nearest integer. E.g. 1.5 becomes 1.
+1. `dasherize STRING`: Convert `STRING` to a lower case string separated by dashes. E.g. "foo Bar baz" becomes
+   "foo-bar-baz".
+1. `snakeCase STRING`: Convert `STRING` to a lower case string separated by underscores. E.g. "foo Bar baz" becomes
+   "foo_bar_baz".
+1. `camelCase STRING`: Convert `STRING` to a camel case string. E.g. "foo Bar baz" becomes "FooBarBaz".
+1. `camelCaseLower STRING`: Convert `STRING` to a camel case string where the first letter is lower case. E.g.
+   "foo Bar baz" becomes "fooBarBaz".
 
 ## Alternative project generators
 
@@ -292,8 +308,6 @@ inspiring many of the ideas in Boilerplate and so you can try out other projects
      file: echo "Boilerplate is processing file $1"
      end: echo "Boilerplate finished generating files in $2 from templates in $1"
    ```
-1. Consider open sourcing boilerplate. To do that, we may also want to open source the
-   `gruntwork-module-circleci-helpers` it uses in `circle.yml`.
 1. Support a list of `ignore` files in `boilerplate.yml` or even a `.boilerplate-ignore` file for files that should be
    skipped over while generating code.
 1. Consider supporting different types for variables. Currently, all variables are strings, but there may be value
