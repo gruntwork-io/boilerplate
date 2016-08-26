@@ -103,7 +103,7 @@ for full documentation.
 
 ## Install
 
-Download the latest binary for your OS here: [boilerplate v0.0.4](https://github.com/gruntwork-io/boilerplate/releases/tag/v0.0.4).
+Download the latest binary for your OS here: [boilerplate v0.0.5](https://github.com/gruntwork-io/boilerplate/releases/tag/v0.0.5).
 
 You can find older versions on the [Releases Page](https://github.com/gruntwork-io/usage-patterns/releases).
 
