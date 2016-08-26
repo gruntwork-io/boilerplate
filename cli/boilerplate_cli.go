@@ -118,9 +118,9 @@ func parseOptions(cliContext *cli.Context) (*config.BoilerplateOptions, error) {
 	}
 
 	missingKeyAction := config.DEFAULT_MISSING_KEY_ACTION
-	missingKeyActionName := cliContext.String(config.OPT_MISSING_KEY_ACTION)
-	if missingKeyActionName != "" {
-		missingKeyAction, err = config.ParseMissingKeyAction(missingKeyActionName)
+	missingKeyActionValue := cliContext.String(config.OPT_MISSING_KEY_ACTION)
+	if missingKeyActionValue != "" {
+		missingKeyAction, err = config.ParseMissingKeyAction(missingKeyActionValue)
 		if err != nil {
 			return nil, err
 		}
