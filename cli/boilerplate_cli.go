@@ -77,7 +77,7 @@ func CreateBoilerplateCli(version string) *cli.App {
 		},
 		cli.StringFlag{
 			Name: config.OPT_MISSING_KEY_ACTION,
-			Usage: "What to do if a template looks up a variable that is not defined. Must be one of: 'invalid' (render the text '<no value>'), 'zero' (render the zero value for the variable), or 'error' (return an error and exit immediately). Default: 'error'.",
+			Usage: fmt.Sprintf("What `ACTION` to take if a template looks up a variable that is not defined. Must be one of: %s. Default: %s.", config.ALL_MISSING_KEY_ACTIONS, config.DEFAULT_MISSING_KEY_ACTION),
 		},
 	}
 
