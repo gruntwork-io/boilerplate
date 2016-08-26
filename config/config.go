@@ -35,6 +35,8 @@ func (action MissingKeyAction) String() string {
 	return missingKeyNames[int(action)]
 }
 
+// Convert the given string to a MissingKeyAction enum, or return an error if this is not a valid value for the
+// MissingKeyAction enum
 func ParseMissingKeyAction(keyName string) (MissingKeyAction, error) {
 	for i, missingKeyName := range missingKeyNames {
 		if missingKeyName == keyName {
@@ -62,7 +64,6 @@ var (
 )
 
 var ALL_MISSING_KEY_ACTIONS = []MissingKeyAction{Invalid, ZeroValue, ExitWithError}
-
 var DEFAULT_MISSING_KEY_ACTION = ExitWithError
 
 // Validate that the options have reasonable values and return an error if they don't
