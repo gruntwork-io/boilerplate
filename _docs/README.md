@@ -123,6 +123,9 @@ The `boilerplate` binary supports the following options:
   `--var-file` options instead.
 * `--var NAME=VALUE` (optional): Use `NAME=VALUE` to set variable `NAME` to `VALUE`. May be specified more than once.
 * `--var-file FILE` (optional): Load variable values from the YAML file `FILE`. May be specified more than once.
+* `--missing-key-action ACTION` (optional): What to do if a template looks up a variable that is not defined. Must
+  be one of: `invalid` (render the text "<no value>"), `zero` (render the zero value for the variable), or `error`
+  (return an error and exit immediately). Default: `error`.
 * `--help`: Show the help text and exit.
 * `--version`: Show the version and exit.
 
