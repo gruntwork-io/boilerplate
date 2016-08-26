@@ -4,6 +4,7 @@ import (
 	"testing"
 	"github.com/stretchr/testify/assert"
 	"os"
+	"github.com/gruntwork-io/boilerplate/config"
 )
 
 func TestOutPath(t *testing.T) {
@@ -68,40 +69,43 @@ func TestRenderTemplate(t *testing.T) {
 	testCases := []struct {
 		templateContents  string
 		variables   	  map[string]string
+		missingKeyAction  config.MissingKeyAction
 		expectedErrorText string
 		expectedOutput    string
 	}{
-		{"", map[string]string{}, "", ""},
-		{"plain text template", map[string]string{}, "", "plain text template"},
-		{"variable lookup: {{.Foo}}", map[string]string{"Foo": "bar"}, "", "variable lookup: bar"},
-		{"missing variable lookup: {{.Foo}}", map[string]string{}, "", "missing variable lookup: <no value>"},
-		{EMBED_WHOLE_FILE_TEMPLATE, map[string]string{}, "", EMBED_WHOLE_FILE_TEMPLATE_OUTPUT},
-		{EMBED_SNIPPET_TEMPLATE, map[string]string{}, "", EMBED_SNIPPET_TEMPLATE_OUTPUT},
-		{"Invalid template syntax: {{.Foo", map[string]string{}, "unclosed action", ""},
-		{"Uppercase test: {{ .Foo | upcase }}", map[string]string{"Foo": "some text"}, "", "Uppercase test: SOME TEXT"},
-		{"Lowercase test: {{ .Foo | downcase }}", map[string]string{"Foo": "SOME TEXT"}, "", "Lowercase test: some text"},
-		{"Capitalize test: {{ .Foo | capitalize }}", map[string]string{"Foo": "some text"}, "", "Capitalize test: Some Text"},
-		{"Replace test: {{ .Foo | replace \"foo\" \"bar\" }}", map[string]string{"Foo": "hello foo, how are foo"}, "", "Replace test: hello bar, how are foo"},
-		{"Replace all test: {{ .Foo | replaceAll \"foo\" \"bar\" }}", map[string]string{"Foo": "hello foo, how are foo"}, "", "Replace all test: hello bar, how are bar"},
-		{"Trim test: {{ .Foo | trim }}", map[string]string{"Foo": "   some text     \t"}, "", "Trim test: some text"},
-		{"Round test: {{ .Foo | round }}", map[string]string{"Foo": "0.45"}, "", "Round test: 0"},
-		{"Ceil test: {{ .Foo | ceil }}", map[string]string{"Foo": "0.45"}, "", "Ceil test: 1"},
-		{"Floor test: {{ .Foo | floor }}", map[string]string{"Foo": "0.45"}, "", "Floor test: 0"},
-		{"Dasherize test: {{ .Foo | dasherize }}", map[string]string{"Foo": "foo BAR baz!"}, "", "Dasherize test: foo-bar-baz"},
-		{"Snake case test: {{ .Foo | snakeCase }}", map[string]string{"Foo": "foo BAR baz!"}, "", "Snake case test: foo_bar_baz"},
-		{"Camel case test: {{ .Foo | camelCase }}", map[string]string{"Foo": "foo BAR baz!"}, "", "Camel case test: FooBARBaz"},
-		{"Camel case lower test: {{ .Foo | camelCaseLower }}", map[string]string{"Foo": "foo BAR baz!"}, "", "Camel case lower test: fooBARBaz"},
-		{"Filter chain test: {{ .Foo | downcase | replaceAll \" \" \"\" }}", map[string]string{"Foo": "foo BAR baz!"}, "", "Filter chain test: foobarbaz!"},
+		{"", map[string]string{}, config.ExitWithError, "", ""},
+		{"plain text template", map[string]string{}, config.ExitWithError, "", "plain text template"},
+		{"variable lookup: {{.Foo}}", map[string]string{"Foo": "bar"}, config.ExitWithError, "", "variable lookup: bar"},
+		{"missing variable lookup, ExitWithError: {{.Foo}}", map[string]string{}, config.ExitWithError, "map has no entry for key \"Foo\"", ""},
+		{"missing variable lookup, Invalid: {{.Foo}}", map[string]string{}, config.Invalid, "", "missing variable lookup, Invalid: <no value>"},
+		{"missing variable lookup, ZeroValue: {{.Foo}}", map[string]string{}, config.ZeroValue, "", "missing variable lookup, ZeroValue: "},
+		{EMBED_WHOLE_FILE_TEMPLATE, map[string]string{}, config.ExitWithError, "", EMBED_WHOLE_FILE_TEMPLATE_OUTPUT},
+		{EMBED_SNIPPET_TEMPLATE, map[string]string{}, config.ExitWithError, "", EMBED_SNIPPET_TEMPLATE_OUTPUT},
+		{"Invalid template syntax: {{.Foo", map[string]string{}, config.ExitWithError, "unclosed action", ""},
+		{"Uppercase test: {{ .Foo | upcase }}", map[string]string{"Foo": "some text"}, config.ExitWithError, "", "Uppercase test: SOME TEXT"},
+		{"Lowercase test: {{ .Foo | downcase }}", map[string]string{"Foo": "SOME TEXT"}, config.ExitWithError, "", "Lowercase test: some text"},
+		{"Capitalize test: {{ .Foo | capitalize }}", map[string]string{"Foo": "some text"}, config.ExitWithError, "", "Capitalize test: Some Text"},
+		{"Replace test: {{ .Foo | replace \"foo\" \"bar\" }}", map[string]string{"Foo": "hello foo, how are foo"}, config.ExitWithError, "", "Replace test: hello bar, how are foo"},
+		{"Replace all test: {{ .Foo | replaceAll \"foo\" \"bar\" }}", map[string]string{"Foo": "hello foo, how are foo"}, config.ExitWithError, "", "Replace all test: hello bar, how are bar"},
+		{"Trim test: {{ .Foo | trim }}", map[string]string{"Foo": "   some text     \t"}, config.ExitWithError, "", "Trim test: some text"},
+		{"Round test: {{ .Foo | round }}", map[string]string{"Foo": "0.45"}, config.ExitWithError, "", "Round test: 0"},
+		{"Ceil test: {{ .Foo | ceil }}", map[string]string{"Foo": "0.45"}, config.ExitWithError, "", "Ceil test: 1"},
+		{"Floor test: {{ .Foo | floor }}", map[string]string{"Foo": "0.45"}, config.ExitWithError, "", "Floor test: 0"},
+		{"Dasherize test: {{ .Foo | dasherize }}", map[string]string{"Foo": "foo BAR baz!"}, config.ExitWithError, "", "Dasherize test: foo-bar-baz"},
+		{"Snake case test: {{ .Foo | snakeCase }}", map[string]string{"Foo": "foo BAR baz!"}, config.ExitWithError, "", "Snake case test: foo_bar_baz"},
+		{"Camel case test: {{ .Foo | camelCase }}", map[string]string{"Foo": "foo BAR baz!"}, config.ExitWithError, "", "Camel case test: FooBARBaz"},
+		{"Camel case lower test: {{ .Foo | camelCaseLower }}", map[string]string{"Foo": "foo BAR baz!"}, config.ExitWithError, "", "Camel case lower test: fooBARBaz"},
+		{"Filter chain test: {{ .Foo | downcase | replaceAll \" \" \"\" }}", map[string]string{"Foo": "foo BAR baz!"}, config.ExitWithError, "", "Filter chain test: foobarbaz!"},
 	}
 
 	for _, testCase := range testCases {
-		actualOutput, err := renderTemplate(pwd + "/template.txt", testCase.templateContents, testCase.variables)
+		actualOutput, err := renderTemplate(pwd + "/template.txt", testCase.templateContents, testCase.variables, testCase.missingKeyAction)
 		if testCase.expectedErrorText == "" {
-			assert.Nil(t, err)
-			assert.Equal(t, testCase.expectedOutput, actualOutput)
+			assert.Nil(t, err, "template = %s, variables = %s, missingKeyAction = %s, err = %v", testCase.templateContents, testCase.variables, testCase.missingKeyAction, err)
+			assert.Equal(t, testCase.expectedOutput, actualOutput, "template = %s, variables = %s, missingKeyAction = %s", testCase.templateContents, testCase.variables, testCase.missingKeyAction)
 		} else {
-			assert.NotNil(t, err)
-			assert.Contains(t, err.Error(), testCase.expectedErrorText)
+			assert.NotNil(t, err, "template = %s, variables = %s, missingKeyAction = %s", testCase.templateContents, testCase.variables, testCase.missingKeyAction)
+			assert.Contains(t, err.Error(), testCase.expectedErrorText, "template = %s, variables = %s, missingKeyAction = %s", testCase.templateContents, testCase.variables, testCase.missingKeyAction)
 		}
 	}
 }
