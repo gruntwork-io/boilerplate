@@ -75,6 +75,10 @@ func CreateBoilerplateCli(version string) *cli.App {
 			Name: config.OPT_VAR_FILE,
 			Usage: "Load variable values from the YAML file `FILE`. May be specified more than once.",
 		},
+		cli.StringFlag{
+			Name: config.OPT_MISSING_KEY_ACTION,
+			Usage: fmt.Sprintf("What `ACTION` to take if a template looks up a variable that is not defined. Must be one of: %s. Default: %s.", config.ALL_MISSING_KEY_ACTIONS, config.DEFAULT_MISSING_KEY_ACTION),
+		},
 	}
 
 	return app
@@ -103,7 +107,7 @@ func runApp(cliContext *cli.Context) error {
 		return err
 	}
 
-	return templates.ProcessTemplateFolder(options.TemplateFolder, options.OutputFolder, variables)
+	return templates.ProcessTemplateFolder(options, variables)
 }
 
 // Parse the command line options provided by the user
@@ -113,10 +117,20 @@ func parseOptions(cliContext *cli.Context) (*config.BoilerplateOptions, error) {
 		return nil, err
 	}
 
+	missingKeyAction := config.DEFAULT_MISSING_KEY_ACTION
+	missingKeyActionValue := cliContext.String(config.OPT_MISSING_KEY_ACTION)
+	if missingKeyActionValue != "" {
+		missingKeyAction, err = config.ParseMissingKeyAction(missingKeyActionValue)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	options := &config.BoilerplateOptions{
 		TemplateFolder: cliContext.String(config.OPT_TEMPLATE_FOLDER),
 		OutputFolder: cliContext.String(config.OPT_OUTPUT_FOLDER),
 		NonInteractive: cliContext.Bool(config.OPT_NON_INTERACTIVE),
+		OnMissingKey: missingKeyAction,
 		Vars: vars,
 	}
 

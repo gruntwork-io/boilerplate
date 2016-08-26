@@ -16,14 +16,55 @@ const OPT_OUTPUT_FOLDER = "output-folder"
 const OPT_NON_INTERACTIVE = "non-interactive"
 const OPT_VAR = "var"
 const OPT_VAR_FILE = "var-file"
+const OPT_MISSING_KEY_ACTION = "missing-key-action"
 
 // The command-line options for the boilerplate app
 type BoilerplateOptions struct {
-	TemplateFolder 	string
-	OutputFolder 	string
-	NonInteractive	bool
-	Vars		map[string]string
+	TemplateFolder 	 string
+	OutputFolder 	 string
+	NonInteractive	 bool
+	Vars		 map[string]string
+	OnMissingKey     MissingKeyAction
 }
+
+// This type is an enum that represents what we can do when a template looks up a missing key. This typically happens
+// when there is a typo in the variable name in a template.
+type MissingKeyAction int
+
+func (action MissingKeyAction) String() string {
+	return missingKeyNames[int(action)]
+}
+
+// Convert the given string to a MissingKeyAction enum, or return an error if this is not a valid value for the
+// MissingKeyAction enum
+func ParseMissingKeyAction(keyName string) (MissingKeyAction, error) {
+	for i, missingKeyName := range missingKeyNames {
+		if missingKeyName == keyName {
+			return MissingKeyAction(i), nil
+		}
+	}
+	return MissingKeyAction(-1), errors.WithStackTrace(InvalidMissingKeyAction(keyName))
+}
+
+// The names of the missing keys. Go doesn't have enums, so we have to roll our own based on this example:
+// https://gist.github.com/skarllot/102a5e5ea73861ff5afe
+var missingKeyNames = []string{}
+
+// Create a new MissingKeyAction enum with the given name
+func newMissingKeyAction(name string) MissingKeyAction {
+	missingKeyNames = append(missingKeyNames, name)
+	return MissingKeyAction(len(missingKeyNames) - 1)
+}
+
+// Here are the MissingKeyAction enum values
+var (
+	Invalid = newMissingKeyAction("invalid")	// print <no value> for any missing key
+	ZeroValue = newMissingKeyAction("zero")		// print the zero value of the missing key
+	ExitWithError = newMissingKeyAction("error")	// exit with an error when there is a missing key
+)
+
+var ALL_MISSING_KEY_ACTIONS = []MissingKeyAction{Invalid, ZeroValue, ExitWithError}
+var DEFAULT_MISSING_KEY_ACTION = ExitWithError
 
 // Validate that the options have reasonable values and return an error if they don't
 func (options *BoilerplateOptions) Validate() error {
@@ -116,3 +157,7 @@ func (err TemplateFolderDoesNotExist) Error() string {
 	return fmt.Sprintf("Folder %s does not exist", string(err))
 }
 
+type InvalidMissingKeyAction string
+func (err InvalidMissingKeyAction) Error() string {
+	return fmt.Sprintf("Invalid MissingKeyAction '%s'. Value must be one of: %s", string(err), missingKeyNames)
+}

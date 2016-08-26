@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"os"
 	"strings"
+	"github.com/gruntwork-io/boilerplate/config"
 )
 
 // Our integration tests run through all the examples in the /examples folder, generate them, and check that they
@@ -31,16 +32,18 @@ func TestExamples(t *testing.T) {
 	app := cli.CreateBoilerplateCli("test")
 
 	for _, file := range files {
-		if file.IsDir() {
-			templateFolder := path.Join(examplesBasePath, file.Name())
-			outputFolder := path.Join(outputBasePath, file.Name())
-			varFile := path.Join(examplesVarFilesBasePath, file.Name(), "vars.yml")
-			expectedOutputFolder := path.Join(examplesExpectedOutputBasePath, file.Name())
+		for _, missingKeyAction := range config.ALL_MISSING_KEY_ACTIONS {
+			if file.IsDir() {
+				templateFolder := path.Join(examplesBasePath, file.Name())
+				outputFolder := path.Join(outputBasePath, file.Name())
+				varFile := path.Join(examplesVarFilesBasePath, file.Name(), "vars.yml")
+				expectedOutputFolder := path.Join(examplesExpectedOutputBasePath, file.Name())
 
-			command := fmt.Sprintf("boilerplate --template-folder %s --output-folder %s --var-file %s --non-interactive", templateFolder, outputFolder, varFile)
-			err := app.Run(strings.Split(command, " "))
-			assert.Nil(t, err, "boilerplate exited with an error when trying to generate example %s: %s", templateFolder, err)
-			assertDirectoriesEqual(t, expectedOutputFolder, outputFolder)
+				command := fmt.Sprintf("boilerplate --template-folder %s --output-folder %s --var-file %s --non-interactive --missing-key-action %s", templateFolder, outputFolder, varFile, missingKeyAction.String())
+				err := app.Run(strings.Split(command, " "))
+				assert.Nil(t, err, "boilerplate exited with an error when trying to generate example %s: %s", templateFolder, err)
+				assertDirectoriesEqual(t, expectedOutputFolder, outputFolder)
+			}
 		}
 	}
 }
