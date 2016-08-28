@@ -1,3 +1,5 @@
 Version: 0.0.3
 Title: Boilerplate
 WelcomeText: Welcome!
+Description: This is a boilerplate template that shows an example of using recursive dependencies
+dependencies.Description: This is a boilerplate template that shows an example of using dependencies

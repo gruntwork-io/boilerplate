@@ -1,4 +1,7 @@
 variables:
+  - name: Description
+    prompt: Enter the description of this template
+
   - name: Version
     prompt: Enter the version number that will be used by the docs dependency
 
@@ -13,8 +16,10 @@ variables:
     default: true
 
 dependencies:
-    - template-folder: ../docs
+    - name: docs
+      template-folder: ../docs
       output-folder: ./docs
 
-    - template-folder: ../website
+    - name: website
+      template-folder: ../website
       output-folder: ./website

@@ -34,14 +34,14 @@ func getVariable(variable Variable, options *BoilerplateOptions) (string, error)
 	valueFromVars, valueSpecifiedInVars := getVariableFromVars(variable, options)
 
 	if valueSpecifiedInVars {
-		util.Logger.Printf("Using value specified via command line options for variable '%s': %s", variable.Name, valueFromVars)
+		util.Logger.Printf("Using value specified via command line options for variable '%s': %s", variable.Description(), valueFromVars)
 		return valueFromVars, nil
 	} else if options.NonInteractive && variable.Default != "" {
 		// TODO: how to disambiguate between a default not being specified and a default set to an empty string?
-		util.Logger.Printf("Using default value for variable '%s': %s", variable.Name, variable.Default)
+		util.Logger.Printf("Using default value for variable '%s': %s", variable.Description(), variable.Default)
 		return variable.Default, nil
 	} else if options.NonInteractive {
-		return "", errors.WithStackTrace(MissingVariableWithNonInteractiveMode(variable.Name))
+		return "", errors.WithStackTrace(MissingVariableWithNonInteractiveMode(variable.Description()))
 	} else {
 		return getVariableFromUser(variable, options)
 	}
@@ -50,7 +50,7 @@ func getVariable(variable Variable, options *BoilerplateOptions) (string, error)
 // Return the value of the given variable from vars passed in as command line options
 func getVariableFromVars(variable Variable, options *BoilerplateOptions) (string, bool) {
 	for name, value := range options.Vars {
-		if name == variable.Name {
+		if name == variable.UniqueName() {
 			return value, true
 		}
 	}
@@ -67,7 +67,7 @@ func getVariableFromUser(variable Variable, options *BoilerplateOptions) (string
 
 	if value == "" {
 		// TODO: what if the user wanted an empty string instead of the default?
-		util.Logger.Printf("Using default value for variable '%s': %s", variable.Name, variable.Default)
+		util.Logger.Printf("Using default value for variable '%s': %s", variable.Description(), variable.Default)
 		return variable.Default, nil
 	} else {
 		return value, nil
@@ -76,7 +76,7 @@ func getVariableFromUser(variable Variable, options *BoilerplateOptions) (string
 
 // Return the text that prompts the user to enter a value for the given variable
 func formatPrompt(variable Variable, options *BoilerplateOptions) string {
-	prompt := fmt.Sprintf("Enter a value for variable '%s'", variable.Name)
+	prompt := fmt.Sprintf("Enter a value for variable '%s'", variable.Description())
 
 	if variable.Prompt != "" {
 		prompt = variable.Prompt

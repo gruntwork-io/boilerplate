@@ -8,11 +8,18 @@ variables:
     prompt: prompt
     default: default
 
+  - name: baz
+    prompt: another-prompt
+    default: another-default
+    for-dependency: dep1
+
 dependencies:
-  - template-folder: /template/folder1
+  - name: dep1
+    template-folder: /template/folder1
     output-folder: /output/folder1
 
-  - template-folder: /template/folder2
+  - name: dep2
+    template-folder: /template/folder2
     output-folder: /output/folder2
     dont-inherit-variables: true
 

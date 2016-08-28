@@ -7,6 +7,7 @@ import (
 	"github.com/gruntwork-io/boilerplate/util"
 	"fmt"
 	"github.com/gruntwork-io/boilerplate/errors"
+	"strings"
 )
 
 const BOILERPLATE_CONFIG_FILE = "boilerplate.yml"
@@ -91,13 +92,48 @@ type BoilerplateConfig struct {
 
 // A single variable defined in a boilerplate.yml config file
 type Variable struct {
-	Name 	string
-	Prompt 	string
-	Default	string
+	Name 	      string
+	Prompt 	      string
+	Default	      string
+	ForDependency string `yaml:"for-dependency"`
+}
+
+// Return the full, unique name of this variable, including the dependency it is for (if any). The dependency name and
+// variable name will be separated by a dot (e.g. <DEPENDENCY_NAME>.<VARIABLE_NAME>).
+func (variable Variable) UniqueName() string {
+	if variable.ForDependency == "" {
+		return variable.Name
+	} else {
+		return fmt.Sprintf("%s.%s", variable.ForDependency, variable.Name)
+	}
+}
+
+// Return a description of this variable, which includes its name and the dependency it is for (if any) in a
+// human-readable format
+func (variable Variable) Description() string {
+	if variable.ForDependency == "" {
+		return variable.Name
+	} else {
+		return fmt.Sprintf("%s (for dependency %s)", variable.ForDependency, variable.Name)
+	}
+}
+
+// Given a unique variable name, return a tuple that contains the dependency name (if any) and the variable name.
+// Variable and dependency names are split by a dot, so for "foo.bar", this will return ("foo", "bar"). For just "foo",
+// it will return ("", "foo").
+func SplitIntoDependencyNameAndVariableName(uniqueVariableName string) (string, string) {
+	parts := strings.SplitAfterN(uniqueVariableName, ".", 2)
+	if len(parts) == 2 {
+		// The split method leaves the character you split on at the end of the string, so we have to trim it
+		return strings.TrimSuffix(parts[0], "."), parts[1]
+	} else {
+		return "", parts[0]
+	}
 }
 
 // A single boilerplate template that this boilerplate.yml depends on being executed first
 type Dependency struct {
+	Name                  string
 	TemplateFolder        string `yaml:"template-folder"`
 	OutputFolder          string `yaml:"output-folder"`
 	DontInheritVariables  bool   `yaml:"dont-inherit-variables"`
@@ -149,12 +185,21 @@ func (boilerplateConfig BoilerplateConfig) validate() error {
 		}
 	}
 
+	dependencyNames := []string{}
 	for i, dependency := range boilerplateConfig.Dependencies {
+		if dependency.Name == "" {
+			return errors.WithStackTrace(MissingNameForDependency(i))
+		}
+		if util.ListContains(dependency.Name, dependencyNames) {
+			return errors.WithStackTrace(DuplicateDependencyName(dependency.Name))
+		}
+		dependencyNames = append(dependencyNames, dependency.Name)
+
 		if dependency.TemplateFolder == "" {
-			return errors.WithStackTrace(TemplateFolderCannotBeEmptyForDependency(i))
+			return errors.WithStackTrace(MissingTemplateFolderForDependency(dependency.Name))
 		}
 		if dependency.OutputFolder == "" {
-			return errors.WithStackTrace(OutputFolderCannotBeEmptyForDependency(i))
+			return errors.WithStackTrace(MissingOutputFolderForDependency(dependency.Name))
 		}
 	}
 
@@ -179,12 +224,22 @@ func (err InvalidMissingKeyAction) Error() string {
 	return fmt.Sprintf("Invalid MissingKeyAction '%s'. Value must be one of: %s", string(err), missingKeyNames)
 }
 
-type TemplateFolderCannotBeEmptyForDependency int
-func (index TemplateFolderCannotBeEmptyForDependency) Error() string {
-	return fmt.Sprintf("The %s parameter was missing for dependency number %d", OPT_TEMPLATE_FOLDER, int(index) + 1)
+type MissingNameForDependency int
+func (index MissingNameForDependency) Error() string {
+	return fmt.Sprintf("The name parameter was missing for dependency number %d", int(index) + 1)
 }
 
-type OutputFolderCannotBeEmptyForDependency int
-func (index OutputFolderCannotBeEmptyForDependency) Error() string {
-	return fmt.Sprintf("The %s parameter was missing for dependency number %d", OPT_OUTPUT_FOLDER, int(index) + 1)
+type DuplicateDependencyName string
+func (name DuplicateDependencyName) Error() string {
+	return fmt.Sprintf("Found a duplicate dependency name: %s. All dependency names must be unique!", string(name))
+}
+
+type MissingTemplateFolderForDependency string
+func (name MissingTemplateFolderForDependency) Error() string {
+	return fmt.Sprintf("The %s parameter was missing for dependency %s", OPT_TEMPLATE_FOLDER, string(name))
+}
+
+type MissingOutputFolderForDependency string
+func (name MissingOutputFolderForDependency) Error() string {
+	return fmt.Sprintf("The %s parameter was missing for dependency %s", OPT_OUTPUT_FOLDER, string(name))
 }

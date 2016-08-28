@@ -60,19 +60,20 @@ func processDependency(dependency config.Dependency, options *config.Boilerplate
 	}
 
 	if shouldProcess {
-		dependencyOptions, dependencyVariables := cloneOptionsAndVariablesForDependency(dependency, options, variables)
-		util.Logger.Printf("Processing dependency %s and writing output to %s", dependencyOptions.TemplateFolder, dependencyOptions.OutputFolder)
+		dependencyOptions := cloneOptionsForDependency(dependency, options)
+		dependencyVariables := cloneVariablesForDependency(dependency, variables)
+
+		util.Logger.Printf("Processing dependency %s, with template folder %s and output folder %s", dependency.Name, dependencyOptions.TemplateFolder, dependencyOptions.OutputFolder)
 		return ProcessTemplate(dependencyOptions, dependencyVariables)
 	} else {
-		util.Logger.Printf("Skipping dependency %s", dependency.TemplateFolder)
+		util.Logger.Printf("Skipping dependency %s", dependency.Name)
 		return nil
 	}
 }
 
-// Clone the given options and variables for use when rendering the given dependency. The dependency will get the same
-// options as this template, except for the template folder and output folder. The dependency will also get the same
-// initial variables as this template, unless dependency.DontInheritVariables is set to true.
-func cloneOptionsAndVariablesForDependency(dependency config.Dependency, originalOptions *config.BoilerplateOptions, originalVariables map[string]string) (*config.BoilerplateOptions, map[string]string) {
+// Clone the given options for use when rendering the given dependency. The dependency will get the same options as
+// the original passed in, except for the template folder, output folder, and command-line vars.
+func cloneOptionsForDependency(dependency config.Dependency, originalOptions *config.BoilerplateOptions) *config.BoilerplateOptions {
 	templateFolder := pathRelativeToTemplate(originalOptions.TemplateFolder, dependency.TemplateFolder)
 	outputFolder := pathRelativeToTemplate(originalOptions.OutputFolder, dependency.OutputFolder)
 
@@ -80,20 +81,33 @@ func cloneOptionsAndVariablesForDependency(dependency config.Dependency, origina
 	// can leave them blank for the dependency templates
 	cmdLineVars := map[string]string{}
 
-	newOptions := config.BoilerplateOptions{
+	return &config.BoilerplateOptions{
 		TemplateFolder: templateFolder,
 		OutputFolder: outputFolder,
 		NonInteractive: originalOptions.NonInteractive,
 		Vars: cmdLineVars,
 		OnMissingKey: originalOptions.OnMissingKey,
 	}
+}
 
-	newVariables := originalVariables
+// Clone the given variables for use when rendering the given dependency.  The dependency will get the same variables
+// as the originals passed in, filtered to variable names that do not include a dependency or explicitly are for the
+// given dependency. If dependency.DontInheritVariables is set to true, an empty map is returned.
+func cloneVariablesForDependency(dependency config.Dependency, originalVariables map[string]string) map[string]string {
+	newVariables := map[string]string{}
+
 	if dependency.DontInheritVariables {
-		newVariables = map[string]string{}
+		return newVariables
 	}
 
-	return &newOptions, newVariables
+	for variableName, variableValue := range originalVariables {
+		dependencyName, variableOriginalName := config.SplitIntoDependencyNameAndVariableName(variableName)
+		if dependencyName == "" || dependencyName == dependency.Name {
+			newVariables[variableOriginalName] = variableValue
+		}
+	}
+
+	return newVariables
 }
 
 // Prompt the user to verify if the given dependency should be executed and return true if they confirm. If
@@ -103,7 +117,7 @@ func shouldProcessDependency(dependency config.Dependency, options *config.Boile
 		return true, nil
 	}
 
-	return util.PromptUserForYesNo(fmt.Sprintf("This boilerplate template has a dependency! Run boilerplate on template folder %s and output folder %s?", dependency.TemplateFolder, dependency.OutputFolder))
+	return util.PromptUserForYesNo(fmt.Sprintf("This boilerplate template has a dependency! Run boilerplate on dependency %s with template folder %s and output folder %s?", dependency.Name, dependency.TemplateFolder, dependency.OutputFolder))
 }
 
 // Copy all the files and folders in templateFolder to outputFolder, passing text files through the Go template engine

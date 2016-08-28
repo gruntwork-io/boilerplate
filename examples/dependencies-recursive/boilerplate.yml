@@ -1,4 +1,11 @@
 variables:
+  - name: Description
+    prompt: Enter the description of the recursive dependencies template
+
+  - name: Description
+    prompt: Enter the description of the dependencies template
+    for-dependency: dependencies
+
   - name: Version
     prompt: Enter the version number that will be used by the docs dependency
 
@@ -13,5 +20,6 @@ variables:
     default: true
 
 dependencies:
-    - template-folder: ../dependencies
+    - name: dependencies
+      template-folder: ../dependencies
       output-folder: ./dependencies

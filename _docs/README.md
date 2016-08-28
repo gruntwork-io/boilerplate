@@ -161,32 +161,59 @@ variables:
   - name: <NAME>
     prompt: <PROMPT>
     default: <DEFAULT>
-
-  - name: <NAME>
-    prompt: <PROMPT>
-    default: <DEFAULT>
+    for-dependency: <DEPENDENCY_NAME>
 
 dependencies:
-  - template-folder: ../some-other/boilerplate-template
-    output-folder: /source/template/output
-    dont-inherit-variables: false
+  - name: <DEPENDENCY_NAME>
+    template-folder: <FOLDER>
+    output-folder: <FOLDER>
+    dont-inherit-variables: <BOOLEAN>
+```
+
+Here's an example:
+
+```yaml
+variables:
+  - name: Title
+    prompt: Enter a title for the home page
+
+  - name: IncludeLogo
+    prompt: Should we include a logo on the website?
+    default: true
+
+  - name: Description
+    prompt: Enter a description for the home page
+    default: Welcome to my home page!
+
+  - name: Description
+    prompt: Enter a description for the about page
+    default: About Us
+    for-dependency: about
+
+dependencies:
+  - name: about
+    template-folder: ../about-us-page
+    output-folder: ../about-us-page
 ```
 
 **Variables**: A list of objects (i.e. dictionaries) that define variables. Each variable may contain the following
 keys:
 
-* `name` (Required): The name of the variable.
+* `name` (Required): The name of the variable. The combination of (`name`, `dependency`) must be unique.
 * `prompt` (Optional): The prompt to display to the user when asking them for a value. Default:
   "Enter a value for <VARIABLE_NAME>".
 * `default` (Optional): A default value for this variable. The user can just hit ENTER at the command line to use the
   default value, if one is provided. If running Boilerplate with the `--non-interactive` flag, the default is
   used for this value if no value is provided via the `--var` or `--var-file` options.
+* `for-dependency` (Optional): Only use this variable with the specified dependency. This allows you to handle the case
+  where a dependency has a variable of the same name but it needs a different value.
 
 See the [Variables](#variables) section for more info.
 
 **Dependencies**: A list of objects (i.e. dictionaries) that define other `boilerplate` templates to execute before
 executing the current one. Each dependency may contain the following keys:
 
+* `name` (Required): A unique name for the dependency.
 * `template-folder` (Required): Run `boilerplate` on the templates in this folder. This path is relative to the
   current template.
 * `output-folder` (Required): Create the output files and folders in this folder. This path is relative to the output
@@ -202,13 +229,18 @@ See the [Dependencies](#dependencies) section for more info.
 You must provide a value for every variable defined in `boilerplate.yml`, or project generation will fail. There are
 four ways to provide a value for a variable:
 
-1. `--var` option(s) you pass in when calling boilerplate. Example: `boilerplate --var Title=Boilerplate --var ShowLogo=false`.
+1. `--var` option(s) you pass in when calling boilerplate. Example:
+   `boilerplate --var Title=Boilerplate --var ShowLogo=false`. If you want to specify the value of a variable for a
+   specific dependency, use the `<DEPENDENCY_NAME>.<VARIABLE_NAME>` syntax. For example:
+   `boilerplate --var Description='Welcome to my home page!' --var about.Description='About Us' --var ShowLogo=false`.
 1. `--var-file` option(s) you pass in when calling boilerplate. Example: `boilerplate --var-file vars.yml`. The vars
    file must be a simple YAML file that defines key value pairs. Example:
 
    ```yaml
    Title: Boilerplate
    ShowLogo: false
+   Description: Welcome to my home page!
+   about.Description: Welcome to my home page!
    ```
 1. Manual input. If no value is specified via the `--var` or `--var-file` flags, Boilerplate will interactively prompt
    the user to provide a value. Note that the `--non-interactive` flag disables this functionality.
@@ -228,6 +260,9 @@ Note the following:
 * Inheriting variables: You can define all your common variables in the root `boilerplate.yml` and any variables with
   the same name in the `boilerplate.yml` files of your `dependencies` list will reuse those variables instead of
   prompting the user for the same value again.
+* Variable conflicts: Sometimes, two dependencies use a variable of the same name, but you want them to have different
+  values. To handle this use case, add the `for-dependency` key to the variable definition in `boilerplate.yml`. This
+  allows you to specify a variable with the same name multiple times and give each one a different value.
 
 #### Templates
 
