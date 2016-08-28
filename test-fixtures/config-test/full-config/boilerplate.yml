@@ -8,10 +8,9 @@ variables:
     prompt: prompt
     default: default
 
-  - name: baz
+  - name: dep1.baz
     prompt: another-prompt
     default: another-default
-    for-dependency: dep1
 
 dependencies:
   - name: dep1

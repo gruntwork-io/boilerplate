@@ -1,4 +1,4 @@
-# Dependencies example
+# {{ .Title }}
 
 {{ .Description }}. It specifies both the
 [docs](/examples/docs) and [website](/examples/website) examples as dependencies to show how one boilerplate template

@@ -112,10 +112,9 @@ const CONFIG_MULTIPLE_VARIABLES =
     prompt: prompt
     default: default
 
-  - name: baz
+  - name: dep1.baz
     prompt: another-prompt
     default: another-default
-    for-dependency: dep1
 `
 
 func TestParseBoilerplateConfigMultipleVariables(t *testing.T) {
@@ -127,7 +126,7 @@ func TestParseBoilerplateConfigMultipleVariables(t *testing.T) {
 			Variable{Name: "foo"},
 			Variable{Name: "bar", Prompt: "prompt"},
 			Variable{Name: "baz", Prompt: "prompt", Default: "default"},
-			Variable{Name: "baz", Prompt: "another-prompt", Default: "another-default", ForDependency: "dep1"},
+			Variable{Name: "dep1.baz", Prompt: "another-prompt", Default: "another-default"},
 		},
 	}
 
@@ -276,7 +275,7 @@ func TestLoadBoilerPlateConfigFullConfig(t *testing.T) {
 			Variable{Name: "foo"},
 			Variable{Name: "bar", Prompt: "prompt"},
 			Variable{Name: "baz", Prompt: "prompt", Default: "default"},
-			Variable{Name: "baz", Prompt: "another-prompt", Default: "another-default", ForDependency: "dep1"},
+			Variable{Name: "dep1.baz", Prompt: "another-prompt", Default: "another-default"},
 		},
 		Dependencies: []Dependency{
 			Dependency{Name: "dep1", TemplateFolder: "/template/folder1", OutputFolder: "/output/folder1", DontInheritVariables: false},

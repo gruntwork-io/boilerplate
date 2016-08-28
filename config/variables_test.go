@@ -104,7 +104,7 @@ func TestGetVariableFromVarsMatch(t *testing.T) {
 func TestGetVariableFromVarsForDependencyNoMatch(t *testing.T) {
 	t.Parallel()
 
-	variable := Variable{Name: "foo", ForDependency: "bar"}
+	variable := Variable{Name: "bar.foo"}
 	options := &BoilerplateOptions{
 		Vars: map[string]string{
 			"key1": "value1",
@@ -120,7 +120,7 @@ func TestGetVariableFromVarsForDependencyNoMatch(t *testing.T) {
 func TestGetVariableFromVarsForDependencyMatch(t *testing.T) {
 	t.Parallel()
 
-	variable := Variable{Name: "foo", ForDependency: "bar"}
+	variable := Variable{Name: "bar.foo"}
 	options := &BoilerplateOptions{
 		Vars: map[string]string{
 			"key1": "value1",

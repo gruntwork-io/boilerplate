@@ -6,7 +6,13 @@ variables:
     prompt: Enter the version number that will be used by the docs dependency
 
   - name: Title
+    prompt: Enter the title for the dependencies example
+
+  - name: website.Title
     prompt: Enter the website title that will be used by the website dependency
+
+  - name: docs.Title
+    prompt: Enter the title that will be used by the docs dependency
 
   - name: WelcomeText
     prompt: Enter the welcome text used by the website dependency

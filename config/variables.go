@@ -50,7 +50,7 @@ func getVariable(variable Variable, options *BoilerplateOptions) (string, error)
 // Return the value of the given variable from vars passed in as command line options
 func getVariableFromVars(variable Variable, options *BoilerplateOptions) (string, bool) {
 	for name, value := range options.Vars {
-		if name == variable.UniqueName() {
+		if name == variable.Name {
 			return value, true
 		}
 	}

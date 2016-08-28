@@ -161,7 +161,6 @@ variables:
   - name: <NAME>
     prompt: <PROMPT>
     default: <DEFAULT>
-    for-dependency: <DEPENDENCY_NAME>
 
 dependencies:
   - name: <DEPENDENCY_NAME>
@@ -185,10 +184,9 @@ variables:
     prompt: Enter a description for the home page
     default: Welcome to my home page!
 
-  - name: Description
+  - name: about.Description
     prompt: Enter a description for the about page
     default: About Us
-    for-dependency: about
 
 dependencies:
   - name: about
@@ -199,14 +197,13 @@ dependencies:
 **Variables**: A list of objects (i.e. dictionaries) that define variables. Each variable may contain the following
 keys:
 
-* `name` (Required): The name of the variable. The combination of (`name`, `dependency`) must be unique.
+* `name` (Required): The name of the variable. To define a variable meant to be used in a specific dependency, use
+  the syntax <DEPENDENCY_NAME>.<VARIABLE_NAME> (e.g. about.Description).
 * `prompt` (Optional): The prompt to display to the user when asking them for a value. Default:
   "Enter a value for <VARIABLE_NAME>".
 * `default` (Optional): A default value for this variable. The user can just hit ENTER at the command line to use the
   default value, if one is provided. If running Boilerplate with the `--non-interactive` flag, the default is
   used for this value if no value is provided via the `--var` or `--var-file` options.
-* `for-dependency` (Optional): Only use this variable with the specified dependency. This allows you to handle the case
-  where a dependency has a variable of the same name but it needs a different value.
 
 See the [Variables](#variables) section for more info.
 
@@ -261,8 +258,9 @@ Note the following:
   the same name in the `boilerplate.yml` files of your `dependencies` list will reuse those variables instead of
   prompting the user for the same value again.
 * Variable conflicts: Sometimes, two dependencies use a variable of the same name, but you want them to have different
-  values. To handle this use case, add the `for-dependency` key to the variable definition in `boilerplate.yml`. This
-  allows you to specify a variable with the same name multiple times and give each one a different value.
+  values. To handle this use case, use the <DEPENDENCY_NAME>.<VARIABLE_NAME> syntax in the name of the variable in
+  `boilerplate.yml`. This allows you to specify a variable with the same name, but with different values for different
+  dependencies.
 
 #### Templates
 

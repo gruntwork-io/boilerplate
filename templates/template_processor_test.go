@@ -156,12 +156,17 @@ func TestCloneVariablesForDependency(t *testing.T) {
 		},
 		{
 			config.Dependency{Name: "dep1", TemplateFolder: "../dep1", OutputFolder: "../out1"},
-			map[string]string{"foo": "bar", "baz": "blah", "dep1.abc": "should-copy", "dep2.def": "should-not-copy"},
-			map[string]string{"foo": "bar", "baz": "blah", "abc": "should-copy"},
+			map[string]string{"foo": "bar", "baz": "blah", "dep1.abc": "should-modify-name", "dep2.def": "should-copy-unmodified"},
+			map[string]string{"foo": "bar", "baz": "blah", "abc": "should-modify-name", "dep2.def": "should-copy-unmodified"},
+		},
+		{
+			config.Dependency{Name: "dep1", TemplateFolder: "../dep1", OutputFolder: "../out1"},
+			map[string]string{"foo": "bar", "baz": "blah", "dep1.abc": "should-modify-name", "dep2.def": "should-copy-unmodified", "abc": "should-be-overwritten-by-dep1.abc"},
+			map[string]string{"foo": "bar", "baz": "blah", "abc": "should-modify-name", "dep2.def": "should-copy-unmodified"},
 		},
 		{
 			config.Dependency{Name: "dep1", TemplateFolder: "../dep1", OutputFolder: "../out1", DontInheritVariables: true},
-			map[string]string{"foo": "bar", "baz": "blah", "dep1.abc": "should-copy", "dep2.def": "should-not-copy"},
+			map[string]string{"foo": "bar", "baz": "blah", "dep1.abc": "should-modify-name", "dep2.def": "should-copy-unmodified"},
 			map[string]string{},
 		},
 	}

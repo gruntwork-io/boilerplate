@@ -102,8 +102,10 @@ func cloneVariablesForDependency(dependency config.Dependency, originalVariables
 
 	for variableName, variableValue := range originalVariables {
 		dependencyName, variableOriginalName := config.SplitIntoDependencyNameAndVariableName(variableName)
-		if dependencyName == "" || dependencyName == dependency.Name {
+		if dependencyName == dependency.Name {
 			newVariables[variableOriginalName] = variableValue
+		} else if _, alreadyExists := newVariables[variableName]; !alreadyExists {
+			newVariables[variableName] = variableValue
 		}
 	}
 

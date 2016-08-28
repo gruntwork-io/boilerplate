@@ -95,26 +95,16 @@ type Variable struct {
 	Name 	      string
 	Prompt 	      string
 	Default	      string
-	ForDependency string `yaml:"for-dependency"`
-}
-
-// Return the full, unique name of this variable, including the dependency it is for (if any). The dependency name and
-// variable name will be separated by a dot (e.g. <DEPENDENCY_NAME>.<VARIABLE_NAME>).
-func (variable Variable) UniqueName() string {
-	if variable.ForDependency == "" {
-		return variable.Name
-	} else {
-		return fmt.Sprintf("%s.%s", variable.ForDependency, variable.Name)
-	}
 }
 
 // Return a description of this variable, which includes its name and the dependency it is for (if any) in a
 // human-readable format
 func (variable Variable) Description() string {
-	if variable.ForDependency == "" {
-		return variable.Name
+	dependencyName, variableName := SplitIntoDependencyNameAndVariableName(variable.Name)
+	if dependencyName == "" {
+		return variableName
 	} else {
-		return fmt.Sprintf("%s (for dependency %s)", variable.Name, variable.ForDependency)
+		return fmt.Sprintf("%s (for dependency %s)", variableName, dependencyName)
 	}
 }
 
