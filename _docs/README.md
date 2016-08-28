@@ -185,7 +185,7 @@ keys:
 See the [Variables](#variables) section for more info.
 
 **Dependencies**: A list of objects (i.e. dictionaries) that define other `boilerplate` templates to execute before
-executing the current one. Each dependencies may contain the following keys:
+executing the current one. Each dependency may contain the following keys:
 
 * `template-folder` (Required): Run `boilerplate` on the templates in this folder. This path is relative to the
   current template.
