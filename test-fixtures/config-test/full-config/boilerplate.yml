@@ -7,3 +7,12 @@ variables:
   - name: baz
     prompt: prompt
     default: default
+
+dependencies:
+  - template-folder: /template/folder1
+    output-folder: /output/folder1
+
+  - template-folder: /template/folder2
+    output-folder: /output/folder2
+    dont-inherit-variables: true
+

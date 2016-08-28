@@ -54,9 +54,8 @@ func TestExamples(t *testing.T) {
 func assertDirectoriesEqual(t *testing.T, folderWithExpectedContents string, folderWithActualContents string) {
 	cmd := exec.Command("diff", "-u", folderWithExpectedContents, folderWithActualContents)
 
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	bytes, err := cmd.Output()
+	output := string(bytes)
 
-	err := cmd.Run()
-	assert.Nil(t, err, "diff command exited with an error. This likely means the contents of %s and %s are different. The log output above should show the diff.", folderWithExpectedContents, folderWithActualContents)
+	assert.Nil(t, err, "diff command exited with an error. This likely means the contents of %s and %s are different. Here is the output of the diff command:\n%s", folderWithExpectedContents, folderWithActualContents, output)
 }

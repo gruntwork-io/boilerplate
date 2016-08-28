@@ -1,0 +1,17 @@
+variables:
+  - name: Version
+    prompt: Enter the version number that will be used by the docs dependency
+
+  - name: Title
+    prompt: Enter the website title that will be used by the website dependency
+
+  - name: WelcomeText
+    prompt: Enter the welcome text used by the website dependency
+
+  - name: ShowLogo
+    prompt: Should the webiste show the logo (true or false)?
+    default: true
+
+dependencies:
+    - template-folder: ../dependencies
+      output-folder: ./dependencies

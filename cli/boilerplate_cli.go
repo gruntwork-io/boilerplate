@@ -97,17 +97,7 @@ func runApp(cliContext *cli.Context) error {
 		return err
 	}
 
-	boilerplateConfig, err := config.LoadBoilerPlateConfig(options)
-	if err != nil {
-		return err
-	}
-
-	variables, err := config.GetVariables(options, boilerplateConfig)
-	if err != nil {
-		return err
-	}
-
-	return templates.ProcessTemplateFolder(options, variables)
+	return templates.ProcessTemplate(options, map[string]string{})
 }
 
 // Parse the command line options provided by the user

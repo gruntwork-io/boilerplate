@@ -151,7 +151,10 @@ boilerplate --template-folder ~/templates --output-folder ~/output --var-file va
 
 #### The boilerplate.yml file
 
-The `boilerplate.yml` file uses the following syntax:
+The `boilerplate.yml` file is used to configure `boilerplate`. The file is optional. If you don't specify it, you can
+still use Go templating in your templates, but no variables or dependencies will be available.
+
+`boilerplate.yml` uses the following syntax:
 
 ```yaml
 variables:
@@ -162,10 +165,15 @@ variables:
   - name: <NAME>
     prompt: <PROMPT>
     default: <DEFAULT>
+
+dependencies:
+  - template-folder: ../some-other/boilerplate-template
+    output-folder: /source/template/output
+    dont-inherit-variables: false
 ```
 
-The `variables` map can contain one or more variables, where the key is the variable name and the value is an object
-with the following fields:
+**Variables**: A list of objects (i.e. dictionaries) that define variables. Each variable may contain the following
+keys:
 
 * `name` (Required): The name of the variable.
 * `prompt` (Optional): The prompt to display to the user when asking them for a value. Default:
@@ -174,8 +182,20 @@ with the following fields:
   default value, if one is provided. If running Boilerplate with the `--non-interactive` flag, the default is
   used for this value if no value is provided via the `--var` or `--var-file` options.
 
-Note: the `boilerplate.yml` file is optional. If you don't specify it, you can still use Go templating in your
-templates, but no variables will be available.
+See the [Variables](#variables) section for more info.
+
+**Dependencies**: A list of objects (i.e. dictionaries) that define other `boilerplate` templates to execute before
+executing the current one. Each dependencies may contain the following keys:
+
+* `template-folder` (Required): Run `boilerplate` on the templates in this folder. This path is relative to the
+  current template.
+* `output-folder` (Required): Create the output files and folders in this folder. This path is relative to the output
+  folder of the current template.
+* `dont-inherit-variables` (Optional): By default, any variables already set as part of the current `boilerplate.yml`
+  template will be reused in the dependency, so that the user is not prompted multiple times for the same variable. If
+  you set this option to `false`, then the variables from the parent template will not be reused.
+
+See the [Dependencies](#dependencies) section for more info.
 
 #### Variables
 
@@ -194,6 +214,20 @@ four ways to provide a value for a variable:
    the user to provide a value. Note that the `--non-interactive` flag disables this functionality.
 1. Defaults defined in `boilerplate.yml`. The final fallback is the optional `default` that you can include as part of
    the variable definition in `boilerplate.yml`.
+
+#### Dependencies
+
+Specifying dependencies within your `boilerplate.yml` files allows you to chain multiple `boilerplate` templates
+together. This allows you to create more complicated projects from simpler pieces.
+
+Note the following:
+
+* Recursive dependencies: Dependencies can include other dependencies. For example, the `boilerplate.yml` in folder A
+  can include folder B in its `dependencies` list, the `boilerplate.yml` in folder B can include folder C in its
+  `dependencies` list, and so on.
+* Inheriting variables: You can define all your common variables in the root `boilerplate.yml` and any variables with
+  the same name in the `boilerplate.yml` files of your `dependencies` list will reuse those variables instead of
+  prompting the user for the same value again.
 
 #### Templates
 

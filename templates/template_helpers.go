@@ -14,6 +14,7 @@ import (
 	"math"
 	"strconv"
 	"unicode"
+	"github.com/gruntwork-io/boilerplate/util"
 )
 
 var SNIPPET_MARKER_REGEX = regexp.MustCompile("boilerplate-snippet:\\s*(.+?)(?:\\s|$)")
@@ -95,6 +96,8 @@ func snippet(templatePath string, args ... string) (string, error) {
 func pathRelativeToTemplate(templatePath string, filePath string) string {
 	if path.IsAbs(filePath) {
 		return filePath
+	} else if util.IsDir(templatePath) {
+		return filepath.Join(templatePath, filePath)
 	} else {
 		templateDir := filepath.Dir(templatePath)
 		return filepath.Join(templateDir, filePath)

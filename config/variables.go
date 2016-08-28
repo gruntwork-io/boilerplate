@@ -9,17 +9,20 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// Get a value for each of the variables specified in boilerplateConfig. The value can come from the user (if the
-// non-interactive option isn't set), the default value in the config, or a command line option.
-func GetVariables(options *BoilerplateOptions, boilerplateConfig *BoilerplateConfig) (map[string]string, error) {
-	variables := map[string]string{}
+// Get a value for each of the variables specified in boilerplateConfig, other than those already in existingVariables.
+// The value for a variable can come from the user (if the  non-interactive option isn't set), the default value in the
+// config, or a command line option.
+func GetVariables(options *BoilerplateOptions, boilerplateConfig *BoilerplateConfig, existingVariables map[string]string) (map[string]string, error) {
+	variables := existingVariables
 
 	for _, variable := range boilerplateConfig.Variables {
-		value, err := getVariable(variable, options)
-		if err != nil {
-			return variables, err
+		if _, alreadyExists := existingVariables[variable.Name]; !alreadyExists {
+			value, err := getVariable(variable, options)
+			if err != nil {
+				return variables, err
+			}
+			variables[variable.Name] = value
 		}
-		variables[variable.Name] = value
 	}
 
 	return variables, nil

@@ -69,7 +69,7 @@ var DEFAULT_MISSING_KEY_ACTION = ExitWithError
 // Validate that the options have reasonable values and return an error if they don't
 func (options *BoilerplateOptions) Validate() error {
 	if options.TemplateFolder == "" {
-		return errors.WithStackTrace(TemplateFolderCannotBeEmpty)
+		return errors.WithStackTrace(TemplateFolderOptionCannotBeEmpty)
 	}
 
 	if !util.PathExists(options.TemplateFolder) {
@@ -77,7 +77,7 @@ func (options *BoilerplateOptions) Validate() error {
 	}
 
 	if options.OutputFolder == "" {
-		return errors.WithStackTrace(OutputFolderCannotBeEmpty)
+		return errors.WithStackTrace(OutputFolderOptionCannotBeEmpty)
 	}
 
 	return nil
@@ -85,7 +85,8 @@ func (options *BoilerplateOptions) Validate() error {
 
 // The contents of a boilerplate.yml config file
 type BoilerplateConfig struct {
-	Variables []Variable
+	Variables    []Variable
+	Dependencies []Dependency
 }
 
 // A single variable defined in a boilerplate.yml config file
@@ -93,6 +94,13 @@ type Variable struct {
 	Name 	string
 	Prompt 	string
 	Default	string
+}
+
+// A single boilerplate template that this boilerplate.yml depends on being executed first
+type Dependency struct {
+	TemplateFolder        string `yaml:"template-folder"`
+	OutputFolder          string `yaml:"output-folder"`
+	DontInheritVariables  bool   `yaml:"dont-inherit-variables"`
 }
 
 // Return the default path for a boilerplate.yml config file in the given folder
@@ -141,6 +149,15 @@ func (boilerplateConfig BoilerplateConfig) validate() error {
 		}
 	}
 
+	for i, dependency := range boilerplateConfig.Dependencies {
+		if dependency.TemplateFolder == "" {
+			return errors.WithStackTrace(TemplateFolderCannotBeEmptyForDependency(i))
+		}
+		if dependency.OutputFolder == "" {
+			return errors.WithStackTrace(OutputFolderCannotBeEmptyForDependency(i))
+		}
+	}
+
 	return nil
 }
 
@@ -148,9 +165,9 @@ func (boilerplateConfig BoilerplateConfig) validate() error {
 
 var VariableMissingName = fmt.Errorf("Error: found a variable without a name.")
 
-var TemplateFolderCannotBeEmpty = fmt.Errorf("The --%s option cannot be empty", OPT_TEMPLATE_FOLDER)
+var TemplateFolderOptionCannotBeEmpty = fmt.Errorf("The --%s option cannot be empty", OPT_TEMPLATE_FOLDER)
 
-var OutputFolderCannotBeEmpty = fmt.Errorf("The --%s option cannot be empty", OPT_OUTPUT_FOLDER)
+var OutputFolderOptionCannotBeEmpty = fmt.Errorf("The --%s option cannot be empty", OPT_OUTPUT_FOLDER)
 
 type TemplateFolderDoesNotExist string
 func (err TemplateFolderDoesNotExist) Error() string {
@@ -160,4 +177,14 @@ func (err TemplateFolderDoesNotExist) Error() string {
 type InvalidMissingKeyAction string
 func (err InvalidMissingKeyAction) Error() string {
 	return fmt.Sprintf("Invalid MissingKeyAction '%s'. Value must be one of: %s", string(err), missingKeyNames)
+}
+
+type TemplateFolderCannotBeEmptyForDependency int
+func (index TemplateFolderCannotBeEmptyForDependency) Error() string {
+	return fmt.Sprintf("The %s parameter was missing for dependency number %d", OPT_TEMPLATE_FOLDER, int(index) + 1)
+}
+
+type OutputFolderCannotBeEmptyForDependency int
+func (index OutputFolderCannotBeEmptyForDependency) Error() string {
+	return fmt.Sprintf("The %s parameter was missing for dependency number %d", OPT_OUTPUT_FOLDER, int(index) + 1)
 }

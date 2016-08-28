@@ -10,16 +10,106 @@ import (
 	"github.com/gruntwork-io/boilerplate/util"
 	"io/ioutil"
 	"path"
+	"fmt"
 )
+
+// Process the boilerplate template specified in the given options and use the existing variables. This function will
+// load any missing variables (either from command line options or by prompting the user), execute all the dependent
+// boilerplate templates, and then execute this template.
+func ProcessTemplate(options *config.BoilerplateOptions, existingVariables map[string]string) error {
+	boilerplateConfig, err := config.LoadBoilerPlateConfig(options)
+	if err != nil {
+		return err
+	}
+
+	variables, err := config.GetVariables(options, boilerplateConfig, existingVariables)
+	if err != nil {
+		return err
+	}
+
+	err = os.MkdirAll(options.OutputFolder, 0777)
+	if err != nil {
+		return errors.WithStackTrace(err)
+	}
+
+	err = processDependencies(boilerplateConfig.Dependencies, options, variables)
+	if err != nil {
+		return err
+	}
+
+	return processTemplateFolder(options, variables)
+}
+
+// Execute the boilerplate templates in the given list of dependencies
+func processDependencies(dependencies []config.Dependency, options *config.BoilerplateOptions, variables map[string]string) error {
+	for _, dependency := range dependencies {
+		err := processDependency(dependency, options, variables)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// Execute the boilerplate template in the given dependency
+func processDependency(dependency config.Dependency, options *config.BoilerplateOptions, variables map[string] string) error {
+	shouldProcess, err := shouldProcessDependency(dependency, options)
+	if err != nil {
+		return err
+	}
+
+	if shouldProcess {
+		dependencyOptions, dependencyVariables := cloneOptionsAndVariablesForDependency(dependency, options, variables)
+		util.Logger.Printf("Processing dependency %s and writing output to %s", dependencyOptions.TemplateFolder, dependencyOptions.OutputFolder)
+		return ProcessTemplate(dependencyOptions, dependencyVariables)
+	} else {
+		util.Logger.Printf("Skipping dependency %s", dependency.TemplateFolder)
+		return nil
+	}
+}
+
+// Clone the given options and variables for use when rendering the given dependency. The dependency will get the same
+// options as this template, except for the template folder and output folder. The dependency will also get the same
+// initial variables as this template, unless dependency.DontInheritVariables is set to true.
+func cloneOptionsAndVariablesForDependency(dependency config.Dependency, originalOptions *config.BoilerplateOptions, originalVariables map[string]string) (*config.BoilerplateOptions, map[string]string) {
+	templateFolder := pathRelativeToTemplate(originalOptions.TemplateFolder, dependency.TemplateFolder)
+	outputFolder := pathRelativeToTemplate(originalOptions.OutputFolder, dependency.OutputFolder)
+
+	// The variables passed in at the command line have already been loaded into the originalVariables map, so we
+	// can leave them blank for the dependency templates
+	cmdLineVars := map[string]string{}
+
+	newOptions := config.BoilerplateOptions{
+		TemplateFolder: templateFolder,
+		OutputFolder: outputFolder,
+		NonInteractive: originalOptions.NonInteractive,
+		Vars: cmdLineVars,
+		OnMissingKey: originalOptions.OnMissingKey,
+	}
+
+	newVariables := originalVariables
+	if dependency.DontInheritVariables {
+		newVariables = map[string]string{}
+	}
+
+	return &newOptions, newVariables
+}
+
+// Prompt the user to verify if the given dependency should be executed and return true if they confirm. If
+// options.NonInteractive is set to true, this function always returns true.
+func shouldProcessDependency(dependency config.Dependency, options *config.BoilerplateOptions) (bool, error) {
+	if options.NonInteractive {
+		return true, nil
+	}
+
+	return util.PromptUserForYesNo(fmt.Sprintf("This boilerplate template has a dependency! Run boilerplate on template folder %s and output folder %s?", dependency.TemplateFolder, dependency.OutputFolder))
+}
 
 // Copy all the files and folders in templateFolder to outputFolder, passing text files through the Go template engine
 // with the given set of variables as the data.
-func ProcessTemplateFolder(options *config.BoilerplateOptions, variables map[string]string) error {
+func processTemplateFolder(options *config.BoilerplateOptions, variables map[string]string) error {
 	util.Logger.Printf("Processing templates in %s and outputting generated files to %s", options.TemplateFolder, options.OutputFolder)
-
-	if err := os.MkdirAll(options.OutputFolder, 0777); err != nil {
-		return errors.WithStackTrace(err)
-	}
 
 	return filepath.Walk(options.TemplateFolder, func(path string, info os.FileInfo, err error) error {
 		if shouldSkipPath(path, options) {

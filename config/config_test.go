@@ -129,6 +129,90 @@ func TestParseBoilerplateConfigMultipleVariables(t *testing.T) {
 	assert.Equal(t, expected, actual)
 }
 
+// YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
+const CONFIG_ONE_DEPENDENCY =
+`dependencies:
+  - template-folder: /template/folder1
+    output-folder: /output/folder1
+`
+
+func TestParseBoilerplateConfigOneDependency(t *testing.T) {
+	t.Parallel()
+
+	actual, err := ParseBoilerplateConfig([]byte(CONFIG_ONE_DEPENDENCY))
+	expected := &BoilerplateConfig{
+		Dependencies: []Dependency{
+			Dependency{TemplateFolder: "/template/folder1", OutputFolder: "/output/folder1", DontInheritVariables: false},
+		},
+	}
+
+	assert.Nil(t, err)
+	assert.Equal(t, expected, actual)
+}
+
+// YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
+const CONFIG_MULTIPLE_DEPENDENCIES =
+`dependencies:
+  - template-folder: /template/folder1
+    output-folder: /output/folder1
+
+  - template-folder: /template/folder2
+    output-folder: /output/folder2
+    dont-inherit-variables: true
+
+  - template-folder: /template/folder3
+    output-folder: /output/folder3
+`
+
+func TestParseBoilerplateConfigMultipleDependencies(t *testing.T) {
+	t.Parallel()
+
+	actual, err := ParseBoilerplateConfig([]byte(CONFIG_MULTIPLE_DEPENDENCIES))
+	expected := &BoilerplateConfig{
+		Dependencies: []Dependency{
+			Dependency{TemplateFolder: "/template/folder1", OutputFolder: "/output/folder1", DontInheritVariables: false},
+			Dependency{TemplateFolder: "/template/folder2", OutputFolder: "/output/folder2", DontInheritVariables: true},
+			Dependency{TemplateFolder: "/template/folder3", OutputFolder: "/output/folder3", DontInheritVariables: false},
+		},
+	}
+
+	assert.Nil(t, err)
+	assert.Equal(t, expected, actual)
+}
+
+// YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
+const CONFIG_DEPENDENCY_MISSING_TEMPLATE_FOLDER =
+`dependencies:
+  - output-folder: /output/folder1
+`
+
+func TestParseBoilerplateConfigDependencyMissingTemplateFolder(t *testing.T) {
+	t.Parallel()
+
+	_, err := ParseBoilerplateConfig([]byte(CONFIG_DEPENDENCY_MISSING_TEMPLATE_FOLDER))
+
+	assert.NotNil(t, err)
+	assert.True(t, errors.IsError(err, TemplateFolderCannotBeEmptyForDependency(0)), "Expected a TemplateFolderCannotBeEmptyForDependency error but got %s", reflect.TypeOf(err))
+}
+
+// YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
+const CONFIG_DEPENDENCY_MISSING_OUTPUT_FOLDER =
+`dependencies:
+  - template-folder: /template/folder1
+    output-folder: /output/folder1
+
+  - template-folder: /template/folder2
+`
+
+func TestParseBoilerplateConfigDependencyMissingOutputFolder(t *testing.T) {
+	t.Parallel()
+
+	_, err := ParseBoilerplateConfig([]byte(CONFIG_DEPENDENCY_MISSING_OUTPUT_FOLDER))
+
+	assert.NotNil(t, err)
+	assert.True(t, errors.IsError(err, OutputFolderCannotBeEmptyForDependency(1)), "Expected a OutputFolderCannotBeEmptyForDependency error but got %s", reflect.TypeOf(err))
+}
+
 func TestLoadBoilerPlateConfigFullConfig(t *testing.T) {
 	t.Parallel()
 
@@ -138,6 +222,10 @@ func TestLoadBoilerPlateConfigFullConfig(t *testing.T) {
 			Variable{Name: "foo"},
 			Variable{Name: "bar", Prompt: "prompt"},
 			Variable{Name: "baz", Prompt: "prompt", Default: "default"},
+		},
+		Dependencies: []Dependency{
+			Dependency{TemplateFolder: "/template/folder1", OutputFolder: "/output/folder1", DontInheritVariables: false},
+			Dependency{TemplateFolder: "/template/folder2", OutputFolder: "/output/folder2", DontInheritVariables: true},
 		},
 	}
 
