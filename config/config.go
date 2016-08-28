@@ -114,7 +114,7 @@ func (variable Variable) Description() string {
 	if variable.ForDependency == "" {
 		return variable.Name
 	} else {
-		return fmt.Sprintf("%s (for dependency %s)", variable.ForDependency, variable.Name)
+		return fmt.Sprintf("%s (for dependency %s)", variable.Name, variable.ForDependency)
 	}
 }
 
