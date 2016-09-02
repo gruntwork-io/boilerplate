@@ -26,7 +26,7 @@ variables:
     prompt: Enter the welcome text for the website
 
   - name: ShowLogo
-    prompt: Should the webiste show the logo?
+    prompt: Should the webiste show the logo (true or false)?
     default: true
 
 ```
@@ -44,7 +44,7 @@ Template](https://golang.org/pkg/text/template) syntax:
   </head>
   <body>
     <h1>{{.WelcomeText}}</h1>
-    {{if .ShowLogo}}<img src="logo.png">{{end}}
+    {{if eq .ShowLogo "true"}}<img src="logo.png">{{end}}
   </body>
 </html>
 ```
@@ -103,7 +103,7 @@ for full documentation.
 
 ## Install
 
-Download the latest binary for your OS here: [boilerplate v0.0.5](https://github.com/gruntwork-io/boilerplate/releases/tag/v0.0.5).
+Download the latest binary for your OS here: [boilerplate v0.0.6](https://github.com/gruntwork-io/boilerplate/releases/tag/v0.0.6).
 
 You can find older versions on the [Releases Page](https://github.com/gruntwork-io/usage-patterns/releases).
 
@@ -135,6 +135,7 @@ Learn more about boilerplate in the following sections:
 1. [Boilerplate command line options](#boilerplate-command-line-options)
 1. [The boilerplate.yml file](#the-boilerplate.yml-file)
 1. [Variables](#variables)
+1. [Dependencies](#dependencies)
 1. [Templates](#templates)
 1. [Template helpers](#template-helpers)
 
@@ -176,7 +177,10 @@ boilerplate --template-folder ~/templates --output-folder ~/output --var-file va
 
 #### The boilerplate.yml file
 
-The `boilerplate.yml` file uses the following syntax:
+The `boilerplate.yml` file is used to configure `boilerplate`. The file is optional. If you don't specify it, you can
+still use Go templating in your templates, but no variables or dependencies will be available.
+
+`boilerplate.yml` uses the following syntax:
 
 ```yaml
 variables:
@@ -184,13 +188,44 @@ variables:
     prompt: <PROMPT>
     default: <DEFAULT>
 
-  - name: <NAME>
-    prompt: <PROMPT>
-    default: <DEFAULT>
+dependencies:
+  - name: <DEPENDENCY_NAME>
+    template-folder: <FOLDER>
+    output-folder: <FOLDER>
+    dont-inherit-variables: <BOOLEAN>
+    variables:
+      - name: <NAME>
+        prompt: <PROMPT>
+        default: <DEFAULT>
 ```
 
-The `variables` map can contain one or more variables, where the key is the variable name and the value is an object
-with the following fields:
+Here's an example:
+
+```yaml
+variables:
+  - name: Title
+    prompt: Enter a title for the home page
+
+  - name: IncludeLogo
+    prompt: Should we include a logo on the website?
+    default: true
+
+  - name: Description
+    prompt: Enter a description for the home page
+    default: Welcome to my home page!
+
+dependencies:
+  - name: about
+    template-folder: ../about-us-page
+    output-folder: ../about-us-page
+    variables:
+      - name: Description
+        prompt: Enter a description for the about page
+        default: About Us
+```
+
+**Variables**: A list of objects (i.e. dictionaries) that define variables. Each variable may contain the following
+keys:
 
 * `name` (Required): The name of the variable.
 * `prompt` (Optional): The prompt to display to the user when asking them for a value. Default:
@@ -199,26 +234,69 @@ with the following fields:
   default value, if one is provided. If running Boilerplate with the `--non-interactive` flag, the default is
   used for this value if no value is provided via the `--var` or `--var-file` options.
 
-Note: the `boilerplate.yml` file is optional. If you don't specify it, you can still use Go templating in your
-templates, but no variables will be available.
+See the [Variables](#variables) section for more info.
+
+**Dependencies**: A list of objects (i.e. dictionaries) that define other `boilerplate` templates to execute before
+executing the current one. Each dependency may contain the following keys:
+
+* `name` (Required): A unique name for the dependency.
+* `template-folder` (Required): Run `boilerplate` on the templates in this folder. This path is relative to the
+  current template.
+* `output-folder` (Required): Create the output files and folders in this folder. This path is relative to the output
+  folder of the current template.
+* `dont-inherit-variables` (Optional): By default, any variables already set as part of the current `boilerplate.yml`
+  template will be reused in the dependency, so that the user is not prompted multiple times for the same variable. If
+  you set this option to `false`, then the variables from the parent template will not be reused.
+* `variables`: If a dependency contains a variable of the same name as a variable in the root `boilerplate.yml` file,
+  but you want the dependency to get a different value for the variable, you can specify overrides here. `boilerplate`
+  will include a separate prompt for variables defined under a `dependency`. You can also override the dependency's
+  prompt and default values here.
+
+See the [Dependencies](#dependencies) section for more info.
 
 #### Variables
 
 You must provide a value for every variable defined in `boilerplate.yml`, or project generation will fail. There are
 four ways to provide a value for a variable:
 
-1. `--var` option(s) you pass in when calling boilerplate. Example: `boilerplate --var Title=Boilerplate --var ShowLogo=false`.
+1. `--var` option(s) you pass in when calling boilerplate. Example:
+   `boilerplate --var Title=Boilerplate --var ShowLogo=false`. If you want to specify the value of a variable for a
+   specific dependency, use the `<DEPENDENCY_NAME>.<VARIABLE_NAME>` syntax. For example:
+   `boilerplate --var Description='Welcome to my home page!' --var about.Description='About Us' --var ShowLogo=false`.
 1. `--var-file` option(s) you pass in when calling boilerplate. Example: `boilerplate --var-file vars.yml`. The vars
-   file must be a simple YAML file that defines key value pairs. Example:
+   file must be a simple YAML file that defines key, value pairs, where the key is the name of a variable (or
+   `<DEPENDENCY_NAME>.<VARIABLE_NAME>` for a variable in a dependency) and the value is the value to set for that
+   variable. Example:
 
    ```yaml
    Title: Boilerplate
    ShowLogo: false
+   Description: Welcome to my home page!
+   about.Description: Welcome to my home page!
    ```
 1. Manual input. If no value is specified via the `--var` or `--var-file` flags, Boilerplate will interactively prompt
    the user to provide a value. Note that the `--non-interactive` flag disables this functionality.
 1. Defaults defined in `boilerplate.yml`. The final fallback is the optional `default` that you can include as part of
    the variable definition in `boilerplate.yml`.
+
+#### Dependencies
+
+Specifying dependencies within your `boilerplate.yml` files allows you to chain multiple `boilerplate` templates
+together. This allows you to create more complicated projects from simpler pieces.
+
+Note the following:
+
+* Recursive dependencies: Dependencies can include other dependencies. For example, the `boilerplate.yml` in folder A
+  can include folder B in its `dependencies` list, the `boilerplate.yml` in folder B can include folder C in its
+  `dependencies` list, and so on.
+* Inheriting variables: You can define all your common variables in the root `boilerplate.yml` and any variables with
+  the same name in the `boilerplate.yml` files of your `dependencies` list will reuse those variables instead of
+  prompting the user for the same value again.
+* Variable conflicts: Sometimes, two dependencies use a variable of the same name, but you want them to have different
+  values. To handle this use case, you can define custom `variable` blocks for each dependency and `boilerplate` will
+  prompt you for each of those variables separately from the root ones. You can also use the
+  `<DEPENDENCY_NAME>.<VARIABLE_NAME>` syntax as the name of the variable with the `-var` flag and inside of a var file
+  to provide a value for a variable in a dependency.
 
 #### Templates
 
