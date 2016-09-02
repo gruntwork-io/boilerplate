@@ -111,6 +111,10 @@ const CONFIG_MULTIPLE_VARIABLES =
   - name: baz
     prompt: prompt
     default: default
+
+  - name: dep1.baz
+    prompt: another-prompt
+    default: another-default
 `
 
 func TestParseBoilerplateConfigMultipleVariables(t *testing.T) {
@@ -122,11 +126,184 @@ func TestParseBoilerplateConfigMultipleVariables(t *testing.T) {
 			Variable{Name: "foo"},
 			Variable{Name: "bar", Prompt: "prompt"},
 			Variable{Name: "baz", Prompt: "prompt", Default: "default"},
+			Variable{Name: "dep1.baz", Prompt: "another-prompt", Default: "another-default"},
 		},
 	}
 
 	assert.Nil(t, err)
 	assert.Equal(t, expected, actual)
+}
+
+// YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
+const CONFIG_ONE_DEPENDENCY =
+`dependencies:
+  - name: dep1
+    template-folder: /template/folder1
+    output-folder: /output/folder1
+`
+
+func TestParseBoilerplateConfigOneDependency(t *testing.T) {
+	t.Parallel()
+
+	actual, err := ParseBoilerplateConfig([]byte(CONFIG_ONE_DEPENDENCY))
+	expected := &BoilerplateConfig{
+		Dependencies: []Dependency{
+			Dependency{Name: "dep1", TemplateFolder: "/template/folder1", OutputFolder: "/output/folder1", DontInheritVariables: false},
+		},
+	}
+
+	assert.Nil(t, err)
+	assert.Equal(t, expected, actual)
+}
+
+// YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
+const CONFIG_MULTIPLE_DEPENDENCIES =
+`dependencies:
+  - name: dep1
+    template-folder: /template/folder1
+    output-folder: /output/folder1
+
+  - name: dep2
+    template-folder: /template/folder2
+    output-folder: /output/folder2
+    dont-inherit-variables: true
+    variables:
+      - name: var1
+        prompt: Enter var1
+        default: foo
+
+  - name: dep3
+    template-folder: /template/folder3
+    output-folder: /output/folder3
+`
+
+func TestParseBoilerplateConfigMultipleDependencies(t *testing.T) {
+	t.Parallel()
+
+	actual, err := ParseBoilerplateConfig([]byte(CONFIG_MULTIPLE_DEPENDENCIES))
+	expected := &BoilerplateConfig{
+		Dependencies: []Dependency{
+			Dependency{
+				Name: "dep1",
+				TemplateFolder: "/template/folder1",
+				OutputFolder: "/output/folder1",
+				DontInheritVariables: false,
+			},
+			Dependency{
+				Name: "dep2",
+				TemplateFolder: "/template/folder2",
+				OutputFolder: "/output/folder2",
+				DontInheritVariables: true,
+				Variables: []Variable{Variable{Name: "var1", Prompt: "Enter var1", Default: "foo"}},
+			},
+			Dependency{
+				Name: "dep3",
+				TemplateFolder: "/template/folder3",
+				OutputFolder: "/output/folder3",
+				DontInheritVariables: false,
+			},
+		},
+	}
+
+	assert.Nil(t, err)
+	assert.Equal(t, expected, actual)
+}
+
+// YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
+const CONFIG_DEPENDENCY_MISSING_NAME =
+`dependencies:
+  - template-folder: /template/folder1
+    output-folder: /output/folder1
+`
+
+func TestParseBoilerplateConfigDependencyMissingName(t *testing.T) {
+	t.Parallel()
+
+	_, err := ParseBoilerplateConfig([]byte(CONFIG_DEPENDENCY_MISSING_NAME))
+
+	assert.NotNil(t, err)
+	assert.True(t, errors.IsError(err, MissingNameForDependency(0)), "Expected a MissingNameForDependency error but got %s", reflect.TypeOf(err))
+}
+
+// YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
+const CONFIG_DEPENDENCY_MISSING_TEMPLATE_FOLDER =
+`dependencies:
+  - name: dep1
+    output-folder: /output/folder1
+`
+
+func TestParseBoilerplateConfigDependencyMissingTemplateFolder(t *testing.T) {
+	t.Parallel()
+
+	_, err := ParseBoilerplateConfig([]byte(CONFIG_DEPENDENCY_MISSING_TEMPLATE_FOLDER))
+
+	assert.NotNil(t, err)
+	assert.True(t, errors.IsError(err, MissingTemplateFolderForDependency("dep1")), "Expected a MissingTemplateFolderForDependency error but got %s", reflect.TypeOf(err))
+}
+
+// YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
+const CONFIG_DEPENDENCY_MISSING_VARIABLE_NAME =
+`dependencies:
+  - name: dep1
+    template-folder: /template/folder1
+    output-folder: /output/folder1
+    variables:
+      - prompt: Enter foo
+        default: foo
+`
+
+func TestParseBoilerplateConfigDependencyMissingVariableName(t *testing.T) {
+	t.Parallel()
+
+	_, err := ParseBoilerplateConfig([]byte(CONFIG_DEPENDENCY_MISSING_VARIABLE_NAME))
+
+	assert.NotNil(t, err)
+	assert.True(t, errors.IsError(err, VariableMissingName), "Expected a VariableMissingName error but got %s", reflect.TypeOf(err))
+}
+
+// YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
+const CONFIG_DEPENDENCY_MISSING_OUTPUT_FOLDER =
+`dependencies:
+  - name: dep1
+    template-folder: /template/folder1
+    output-folder: /output/folder1
+
+  - name: dep2
+    template-folder: /template/folder2
+`
+
+func TestParseBoilerplateConfigDependencyMissingOutputFolder(t *testing.T) {
+	t.Parallel()
+
+	_, err := ParseBoilerplateConfig([]byte(CONFIG_DEPENDENCY_MISSING_OUTPUT_FOLDER))
+
+	assert.NotNil(t, err)
+	assert.True(t, errors.IsError(err, MissingOutputFolderForDependency("dep2")), "Expected a MissingOutputFolderForDependency error but got %s", reflect.TypeOf(err))
+}
+
+// YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
+const CONFIG_DEPENDENCY_DUPLICATE_NAMES =
+`dependencies:
+  - name: dep1
+    template-folder: /template/folder1
+    output-folder: /output/folder1
+
+  - name: dep2
+    template-folder: /template/folder2
+    output-folder: /output/folder2
+
+  - name: dep1
+    template-folder: /template/folder3
+    output-folder: /output/folder3
+`
+
+func TestParseBoilerplateConfigDependencyDuplicateNames(t *testing.T) {
+	t.Parallel()
+
+	_, err := ParseBoilerplateConfig([]byte(CONFIG_DEPENDENCY_DUPLICATE_NAMES))
+
+	assert.NotNil(t, err)
+	assert.True(t, errors.IsError(err, DuplicateDependencyName("dep1")), "Expected a DuplicateDependencyName error but got %s", reflect.TypeOf(err))
 }
 
 func TestLoadBoilerPlateConfigFullConfig(t *testing.T) {
@@ -138,6 +315,13 @@ func TestLoadBoilerPlateConfigFullConfig(t *testing.T) {
 			Variable{Name: "foo"},
 			Variable{Name: "bar", Prompt: "prompt"},
 			Variable{Name: "baz", Prompt: "prompt", Default: "default"},
+		},
+		Dependencies: []Dependency{
+			Dependency{Name: "dep1", TemplateFolder: "/template/folder1", OutputFolder: "/output/folder1", DontInheritVariables: false},
+			Dependency{Name: "dep2", TemplateFolder: "/template/folder2", OutputFolder: "/output/folder2", DontInheritVariables: true, Variables: []Variable{
+				Variable{Name: "baz", Prompt: "prompt", Default: "other-default"},
+				Variable{Name: "abc", Prompt: "prompt", Default: "default"},
+			}},
 		},
 	}
 
@@ -165,4 +349,26 @@ func TestLoadBoilerPlateConfigInvalidConfig(t *testing.T) {
 	unwrapped := errors.Unwrap(err)
 	_, isYamlTypeError := unwrapped.(*yaml.TypeError)
 	assert.True(t, isYamlTypeError, "Expected a YAML type error for an invalid yaml file but got %s", reflect.TypeOf(unwrapped))
+}
+
+func TestSplitIntoDependencyNameAndVariableName(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		variableName                 string
+		expectedDependencyName       string
+		expectedOriginalVariableName string
+	}{
+		{"", "", ""},
+		{"foo", "", "foo"},
+		{"foo-bar baz_blah", "", "foo-bar baz_blah"},
+		{"foo.bar", "foo", "bar"},
+		{"foo.bar.baz", "foo", "bar.baz"},
+	}
+
+	for _, testCase := range testCases {
+		actualDependencyName, actualOriginalVariableName := SplitIntoDependencyNameAndVariableName(testCase.variableName)
+		assert.Equal(t, testCase.expectedDependencyName, actualDependencyName, "Variable name: %s", testCase.variableName)
+		assert.Equal(t, testCase.expectedOriginalVariableName, actualOriginalVariableName, "Variable name: %s", testCase.variableName)
+	}
 }

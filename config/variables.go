@@ -9,20 +9,44 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// Get a value for each of the variables specified in boilerplateConfig. The value can come from the user (if the
-// non-interactive option isn't set), the default value in the config, or a command line option.
+// Get a value for each of the variables specified in boilerplateConfig, other than those already in existingVariables.
+// The value for a variable can come from the user (if the  non-interactive option isn't set), the default value in the
+// config, or a command line option.
 func GetVariables(options *BoilerplateOptions, boilerplateConfig *BoilerplateConfig) (map[string]string, error) {
 	variables := map[string]string{}
+	for key, value := range options.Vars {
+		variables[key] = value
+	}
 
-	for _, variable := range boilerplateConfig.Variables {
-		value, err := getVariable(variable, options)
-		if err != nil {
-			return variables, err
+	variablesInConfig := getAllVariablesInConfig(boilerplateConfig)
+
+	for _, variable := range variablesInConfig {
+		if _, alreadyExists := variables[variable.Name]; !alreadyExists {
+			value, err := getVariable(variable, options)
+			if err != nil {
+				return variables, err
+			}
+			variables[variable.Name] = value
 		}
-		variables[variable.Name] = value
 	}
 
 	return variables, nil
+}
+
+// Get all the variables defined in the given config and its dependencies
+func getAllVariablesInConfig(boilerplateConfig *BoilerplateConfig) []Variable {
+	allVariables := []Variable{}
+
+	allVariables = append(allVariables, boilerplateConfig.Variables...)
+
+	for _, dependency := range boilerplateConfig.Dependencies {
+		for _, variable := range dependency.Variables {
+			variableName := fmt.Sprintf("%s.%s", dependency.Name, variable.Name)
+			allVariables = append(allVariables, Variable{Name: variableName, Prompt: variable.Prompt, Default: variable.Default})
+		}
+	}
+
+	return allVariables
 }
 
 // Get a value for the given variable. The value can come from the user (if the non-interactive option isn't set), the
@@ -31,14 +55,14 @@ func getVariable(variable Variable, options *BoilerplateOptions) (string, error)
 	valueFromVars, valueSpecifiedInVars := getVariableFromVars(variable, options)
 
 	if valueSpecifiedInVars {
-		util.Logger.Printf("Using value specified via command line options for variable '%s': %s", variable.Name, valueFromVars)
+		util.Logger.Printf("Using value specified via command line options for variable '%s': %s", variable.Description(), valueFromVars)
 		return valueFromVars, nil
 	} else if options.NonInteractive && variable.Default != "" {
 		// TODO: how to disambiguate between a default not being specified and a default set to an empty string?
-		util.Logger.Printf("Using default value for variable '%s': %s", variable.Name, variable.Default)
+		util.Logger.Printf("Using default value for variable '%s': %s", variable.Description(), variable.Default)
 		return variable.Default, nil
 	} else if options.NonInteractive {
-		return "", errors.WithStackTrace(MissingVariableWithNonInteractiveMode(variable.Name))
+		return "", errors.WithStackTrace(MissingVariableWithNonInteractiveMode(variable.Description()))
 	} else {
 		return getVariableFromUser(variable, options)
 	}
@@ -64,7 +88,7 @@ func getVariableFromUser(variable Variable, options *BoilerplateOptions) (string
 
 	if value == "" {
 		// TODO: what if the user wanted an empty string instead of the default?
-		util.Logger.Printf("Using default value for variable '%s': %s", variable.Name, variable.Default)
+		util.Logger.Printf("Using default value for variable '%s': %s", variable.Description(), variable.Default)
 		return variable.Default, nil
 	} else {
 		return value, nil
@@ -73,7 +97,7 @@ func getVariableFromUser(variable Variable, options *BoilerplateOptions) (string
 
 // Return the text that prompts the user to enter a value for the given variable
 func formatPrompt(variable Variable, options *BoilerplateOptions) string {
-	prompt := fmt.Sprintf("Enter a value for variable '%s'", variable.Name)
+	prompt := fmt.Sprintf("Enter a value for variable '%s'", variable.Description())
 
 	if variable.Prompt != "" {
 		prompt = variable.Prompt

@@ -199,6 +199,7 @@ func TestPathRelativeToTemplate(t *testing.T) {
 		{"/foo/bar/template.txt", "./foo", "/foo/bar/foo"},
 		{"/foo/bar/template.txt", "/foo", "/foo"},
 		{"/foo/bar/template.txt", "/foo/bar/baz", "/foo/bar/baz"},
+		{"/usr/bin", "../foo", "/usr/foo"}, // Note, we are testing with a real file path here to ensure directories are handled correctly
 	}
 
 	for _, testCase := range testCases {

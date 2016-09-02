@@ -5,5 +5,5 @@ variables:
     prompt: Enter the welcome text for the website
 
   - name: ShowLogo
-    prompt: Should the webiste show the logo?
+    prompt: Should the webiste show the logo (true or false)?
     default: true

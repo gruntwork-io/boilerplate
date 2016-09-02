@@ -1,0 +1,27 @@
+variables:
+  - name: Description
+    prompt: Enter the description of the recursive dependencies template
+
+  - name: Version
+    prompt: Enter the version number that will be used by the docs dependency
+
+  - name: Title
+    prompt: Enter the title for the dependencies recursive example
+
+  - name: WelcomeText
+    prompt: Enter the welcome text used by the website dependency
+
+  - name: ShowLogo
+    prompt: Should the webiste show the logo (true or false)?
+    default: true
+
+dependencies:
+    - name: dependencies
+      template-folder: ../dependencies
+      output-folder: ./dependencies
+      variables:
+        - name: Description
+          prompt: Enter the description of the dependencies example
+
+        - name: Title
+          prompt: Enter the title for the dependencies example

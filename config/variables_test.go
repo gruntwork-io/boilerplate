@@ -101,6 +101,41 @@ func TestGetVariableFromVarsMatch(t *testing.T) {
 	assert.Equal(t, expected, actual)
 }
 
+func TestGetVariableFromVarsForDependencyNoMatch(t *testing.T) {
+	t.Parallel()
+
+	variable := Variable{Name: "bar.foo"}
+	options := &BoilerplateOptions{
+		Vars: map[string]string{
+			"key1": "value1",
+			"foo": "bar",
+			"key3": "value3",
+		},
+	}
+
+	_, containsValue := getVariableFromVars(variable, options)
+	assert.False(t, containsValue)
+}
+
+func TestGetVariableFromVarsForDependencyMatch(t *testing.T) {
+	t.Parallel()
+
+	variable := Variable{Name: "bar.foo"}
+	options := &BoilerplateOptions{
+		Vars: map[string]string{
+			"key1": "value1",
+			"bar.foo": "bar",
+			"key3": "value3",
+		},
+	}
+
+	actual, containsValue := getVariableFromVars(variable, options)
+	expected := "bar"
+
+	assert.True(t, containsValue)
+	assert.Equal(t, expected, actual)
+}
+
 func TestGetVariableNoMatchNonInteractive(t *testing.T) {
 	t.Parallel()
 

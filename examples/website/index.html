@@ -4,6 +4,6 @@
   </head>
   <body>
     <h1>{{.WelcomeText}}</h1>
-    {{if .ShowLogo}}<img src="logo.png">{{end}}
+    {{if eq .ShowLogo "true"}}<img src="logo.png">{{end}}
   </body>
 </html>

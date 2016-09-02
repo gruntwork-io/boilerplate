@@ -109,3 +109,73 @@ func TestRenderTemplate(t *testing.T) {
 		}
 	}
 }
+
+func TestCloneOptionsForDependency(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		dependency      config.Dependency
+		options         config.BoilerplateOptions
+		variables       map[string]string
+		expectedOptions config.BoilerplateOptions
+	}{
+		{
+			config.Dependency{Name: "dep1", TemplateFolder: "../dep1", OutputFolder: "../out1"},
+			config.BoilerplateOptions{TemplateFolder: "/template/path/", OutputFolder: "/output/path/", NonInteractive: true, Vars: map[string]string{}, OnMissingKey: config.ExitWithError},
+			map[string]string{},
+			config.BoilerplateOptions{TemplateFolder: "/template/dep1", OutputFolder: "/output/out1", NonInteractive: true, Vars: map[string]string{}, OnMissingKey: config.ExitWithError},
+		},
+		{
+			config.Dependency{Name: "dep1", TemplateFolder: "../dep1", OutputFolder: "../out1"},
+			config.BoilerplateOptions{TemplateFolder: "/template/path/", OutputFolder: "/output/path/", NonInteractive: false, Vars: map[string]string{"foo": "bar"}, OnMissingKey: config.Invalid},
+			map[string]string{"baz": "blah"},
+			config.BoilerplateOptions{TemplateFolder: "/template/dep1", OutputFolder: "/output/out1", NonInteractive: false, Vars: map[string]string{"baz": "blah"}, OnMissingKey: config.Invalid},
+		},
+	}
+
+	for _, testCase := range testCases {
+		actualOptions := cloneOptionsForDependency(testCase.dependency, &testCase.options, testCase.variables)
+		assert.Equal(t, testCase.expectedOptions, *actualOptions, "Dependency: %s", testCase.dependency)
+	}
+}
+
+func TestCloneVariablesForDependency(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		dependency        config.Dependency
+		variables         map[string]string
+		expectedVariables map[string]string
+	}{
+		{
+			config.Dependency{Name: "dep1", TemplateFolder: "../dep1", OutputFolder: "../out1"},
+			map[string]string{},
+			map[string]string{},
+		},
+		{
+			config.Dependency{Name: "dep1", TemplateFolder: "../dep1", OutputFolder: "../out1"},
+			map[string]string{"foo": "bar", "baz": "blah"},
+			map[string]string{"foo": "bar", "baz": "blah"},
+		},
+		{
+			config.Dependency{Name: "dep1", TemplateFolder: "../dep1", OutputFolder: "../out1"},
+			map[string]string{"foo": "bar", "baz": "blah", "dep1.abc": "should-modify-name", "dep2.def": "should-copy-unmodified"},
+			map[string]string{"foo": "bar", "baz": "blah", "abc": "should-modify-name", "dep2.def": "should-copy-unmodified"},
+		},
+		{
+			config.Dependency{Name: "dep1", TemplateFolder: "../dep1", OutputFolder: "../out1"},
+			map[string]string{"foo": "bar", "baz": "blah", "dep1.abc": "should-modify-name", "dep2.def": "should-copy-unmodified", "abc": "should-be-overwritten-by-dep1.abc"},
+			map[string]string{"foo": "bar", "baz": "blah", "abc": "should-modify-name", "dep2.def": "should-copy-unmodified"},
+		},
+		{
+			config.Dependency{Name: "dep1", TemplateFolder: "../dep1", OutputFolder: "../out1", DontInheritVariables: true},
+			map[string]string{"foo": "bar", "baz": "blah", "dep1.abc": "should-modify-name", "dep2.def": "should-copy-unmodified"},
+			map[string]string{},
+		},
+	}
+
+	for _, testCase := range testCases {
+		actualVariables := cloneVariablesForDependency(testCase.dependency, testCase.variables)
+		assert.Equal(t, testCase.expectedVariables, actualVariables, "Dependency: %s", testCase.dependency)
+	}
+}
