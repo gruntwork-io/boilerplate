@@ -110,6 +110,7 @@ Learn more about boilerplate in the following sections:
 1. [Boilerplate command line options](#boilerplate-command-line-options)
 1. [The boilerplate.yml file](#the-boilerplate.yml-file)
 1. [Variables](#variables)
+1. [Dependencies](#dependencies)
 1. [Templates](#templates)
 1. [Template helpers](#template-helpers)
 
@@ -167,6 +168,10 @@ dependencies:
     template-folder: <FOLDER>
     output-folder: <FOLDER>
     dont-inherit-variables: <BOOLEAN>
+    variables:
+      - name: <NAME>
+        prompt: <PROMPT>
+        default: <DEFAULT>
 ```
 
 Here's an example:
@@ -184,21 +189,20 @@ variables:
     prompt: Enter a description for the home page
     default: Welcome to my home page!
 
-  - name: about.Description
-    prompt: Enter a description for the about page
-    default: About Us
-
 dependencies:
   - name: about
     template-folder: ../about-us-page
     output-folder: ../about-us-page
+    variables:
+      - name: Description
+        prompt: Enter a description for the about page
+        default: About Us
 ```
 
 **Variables**: A list of objects (i.e. dictionaries) that define variables. Each variable may contain the following
 keys:
 
-* `name` (Required): The name of the variable. To define a variable meant to be used in a specific dependency, use
-  the syntax <DEPENDENCY_NAME>.<VARIABLE_NAME> (e.g. about.Description).
+* `name` (Required): The name of the variable.
 * `prompt` (Optional): The prompt to display to the user when asking them for a value. Default:
   "Enter a value for <VARIABLE_NAME>".
 * `default` (Optional): A default value for this variable. The user can just hit ENTER at the command line to use the
@@ -218,6 +222,10 @@ executing the current one. Each dependency may contain the following keys:
 * `dont-inherit-variables` (Optional): By default, any variables already set as part of the current `boilerplate.yml`
   template will be reused in the dependency, so that the user is not prompted multiple times for the same variable. If
   you set this option to `false`, then the variables from the parent template will not be reused.
+* `variables`: If a dependency contains a variable of the same name as a variable in the root `boilerplate.yml` file,
+  but you want the dependency to get a different value for the variable, you can specify overrides here. `boilerplate`
+  will include a separate prompt for variables defined under a `dependency`. You can also override the dependency's
+  prompt and default values here.
 
 See the [Dependencies](#dependencies) section for more info.
 
@@ -231,7 +239,9 @@ four ways to provide a value for a variable:
    specific dependency, use the `<DEPENDENCY_NAME>.<VARIABLE_NAME>` syntax. For example:
    `boilerplate --var Description='Welcome to my home page!' --var about.Description='About Us' --var ShowLogo=false`.
 1. `--var-file` option(s) you pass in when calling boilerplate. Example: `boilerplate --var-file vars.yml`. The vars
-   file must be a simple YAML file that defines key value pairs. Example:
+   file must be a simple YAML file that defines key, value pairs, where the key is the name of a variable (or
+   `<DEPENDENCY_NAME>.<VARIABLE_NAME>` for a variable in a dependency) and the value is the value to set for that
+   variable. Example:
 
    ```yaml
    Title: Boilerplate
@@ -258,9 +268,10 @@ Note the following:
   the same name in the `boilerplate.yml` files of your `dependencies` list will reuse those variables instead of
   prompting the user for the same value again.
 * Variable conflicts: Sometimes, two dependencies use a variable of the same name, but you want them to have different
-  values. To handle this use case, use the <DEPENDENCY_NAME>.<VARIABLE_NAME> syntax in the name of the variable in
-  `boilerplate.yml`. This allows you to specify a variable with the same name, but with different values for different
-  dependencies.
+  values. To handle this use case, you can define custom `variable` blocks for each dependency and `boilerplate` will
+  prompt you for each of those variables separately from the root ones. You can also use the
+  `<DEPENDENCY_NAME>.<VARIABLE_NAME>` syntax as the name of the variable with the `-var` flag and inside of a var file
+  to provide a value for a variable in a dependency.
 
 #### Templates
 

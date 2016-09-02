@@ -16,13 +16,13 @@ import (
 // Process the boilerplate template specified in the given options and use the existing variables. This function will
 // load any missing variables (either from command line options or by prompting the user), execute all the dependent
 // boilerplate templates, and then execute this template.
-func ProcessTemplate(options *config.BoilerplateOptions, existingVariables map[string]string) error {
+func ProcessTemplate(options *config.BoilerplateOptions) error {
 	boilerplateConfig, err := config.LoadBoilerPlateConfig(options)
 	if err != nil {
 		return err
 	}
 
-	variables, err := config.GetVariables(options, boilerplateConfig, existingVariables)
+	variables, err := config.GetVariables(options, boilerplateConfig)
 	if err != nil {
 		return err
 	}
@@ -53,18 +53,17 @@ func processDependencies(dependencies []config.Dependency, options *config.Boile
 }
 
 // Execute the boilerplate template in the given dependency
-func processDependency(dependency config.Dependency, options *config.BoilerplateOptions, variables map[string] string) error {
+func processDependency(dependency config.Dependency, options *config.BoilerplateOptions, variables map[string]string) error {
 	shouldProcess, err := shouldProcessDependency(dependency, options)
 	if err != nil {
 		return err
 	}
 
 	if shouldProcess {
-		dependencyOptions := cloneOptionsForDependency(dependency, options)
-		dependencyVariables := cloneVariablesForDependency(dependency, variables)
+		dependencyOptions := cloneOptionsForDependency(dependency, options, variables)
 
 		util.Logger.Printf("Processing dependency %s, with template folder %s and output folder %s", dependency.Name, dependencyOptions.TemplateFolder, dependencyOptions.OutputFolder)
-		return ProcessTemplate(dependencyOptions, dependencyVariables)
+		return ProcessTemplate(dependencyOptions)
 	} else {
 		util.Logger.Printf("Skipping dependency %s", dependency.Name)
 		return nil
@@ -73,19 +72,15 @@ func processDependency(dependency config.Dependency, options *config.Boilerplate
 
 // Clone the given options for use when rendering the given dependency. The dependency will get the same options as
 // the original passed in, except for the template folder, output folder, and command-line vars.
-func cloneOptionsForDependency(dependency config.Dependency, originalOptions *config.BoilerplateOptions) *config.BoilerplateOptions {
+func cloneOptionsForDependency(dependency config.Dependency, originalOptions *config.BoilerplateOptions, variables map[string]string) *config.BoilerplateOptions {
 	templateFolder := pathRelativeToTemplate(originalOptions.TemplateFolder, dependency.TemplateFolder)
 	outputFolder := pathRelativeToTemplate(originalOptions.OutputFolder, dependency.OutputFolder)
-
-	// The variables passed in at the command line have already been loaded into the originalVariables map, so we
-	// can leave them blank for the dependency templates
-	cmdLineVars := map[string]string{}
 
 	return &config.BoilerplateOptions{
 		TemplateFolder: templateFolder,
 		OutputFolder: outputFolder,
 		NonInteractive: originalOptions.NonInteractive,
-		Vars: cmdLineVars,
+		Vars: cloneVariablesForDependency(dependency, variables),
 		OnMissingKey: originalOptions.OnMissingKey,
 	}
 }

@@ -116,22 +116,25 @@ func TestCloneOptionsForDependency(t *testing.T) {
 	testCases := []struct {
 		dependency      config.Dependency
 		options         config.BoilerplateOptions
+		variables       map[string]string
 		expectedOptions config.BoilerplateOptions
 	}{
 		{
 			config.Dependency{Name: "dep1", TemplateFolder: "../dep1", OutputFolder: "../out1"},
 			config.BoilerplateOptions{TemplateFolder: "/template/path/", OutputFolder: "/output/path/", NonInteractive: true, Vars: map[string]string{}, OnMissingKey: config.ExitWithError},
+			map[string]string{},
 			config.BoilerplateOptions{TemplateFolder: "/template/dep1", OutputFolder: "/output/out1", NonInteractive: true, Vars: map[string]string{}, OnMissingKey: config.ExitWithError},
 		},
 		{
 			config.Dependency{Name: "dep1", TemplateFolder: "../dep1", OutputFolder: "../out1"},
 			config.BoilerplateOptions{TemplateFolder: "/template/path/", OutputFolder: "/output/path/", NonInteractive: false, Vars: map[string]string{"foo": "bar"}, OnMissingKey: config.Invalid},
-			config.BoilerplateOptions{TemplateFolder: "/template/dep1", OutputFolder: "/output/out1", NonInteractive: false, Vars: map[string]string{}, OnMissingKey: config.Invalid},
+			map[string]string{"baz": "blah"},
+			config.BoilerplateOptions{TemplateFolder: "/template/dep1", OutputFolder: "/output/out1", NonInteractive: false, Vars: map[string]string{"baz": "blah"}, OnMissingKey: config.Invalid},
 		},
 	}
 
 	for _, testCase := range testCases {
-		actualOptions := cloneOptionsForDependency(testCase.dependency, &testCase.options)
+		actualOptions := cloneOptionsForDependency(testCase.dependency, &testCase.options, testCase.variables)
 		assert.Equal(t, testCase.expectedOptions, *actualOptions, "Dependency: %s", testCase.dependency)
 	}
 }

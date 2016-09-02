@@ -12,11 +12,16 @@ import (
 // Get a value for each of the variables specified in boilerplateConfig, other than those already in existingVariables.
 // The value for a variable can come from the user (if the  non-interactive option isn't set), the default value in the
 // config, or a command line option.
-func GetVariables(options *BoilerplateOptions, boilerplateConfig *BoilerplateConfig, existingVariables map[string]string) (map[string]string, error) {
-	variables := existingVariables
+func GetVariables(options *BoilerplateOptions, boilerplateConfig *BoilerplateConfig) (map[string]string, error) {
+	variables := map[string]string{}
+	for key, value := range options.Vars {
+		variables[key] = value
+	}
 
-	for _, variable := range boilerplateConfig.Variables {
-		if _, alreadyExists := existingVariables[variable.Name]; !alreadyExists {
+	variablesInConfig := getAllVariablesInConfig(boilerplateConfig)
+
+	for _, variable := range variablesInConfig {
+		if _, alreadyExists := variables[variable.Name]; !alreadyExists {
 			value, err := getVariable(variable, options)
 			if err != nil {
 				return variables, err
@@ -26,6 +31,22 @@ func GetVariables(options *BoilerplateOptions, boilerplateConfig *BoilerplateCon
 	}
 
 	return variables, nil
+}
+
+// Get all the variables defined in the given config and its dependencies
+func getAllVariablesInConfig(boilerplateConfig *BoilerplateConfig) []Variable {
+	allVariables := []Variable{}
+
+	allVariables = append(allVariables, boilerplateConfig.Variables...)
+
+	for _, dependency := range boilerplateConfig.Dependencies {
+		for _, variable := range dependency.Variables {
+			variableName := fmt.Sprintf("%s.%s", dependency.Name, variable.Name)
+			allVariables = append(allVariables, Variable{Name: variableName, Prompt: variable.Prompt, Default: variable.Default})
+		}
+	}
+
+	return allVariables
 }
 
 // Get a value for the given variable. The value can come from the user (if the non-interactive option isn't set), the

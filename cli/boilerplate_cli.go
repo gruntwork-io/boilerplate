@@ -97,7 +97,7 @@ func runApp(cliContext *cli.Context) error {
 		return err
 	}
 
-	return templates.ProcessTemplate(options, map[string]string{})
+	return templates.ProcessTemplate(options)
 }
 
 // Parse the command line options provided by the user

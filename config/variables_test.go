@@ -194,7 +194,7 @@ func TestGetVariablesNoVariables(t *testing.T) {
 	options := &BoilerplateOptions{NonInteractive: true}
 	boilerplateConfig := &BoilerplateConfig{}
 
-	actual, err := GetVariables(options, boilerplateConfig, map[string]string{})
+	actual, err := GetVariables(options, boilerplateConfig)
 	expected := map[string]string{}
 
 	assert.Nil(t, err)
@@ -211,7 +211,7 @@ func TestGetVariablesNoMatchNonInteractive(t *testing.T) {
 		},
 	}
 
-	_, err := GetVariables(options, boilerplateConfig, map[string]string{})
+	_, err := GetVariables(options, boilerplateConfig)
 
 	assert.NotNil(t, err)
 	assert.True(t, errors.IsError(err, MissingVariableWithNonInteractiveMode("foo")), "Expected a MissingVariableWithNonInteractiveMode error but got %s", reflect.TypeOf(err))
@@ -233,37 +233,9 @@ func TestGetVariablesMatchFromVars(t *testing.T) {
 		},
 	}
 
-	actual, err := GetVariables(options, boilerplateConfig, map[string]string{})
+	actual, err := GetVariables(options, boilerplateConfig)
 	expected := map[string]string{
 		"foo": "bar",
-	}
-
-	assert.Nil(t, err)
-	assert.Equal(t, expected, actual)
-}
-
-func TestGetVariablesMatchFromVarsAlreadyExists(t *testing.T) {
-	t.Parallel()
-
-	options := &BoilerplateOptions{
-		NonInteractive: true,
-		Vars: map[string]string{
-			"foo": "bar",
-			"bar": "should-not-be-used",
-		},
-	}
-
-	boilerplateConfig := &BoilerplateConfig{
-		Variables: []Variable{
-			Variable{Name: "foo"},
-			Variable{Name: "bar"},
-		},
-	}
-
-	actual, err := GetVariables(options, boilerplateConfig, map[string]string{"bar": "already-exists"})
-	expected := map[string]string{
-		"foo": "bar",
-		"bar": "already-exists",
 	}
 
 	assert.Nil(t, err)
@@ -289,7 +261,7 @@ func TestGetVariablesMatchFromVarsAndDefaults(t *testing.T) {
 		},
 	}
 
-	actual, err := GetVariables(options, boilerplateConfig, map[string]string{})
+	actual, err := GetVariables(options, boilerplateConfig)
 	expected := map[string]string{
 		"key1": "value1",
 		"key2": "value2",

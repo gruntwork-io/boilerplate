@@ -127,6 +127,7 @@ type Dependency struct {
 	TemplateFolder        string `yaml:"template-folder"`
 	OutputFolder          string `yaml:"output-folder"`
 	DontInheritVariables  bool   `yaml:"dont-inherit-variables"`
+	Variables             []Variable
 }
 
 // Return the default path for a boilerplate.yml config file in the given folder
@@ -169,14 +170,32 @@ func ParseBoilerplateConfig(configContents []byte) (*BoilerplateConfig, error) {
 
 // Validate that the config file has reasonable contents and return an error if there is a problem
 func (boilerplateConfig BoilerplateConfig) validate() error {
-	for _, variable := range boilerplateConfig.Variables {
+	if err := validateVariables(boilerplateConfig.Variables); err != nil {
+		return err
+	}
+
+	if err := validateDependencies(boilerplateConfig.Dependencies); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Validate that the list of variables has reasonable contents and return an error if there is a problem
+func validateVariables(variables []Variable) error {
+	for _, variable := range variables {
 		if variable.Name == "" {
 			return errors.WithStackTrace(VariableMissingName)
 		}
 	}
 
+	return nil
+}
+
+// Validate that the list of dependencies has reasonable contents and return an error if there is a problem
+func validateDependencies(dependencies []Dependency) error {
 	dependencyNames := []string{}
-	for i, dependency := range boilerplateConfig.Dependencies {
+	for i, dependency := range dependencies {
 		if dependency.Name == "" {
 			return errors.WithStackTrace(MissingNameForDependency(i))
 		}
@@ -190,6 +209,10 @@ func (boilerplateConfig BoilerplateConfig) validate() error {
 		}
 		if dependency.OutputFolder == "" {
 			return errors.WithStackTrace(MissingOutputFolderForDependency(dependency.Name))
+		}
+
+		if err := validateVariables(dependency.Variables); err != nil {
+			return err
 		}
 	}
 

@@ -1,8 +1,8 @@
 Version: 0.0.3
 Title: Recursive dependencies example
 dependencies.Title: Dependencies example
-website.Title: Boilerplate
-docs.Title: Docs example
+dependencies.Description: This is a boilerplate template that shows an example of using dependencies
+dependencies.website.Title: Boilerplate
+dependencies.docs.Title: Docs example
 WelcomeText: Welcome!
 Description: This is a boilerplate template that shows an example of using recursive dependencies
-dependencies.Description: This is a boilerplate template that shows an example of using dependencies

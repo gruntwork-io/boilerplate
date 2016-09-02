@@ -2,23 +2,11 @@ variables:
   - name: Description
     prompt: Enter the description of the recursive dependencies template
 
-  - name: dependencies.Description
-    prompt: Enter the description of the dependencies template
-
   - name: Version
     prompt: Enter the version number that will be used by the docs dependency
 
   - name: Title
     prompt: Enter the title for the dependencies recursive example
-
-  - name: dependencies.Title
-    prompt: Enter the title for the dependencies example
-
-  - name: website.Title
-    prompt: Enter the website title that will be used by the website dependency
-
-  - name: docs.Title
-    prompt: Enter the title that will be used by the docs dependency
 
   - name: WelcomeText
     prompt: Enter the welcome text used by the website dependency
@@ -31,3 +19,9 @@ dependencies:
     - name: dependencies
       template-folder: ../dependencies
       output-folder: ./dependencies
+      variables:
+        - name: Description
+          prompt: Enter the description of the dependencies example
+
+        - name: Title
+          prompt: Enter the title for the dependencies example

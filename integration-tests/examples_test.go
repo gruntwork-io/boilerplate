@@ -32,8 +32,8 @@ func TestExamples(t *testing.T) {
 	app := cli.CreateBoilerplateCli("test")
 
 	for _, file := range files {
-		for _, missingKeyAction := range config.ALL_MISSING_KEY_ACTIONS {
-			if file.IsDir() {
+		if file.IsDir() {
+			for _, missingKeyAction := range config.ALL_MISSING_KEY_ACTIONS {
 				templateFolder := path.Join(examplesBasePath, file.Name())
 				outputFolder := path.Join(outputBasePath, file.Name())
 				varFile := path.Join(examplesVarFilesBasePath, file.Name(), "vars.yml")
