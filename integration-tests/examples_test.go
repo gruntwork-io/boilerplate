@@ -39,7 +39,7 @@ func TestExamples(t *testing.T) {
 				varFile := path.Join(examplesVarFilesBasePath, file.Name(), "vars.yml")
 				expectedOutputFolder := path.Join(examplesExpectedOutputBasePath, file.Name())
 
-				command := fmt.Sprintf("boilerplate --template-folder %s --output-folder %s --var-file %s --non-interactive --missing-key-action %s", templateFolder, outputFolder, varFile, missingKeyAction.String())
+				command := fmt.Sprintf("boilerplate --template-folder %s --output-folder %s --var-file %s --non-interactive --missing-key-action %s", templateFolder, outputFolder, varFile, string(missingKeyAction))
 				err := app.Run(strings.Split(command, " "))
 				assert.Nil(t, err, "boilerplate exited with an error when trying to generate example %s: %s", templateFolder, err)
 				assertDirectoriesEqual(t, expectedOutputFolder, outputFolder)

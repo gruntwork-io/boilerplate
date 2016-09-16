@@ -127,6 +127,9 @@ The `boilerplate` binary supports the following options:
 * `--missing-key-action ACTION` (optional): What to do if a template looks up a variable that is not defined. Must
   be one of: `invalid` (render the text "<no value>"), `zero` (render the zero value for the variable), or `error`
   (return an error and exit immediately). Default: `error`.
+* `--missing-config-action ACTION` (optional): What to do if a template folder does not have a `boilerplate.yml` file.
+  Must be one of: `exit` (return an error and exit immediately) or `ignore` (log a warning and process the template
+  folder without any variables). Default: `exit`.
 * `--help`: Show the help text and exit.
 * `--version`: Show the version and exit.
 
@@ -153,7 +156,8 @@ boilerplate --template-folder ~/templates --output-folder ~/output --var-file va
 #### The boilerplate.yml file
 
 The `boilerplate.yml` file is used to configure `boilerplate`. The file is optional. If you don't specify it, you can
-still use Go templating in your templates, but no variables or dependencies will be available.
+still use Go templating in your templates so long as you specify the `--missing-config-action ignore` option, but no
+variables or dependencies will be available.
 
 `boilerplate.yml` uses the following syntax:
 
