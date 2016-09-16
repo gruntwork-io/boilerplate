@@ -8,54 +8,6 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-func TestFormatPrompt(t *testing.T) {
-	t.Parallel()
-
-	variable := Variable{Name: "foo"}
-	options := &BoilerplateOptions{}
-
-	actual := formatPrompt(variable, options)
-	expected := "Enter a value for variable 'foo'"
-
-	assert.Equal(t, expected, actual)
-}
-
-func TestFormatPromptWithDefault(t *testing.T) {
-	t.Parallel()
-
-	variable := Variable{Name: "foo", Default: "bar"}
-	options := &BoilerplateOptions{}
-
-	actual := formatPrompt(variable, options)
-	expected := "Enter a value for variable 'foo' (default: 'bar')"
-
-	assert.Equal(t, expected, actual)
-}
-
-func TestFormatPromptWithCustomPrompt(t *testing.T) {
-	t.Parallel()
-
-	variable := Variable{Name: "foo", Prompt: "custom"}
-	options := &BoilerplateOptions{}
-
-	actual := formatPrompt(variable, options)
-	expected := "custom"
-
-	assert.Equal(t, expected, actual)
-}
-
-func TestFormatPromptWithCustomPromptAndDefault(t *testing.T) {
-	t.Parallel()
-
-	variable := Variable{Name: "foo", Prompt: "custom", Default: "bar"}
-	options := &BoilerplateOptions{}
-
-	actual := formatPrompt(variable, options)
-	expected := "custom (default: 'bar')"
-
-	assert.Equal(t, expected, actual)
-}
-
 func TestGetVariableFromVarsEmptyVars(t *testing.T) {
 	t.Parallel()
 

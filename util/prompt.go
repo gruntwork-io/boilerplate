@@ -6,11 +6,14 @@ import (
 	"os"
 	"bufio"
 	"github.com/gruntwork-io/boilerplate/errors"
+	"github.com/fatih/color"
 )
+
+var BRIGHT_GREEN = color.New(color.FgHiGreen, color.Bold)
 
 // Prompt the user for text in the CLI. Returns the text entered by the user.
 func PromptUserForInput(prompt string) (string, error) {
-	fmt.Print(fmt.Sprintf("%s: ", prompt))
+	BRIGHT_GREEN.Print(fmt.Sprintf("%s: ", prompt))
 	reader := bufio.NewReader(os.Stdin)
 
 	text, err := reader.ReadString('\n')
