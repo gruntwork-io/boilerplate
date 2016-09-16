@@ -2,3 +2,11 @@ variables:
   - name: Title
 
   - name: Version
+
+  - name: SubFolderName
+    prompt: This variable will be used to create the name of a subfolder dynamically
+    default: example folder
+
+  - name: FileName
+    prompt: This variable will be used to create the name of a file dynamically
+    default: my example file

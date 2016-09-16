@@ -127,7 +127,7 @@ func processTemplateFolder(options *config.BoilerplateOptions, variables map[str
 			util.Logger.Printf("Skipping %s", path)
 			return nil
 		} else if util.IsDir(path) {
-			return createOutputDir(path, options)
+			return createOutputDir(path, options, variables)
 		} else {
 			return processFile(path, options, variables)
 		}
@@ -150,8 +150,8 @@ func processFile(path string, options *config.BoilerplateOptions, variables map[
 }
 
 // Create the given directory, which is in templateFolder, in the given outputFolder
-func createOutputDir(dir string, options *config.BoilerplateOptions) error {
-	destination, err := outPath(dir, options.TemplateFolder, options.OutputFolder)
+func createOutputDir(dir string, options *config.BoilerplateOptions, variables map[string]string) error {
+	destination, err := outPath(dir, options, variables)
 	if err != nil {
 		return err
 	}
@@ -160,15 +160,21 @@ func createOutputDir(dir string, options *config.BoilerplateOptions) error {
 	return os.MkdirAll(destination, 0777)
 }
 
-// Compute the path where the given file, which is in templateFolder, should be copied in outputFolder
-func outPath(file string, templateFolder string, outputFolder string) (string, error) {
-	// TODO process template syntax in paths
-	templateFolderAbsPath, err := filepath.Abs(templateFolder)
+// Compute the path where the given file, which is in templateFolder, should be copied in outputFolder. If the file
+// path contains boilerplate syntax, use the given options and variables to render it to determine the final output
+// path.
+func outPath(file string, options *config.BoilerplateOptions, variables map[string]string) (string, error) {
+	templateFolderAbsPath, err := filepath.Abs(options.TemplateFolder)
 	if err != nil {
 		return "", errors.WithStackTrace(err)
 	}
 
-	fileAbsPath, err := filepath.Abs(file)
+	interpolatedFilePath, err := renderTemplate(file, file, variables, options.OnMissingKey)
+	if err != nil {
+		return "", errors.WithStackTrace(err)
+	}
+
+	fileAbsPath, err := filepath.Abs(interpolatedFilePath)
 	if err != nil {
 		return "", errors.WithStackTrace(err)
 	}
@@ -178,12 +184,12 @@ func outPath(file string, templateFolder string, outputFolder string) (string, e
 		return "", errors.WithStackTrace(err)
 	}
 
-	return path.Join(outputFolder, relPath), nil
+	return path.Join(options.OutputFolder, relPath), nil
 }
 
 // Copy the given file, which is in options.TemplateFolder, to options.OutputFolder
 func copyFile(file string, options *config.BoilerplateOptions, variables map[string]string) error {
-	destination, err := outPath(file, options.TemplateFolder, options.OutputFolder)
+	destination, err := outPath(file, options, variables)
 	if err != nil {
 		return err
 	}
@@ -195,7 +201,7 @@ func copyFile(file string, options *config.BoilerplateOptions, variables map[str
 // Run the template at templatePath, which is in templateFolder, through the Go template engine with the given
 // variables as data and write the result to outputFolder
 func processTemplate(templatePath string, options *config.BoilerplateOptions, variables map[string]string) error {
-	destination, err := outPath(templatePath, options.TemplateFolder, options.OutputFolder)
+	destination, err := outPath(templatePath, options, variables)
 	if err != nil {
 		return err
 	}
