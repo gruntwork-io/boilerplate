@@ -17,18 +17,26 @@ func TestOutPath(t *testing.T) {
 		file	       string
 		templateFolder string
 		outputFolder   string
+		variables      map[string]string
 		expected       string
 	}{
-		{"template-folder/foo.txt", "template-folder", "output-folder", "output-folder/foo.txt"},
-		{"foo/bar/template-folder/foo.txt", "foo/bar/template-folder", "output-folder", "output-folder/foo.txt"},
-		{"template-folder/foo.txt", pwd + "/template-folder", "output-folder", "output-folder/foo.txt"},
-		{"template-folder/foo/bar/baz.txt", pwd + "/template-folder", "output-folder", "output-folder/foo/bar/baz.txt"},
+		{"template-folder/foo.txt", "template-folder", "output-folder", map[string]string{}, "output-folder/foo.txt"},
+		{"foo/bar/template-folder/foo.txt", "foo/bar/template-folder", "output-folder", map[string]string{}, "output-folder/foo.txt"},
+		{"template-folder/foo.txt", pwd + "/template-folder", "output-folder", map[string]string{}, "output-folder/foo.txt"},
+		{"template-folder/foo/bar/baz.txt", pwd + "/template-folder", "output-folder", map[string]string{}, "output-folder/foo/bar/baz.txt"},
+		{"template-folder/{{.Foo}}.txt", pwd + "/template-folder", "output-folder", map[string]string{"Foo": "foo"}, "output-folder/foo.txt"},
+		{"template-folder/{{.Foo | dasherize}}.txt", pwd + "/template-folder", "output-folder", map[string]string{"Foo": "Foo Bar Baz"}, "output-folder/foo-bar-baz.txt"},
 	}
 
 	for _, testCase := range testCases {
-		actual, err := outPath(testCase.file, testCase.templateFolder, testCase.outputFolder)
-		assert.Nil(t, err)
-		assert.Equal(t, testCase.expected, actual)
+		options := config.BoilerplateOptions{
+			TemplateFolder: testCase.templateFolder,
+			OutputFolder: testCase.outputFolder,
+			NonInteractive: true,
+		}
+		actual, err := outPath(testCase.file, &options, testCase.variables)
+		assert.Nil(t, err, "Got unexpected error (file = %s, templateFolder = %s, outputFolder = %s, and variables = %s): %v", testCase.file, testCase.templateFolder, testCase.outputFolder, testCase.variables, err)
+		assert.Equal(t, testCase.expected, actual, "(file = %s, templateFolder = %s, outputFolder = %s, and variables = %s)", testCase.file, testCase.templateFolder, testCase.outputFolder, testCase.variables)
 	}
 }
 
