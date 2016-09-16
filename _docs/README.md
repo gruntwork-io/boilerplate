@@ -281,10 +281,12 @@ non-binary file through the [Go Template](https://golang.org/pkg/text/template) 
 data structure.
 
 For example, if you had a variable called `Title` in your `boilerplate.yml` file, then you could access that variable
-in any of your templates using the syntax `{{"{{"}}.Title{{"}}"}}`. You can even use Go template syntax and boilerplate
-variables in the names of your files and folders. For example, you could create a file called
-`{{"{{"}}.Title{{"}}"}}.txt` and if the user ran `boilerplate` and "foo" as the `Title`, you'd end up with the file
-`foo.txt`.
+in any of your templates using the syntax `{{"{{"}}.Title{{"}}"}}`.
+
+You can even use Go template syntax and boilerplate variables in the names of your files and folders. For example, if
+you were using `boilerplate` to generate a Java project, your template folder could contain the path
+`com/{{"{{"}}.PackageName{{"}}"}}/MyFactory.java`. If you run `boilerplate` against this template folder and enter
+"gruntwork" as the `PackageName`, you'd end up with the file `com/gruntwork/MyFactory.java`.
 
 #### Template helpers
 
