@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"gopkg.in/yaml.v2"
 	"github.com/gruntwork-io/boilerplate/errors"
+	"path"
 )
 
 func TestParseBoilerplateConfigEmpty(t *testing.T) {
@@ -332,7 +333,18 @@ func TestLoadBoilerPlateConfigFullConfig(t *testing.T) {
 func TestLoadBoilerPlateConfigNoConfig(t *testing.T) {
 	t.Parallel()
 
-	actual, err := LoadBoilerPlateConfig(&BoilerplateOptions{TemplateFolder: "../test-fixtures/config-test/no-config"})
+	templateFolder := "../test-fixtures/config-test/no-config"
+	_, err := LoadBoilerPlateConfig(&BoilerplateOptions{TemplateFolder: templateFolder})
+	expectedErr := BoilerplateConfigNotFound(path.Join(templateFolder, "boilerplate.yml"))
+
+	assert.True(t, errors.IsError(err, expectedErr), "Expected error %v but got %v", expectedErr, err)
+}
+
+func TestLoadBoilerPlateConfigNoConfigIgnore(t *testing.T) {
+	t.Parallel()
+
+	templateFolder := "../test-fixtures/config-test/no-config"
+	actual, err := LoadBoilerPlateConfig(&BoilerplateOptions{TemplateFolder: templateFolder, OnMissingConfig: Ignore})
 	expected := &BoilerplateConfig{}
 
 	assert.Nil(t, err)

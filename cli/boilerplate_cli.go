@@ -79,6 +79,10 @@ func CreateBoilerplateCli(version string) *cli.App {
 			Name: config.OPT_MISSING_KEY_ACTION,
 			Usage: fmt.Sprintf("What `ACTION` to take if a template looks up a variable that is not defined. Must be one of: %s. Default: %s.", config.ALL_MISSING_KEY_ACTIONS, config.DEFAULT_MISSING_KEY_ACTION),
 		},
+		cli.StringFlag{
+			Name: config.OPT_MISSING_CONFIG_ACTION,
+			Usage: fmt.Sprintf("What `ACTION` to take if a the template folder does not contain a boilerplate.yml file. Must be one of: %s. Default: %s.", config.ALL_MISSING_CONFIG_ACTIONS, config.DEFAULT_MISSING_CONFIG_ACTION),
+		},
 	}
 
 	return app
@@ -116,11 +120,21 @@ func parseOptions(cliContext *cli.Context) (*config.BoilerplateOptions, error) {
 		}
 	}
 
+	missingConfigAction := config.DEFAULT_MISSING_CONFIG_ACTION
+	missingConfigActionValue := cliContext.String(config.OPT_MISSING_CONFIG_ACTION)
+	if missingConfigActionValue != "" {
+		missingConfigAction, err = config.ParseMissingConfigAction(missingConfigActionValue)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	options := &config.BoilerplateOptions{
 		TemplateFolder: cliContext.String(config.OPT_TEMPLATE_FOLDER),
 		OutputFolder: cliContext.String(config.OPT_OUTPUT_FOLDER),
 		NonInteractive: cliContext.Bool(config.OPT_NON_INTERACTIVE),
 		OnMissingKey: missingKeyAction,
+		OnMissingConfig: missingConfigAction,
 		Vars: vars,
 	}
 

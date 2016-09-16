@@ -18,6 +18,7 @@ const OPT_NON_INTERACTIVE = "non-interactive"
 const OPT_VAR = "var"
 const OPT_VAR_FILE = "var-file"
 const OPT_MISSING_KEY_ACTION = "missing-key-action"
+const OPT_MISSING_CONFIG_ACTION = "missing-config-action"
 
 // The command-line options for the boilerplate app
 type BoilerplateOptions struct {
@@ -26,46 +27,52 @@ type BoilerplateOptions struct {
 	NonInteractive	 bool
 	Vars		 map[string]string
 	OnMissingKey     MissingKeyAction
+	OnMissingConfig  MissingConfigAction
 }
 
 // This type is an enum that represents what we can do when a template looks up a missing key. This typically happens
 // when there is a typo in the variable name in a template.
-type MissingKeyAction int
-
-func (action MissingKeyAction) String() string {
-	return missingKeyNames[int(action)]
-}
-
-// Convert the given string to a MissingKeyAction enum, or return an error if this is not a valid value for the
-// MissingKeyAction enum
-func ParseMissingKeyAction(keyName string) (MissingKeyAction, error) {
-	for i, missingKeyName := range missingKeyNames {
-		if missingKeyName == keyName {
-			return MissingKeyAction(i), nil
-		}
-	}
-	return MissingKeyAction(-1), errors.WithStackTrace(InvalidMissingKeyAction(keyName))
-}
-
-// The names of the missing keys. Go doesn't have enums, so we have to roll our own based on this example:
-// https://gist.github.com/skarllot/102a5e5ea73861ff5afe
-var missingKeyNames = []string{}
-
-// Create a new MissingKeyAction enum with the given name
-func newMissingKeyAction(name string) MissingKeyAction {
-	missingKeyNames = append(missingKeyNames, name)
-	return MissingKeyAction(len(missingKeyNames) - 1)
-}
-
-// Here are the MissingKeyAction enum values
+type MissingKeyAction string
 var (
-	Invalid = newMissingKeyAction("invalid")	// print <no value> for any missing key
-	ZeroValue = newMissingKeyAction("zero")		// print the zero value of the missing key
-	ExitWithError = newMissingKeyAction("error")	// exit with an error when there is a missing key
+	Invalid = MissingKeyAction("invalid")		// print <no value> for any missing key
+	ZeroValue = MissingKeyAction("zero")		// print the zero value of the missing key
+	ExitWithError = MissingKeyAction("error")	// exit with an error when there is a missing key
 )
 
 var ALL_MISSING_KEY_ACTIONS = []MissingKeyAction{Invalid, ZeroValue, ExitWithError}
 var DEFAULT_MISSING_KEY_ACTION = ExitWithError
+
+// Convert the given string to a MissingKeyAction enum, or return an error if this is not a valid value for the
+// MissingKeyAction enum
+func ParseMissingKeyAction(str string) (MissingKeyAction, error) {
+	for _, missingKeyAction := range ALL_MISSING_KEY_ACTIONS {
+		if string(missingKeyAction) == str {
+			return missingKeyAction, nil
+		}
+	}
+	return MissingKeyAction(""), errors.WithStackTrace(InvalidMissingKeyAction(str))
+}
+
+// This type is an enum that represents what to do when the template folder passed to boilerplate does not contain a
+// boilerplate.yml file.
+type MissingConfigAction string
+var (
+	Exit = MissingConfigAction("exit")
+ 	Ignore = MissingConfigAction("ignore")
+)
+var ALL_MISSING_CONFIG_ACTIONS = []MissingConfigAction{Exit, Ignore}
+var DEFAULT_MISSING_CONFIG_ACTION = Exit
+
+// Convert the given string to a MissingConfigAction enum, or return an error if this is not a valid value for the
+// MissingConfigAction enum
+func ParseMissingConfigAction(str string) (MissingConfigAction, error) {
+	for _, missingConfigAction := range ALL_MISSING_CONFIG_ACTIONS {
+		if string(missingConfigAction) == str {
+			return missingConfigAction, nil
+		}
+	}
+	return MissingConfigAction(""), errors.WithStackTrace(InvalidMissingConfigAction(str))
+}
 
 // Validate that the options have reasonable values and return an error if they don't
 func (options *BoilerplateOptions) Validate() error {
@@ -147,9 +154,11 @@ func LoadBoilerPlateConfig(options *BoilerplateOptions) (*BoilerplateConfig, err
 		}
 
 		return ParseBoilerplateConfig(bytes)
-	} else {
-		util.Logger.Printf("Warning: boilerplate config file not found at %s. No variables will be available while generating.", configPath)
+	} else if options.OnMissingConfig == Ignore {
+		util.Logger.Printf("Warning: boilerplate config file not found at %s. The %s flag is set, so ignoring. Note that no variables will be available while generating.", configPath, OPT_MISSING_CONFIG_ACTION)
 		return &BoilerplateConfig{}, nil
+	} else {
+		return nil, BoilerplateConfigNotFound(configPath)
 	}
 }
 
@@ -234,7 +243,17 @@ func (err TemplateFolderDoesNotExist) Error() string {
 
 type InvalidMissingKeyAction string
 func (err InvalidMissingKeyAction) Error() string {
-	return fmt.Sprintf("Invalid MissingKeyAction '%s'. Value must be one of: %s", string(err), missingKeyNames)
+	return fmt.Sprintf("Invalid MissingKeyAction '%s'. Value must be one of: %s", string(err), ALL_MISSING_KEY_ACTIONS)
+}
+
+type InvalidMissingConfigAction string
+func (err InvalidMissingConfigAction) Error() string {
+	return fmt.Sprintf("Invalid MissingConfigAction '%s'. Value must be one of: %s", string(err), ALL_MISSING_CONFIG_ACTIONS)
+}
+
+type BoilerplateConfigNotFound string
+func (err BoilerplateConfigNotFound) Error() string {
+	return fmt.Sprintf("Could not find %s in %s and the %s flag is set to %s", BOILERPLATE_CONFIG_FILE, string(err), OPT_MISSING_CONFIG_ACTION, Exit)
 }
 
 type MissingNameForDependency int

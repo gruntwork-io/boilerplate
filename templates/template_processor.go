@@ -228,7 +228,7 @@ func shouldSkipPath(path string, options *config.BoilerplateOptions) bool {
 // Render the template at templatePath, with contents templateContents, using the Go template engine, passing in the
 // given variables as data.
 func renderTemplate(templatePath string, templateContents string, variables map[string]string, missingKeyAction config.MissingKeyAction) (string, error) {
-	template := template.New(templatePath).Funcs(CreateTemplateHelpers(templatePath)).Option("missingkey=" + missingKeyAction.String())
+	template := template.New(templatePath).Funcs(CreateTemplateHelpers(templatePath)).Option("missingkey=" + string(missingKeyAction))
 
 	parsedTemplate, err := template.Parse(templateContents)
 	if err != nil {

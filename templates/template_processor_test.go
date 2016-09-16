@@ -33,6 +33,8 @@ func TestOutPath(t *testing.T) {
 			TemplateFolder: testCase.templateFolder,
 			OutputFolder: testCase.outputFolder,
 			NonInteractive: true,
+			OnMissingKey: config.ExitWithError,
+			OnMissingConfig: config.Exit,
 		}
 		actual, err := outPath(testCase.file, &options, testCase.variables)
 		assert.Nil(t, err, "Got unexpected error (file = %s, templateFolder = %s, outputFolder = %s, and variables = %s): %v", testCase.file, testCase.templateFolder, testCase.outputFolder, testCase.variables, err)
