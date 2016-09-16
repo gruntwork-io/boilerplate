@@ -52,7 +52,7 @@ func TestExamples(t *testing.T) {
 // takes a lot of code. Why waste time on that when this functionality is already nicely implemented in the Unix/Linux
 // "diff" command? We shell out to that command at test time.
 func assertDirectoriesEqual(t *testing.T, folderWithExpectedContents string, folderWithActualContents string) {
-	cmd := exec.Command("diff", "-u", folderWithExpectedContents, folderWithActualContents)
+	cmd := exec.Command("diff", "-r", "-u", folderWithExpectedContents, folderWithActualContents)
 
 	bytes, err := cmd.Output()
 	output := string(bytes)
