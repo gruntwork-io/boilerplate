@@ -67,7 +67,7 @@ func TestParseBoilerplateConfigOneVariableMinimal(t *testing.T) {
 const CONFIG_ONE_VARIABLE_FULL =
 `variables:
   - name: foo
-    prompt: prompt
+    description: prompt
     default: default
 `
 
@@ -88,7 +88,7 @@ func TestParseBoilerplateConfigOneVariableFull(t *testing.T) {
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
 const CONFIG_ONE_VARIABLE_MISSING_NAME =
 `variables:
-  - prompt: prompt
+  - description: prompt
     default: default
 `
 
@@ -107,14 +107,14 @@ const CONFIG_MULTIPLE_VARIABLES =
   - name: foo
 
   - name: bar
-    prompt: prompt
+    description: prompt
 
   - name: baz
-    prompt: prompt
+    description: prompt
     default: default
 
   - name: dep1.baz
-    prompt: another-prompt
+    description: another-prompt
     default: another-default
 `
 
@@ -170,7 +170,7 @@ const CONFIG_MULTIPLE_DEPENDENCIES =
     dont-inherit-variables: true
     variables:
       - name: var1
-        prompt: Enter var1
+        description: Enter var1
         default: foo
 
   - name: dep3
@@ -249,7 +249,7 @@ const CONFIG_DEPENDENCY_MISSING_VARIABLE_NAME =
     template-folder: /template/folder1
     output-folder: /output/folder1
     variables:
-      - prompt: Enter foo
+      - description: Enter foo
         default: foo
 `
 

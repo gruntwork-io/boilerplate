@@ -1,18 +1,18 @@
 variables:
   - name: Description
-    prompt: Enter the description of this template
+    description: Enter the description of this template
 
   - name: Version
-    prompt: Enter the version number that will be used by the docs dependency
+    description: Enter the version number that will be used by the docs dependency
 
   - name: Title
-    prompt: Enter the title for the dependencies example
+    description: Enter the title for the dependencies example
 
   - name: WelcomeText
-    prompt: Enter the welcome text used by the website dependency
+    description: Enter the welcome text used by the website dependency
 
   - name: ShowLogo
-    prompt: Should the webiste show the logo (true or false)?
+    description: Should the webiste show the logo (true or false)?
     default: true
 
 dependencies:
@@ -21,11 +21,11 @@ dependencies:
       output-folder: ./docs
       variables:
         - name: Title
-          prompt: Enter the title of the docs page
+          description: Enter the title of the docs page
 
     - name: website
       template-folder: ../website
       output-folder: ./website
       variables:
         - name: Title
-          prompt: Enter the title of the website
+          description: Enter the title of the website
