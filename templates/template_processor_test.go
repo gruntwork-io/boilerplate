@@ -99,6 +99,7 @@ func TestRenderTemplate(t *testing.T) {
 		{"Minus test: {{ minus .Foo .Bar }}", map[string]string{"Foo": "5", "Bar": "3"}, config.ExitWithError, "", "Minus test: 2"},
 		{"Times test: {{ times .Foo .Bar }}", map[string]string{"Foo": "5", "Bar": "3"}, config.ExitWithError, "", "Times test: 15"},
 		{"Divide test: {{ divide .Foo .Bar | printf \"%1.5f\" }}", map[string]string{"Foo": "5", "Bar": "3"}, config.ExitWithError, "", "Divide test: 1.66667"},
+		{"Mod test: {{ mod .Foo .Bar }}", map[string]string{"Foo": "5", "Bar": "3"}, config.ExitWithError, "", "Mod test: 2"},
 		{"Slice test: {{ slice 0 5 1 }}", map[string]string{}, config.ExitWithError, "", "Slice test: [0 1 2 3 4]"},
 		{"Filter chain test: {{ .Foo | downcase | replaceAll \" \" \"\" }}", map[string]string{"Foo": "foo BAR baz!"}, config.ExitWithError, "", "Filter chain test: foobarbaz!"},
 	}

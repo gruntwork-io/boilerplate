@@ -55,10 +55,11 @@ func CreateTemplateHelpers(templatePath string) template.FuncMap {
 		"snakeCase": snakeCase,
 		"camelCase": camelCase,
 		"camelCaseLower": camelCaseLower,
-		"plus": wrapArithmeticFunction(func(arg1 float64, arg2 float64) float64 { return arg1 + arg2 }),
-		"minus": wrapArithmeticFunction(func(arg1 float64, arg2 float64) float64 { return arg1 - arg2 }),
-		"times": wrapArithmeticFunction(func(arg1 float64, arg2 float64) float64 { return arg1 * arg2 }),
-		"divide": wrapArithmeticFunction(func(arg1 float64, arg2 float64) float64 { return arg1 / arg2 }),
+		"plus": wrapFloatFloatToFloatFunction(func(arg1 float64, arg2 float64) float64 { return arg1 + arg2 }),
+		"minus": wrapFloatFloatToFloatFunction(func(arg1 float64, arg2 float64) float64 { return arg1 - arg2 }),
+		"times": wrapFloatFloatToFloatFunction(func(arg1 float64, arg2 float64) float64 { return arg1 * arg2 }),
+		"divide": wrapFloatFloatToFloatFunction(func(arg1 float64, arg2 float64) float64 { return arg1 / arg2 }),
+		"mod": wrapIntIntToIntFunction(func(arg1 int, arg2 int) int { return arg1 % arg2 }),
 		"slice": slice,
 	}
 }
@@ -172,10 +173,11 @@ func extractSnippetName(line string) (string, bool) {
 	}
 }
 
-// Wrap a function that uses float64 as input and output so it can take a string as input and return a float64 as output
-func wrapFloatToFloatFunction(f func(float64) float64) func(string) (float64, error) {
-	return func(valueAsString string) (float64, error) {
-		valueAsFloat, err := strconv.ParseFloat(valueAsString, 64)
+// Wrap a function that uses float64 as input and output so it can take any number as input and return a float64 as
+// output
+func wrapFloatToFloatFunction(f func(float64) float64) func(interface{}) (float64, error) {
+	return func(value interface{}) (float64, error) {
+		valueAsFloat, err := toFloat64(value)
 		if err != nil {
 			return 0, errors.WithStackTrace(err)
 		}
@@ -183,21 +185,38 @@ func wrapFloatToFloatFunction(f func(float64) float64) func(string) (float64, er
 	}
 }
 
-// Wrap a function that uses float64 as input and int as output so it can take a string as input and return an int as
+// Wrap a function that uses float64 as input and int as output so it can take any number as input and return an int as
 // output
-func wrapFloatToIntFunction(f func(float64) int) func(string) (int, error) {
-	return func(valueAsString string) (int, error) {
-		valueAsFloat, err := strconv.ParseFloat(valueAsString, 64)
+func wrapFloatToIntFunction(f func(float64) int) func(interface{}) (int, error) {
+	return func(value interface{}) (int, error) {
+		valueAsFloat, err := toFloat64(value)
 		if err != nil {
 			return 0, errors.WithStackTrace(err)
 		}
 		return f(valueAsFloat), nil
+	}
+}
+
+// Wrap a function that takes two ints as input and returns an int as output so it can take any kind of number as input
+// and return an int as output
+func wrapIntIntToIntFunction(f func(int, int) int) func(interface{}, interface{}) (int, error) {
+	return func(arg1 interface{}, arg2 interface{}) (int, error) {
+		arg1AsInt, err := toInt(arg1)
+		if err != nil {
+			return 0, errors.WithStackTrace(err)
+		}
+		arg2AsInt, err := toInt(arg2)
+		if err != nil {
+			return 0, errors.WithStackTrace(err)
+		}
+		return f(arg1AsInt, arg2AsInt), nil
+
 	}
 }
 
 // Wrap a function that takes two float64's as input, performs arithmetic on them, and returns another float64 as a
-// function that can take two values of any kind as input and return a float64 as output
-func wrapArithmeticFunction(f func(arg1 float64, arg2 float64) float64) func(interface{}, interface{}) (float64, error) {
+// function that can take two values of any number kind as input and return a float64 as output
+func wrapFloatFloatToFloatFunction(f func(arg1 float64, arg2 float64) float64) func(interface{}, interface{}) (float64, error) {
 	return func(arg1 interface{}, arg2 interface{}) (float64, error) {
 		arg1AsFloat, err := toFloat64(arg1)
 		if err != nil {

@@ -317,10 +317,11 @@ including conditionals, loops, and functions. Boilerplate also includes several 
 * `camelCase STRING`: Convert `STRING` to a camel case string. E.g. "foo Bar baz" becomes "FooBarBaz".
 * `camelCaseLower STRING`: Convert `STRING` to a camel case string where the first letter is lower case. E.g.
    "foo Bar baz" becomes "fooBarBaz".
-* `plus FLOAT FLOAT`: Add the two numbers.
-* `minus FLOAT FLOAT`: Subtract the two numbers.
-* `times FLOAT FLOAT`: Multiply the two numbers.
-* `divide FLOAT FLOAT`: Divide the two numbers.
+* `plus NUM NUM`: Add the two numbers.
+* `minus NUM NUM`: Subtract the two numbers.
+* `times NUM NUM`: Multiply the two numbers.
+* `divide NUM NUM`: Divide the two numbers.
+* `mod INT INT`: Return the remainder of dividing the two numbers.
 * `slice START END INCREMENT`: Generate a slice from START to END, incrementing by INCREMENT. This provides a simple
   way to do a for-loop over a range of numbers.
 
