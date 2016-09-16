@@ -307,10 +307,10 @@ func TestParseBoilerplateConfigDependencyDuplicateNames(t *testing.T) {
 	assert.True(t, errors.IsError(err, DuplicateDependencyName("dep1")), "Expected a DuplicateDependencyName error but got %s", reflect.TypeOf(err))
 }
 
-func TestLoadBoilerPlateConfigFullConfig(t *testing.T) {
+func TestLoadBoilerplateConfigFullConfig(t *testing.T) {
 	t.Parallel()
 
-	actual, err := LoadBoilerPlateConfig(&BoilerplateOptions{TemplateFolder: "../test-fixtures/config-test/full-config"})
+	actual, err := LoadBoilerplateConfig(&BoilerplateOptions{TemplateFolder: "../test-fixtures/config-test/full-config"})
 	expected := &BoilerplateConfig{
 		Variables: []Variable{
 			Variable{Name: "foo"},
@@ -330,31 +330,31 @@ func TestLoadBoilerPlateConfigFullConfig(t *testing.T) {
 	assert.Equal(t, expected, actual)
 }
 
-func TestLoadBoilerPlateConfigNoConfig(t *testing.T) {
+func TestLoadBoilerplateConfigNoConfig(t *testing.T) {
 	t.Parallel()
 
 	templateFolder := "../test-fixtures/config-test/no-config"
-	_, err := LoadBoilerPlateConfig(&BoilerplateOptions{TemplateFolder: templateFolder})
+	_, err := LoadBoilerplateConfig(&BoilerplateOptions{TemplateFolder: templateFolder})
 	expectedErr := BoilerplateConfigNotFound(path.Join(templateFolder, "boilerplate.yml"))
 
 	assert.True(t, errors.IsError(err, expectedErr), "Expected error %v but got %v", expectedErr, err)
 }
 
-func TestLoadBoilerPlateConfigNoConfigIgnore(t *testing.T) {
+func TestLoadBoilerplateConfigNoConfigIgnore(t *testing.T) {
 	t.Parallel()
 
 	templateFolder := "../test-fixtures/config-test/no-config"
-	actual, err := LoadBoilerPlateConfig(&BoilerplateOptions{TemplateFolder: templateFolder, OnMissingConfig: Ignore})
+	actual, err := LoadBoilerplateConfig(&BoilerplateOptions{TemplateFolder: templateFolder, OnMissingConfig: Ignore})
 	expected := &BoilerplateConfig{}
 
 	assert.Nil(t, err)
 	assert.Equal(t, expected, actual)
 }
 
-func TestLoadBoilerPlateConfigInvalidConfig(t *testing.T) {
+func TestLoadBoilerplateConfigInvalidConfig(t *testing.T) {
 	t.Parallel()
 
-	_, err := LoadBoilerPlateConfig(&BoilerplateOptions{TemplateFolder: "../test-fixtures/config-test/invalid-config"})
+	_, err := LoadBoilerplateConfig(&BoilerplateOptions{TemplateFolder: "../test-fixtures/config-test/invalid-config"})
 
 	assert.NotNil(t, err)
 

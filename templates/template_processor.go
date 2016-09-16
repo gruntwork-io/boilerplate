@@ -17,7 +17,7 @@ import (
 // load any missing variables (either from command line options or by prompting the user), execute all the dependent
 // boilerplate templates, and then execute this template.
 func ProcessTemplate(options *config.BoilerplateOptions) error {
-	boilerplateConfig, err := config.LoadBoilerPlateConfig(options)
+	boilerplateConfig, err := config.LoadBoilerplateConfig(options)
 	if err != nil {
 		return err
 	}
@@ -222,7 +222,7 @@ func processTemplate(templatePath string, options *config.BoilerplateOptions, va
 
 // Return true if this is a path that should not be copied
 func shouldSkipPath(path string, options *config.BoilerplateOptions) bool {
-	return path == options.TemplateFolder || path == config.BoilerPlateConfigPath(options.TemplateFolder)
+	return path == options.TemplateFolder || path == config.BoilerplateConfigPath(options.TemplateFolder)
 }
 
 // Render the template at templatePath, with contents templateContents, using the Go template engine, passing in the

@@ -138,13 +138,13 @@ type Dependency struct {
 }
 
 // Return the default path for a boilerplate.yml config file in the given folder
-func BoilerPlateConfigPath(templateFolder string) string {
+func BoilerplateConfigPath(templateFolder string) string {
 	return path.Join(templateFolder, BOILERPLATE_CONFIG_FILE)
 }
 
 // Load the boilerplate.yml config contents for the folder specified in the given options
-func LoadBoilerPlateConfig(options *BoilerplateOptions) (*BoilerplateConfig, error) {
-	configPath := BoilerPlateConfigPath(options.TemplateFolder)
+func LoadBoilerplateConfig(options *BoilerplateOptions) (*BoilerplateConfig, error) {
+	configPath := BoilerplateConfigPath(options.TemplateFolder)
 
 	if util.PathExists(configPath) {
 		util.Logger.Printf("Loading boilerplate config from %s", configPath)
