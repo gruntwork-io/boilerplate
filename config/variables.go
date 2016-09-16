@@ -81,7 +81,16 @@ func getVariableFromVars(variable Variable, options *BoilerplateOptions) (string
 
 // Get the value for the given variable by prompting the user
 func getVariableFromUser(variable Variable, options *BoilerplateOptions) (string, error) {
-	value, err := util.PromptUserForInput(formatPrompt(variable, options))
+	util.BRIGHT_GREEN.Printf("\n%s\n", variable.Description())
+	if variable.Prompt != "" {
+		fmt.Printf("  %s\n", variable.Prompt)
+	}
+	if variable.Default != "" {
+		fmt.Printf("  (default: %s)\n", variable.Default)
+	}
+	fmt.Println()
+
+	value, err := util.PromptUserForInput("  Enter a value")
 	if err != nil {
 		return "", err
 	}
@@ -93,20 +102,6 @@ func getVariableFromUser(variable Variable, options *BoilerplateOptions) (string
 	} else {
 		return value, nil
 	}
-}
-
-// Return the text that prompts the user to enter a value for the given variable
-func formatPrompt(variable Variable, options *BoilerplateOptions) string {
-	prompt := fmt.Sprintf("Enter a value for variable '%s'", variable.Description())
-
-	if variable.Prompt != "" {
-		prompt = variable.Prompt
-	}
-	if variable.Default != "" {
-		prompt = fmt.Sprintf("%s (default: '%s')", prompt, variable.Default)
-	}
-
-	return prompt
 }
 
 // Parse a list of NAME=VALUE pairs into a map.
