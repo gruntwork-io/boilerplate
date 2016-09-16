@@ -103,7 +103,7 @@ for full documentation.
 
 ## Install
 
-Download the latest binary for your OS here: [boilerplate v0.0.8](https://github.com/gruntwork-io/boilerplate/releases/tag/v0.0.8).
+Download the latest binary for your OS here: [boilerplate v0.0.10](https://github.com/gruntwork-io/boilerplate/releases/tag/v0.0.10).
 
 You can find older versions on the [Releases Page](https://github.com/gruntwork-io/usage-patterns/releases).
 
@@ -152,6 +152,9 @@ The `boilerplate` binary supports the following options:
 * `--missing-key-action ACTION` (optional): What to do if a template looks up a variable that is not defined. Must
   be one of: `invalid` (render the text "<no value>"), `zero` (render the zero value for the variable), or `error`
   (return an error and exit immediately). Default: `error`.
+* `--missing-config-action ACTION` (optional): What to do if a template folder does not have a `boilerplate.yml` file.
+  Must be one of: `exit` (return an error and exit immediately) or `ignore` (log a warning and process the template
+  folder without any variables). Default: `exit`.
 * `--help`: Show the help text and exit.
 * `--version`: Show the version and exit.
 
@@ -178,7 +181,8 @@ boilerplate --template-folder ~/templates --output-folder ~/output --var-file va
 #### The boilerplate.yml file
 
 The `boilerplate.yml` file is used to configure `boilerplate`. The file is optional. If you don't specify it, you can
-still use Go templating in your templates, but no variables or dependencies will be available.
+still use Go templating in your templates so long as you specify the `--missing-config-action ignore` option, but no
+variables or dependencies will be available.
 
 `boilerplate.yml` uses the following syntax:
 
@@ -307,6 +311,11 @@ data structure.
 
 For example, if you had a variable called `Title` in your `boilerplate.yml` file, then you could access that variable
 in any of your templates using the syntax `{{.Title}}`.
+
+You can even use Go template syntax and boilerplate variables in the names of your files and folders. For example, if
+you were using `boilerplate` to generate a Java project, your template folder could contain the path
+`com/{{.PackageName}}/MyFactory.java`. If you run `boilerplate` against this template folder and enter
+"gruntwork" as the `PackageName`, you'd end up with the file `com/gruntwork/MyFactory.java`.
 
 #### Template helpers
 
