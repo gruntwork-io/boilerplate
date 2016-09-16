@@ -26,3 +26,17 @@ Here is how to use the `snippet` helper to embed files or parts of files from so
   </body>
 </html>
 ```
+
+## Arithmetic
+
+Here is how you can use the arithmetic helpers to create a numbered list:
+
+1. Item
+2. Item
+3. Item
+
+And here is another way to do it using the slice helper:
+
+1. Item
+2. Item
+3. Item

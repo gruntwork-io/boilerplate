@@ -95,6 +95,11 @@ func TestRenderTemplate(t *testing.T) {
 		{"Snake case test: {{ .Foo | snakeCase }}", map[string]string{"Foo": "foo BAR baz!"}, config.ExitWithError, "", "Snake case test: foo_bar_baz"},
 		{"Camel case test: {{ .Foo | camelCase }}", map[string]string{"Foo": "foo BAR baz!"}, config.ExitWithError, "", "Camel case test: FooBARBaz"},
 		{"Camel case lower test: {{ .Foo | camelCaseLower }}", map[string]string{"Foo": "foo BAR baz!"}, config.ExitWithError, "", "Camel case lower test: fooBARBaz"},
+		{"Plus test: {{ plus .Foo .Bar }}", map[string]string{"Foo": "5", "Bar": "3"}, config.ExitWithError, "", "Plus test: 8"},
+		{"Minus test: {{ minus .Foo .Bar }}", map[string]string{"Foo": "5", "Bar": "3"}, config.ExitWithError, "", "Minus test: 2"},
+		{"Times test: {{ times .Foo .Bar }}", map[string]string{"Foo": "5", "Bar": "3"}, config.ExitWithError, "", "Times test: 15"},
+		{"Divide test: {{ divide .Foo .Bar | printf \"%1.5f\" }}", map[string]string{"Foo": "5", "Bar": "3"}, config.ExitWithError, "", "Divide test: 1.66667"},
+		{"Slice test: {{ slice 0 5 1 }}", map[string]string{}, config.ExitWithError, "", "Slice test: [0 1 2 3 4]"},
 		{"Filter chain test: {{ .Foo | downcase | replaceAll \" \" \"\" }}", map[string]string{"Foo": "foo BAR baz!"}, config.ExitWithError, "", "Filter chain test: foobarbaz!"},
 	}
 

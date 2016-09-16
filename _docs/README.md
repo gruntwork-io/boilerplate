@@ -288,10 +288,10 @@ in any of your templates using the syntax `{{"{{"}}.Title{{"}}"}}`.
 Your templates have access to all the standard functionality in [Go Template](https://golang.org/pkg/text/template/),
 including conditionals, loops, and functions. Boilerplate also includes several custom helpers that you can access:
 
-1. `snippet <PATH> [NAME]`: Returns the contents of the file at `PATH` as a string. If you specify the second argument,
-   `NAME`, only the contents of the snippet with that name will be returned. A snippet is any text in the file
-   surrounded by a line on each side of the format "boilerplate-snippet: NAME" (typically using the comment syntax for
-   the language). For example, here is how you could define a snippet named "foo" in a Java file:
+* `snippet <PATH> [NAME]`: Returns the contents of the file at `PATH` as a string. If you specify the second argument,
+  `NAME`, only the contents of the snippet with that name will be returned. A snippet is any text in the file
+  surrounded by a line on each side of the format "boilerplate-snippet: NAME" (typically using the comment syntax for
+  the language). For example, here is how you could define a snippet named "foo" in a Java file:
 
    ```java
    String str = "this is not part of the snippet";
@@ -301,22 +301,28 @@ including conditionals, loops, and functions. Boilerplate also includes several 
    return str2;
    // boilerplate-snippet: foo
    ```
-1. `downcase STRING`: Convert `STRING` to lower case. E.g. "FOO" becomes "foo".
-1. `upcase STRING`: Convert `STRING` to upper case. E.g. "foo" becomes "FOO".
-1. `capitalize STRING`: Capitalize the first letter of each word in `STRING`. E.g. "foo bar baz" becomes "Foo Bar Baz".
-1. `replace OLD NEW`: Replace the first occurrence of `OLD` with `NEW`. This is a literal replace, not regex.
-1. `replaceAll OLD NEW`: Replace all occurrences of `OLD` with `NEW`. This is a literal replace, not regex.
-1. `trim STRING`: Remove leading and trailing whitespace from `STRING`.
-1. `round FLOAT`: Round `FLOAT` to the nearest integer. E.g. 1.5 becomes 2.
-1. `ceil FLOAT`: Round up `FLOAT` to the nearest integer. E.g. 1.5 becomes 2.
-1. `floor FLOAT`: Round down `FLOAT` to the nearest integer. E.g. 1.5 becomes 1.
-1. `dasherize STRING`: Convert `STRING` to a lower case string separated by dashes. E.g. "foo Bar baz" becomes
+* `downcase STRING`: Convert `STRING` to lower case. E.g. "FOO" becomes "foo".
+* `upcase STRING`: Convert `STRING` to upper case. E.g. "foo" becomes "FOO".
+* `capitalize STRING`: Capitalize the first letter of each word in `STRING`. E.g. "foo bar baz" becomes "Foo Bar Baz".
+* `replace OLD NEW`: Replace the first occurrence of `OLD` with `NEW`. This is a literal replace, not regex.
+* `replaceAll OLD NEW`: Replace all occurrences of `OLD` with `NEW`. This is a literal replace, not regex.
+* `trim STRING`: Remove leading and trailing whitespace from `STRING`.
+* `round FLOAT`: Round `FLOAT` to the nearest integer. E.g. 1.5 becomes 2.
+* `ceil FLOAT`: Round up `FLOAT` to the nearest integer. E.g. 1.5 becomes 2.
+* `floor FLOAT`: Round down `FLOAT` to the nearest integer. E.g. 1.5 becomes 1.
+* `dasherize STRING`: Convert `STRING` to a lower case string separated by dashes. E.g. "foo Bar baz" becomes
    "foo-bar-baz".
-1. `snakeCase STRING`: Convert `STRING` to a lower case string separated by underscores. E.g. "foo Bar baz" becomes
+* `snakeCase STRING`: Convert `STRING` to a lower case string separated by underscores. E.g. "foo Bar baz" becomes
    "foo_bar_baz".
-1. `camelCase STRING`: Convert `STRING` to a camel case string. E.g. "foo Bar baz" becomes "FooBarBaz".
-1. `camelCaseLower STRING`: Convert `STRING` to a camel case string where the first letter is lower case. E.g.
+* `camelCase STRING`: Convert `STRING` to a camel case string. E.g. "foo Bar baz" becomes "FooBarBaz".
+* `camelCaseLower STRING`: Convert `STRING` to a camel case string where the first letter is lower case. E.g.
    "foo Bar baz" becomes "fooBarBaz".
+* `plus FLOAT FLOAT`: Add the two numbers.
+* `minus FLOAT FLOAT`: Subtract the two numbers.
+* `times FLOAT FLOAT`: Multiply the two numbers.
+* `divide FLOAT FLOAT`: Divide the two numbers.
+* `slice START END INCREMENT`: Generate a slice from START to END, incrementing by INCREMENT. This provides a simple
+  way to do a for-loop over a range of numbers.
 
 ## Alternative project generators
 

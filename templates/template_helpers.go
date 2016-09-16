@@ -55,6 +55,11 @@ func CreateTemplateHelpers(templatePath string) template.FuncMap {
 		"snakeCase": snakeCase,
 		"camelCase": camelCase,
 		"camelCaseLower": camelCaseLower,
+		"plus": wrapArithmeticFunction(func(arg1 float64, arg2 float64) float64 { return arg1 + arg2 }),
+		"minus": wrapArithmeticFunction(func(arg1 float64, arg2 float64) float64 { return arg1 - arg2 }),
+		"times": wrapArithmeticFunction(func(arg1 float64, arg2 float64) float64 { return arg1 * arg2 }),
+		"divide": wrapArithmeticFunction(func(arg1 float64, arg2 float64) float64 { return arg1 / arg2 }),
+		"slice": slice,
 	}
 }
 
@@ -167,26 +172,91 @@ func extractSnippetName(line string) (string, bool) {
 	}
 }
 
-// Wrap a function that uses float64 as input and output so it can take a string as input and return a string as output
-func wrapFloatToFloatFunction(f func(float64) float64) func(string) (string, error) {
-	return func(valueAsString string) (string, error) {
+// Wrap a function that uses float64 as input and output so it can take a string as input and return a float64 as output
+func wrapFloatToFloatFunction(f func(float64) float64) func(string) (float64, error) {
+	return func(valueAsString string) (float64, error) {
 		valueAsFloat, err := strconv.ParseFloat(valueAsString, 64)
 		if err != nil {
-			return "", errors.WithStackTrace(err)
+			return 0, errors.WithStackTrace(err)
 		}
-		return strconv.Itoa(int(f(valueAsFloat))), nil
+		return f(valueAsFloat), nil
 	}
 }
 
-// Wrap a function that uses float64 as input and int as output so it can take a string as input and return a string as
+// Wrap a function that uses float64 as input and int as output so it can take a string as input and return an int as
 // output
-func wrapFloatToIntFunction(f func(float64) int) func(string) (string, error) {
-	return func(valueAsString string) (string, error) {
+func wrapFloatToIntFunction(f func(float64) int) func(string) (int, error) {
+	return func(valueAsString string) (int, error) {
 		valueAsFloat, err := strconv.ParseFloat(valueAsString, 64)
 		if err != nil {
-			return "", errors.WithStackTrace(err)
+			return 0, errors.WithStackTrace(err)
 		}
-		return strconv.Itoa(f(valueAsFloat)), nil
+		return f(valueAsFloat), nil
+	}
+}
+
+// Wrap a function that takes two float64's as input, performs arithmetic on them, and returns another float64 as a
+// function that can take two values of any kind as input and return a float64 as output
+func wrapArithmeticFunction(f func(arg1 float64, arg2 float64) float64) func(interface{}, interface{}) (float64, error) {
+	return func(arg1 interface{}, arg2 interface{}) (float64, error) {
+		arg1AsFloat, err := toFloat64(arg1)
+		if err != nil {
+			return 0, errors.WithStackTrace(err)
+		}
+		arg2AsFloat, err := toFloat64(arg2)
+		if err != nil {
+			return 0, errors.WithStackTrace(err)
+		}
+		return f(arg1AsFloat, arg2AsFloat), nil
+
+	}
+}
+
+// Convert the given value to a float64. Does a proper conversion if the underlying type is a number. For all other
+// types, we first convert to a string, and then try to parse the result as a float64.
+func toFloat64(value interface{}) (float64, error) {
+	// Because Go is a shitty language, we have to call out each of the numeric types separately, even though the
+	// behavior for almost all of them is identical. If we tried to do a case statement with multiple clauses
+	// (separated by comma), then the variable v would be of type interface{} and we could not use float64(..) to
+	// convert it.
+	switch v := value.(type) {
+	case int: return float64(v), nil
+	case int8: return float64(v), nil
+	case int16: return float64(v), nil
+	case int32: return float64(v), nil
+	case int64: return float64(v), nil
+	case uint: return float64(v), nil
+	case uint8: return float64(v), nil
+	case uint16: return float64(v), nil
+	case uint32: return float64(v), nil
+	case uint64: return float64(v), nil
+	case float32: return float64(v), nil
+	case float64: return v, nil
+	default: return strconv.ParseFloat(fmt.Sprintf("%v", v), 64)
+	}
+}
+
+// Convert the given value to an int. Does a proper conversion if the underlying type is a number. For all other
+// types, we first convert to a string, and then try to parse the result as a int.
+func toInt(value interface{}) (int, error) {
+	// Because Go is a shitty language, we have to call out each of the numeric types separately, even though the
+	// behavior for almost all of them is identical. If we tried to do a case statement with multiple clauses
+	// (separated by comma), then the variable v would be of type interface{} and we could not use int(..) to
+	// convert it.
+	switch v := value.(type) {
+	case int: return v, nil
+	case int8: return int(v), nil
+	case int16: return int(v), nil
+	case int32: return int(v), nil
+	case int64: return int(v), nil
+	case uint: return int(v), nil
+	case uint8: return int(v), nil
+	case uint16: return int(v), nil
+	case uint32: return int(v), nil
+	case uint64: return int(v), nil
+	case float32: return int(v), nil
+	case float64: return int(v), nil
+	default: return strconv.Atoi(fmt.Sprintf("%v", v))
 	}
 }
 
@@ -282,6 +352,33 @@ func trimWhiteSpaceAndPunctuation(str string) string {
 // "foo.....bar_____baz" with a delimiter "-" becomes "foo-bar-baz".
 func collapseWhiteSpaceAndPunctuationToDelimiter(str string, delimiter string) string {
 	return PUNCTUATION_OR_WHITESPACE_REGEX.ReplaceAllString(str, delimiter)
+}
+
+// Generate a slice from start (inclusive) to end (exclusive), incrementing by increment. For example, slice(0, 5, 1)
+// returns [0, 1, 2, 3, 4].
+func slice(start interface{}, end interface{}, increment interface{}) ([]int, error) {
+	out := []int{}
+
+	startAsInt, err := toInt(start)
+	if err != nil {
+		return out, errors.WithStackTrace(err)
+	}
+
+	endAsInt, err := toInt(end)
+	if err != nil {
+		return out, errors.WithStackTrace(err)
+	}
+
+	incrementAsInt, err := toInt(increment)
+	if err != nil {
+		return out, errors.WithStackTrace(err)
+	}
+
+	for i := startAsInt; i < endAsInt; i += incrementAsInt {
+		out = append(out, i)
+	}
+
+	return out, nil
 }
 
 // Custom errors

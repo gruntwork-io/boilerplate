@@ -18,3 +18,20 @@ Here is how to use the `snippet` helper to embed files or parts of files from so
 ```html
 {{snippet "../website/index.html"}}
 ```
+
+## Arithmetic
+
+Here is how you can use the arithmetic helpers to create a numbered list:
+
+{{ with $index := "0" -}}
+{{plus $index 1}}. Item
+{{plus $index 2}}. Item
+{{plus $index 3}}. Item
+{{- end }}
+
+And here is another way to do it using the slice helper:
+
+{{ range $i := (slice 1 4 1) -}}
+{{$i}}. Item
+{{ end -}}
+
