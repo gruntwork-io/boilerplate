@@ -25,7 +25,7 @@ type BoilerplateOptions struct {
 	TemplateFolder 	 string
 	OutputFolder 	 string
 	NonInteractive	 bool
-	Vars		 map[string]string
+	Vars		 map[string]interface{}
 	OnMissingKey     MissingKeyAction
 	OnMissingConfig  MissingConfigAction
 }
@@ -97,24 +97,6 @@ type BoilerplateConfig struct {
 	Dependencies []Dependency
 }
 
-// A single variable defined in a boilerplate.yml config file
-type Variable struct {
-	Name 	      string
-	Prompt 	      string
-	Default	      string
-}
-
-// Return a description of this variable, which includes its name and the dependency it is for (if any) in a
-// human-readable format
-func (variable Variable) Description() string {
-	dependencyName, variableName := SplitIntoDependencyNameAndVariableName(variable.Name)
-	if dependencyName == "" {
-		return variableName
-	} else {
-		return fmt.Sprintf("%s (for dependency %s)", variableName, dependencyName)
-	}
-}
-
 // Given a unique variable name, return a tuple that contains the dependency name (if any) and the variable name.
 // Variable and dependency names are split by a dot, so for "foo.bar", this will return ("foo", "bar"). For just "foo",
 // it will return ("", "foo").
@@ -179,23 +161,8 @@ func ParseBoilerplateConfig(configContents []byte) (*BoilerplateConfig, error) {
 
 // Validate that the config file has reasonable contents and return an error if there is a problem
 func (boilerplateConfig BoilerplateConfig) validate() error {
-	if err := validateVariables(boilerplateConfig.Variables); err != nil {
-		return err
-	}
-
 	if err := validateDependencies(boilerplateConfig.Dependencies); err != nil {
 		return err
-	}
-
-	return nil
-}
-
-// Validate that the list of variables has reasonable contents and return an error if there is a problem
-func validateVariables(variables []Variable) error {
-	for _, variable := range variables {
-		if variable.Name == "" {
-			return errors.WithStackTrace(VariableMissingName)
-		}
 	}
 
 	return nil
@@ -219,10 +186,6 @@ func validateDependencies(dependencies []Dependency) error {
 		if dependency.OutputFolder == "" {
 			return errors.WithStackTrace(MissingOutputFolderForDependency(dependency.Name))
 		}
-
-		if err := validateVariables(dependency.Variables); err != nil {
-			return err
-		}
 	}
 
 	return nil
@@ -230,11 +193,27 @@ func validateDependencies(dependencies []Dependency) error {
 
 // Custom error types
 
-var VariableMissingName = fmt.Errorf("Error: found a variable without a name.")
-
 var TemplateFolderOptionCannotBeEmpty = fmt.Errorf("The --%s option cannot be empty", OPT_TEMPLATE_FOLDER)
 
 var OutputFolderOptionCannotBeEmpty = fmt.Errorf("The --%s option cannot be empty", OPT_OUTPUT_FOLDER)
+
+type RequiredFieldMissing string
+func (err RequiredFieldMissing) Error() string {
+	return fmt.Sprintf("Variable is missing required field %s", string(err))
+}
+
+type VariableMissingOptions string
+func (err VariableMissingOptions) Error() string {
+	return fmt.Sprintf("Variable %s has type %s but does not specify any options. You must specify at least one option.", string(err), Enum)
+}
+
+type OptionsCanOnlyBeUsedWithEnum struct {
+	VariableName string
+	VariableType BoilerplateType
+}
+func (err OptionsCanOnlyBeUsedWithEnum) Error() string {
+	return fmt.Sprintf("Variable %s has type %s and tries to specify options. Options may only be specified for variables of type %s.", err.VariableName, err.VariableType.String(), Enum)
+}
 
 type TemplateFolderDoesNotExist string
 func (err TemplateFolderDoesNotExist) Error() string {
@@ -249,6 +228,11 @@ func (err InvalidMissingKeyAction) Error() string {
 type InvalidMissingConfigAction string
 func (err InvalidMissingConfigAction) Error() string {
 	return fmt.Sprintf("Invalid MissingConfigAction '%s'. Value must be one of: %s", string(err), ALL_MISSING_CONFIG_ACTIONS)
+}
+
+type InvalidBoilerplateType string
+func (err InvalidBoilerplateType) Error() string {
+	return fmt.Sprintf("Invalid InvalidBoilerplateType '%s'. Value must be one of: %s", string(err), ALL_BOILERPLATE_TYPES)
 }
 
 type BoilerplateConfigNotFound string

@@ -55,7 +55,7 @@ func TestParseBoilerplateConfigOneVariableMinimal(t *testing.T) {
 	actual, err := ParseBoilerplateConfig([]byte(CONFIG_ONE_VARIABLE_MINIMAL))
 	expected := &BoilerplateConfig{
 		Variables: []Variable{
-			Variable{Name: "foo"},
+			{Name: "foo", Type: String},
 		},
 	}
 
@@ -67,7 +67,8 @@ func TestParseBoilerplateConfigOneVariableMinimal(t *testing.T) {
 const CONFIG_ONE_VARIABLE_FULL =
 `variables:
   - name: foo
-    description: prompt
+    description: example description
+    type: string
     default: default
 `
 
@@ -77,7 +78,7 @@ func TestParseBoilerplateConfigOneVariableFull(t *testing.T) {
 	actual, err := ParseBoilerplateConfig([]byte(CONFIG_ONE_VARIABLE_FULL))
 	expected := &BoilerplateConfig{
 		Variables: []Variable{
-			Variable{Name: "foo", Prompt: "prompt", Default: "default"},
+			{Name: "foo", Description: "example description", Default: "default", Type: String},
 		},
 	}
 
@@ -88,7 +89,7 @@ func TestParseBoilerplateConfigOneVariableFull(t *testing.T) {
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
 const CONFIG_ONE_VARIABLE_MISSING_NAME =
 `variables:
-  - description: prompt
+  - description: example description
     default: default
 `
 
@@ -98,7 +99,57 @@ func TestParseBoilerplateConfigOneVariableMissingName(t *testing.T) {
 	_, err := ParseBoilerplateConfig([]byte(CONFIG_ONE_VARIABLE_MISSING_NAME))
 
 	assert.NotNil(t, err)
-	assert.True(t, errors.IsError(err, VariableMissingName), "Expected a VariableMissingName error but got %s", reflect.TypeOf(err))
+	assert.True(t, errors.IsError(err, RequiredFieldMissing("name")), "Expected a RequiredFieldMissing error but got %s", reflect.TypeOf(err))
+}
+
+// YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
+const CONFIG_ONE_VARIABLE_INVALID_TYPE =
+`variables:
+  - name: foo
+    type: foo
+`
+
+func TestParseBoilerplateConfigOneVariableInvalidType(t *testing.T) {
+	t.Parallel()
+
+	_, err := ParseBoilerplateConfig([]byte(CONFIG_ONE_VARIABLE_INVALID_TYPE))
+
+	assert.NotNil(t, err)
+	assert.True(t, errors.IsError(err, InvalidBoilerplateType("foo")), "Expected a InvalidBoilerplateType error but got %s", reflect.TypeOf(err))
+}
+
+// YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
+const CONFIG_ONE_VARIABLE_ENUM_NO_OPTIONS =
+`variables:
+  - name: foo
+    type: enum
+`
+
+func TestParseBoilerplateConfigOneVariableEnumNoOptions(t *testing.T) {
+	t.Parallel()
+
+	_, err := ParseBoilerplateConfig([]byte(CONFIG_ONE_VARIABLE_ENUM_NO_OPTIONS))
+
+	assert.NotNil(t, err)
+	assert.True(t, errors.IsError(err, VariableMissingOptions("foo")), "Expected a VariableMissingOptions error but got %s", reflect.TypeOf(err))
+}
+
+// YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
+const CONFIG_ONE_VARIABLE_OPTIONS_FOR_NON_ENUM =
+`variables:
+  - name: foo
+    options:
+      - foo
+      - bar
+`
+
+func TestParseBoilerplateConfigOneVariableOptionsForNonEnum(t *testing.T) {
+	t.Parallel()
+
+	_, err := ParseBoilerplateConfig([]byte(CONFIG_ONE_VARIABLE_OPTIONS_FOR_NON_ENUM))
+
+	assert.NotNil(t, err)
+	assert.True(t, errors.IsError(err, OptionsCanOnlyBeUsedWithEnum{VariableName: "foo", VariableType: String}), "Expected a OptionsCanOnlyBeUsedWithEnum error but got %v", err)
 }
 
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
@@ -107,15 +158,17 @@ const CONFIG_MULTIPLE_VARIABLES =
   - name: foo
 
   - name: bar
-    description: prompt
+    description: example description
 
   - name: baz
-    description: prompt
-    default: default
+    description: example description
+    type: int
+    default: 3
 
   - name: dep1.baz
-    description: another-prompt
-    default: another-default
+    description: another example description
+    type: bool
+    default: true
 `
 
 func TestParseBoilerplateConfigMultipleVariables(t *testing.T) {
@@ -124,10 +177,76 @@ func TestParseBoilerplateConfigMultipleVariables(t *testing.T) {
 	actual, err := ParseBoilerplateConfig([]byte(CONFIG_MULTIPLE_VARIABLES))
 	expected := &BoilerplateConfig{
 		Variables: []Variable{
-			Variable{Name: "foo"},
-			Variable{Name: "bar", Prompt: "prompt"},
-			Variable{Name: "baz", Prompt: "prompt", Default: "default"},
-			Variable{Name: "dep1.baz", Prompt: "another-prompt", Default: "another-default"},
+			{Name: "foo", Type: String},
+			{Name: "bar", Description: "example description", Type: String},
+			{Name: "baz", Description: "example description", Type: Int, Default: 3},
+			{Name: "dep1.baz", Description: "another example description", Type: Bool, Default: true},
+		},
+	}
+
+	assert.Nil(t, err)
+	assert.Equal(t, expected, actual)
+}
+
+// YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
+const CONFIG_ALL_TYPES =
+`variables:
+  - name: var1
+    default: foo
+
+  - name: var2
+    type: string
+    default: foo
+
+  - name: var3
+    type: int
+    default: 5
+
+  - name: var4
+    type: float
+    default: 5.5
+
+  - name: var5
+    type: bool
+    default: true
+
+  - name: var6
+    type: list
+    default:
+      - foo
+      - bar
+      - baz
+
+  - name: var7
+    type: map
+    default:
+      key1: value1
+      key2: value2
+      key3: value3
+
+  - name: var8
+    type: enum
+    options:
+      - foo
+      - bar
+      - baz
+    default: bar
+`
+
+func TestParseBoilerplateConfigAllTypes(t *testing.T) {
+	t.Parallel()
+
+	actual, err := ParseBoilerplateConfig([]byte(CONFIG_ALL_TYPES))
+	expected := &BoilerplateConfig{
+		Variables: []Variable{
+			{Name: "var1", Type: String, Default: "foo"},
+			{Name: "var2", Type: String, Default: "foo"},
+			{Name: "var3", Type: Int, Default: 5},
+			{Name: "var4", Type: Float, Default: 5.5},
+			{Name: "var5", Type: Bool, Default: true},
+			{Name: "var6", Type: List, Default: []string{"foo", "bar", "baz"}},
+			{Name: "var7", Type: Map, Default: map[string]string{"key1": "value1", "key2": "value2", "key3": "value3"}},
+			{Name: "var8", Type: Enum, Default: "bar", Options: []string{"foo", "bar", "baz"}},
 		},
 	}
 
@@ -149,7 +268,7 @@ func TestParseBoilerplateConfigOneDependency(t *testing.T) {
 	actual, err := ParseBoilerplateConfig([]byte(CONFIG_ONE_DEPENDENCY))
 	expected := &BoilerplateConfig{
 		Dependencies: []Dependency{
-			Dependency{Name: "dep1", TemplateFolder: "/template/folder1", OutputFolder: "/output/folder1", DontInheritVariables: false},
+			{Name: "dep1", TemplateFolder: "/template/folder1", OutputFolder: "/output/folder1", DontInheritVariables: false},
 		},
 	}
 
@@ -184,20 +303,22 @@ func TestParseBoilerplateConfigMultipleDependencies(t *testing.T) {
 	actual, err := ParseBoilerplateConfig([]byte(CONFIG_MULTIPLE_DEPENDENCIES))
 	expected := &BoilerplateConfig{
 		Dependencies: []Dependency{
-			Dependency{
+			{
 				Name: "dep1",
 				TemplateFolder: "/template/folder1",
 				OutputFolder: "/output/folder1",
 				DontInheritVariables: false,
 			},
-			Dependency{
+			{
 				Name: "dep2",
 				TemplateFolder: "/template/folder2",
 				OutputFolder: "/output/folder2",
 				DontInheritVariables: true,
-				Variables: []Variable{Variable{Name: "var1", Prompt: "Enter var1", Default: "foo"}},
+				Variables: []Variable{
+					{Name: "var1", Description: "Enter var1", Default: "foo", Type: String},
+				},
 			},
-			Dependency{
+			{
 				Name: "dep3",
 				TemplateFolder: "/template/folder3",
 				OutputFolder: "/output/folder3",
@@ -259,7 +380,7 @@ func TestParseBoilerplateConfigDependencyMissingVariableName(t *testing.T) {
 	_, err := ParseBoilerplateConfig([]byte(CONFIG_DEPENDENCY_MISSING_VARIABLE_NAME))
 
 	assert.NotNil(t, err)
-	assert.True(t, errors.IsError(err, VariableMissingName), "Expected a VariableMissingName error but got %s", reflect.TypeOf(err))
+	assert.True(t, errors.IsError(err, RequiredFieldMissing("name")), "Expected a RequiredFieldMissing error but got %s", reflect.TypeOf(err))
 }
 
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
@@ -313,15 +434,15 @@ func TestLoadBoilerplateConfigFullConfig(t *testing.T) {
 	actual, err := LoadBoilerplateConfig(&BoilerplateOptions{TemplateFolder: "../test-fixtures/config-test/full-config"})
 	expected := &BoilerplateConfig{
 		Variables: []Variable{
-			Variable{Name: "foo"},
-			Variable{Name: "bar", Prompt: "prompt"},
-			Variable{Name: "baz", Prompt: "prompt", Default: "default"},
+			{Name: "foo", Type: String},
+			{Name: "bar", Type: String, Description: "example description"},
+			{Name: "baz", Type: String, Description: "example description", Default: "default"},
 		},
 		Dependencies: []Dependency{
-			Dependency{Name: "dep1", TemplateFolder: "/template/folder1", OutputFolder: "/output/folder1", DontInheritVariables: false},
-			Dependency{Name: "dep2", TemplateFolder: "/template/folder2", OutputFolder: "/output/folder2", DontInheritVariables: true, Variables: []Variable{
-				Variable{Name: "baz", Prompt: "prompt", Default: "other-default"},
-				Variable{Name: "abc", Prompt: "prompt", Default: "default"},
+			{Name: "dep1", TemplateFolder: "/template/folder1", OutputFolder: "/output/folder1", DontInheritVariables: false},
+			{Name: "dep2", TemplateFolder: "/template/folder2", OutputFolder: "/output/folder2", DontInheritVariables: true, Variables: []Variable{
+				{Name: "baz", Type: String, Description: "example description", Default: "other-default"},
+				{Name: "abc", Type: String, Description: "example description", Default: "default"},
 			}},
 		},
 	}

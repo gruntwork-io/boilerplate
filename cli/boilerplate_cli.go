@@ -147,8 +147,8 @@ func parseOptions(cliContext *cli.Context) (*config.BoilerplateOptions, error) {
 
 // Parse variables passed in via command line flags, either as a list of NAME=VALUE variable pairs in varsList, or a
 // list of paths to YAML files that define NAME: VALUE pairs. Return a map of the NAME: VALUE pairs.
-func parseVars(varsList []string, varFileList[]string) (map[string]string, error) {
-	variables := map[string]string{}
+func parseVars(varsList []string, varFileList[]string) (map[string]interface{}, error) {
+	variables := map[string]interface{}{}
 
 	varsFromVarsList, err := config.ParseVariablesFromKeyValuePairs(varsList)
 	if err != nil {

@@ -23,7 +23,7 @@ func TestGetVariableFromVarsNoMatch(t *testing.T) {
 
 	variable := Variable{Name: "foo"}
 	options := &BoilerplateOptions{
-		Vars: map[string]string{
+		Vars: map[string]interface{}{
 			"key1": "value1",
 			"key2": "value2",
 			"key3": "value3",
@@ -39,7 +39,7 @@ func TestGetVariableFromVarsMatch(t *testing.T) {
 
 	variable := Variable{Name: "foo"}
 	options := &BoilerplateOptions{
-		Vars: map[string]string{
+		Vars: map[string]interface{}{
 			"key1": "value1",
 			"foo": "bar",
 			"key3": "value3",
@@ -58,7 +58,7 @@ func TestGetVariableFromVarsForDependencyNoMatch(t *testing.T) {
 
 	variable := Variable{Name: "bar.foo"}
 	options := &BoilerplateOptions{
-		Vars: map[string]string{
+		Vars: map[string]interface{}{
 			"key1": "value1",
 			"foo": "bar",
 			"key3": "value3",
@@ -74,7 +74,7 @@ func TestGetVariableFromVarsForDependencyMatch(t *testing.T) {
 
 	variable := Variable{Name: "bar.foo"}
 	options := &BoilerplateOptions{
-		Vars: map[string]string{
+		Vars: map[string]interface{}{
 			"key1": "value1",
 			"bar.foo": "bar",
 			"key3": "value3",
@@ -106,7 +106,7 @@ func TestGetVariableInVarsNonInteractive(t *testing.T) {
 	variable := Variable{Name: "foo"}
 	options := &BoilerplateOptions{
 		NonInteractive: true,
-		Vars: map[string]string{
+		Vars: map[string]interface{}{
 			"key1": "value1",
 			"foo": "bar",
 			"key3": "value3",
@@ -126,7 +126,7 @@ func TestGetVariableDefaultNonInteractive(t *testing.T) {
 	variable := Variable{Name: "foo", Default: "bar"}
 	options := &BoilerplateOptions{
 		NonInteractive: true,
-		Vars: map[string]string{
+		Vars: map[string]interface{}{
 			"key1": "value1",
 			"key2": "value2",
 			"key3": "value3",
@@ -147,7 +147,7 @@ func TestGetVariablesNoVariables(t *testing.T) {
 	boilerplateConfig := &BoilerplateConfig{}
 
 	actual, err := GetVariables(options, boilerplateConfig)
-	expected := map[string]string{}
+	expected := map[string]interface{}{}
 
 	assert.Nil(t, err)
 	assert.Equal(t, expected, actual)
@@ -159,7 +159,7 @@ func TestGetVariablesNoMatchNonInteractive(t *testing.T) {
 	options := &BoilerplateOptions{NonInteractive: true}
 	boilerplateConfig := &BoilerplateConfig{
 		Variables: []Variable{
-			Variable{Name: "foo"},
+			{Name: "foo", Type: String},
 		},
 	}
 
@@ -174,19 +174,19 @@ func TestGetVariablesMatchFromVars(t *testing.T) {
 
 	options := &BoilerplateOptions{
 		NonInteractive: true,
-		Vars: map[string]string{
+		Vars: map[string]interface{}{
 			"foo": "bar",
 		},
 	}
 
 	boilerplateConfig := &BoilerplateConfig{
 		Variables: []Variable{
-			Variable{Name: "foo"},
+			{Name: "foo", Type: String},
 		},
 	}
 
 	actual, err := GetVariables(options, boilerplateConfig)
-	expected := map[string]string{
+	expected := map[string]interface{}{
 		"foo": "bar",
 	}
 
@@ -199,7 +199,7 @@ func TestGetVariablesMatchFromVarsAndDefaults(t *testing.T) {
 
 	options := &BoilerplateOptions{
 		NonInteractive: true,
-		Vars: map[string]string{
+		Vars: map[string]interface{}{
 			"key1": "value1",
 			"key2": "value2",
 		},
@@ -207,14 +207,14 @@ func TestGetVariablesMatchFromVarsAndDefaults(t *testing.T) {
 
 	boilerplateConfig := &BoilerplateConfig{
 		Variables: []Variable{
-			Variable{Name: "key1"},
-			Variable{Name: "key2"},
-			Variable{Name: "key3", Default: "value3"},
+			{Name: "key1", Type: String},
+			{Name: "key2", Type: String},
+			{Name: "key3", Type: String, Default: "value3"},
 		},
 	}
 
 	actual, err := GetVariables(options, boilerplateConfig)
-	expected := map[string]string{
+	expected := map[string]interface{}{
 		"key1": "value1",
 		"key2": "value2",
 		"key3": "value3",
@@ -230,15 +230,15 @@ func TestParseVariablesFromKeyValuePairs(t *testing.T) {
 	testCases := []struct {
 		keyValuePairs []string
 		expectedError error
-		expectedVars  map[string]string
+		expectedVars  map[string]interface{}
 	}{
-		{[]string{}, nil, map[string]string{}},
-		{[]string{"key=value"}, nil, map[string]string{"key": "value"}},
-		{[]string{"key="}, nil, map[string]string{"key": ""}},
-		{[]string{"key1=value1", "key2=value2", "key3=value3"}, nil, map[string]string{"key1": "value1", "key2": "value2", "key3": "value3"}},
-		{[]string{"invalidsyntax"}, InvalidVarSyntax("invalidsyntax"), map[string]string{}},
-		{[]string{"="}, VariableNameCannotBeEmpty("="), map[string]string{}},
-		{[]string{"=foo"}, VariableNameCannotBeEmpty("=foo"), map[string]string{}},
+		{[]string{}, nil, map[string]interface{}{}},
+		{[]string{"key=value"}, nil, map[string]interface{}{"key": "value"}},
+		{[]string{"key="}, nil, map[string]interface{}{"key": nil}},
+		{[]string{"key1=value1", "key2=value2", "key3=value3"}, nil, map[string]interface{}{"key1": "value1", "key2": "value2", "key3": "value3"}},
+		{[]string{"invalidsyntax"}, InvalidVarSyntax("invalidsyntax"), map[string]interface{}{}},
+		{[]string{"="}, VariableNameCannotBeEmpty("="), map[string]interface{}{}},
+		{[]string{"=foo"}, VariableNameCannotBeEmpty("=foo"), map[string]interface{}{}},
 	}
 
 	for _, testCase := range testCases {
@@ -271,12 +271,12 @@ func TestParseVariablesFromVarFileContents(t *testing.T) {
 	testCases := []struct {
 		fileContents  	    string
 		expectYamlTypeError bool
-		expectedVars        map[string]string
+		expectedVars        map[string]interface{}
 	}{
-		{"", false, map[string]string{}},
-		{YAML_FILE_ONE_VAR, false, map[string]string{"key": "value"}},
-		{YAML_FILE_MULTIPLE_VARS, false, map[string]string{"key1": "value1", "key2": "value2", "key3": "value3"}},
-		{"invalid yaml", true, map[string]string{}},
+		{"", false, map[string]interface{}{}},
+		{YAML_FILE_ONE_VAR, false, map[string]interface{}{"key": "value"}},
+		{YAML_FILE_MULTIPLE_VARS, false, map[string]interface{}{"key1": "value1", "key2": "value2", "key3": "value3"}},
+		{"invalid yaml", true, map[string]interface{}{}},
 	}
 
 	for _, testCase := range testCases {
