@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/gruntwork-io/boilerplate/config"
 	"github.com/gruntwork-io/boilerplate/templates"
-	"github.com/gruntwork-io/boilerplate/util"
 )
 
 // Customize the --help text for the app so we don't show extraneous info
@@ -96,70 +95,10 @@ func runApp(cliContext *cli.Context) error {
 		return nil
 	}
 
-	options, err := parseOptions(cliContext)
+	options, err := config.ParseOptions(cliContext)
 	if err != nil {
 		return err
 	}
 
 	return templates.ProcessTemplate(options)
 }
-
-// Parse the command line options provided by the user
-func parseOptions(cliContext *cli.Context) (*config.BoilerplateOptions, error) {
-	vars, err := parseVars(cliContext.StringSlice(config.OPT_VAR), cliContext.StringSlice(config.OPT_VAR_FILE))
-	if err != nil {
-		return nil, err
-	}
-
-	missingKeyAction := config.DEFAULT_MISSING_KEY_ACTION
-	missingKeyActionValue := cliContext.String(config.OPT_MISSING_KEY_ACTION)
-	if missingKeyActionValue != "" {
-		missingKeyAction, err = config.ParseMissingKeyAction(missingKeyActionValue)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	missingConfigAction := config.DEFAULT_MISSING_CONFIG_ACTION
-	missingConfigActionValue := cliContext.String(config.OPT_MISSING_CONFIG_ACTION)
-	if missingConfigActionValue != "" {
-		missingConfigAction, err = config.ParseMissingConfigAction(missingConfigActionValue)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	options := &config.BoilerplateOptions{
-		TemplateFolder: cliContext.String(config.OPT_TEMPLATE_FOLDER),
-		OutputFolder: cliContext.String(config.OPT_OUTPUT_FOLDER),
-		NonInteractive: cliContext.Bool(config.OPT_NON_INTERACTIVE),
-		OnMissingKey: missingKeyAction,
-		OnMissingConfig: missingConfigAction,
-		Vars: vars,
-	}
-
-	if err := options.Validate(); err != nil {
-		return nil, err
-	}
-
-	return options, nil
-}
-
-// Parse variables passed in via command line flags, either as a list of NAME=VALUE variable pairs in varsList, or a
-// list of paths to YAML files that define NAME: VALUE pairs. Return a map of the NAME: VALUE pairs.
-func parseVars(varsList []string, varFileList[]string) (map[string]interface{}, error) {
-	variables := map[string]interface{}{}
-
-	varsFromVarsList, err := config.ParseVariablesFromKeyValuePairs(varsList)
-	if err != nil {
-		return variables, err
-	}
-
-	varsFromVarFiles, err := config.ParseVariablesFromVarFiles(varFileList)
-	if err != nil {
-		return variables, err
-	}
-
-	return util.MergeMaps(varsFromVarsList, varsFromVarFiles), nil
-}
-

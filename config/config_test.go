@@ -28,7 +28,7 @@ func TestParseBoilerplateConfigInvalid(t *testing.T) {
 
 	unwrapped := errors.Unwrap(err)
 	_, isYamlTypeError := unwrapped.(*yaml.TypeError)
-	assert.True(t, isYamlTypeError, "Expected a YAML type error for an invalid yaml file but got %s", reflect.TypeOf(unwrapped))
+	assert.True(t, isYamlTypeError, "Expected a YAML type error for an invalid yaml file but got %s: %v", reflect.TypeOf(unwrapped), unwrapped)
 }
 
 func TestParseBoilerplateConfigEmptyVariables(t *testing.T) {
@@ -482,26 +482,4 @@ func TestLoadBoilerplateConfigInvalidConfig(t *testing.T) {
 	unwrapped := errors.Unwrap(err)
 	_, isYamlTypeError := unwrapped.(*yaml.TypeError)
 	assert.True(t, isYamlTypeError, "Expected a YAML type error for an invalid yaml file but got %s", reflect.TypeOf(unwrapped))
-}
-
-func TestSplitIntoDependencyNameAndVariableName(t *testing.T) {
-	t.Parallel()
-
-	testCases := []struct {
-		variableName                 string
-		expectedDependencyName       string
-		expectedOriginalVariableName string
-	}{
-		{"", "", ""},
-		{"foo", "", "foo"},
-		{"foo-bar baz_blah", "", "foo-bar baz_blah"},
-		{"foo.bar", "foo", "bar"},
-		{"foo.bar.baz", "foo", "bar.baz"},
-	}
-
-	for _, testCase := range testCases {
-		actualDependencyName, actualOriginalVariableName := SplitIntoDependencyNameAndVariableName(testCase.variableName)
-		assert.Equal(t, testCase.expectedDependencyName, actualDependencyName, "Variable name: %s", testCase.variableName)
-		assert.Equal(t, testCase.expectedOriginalVariableName, actualOriginalVariableName, "Variable name: %s", testCase.variableName)
-	}
 }

@@ -2,6 +2,7 @@ package config
 
 import (
 	"github.com/gruntwork-io/boilerplate/errors"
+	"fmt"
 )
 
 // An enum that represents the types we support for boilerplate variables
@@ -31,6 +32,15 @@ func ParseBoilerplateType(str string) (*BoilerplateType, error) {
 	return nil, errors.WithStackTrace(InvalidBoilerplateType(str))
 }
 
+// Return a string representation of this Type
 func (boilerplateType BoilerplateType) String() string {
 	return string(boilerplateType)
 }
+
+// Custom error types
+
+type InvalidBoilerplateType string
+func (err InvalidBoilerplateType) Error() string {
+	return fmt.Sprintf("Invalid InvalidBoilerplateType '%s'. Value must be one of: %s", string(err), ALL_BOILERPLATE_TYPES)
+}
+
