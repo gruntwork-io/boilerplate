@@ -37,6 +37,20 @@ func (boilerplateType BoilerplateType) String() string {
 	return string(boilerplateType)
 }
 
+// Return an example value for this type. This is useful for showing a user the proper syntax to use for that type.
+func (boilerplateType BoilerplateType) Example() string {
+	switch boilerplateType {
+	case String: return "foo"
+	case Int: return "42"
+	case Float: return "3.1415926"
+	case Bool: return "true"
+	case List: return "[foo, bar, baz]"
+	case Map: return "{foo: bar, baz: blah}"
+	case Enum: return "foo"
+	default: return ""
+	}
+}
+
 // Custom error types
 
 type InvalidBoilerplateType string

@@ -45,6 +45,7 @@ type defaultVariable struct {
 	options      []string
 }
 
+// Create a new variable that holds a string
 func NewStringVariable(name string) Variable {
 	return defaultVariable{
 		name: name,
@@ -52,6 +53,7 @@ func NewStringVariable(name string) Variable {
 	}
 }
 
+// Create a new variable that holds an int
 func NewIntVariable(name string) Variable {
 	return defaultVariable{
 		name: name,
@@ -59,6 +61,7 @@ func NewIntVariable(name string) Variable {
 	}
 }
 
+// Create a new variable that holds a float
 func NewFloatVariable(name string) Variable {
 	return defaultVariable{
 		name: name,
@@ -66,6 +69,7 @@ func NewFloatVariable(name string) Variable {
 	}
 }
 
+// Create a new variable that holds a bool
 func NewBoolVariable(name string) Variable {
 	return defaultVariable{
 		name: name,
@@ -73,6 +77,7 @@ func NewBoolVariable(name string) Variable {
 	}
 }
 
+// Create a new variable that holds a list of strings
 func NewListVariable(name string, ) Variable {
 	return defaultVariable{
 		name: name,
@@ -80,6 +85,7 @@ func NewListVariable(name string, ) Variable {
 	}
 }
 
+// Create a new variable that holds a map of string to string
 func NewMapVariable(name string) Variable {
 	return defaultVariable{
 		name: name,
@@ -87,6 +93,7 @@ func NewMapVariable(name string) Variable {
 	}
 }
 
+// Create a new variable that holds an enum with the given possible values
 func NewEnumVariable(name string, options []string) Variable {
 	return defaultVariable{
 		name: name,
@@ -139,6 +146,8 @@ func (variable defaultVariable) WithDefault(value interface{}) Variable {
 	return variable
 }
 
+// Convert the given value to a type that can be used with the given variable. If the type of the value cannot be used
+// with the type of the variable, return an error.
 func UnmarshalValueForVariable(value interface{}, variable Variable) (interface{}, error) {
 	if value == nil {
 		return nil, nil
@@ -182,16 +191,28 @@ func UnmarshalValueForVariable(value interface{}, variable Variable) (interface{
 	return nil, InvalidVariableValue{Variable: variable, Value: value}
 }
 
-func UnmarshalVariables(fields map[string]interface{}, fieldName string) ([]Variable, error) {
+// Given a map of key:value pairs read from a Boilerplate YAML config file of the format:
+//
+// variables:
+//   - name: <NAME>
+//     description: <DESCRIPTION>
+//     type: <TYPE>
+//
+//   - name: <NAME>
+//     description: <DESCRIPTION>
+//     default: <DEFAULT>
+//
+// This method takes the data above and unmarshals it into a list of Variable objects
+func UnmarshalVariablesFromBoilerplateConfigYaml(fields map[string]interface{}) ([]Variable, error) {
 	unmarshalledVariables := []Variable{}
 
-	listOfFields, err := unmarshalListOfFields(fields, fieldName)
+	listOfFields, err := unmarshalListOfFields(fields, "variables")
 	if err != nil {
 		return unmarshalledVariables, err
 	}
 
 	for _, fields := range listOfFields {
-		variable, err := UnmarshalVariable(fields)
+		variable, err := UnmarshalVariableFromBoilerplateConfigYaml(fields)
 		if err != nil {
 			return unmarshalledVariables, err
 		}
@@ -201,10 +222,15 @@ func UnmarshalVariables(fields map[string]interface{}, fieldName string) ([]Vari
 	return unmarshalledVariables, nil
 }
 
-// Given a map where the keys are the fields of a boilerplate Variable, this method crates a Variable struct with those
-// fields filled in with proper types. This method also validates all the fields and returns an error if any problems
-// are found.
-func UnmarshalVariable(fields map[string]interface{}) (Variable, error) {
+// Given a map of key:value pairs read from a Boilerplate YAML config file of the format:
+//
+// name: <NAME>
+// description: <DESCRIPTION>
+// type: <TYPE>
+// default: <DEFAULT>
+//
+// This method takes the data above and unmarshals it into a Variable object
+func UnmarshalVariableFromBoilerplateConfigYaml(fields map[string]interface{}) (Variable, error) {
 	variable := defaultVariable{}
 
 	name, err := unmarshalStringField(fields, "name", true, "")
@@ -213,7 +239,7 @@ func UnmarshalVariable(fields map[string]interface{}) (Variable, error) {
 	}
 	variable.name = *name
 
-	variableType, err := unmarshalTypeField(fields, "type", *name)
+	variableType, err := unmarshalTypeField(fields, *name)
 	if err != nil {
 		return nil, err
 	}
@@ -227,7 +253,7 @@ func UnmarshalVariable(fields map[string]interface{}) (Variable, error) {
 		variable.description = *description
 	}
 
-	options, err := unmarshalOptionsField(fields, "options", *name, variableType)
+	options, err := unmarshalOptionsField(fields, *name, variableType)
 	if err != nil {
 		return nil, err
 	}

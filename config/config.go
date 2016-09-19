@@ -26,24 +26,24 @@ type BoilerplateConfig struct {
 	Dependencies []variables.Dependency
 }
 
-// Implement the go-yaml unmarshal interface for BoilerplateConfig. We can't let go-yaml handle this itself because we
-// need to:
+// Implement the go-yaml unmarshal interface for BoilerplateConfig. We can't let go-yaml handle this itself because:
 //
-// 1. Set Defaults for missing fields (e.g. Type)
-// 2. Validate the type corresponds to the Default value
-// 3. Validate Options are only specified for the Enum Type
+// 1. Variable is an interface
+// 2. We need to provide Defaults for optional fields, such as "type"
+// 3. We want to validate the variable as part of the unmarshalling process so we never have invalid Variable or
+//    Dependency classes floating around
 func (config *BoilerplateConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	var fields map[string]interface{}
 	if err := unmarshal(&fields); err != nil {
 		return err
 	}
 
-	vars, err := variables.UnmarshalVariables(fields, "variables")
+	vars, err := variables.UnmarshalVariablesFromBoilerplateConfigYaml(fields)
 	if err != nil {
 		return err
 	}
 
-	deps, err := variables.UnmarshalDependencies(fields, "dependencies")
+	deps, err := variables.UnmarshalDependenciesFromBoilerplateConfigYaml(fields)
 	if err != nil {
 		return err
 	}

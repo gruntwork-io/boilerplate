@@ -92,10 +92,8 @@ func getVariableFromUser(variable variables.Variable, options *BoilerplateOption
 	if variable.Default() != nil {
 		fmt.Printf("  (default: %s)\n", variable.Default())
 	}
+	fmt.Printf("  (type: %s, example: %s)\n", variable.Type(), variable.Type().Example())
 	fmt.Println()
-
-	// TODO: show type info
-	// TODO: show user examples of how to enter values of different types
 
 	value, err := util.PromptUserForInput("  Enter a value")
 	if err != nil {

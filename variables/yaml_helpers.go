@@ -10,6 +10,19 @@ import (
 	"fmt"
 )
 
+// Given a map of key:value pairs read from a Boilerplate YAML config file of the format:
+//
+// fieldName:
+//   - key1: value1
+//     key2: value2
+//     key3: value3
+//
+//   - key1: value1
+//     key2: value2
+//     key3: value3
+//
+// This method takes looks up the given fieldName in the map and unmarshals the data inside of it it into a list of
+// maps, where each map contains the set of key:value pairs
 func unmarshalListOfFields(fields map[string]interface{}, fieldName string) ([]map[string]interface{}, error) {
 	listOfFields := []map[string]interface{}{}
 
@@ -35,10 +48,19 @@ func unmarshalListOfFields(fields map[string]interface{}, fieldName string) ([]m
 	return listOfFields, nil
 }
 
-// Extract the options field from the given map of fields using the given field name and convert those options to a
-// list of strings.
-func unmarshalOptionsField(fields map[string]interface{}, fieldName string, context string, variableType BoilerplateType) ([]string, error) {
-	options, hasOptions := fields[fieldName]
+// Given a map of key:value pairs read from a Boilerplate YAML config file of the format:
+//
+// options:
+//   - foo
+//   - bar
+//   - baz
+//
+// This method takes looks up the options object in the map and unmarshals the data inside of it it into a list of
+// strings. This is meant to be used to parse the options field of an Enum variable. If the given variableType is not
+// an Enum and options have been specified, or this variable is an Enum and options have not been specified, this
+// method will return an error.
+func unmarshalOptionsField(fields map[string]interface{}, context string, variableType BoilerplateType) ([]string, error) {
+	options, hasOptions := fields["options"]
 
 	if !hasOptions {
 		if variableType == Enum {
@@ -54,15 +76,21 @@ func unmarshalOptionsField(fields map[string]interface{}, fieldName string, cont
 
 	optionsAsList, isList := options.([]interface{})
 	if !isList {
-		return nil, errors.WithStackTrace(InvalidTypeForField{FieldName: fieldName, ExpectedType: "List", ActualType: reflect.TypeOf(options), Context: context})
+		return nil, errors.WithStackTrace(InvalidTypeForField{FieldName: "options", ExpectedType: "List", ActualType: reflect.TypeOf(options), Context: context})
 	}
 
 	return util.ToStringList(optionsAsList), nil
 }
 
-// Extract the type field from the map of fields using the given field name and convert the type to a BoilerplateType.
-func unmarshalTypeField(fields map[string]interface{}, fieldName string, context string) (BoilerplateType, error) {
-	variableTypeAsString, err := unmarshalStringField(fields, fieldName, false, context)
+// Given a map of key:value pairs read from a Boilerplate YAML config file of the format:
+//
+// type: <TYPE>
+//
+// This method takes looks up the options key in the map and unmarshals the data inside of it it into a
+// BoilerplateType. If no type is specified, this method returns the default type (String). If an unrecognized type is
+// specified, this method returns an error.
+func unmarshalTypeField(fields map[string]interface{}, context string) (BoilerplateType, error) {
+	variableTypeAsString, err := unmarshalStringField(fields, "type", false, context)
 	if err != nil {
 		return BOILERPLATE_TYPE_DEFAULT, err
 	}
@@ -78,8 +106,12 @@ func unmarshalTypeField(fields map[string]interface{}, fieldName string, context
 	return BOILERPLATE_TYPE_DEFAULT, nil
 }
 
-// Extract a string field from the map of fields using the given field name and convert it to a string. If no such
-// field is in the map of fields but requiredField is set to true, return an error.
+// Given a map of key:value pairs read from a Boilerplate YAML config file of the format:
+//
+// fieldName: <VALUE>
+//
+// This method takes looks up the given fieldName in the map and unmarshals the data inside of it into a string. If
+// requiredField is true and fieldName was not in the map, this method will return an error.
 func unmarshalStringField(fields map[string]interface{}, fieldName string, requiredField bool, context string) (*string, error) {
 	value, hasValue := fields[fieldName]
 	if !hasValue {
@@ -97,8 +129,12 @@ func unmarshalStringField(fields map[string]interface{}, fieldName string, requi
 	}
 }
 
-// Extract a boolean field from the map of fields using the given field name and convert it to a bool. If no such
-// field is in the map of fields but requiredField is set to true, return an error.
+// Given a map of key:value pairs read from a Boilerplate YAML config file of the format:
+//
+// fieldName: <VALUE>
+//
+// This method takes looks up the given fieldName in the map and unmarshals the data inside of it into a bool. If
+// requiredField is true and fieldName was not in the map, this method will return an error.
 func unmarshalBooleanField(fields map[string]interface{}, fieldName string, requiredField bool, context string) (bool, error) {
 	value, hasValue := fields[fieldName]
 	if !hasValue {

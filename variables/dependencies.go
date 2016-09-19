@@ -16,6 +16,7 @@ type Dependency struct {
 	Variables             []Variable
 }
 
+// Get all the variables in this dependency, namespacing each variable with the name of this dependency
 func (dependency Dependency) GetNamespacedVariables() []Variable {
 	variables := []Variable{}
 
@@ -40,17 +41,29 @@ func SplitIntoDependencyNameAndVariableName(uniqueVariableName string) (string, 
 	}
 }
 
-func UnmarshalDependencies(fields map[string]interface{}, fieldName string) ([]Dependency, error) {
+// Given a map of key:value pairs read from a Boilerplate YAML config file of the format:
+//
+// dependencies:
+//   - name: <NAME>
+//     template-folder: <TEMPLATE_FOLDER>
+//     output-folder: <OUTPUT_FOLDER>
+//
+//   - name: <NAME>
+//     template-folder: <TEMPLATE_FOLDER>
+//     output-folder: <OUTPUT_FOLDER>
+//
+// This method takes the data above and unmarshals it into a list of Dependency objects
+func UnmarshalDependenciesFromBoilerplateConfigYaml(fields map[string]interface{}) ([]Dependency, error) {
 	unmarshalledDependencies := []Dependency{}
 	dependencyNames := []string{}
 
-	listOfFields, err := unmarshalListOfFields(fields, fieldName)
+	listOfFields, err := unmarshalListOfFields(fields, "dependencies")
 	if err != nil {
 		return unmarshalledDependencies, err
 	}
 
 	for _, fields := range listOfFields {
-		dependency, err := UnmarshalDependency(fields)
+		dependency, err := UnmarshalDependencyFromBoilerplateConfigYaml(fields)
 		if err != nil {
 			return unmarshalledDependencies, err
 		}
@@ -66,7 +79,14 @@ func UnmarshalDependencies(fields map[string]interface{}, fieldName string) ([]D
 	return unmarshalledDependencies, nil
 }
 
-func UnmarshalDependency(fields map[string]interface{}) (*Dependency, error) {
+// Given a map of key:value pairs read from a Boilerplate YAML config file of the format:
+//
+// name: <NAME>
+// template-folder: <TEMPLATE_FOLDER>
+// output-folder: <OUTPUT_FOLDER>
+//
+// This method takes the data above and unmarshals it into a Dependency object
+func UnmarshalDependencyFromBoilerplateConfigYaml(fields map[string]interface{}) (*Dependency, error) {
 	name, err := unmarshalStringField(fields, "name", true, "")
 	if err != nil {
 		return nil, err
@@ -87,7 +107,7 @@ func UnmarshalDependency(fields map[string]interface{}) (*Dependency, error) {
 		return nil, err
 	}
 
-	variables, err := UnmarshalVariables(fields, "variables")
+	variables, err := UnmarshalVariablesFromBoilerplateConfigYaml(fields)
 	if err != nil {
 		return nil, err
 	}
