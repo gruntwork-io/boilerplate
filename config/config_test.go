@@ -7,6 +7,7 @@ import (
 	"gopkg.in/yaml.v2"
 	"github.com/gruntwork-io/boilerplate/errors"
 	"path"
+	"github.com/gruntwork-io/boilerplate/variables"
 )
 
 func TestParseBoilerplateConfigEmpty(t *testing.T) {
@@ -31,13 +32,20 @@ func TestParseBoilerplateConfigInvalid(t *testing.T) {
 	assert.True(t, isYamlTypeError, "Expected a YAML type error for an invalid yaml file but got %s: %v", reflect.TypeOf(unwrapped), unwrapped)
 }
 
-func TestParseBoilerplateConfigEmptyVariables(t *testing.T) {
+// YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
+const CONFIG_EMPTY_VARIABLES_AND_DEPENDENCIES =
+`variables:
+dependencies:
+`
+
+func TestParseBoilerplateConfigEmptyVariablesAndDependencies(t *testing.T) {
 	t.Parallel()
 
-	configContents := `variables:`
-
-	actual, err := ParseBoilerplateConfig([]byte(configContents))
-	expected := &BoilerplateConfig{}
+	actual, err := ParseBoilerplateConfig([]byte(CONFIG_EMPTY_VARIABLES_AND_DEPENDENCIES))
+	expected := &BoilerplateConfig{
+		Variables: []variables.Variable{},
+		Dependencies: []variables.Dependency{},
+	}
 
 	assert.Nil(t, err)
 	assert.Equal(t, expected, actual)
@@ -54,9 +62,10 @@ func TestParseBoilerplateConfigOneVariableMinimal(t *testing.T) {
 
 	actual, err := ParseBoilerplateConfig([]byte(CONFIG_ONE_VARIABLE_MINIMAL))
 	expected := &BoilerplateConfig{
-		Variables: []Variable{
-			{Name: "foo", Type: String},
+		Variables: []variables.Variable{
+			variables.NewStringVariable("foo"),
 		},
+		Dependencies: []variables.Dependency{},
 	}
 
 	assert.Nil(t, err)
@@ -77,9 +86,10 @@ func TestParseBoilerplateConfigOneVariableFull(t *testing.T) {
 
 	actual, err := ParseBoilerplateConfig([]byte(CONFIG_ONE_VARIABLE_FULL))
 	expected := &BoilerplateConfig{
-		Variables: []Variable{
-			{Name: "foo", Description: "example description", Default: "default", Type: String},
+		Variables: []variables.Variable{
+			variables.NewStringVariable("foo").WithDescription("example description").WithDefault("default"),
 		},
+		Dependencies: []variables.Dependency{},
 	}
 
 	assert.Nil(t, err)
@@ -99,7 +109,7 @@ func TestParseBoilerplateConfigOneVariableMissingName(t *testing.T) {
 	_, err := ParseBoilerplateConfig([]byte(CONFIG_ONE_VARIABLE_MISSING_NAME))
 
 	assert.NotNil(t, err)
-	assert.True(t, errors.IsError(err, RequiredFieldMissing("name")), "Expected a RequiredFieldMissing error but got %s", reflect.TypeOf(err))
+	assert.True(t, errors.IsError(err, variables.RequiredFieldMissing("name")), "Expected a RequiredFieldMissing error but got %s: %v", reflect.TypeOf(errors.Unwrap(err)), err)
 }
 
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
@@ -115,7 +125,24 @@ func TestParseBoilerplateConfigOneVariableInvalidType(t *testing.T) {
 	_, err := ParseBoilerplateConfig([]byte(CONFIG_ONE_VARIABLE_INVALID_TYPE))
 
 	assert.NotNil(t, err)
-	assert.True(t, errors.IsError(err, InvalidBoilerplateType("foo")), "Expected a InvalidBoilerplateType error but got %s", reflect.TypeOf(err))
+	assert.True(t, errors.IsError(err, variables.InvalidBoilerplateType("foo")), "Expected a InvalidBoilerplateType error but got %s", reflect.TypeOf(errors.Unwrap(err)))
+}
+
+// YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
+const CONFIG_ONE_VARIABLE_INVALID_TYPE_FOR_NAME_FIELD =
+`variables:
+  - name:
+      - foo
+      - bar
+`
+
+func TestParseBoilerplateConfigInvalidTypeForNameField(t *testing.T) {
+	t.Parallel()
+
+	_, err := ParseBoilerplateConfig([]byte(CONFIG_ONE_VARIABLE_INVALID_TYPE_FOR_NAME_FIELD))
+
+	assert.NotNil(t, err)
+	assert.True(t, errors.IsError(err, variables.InvalidTypeForField{FieldName: "name", ExpectedType: "string", ActualType: reflect.TypeOf([]interface{}{})}), "Expected a InvalidTypeForField error but got %s: %v", reflect.TypeOf(errors.Unwrap(err)), err)
 }
 
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
@@ -131,7 +158,46 @@ func TestParseBoilerplateConfigOneVariableEnumNoOptions(t *testing.T) {
 	_, err := ParseBoilerplateConfig([]byte(CONFIG_ONE_VARIABLE_ENUM_NO_OPTIONS))
 
 	assert.NotNil(t, err)
-	assert.True(t, errors.IsError(err, VariableMissingOptions("foo")), "Expected a VariableMissingOptions error but got %s", reflect.TypeOf(err))
+	assert.True(t, errors.IsError(err, variables.OptionsMissing("foo")), "Expected a VariableMissingOptions error but got %s", reflect.TypeOf(errors.Unwrap(err)))
+}
+
+// YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
+const CONFIG_ONE_VARIABLE_ENUM_OPTIONS_WRONG_TYPE =
+`variables:
+  - name: foo
+    type: enum
+    options: foo
+`
+
+func TestParseBoilerplateConfigOneVariableEnumWrongType(t *testing.T) {
+	t.Parallel()
+
+	_, err := ParseBoilerplateConfig([]byte(CONFIG_ONE_VARIABLE_ENUM_OPTIONS_WRONG_TYPE))
+
+	assert.NotNil(t, err)
+	assert.True(t, errors.IsError(err, variables.InvalidTypeForField{FieldName: "options", ExpectedType: "List", ActualType: reflect.TypeOf("string"), Context: "foo"}), "Expected a InvalidTypeForField error but got %s", reflect.TypeOf(errors.Unwrap(err)))
+}
+
+// YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
+const CONFIG_ONE_VARIABLE_ENUM_INVALID_DEFAULT =
+`variables:
+  - name: foo
+    type: enum
+    options:
+      - foo
+      - bar
+      - baz
+    default: invalid
+`
+
+func TestParseBoilerplateConfigOneVariableEnumInvalidDefault(t *testing.T) {
+	t.Parallel()
+
+	_, err := ParseBoilerplateConfig([]byte(CONFIG_ONE_VARIABLE_ENUM_INVALID_DEFAULT))
+
+	assert.NotNil(t, err)
+	_, isInvalidVariableValueErr := errors.Unwrap(err).(variables.InvalidVariableValue)
+	assert.True(t, isInvalidVariableValueErr, "Expected a InvalidVariableValue error but got %s", reflect.TypeOf(errors.Unwrap(err)))
 }
 
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
@@ -149,7 +215,7 @@ func TestParseBoilerplateConfigOneVariableOptionsForNonEnum(t *testing.T) {
 	_, err := ParseBoilerplateConfig([]byte(CONFIG_ONE_VARIABLE_OPTIONS_FOR_NON_ENUM))
 
 	assert.NotNil(t, err)
-	assert.True(t, errors.IsError(err, OptionsCanOnlyBeUsedWithEnum{VariableName: "foo", VariableType: String}), "Expected a OptionsCanOnlyBeUsedWithEnum error but got %v", err)
+	assert.True(t, errors.IsError(err, variables.OptionsCanOnlyBeUsedWithEnum{Context: "foo", Type: variables.String}), "Expected a OptionsCanOnlyBeUsedWithEnum error but got %v", err)
 }
 
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
@@ -176,12 +242,13 @@ func TestParseBoilerplateConfigMultipleVariables(t *testing.T) {
 
 	actual, err := ParseBoilerplateConfig([]byte(CONFIG_MULTIPLE_VARIABLES))
 	expected := &BoilerplateConfig{
-		Variables: []Variable{
-			{Name: "foo", Type: String},
-			{Name: "bar", Description: "example description", Type: String},
-			{Name: "baz", Description: "example description", Type: Int, Default: 3},
-			{Name: "dep1.baz", Description: "another example description", Type: Bool, Default: true},
+		Variables: []variables.Variable{
+			variables.NewStringVariable("foo"),
+			variables.NewStringVariable("bar").WithDescription("example description"),
+			variables.NewIntVariable("baz").WithDescription("example description").WithDefault(3),
+			variables.NewBoolVariable("dep1.baz").WithDescription("another example description").WithDefault(true),
 		},
+		Dependencies: []variables.Dependency{},
 	}
 
 	assert.Nil(t, err)
@@ -238,16 +305,17 @@ func TestParseBoilerplateConfigAllTypes(t *testing.T) {
 
 	actual, err := ParseBoilerplateConfig([]byte(CONFIG_ALL_TYPES))
 	expected := &BoilerplateConfig{
-		Variables: []Variable{
-			{Name: "var1", Type: String, Default: "foo"},
-			{Name: "var2", Type: String, Default: "foo"},
-			{Name: "var3", Type: Int, Default: 5},
-			{Name: "var4", Type: Float, Default: 5.5},
-			{Name: "var5", Type: Bool, Default: true},
-			{Name: "var6", Type: List, Default: []string{"foo", "bar", "baz"}},
-			{Name: "var7", Type: Map, Default: map[string]string{"key1": "value1", "key2": "value2", "key3": "value3"}},
-			{Name: "var8", Type: Enum, Default: "bar", Options: []string{"foo", "bar", "baz"}},
+		Variables: []variables.Variable{
+			variables.NewStringVariable("var1").WithDefault("foo"),
+			variables.NewStringVariable("var2").WithDefault("foo"),
+			variables.NewIntVariable("var3").WithDefault(5),
+			variables.NewFloatVariable("var4").WithDefault(5.5),
+			variables.NewBoolVariable("var5").WithDefault(true),
+			variables.NewListVariable("var6").WithDefault([]string{"foo", "bar", "baz"}),
+			variables.NewMapVariable("var7").WithDefault(map[string]string{"key1": "value1", "key2": "value2", "key3": "value3"}),
+			variables.NewEnumVariable("var8", []string{"foo", "bar", "baz"}).WithDefault("bar"),
 		},
+		Dependencies: []variables.Dependency{},
 	}
 
 	assert.Nil(t, err)
@@ -267,8 +335,9 @@ func TestParseBoilerplateConfigOneDependency(t *testing.T) {
 
 	actual, err := ParseBoilerplateConfig([]byte(CONFIG_ONE_DEPENDENCY))
 	expected := &BoilerplateConfig{
-		Dependencies: []Dependency{
-			{Name: "dep1", TemplateFolder: "/template/folder1", OutputFolder: "/output/folder1", DontInheritVariables: false},
+		Variables: []variables.Variable{},
+		Dependencies: []variables.Dependency{
+			{Name: "dep1", TemplateFolder: "/template/folder1", OutputFolder: "/output/folder1", DontInheritVariables: false, Variables: []variables.Variable{}},
 		},
 	}
 
@@ -302,20 +371,22 @@ func TestParseBoilerplateConfigMultipleDependencies(t *testing.T) {
 
 	actual, err := ParseBoilerplateConfig([]byte(CONFIG_MULTIPLE_DEPENDENCIES))
 	expected := &BoilerplateConfig{
-		Dependencies: []Dependency{
+		Variables: []variables.Variable{},
+		Dependencies: []variables.Dependency{
 			{
 				Name: "dep1",
 				TemplateFolder: "/template/folder1",
 				OutputFolder: "/output/folder1",
 				DontInheritVariables: false,
+				Variables: []variables.Variable{},
 			},
 			{
 				Name: "dep2",
 				TemplateFolder: "/template/folder2",
 				OutputFolder: "/output/folder2",
 				DontInheritVariables: true,
-				Variables: []Variable{
-					{Name: "var1", Description: "Enter var1", Default: "foo", Type: String},
+				Variables: []variables.Variable{
+					variables.NewStringVariable("var1").WithDescription("Enter var1").WithDefault("foo"),
 				},
 			},
 			{
@@ -323,6 +394,7 @@ func TestParseBoilerplateConfigMultipleDependencies(t *testing.T) {
 				TemplateFolder: "/template/folder3",
 				OutputFolder: "/output/folder3",
 				DontInheritVariables: false,
+				Variables: []variables.Variable{},
 			},
 		},
 	}
@@ -344,7 +416,7 @@ func TestParseBoilerplateConfigDependencyMissingName(t *testing.T) {
 	_, err := ParseBoilerplateConfig([]byte(CONFIG_DEPENDENCY_MISSING_NAME))
 
 	assert.NotNil(t, err)
-	assert.True(t, errors.IsError(err, MissingNameForDependency(0)), "Expected a MissingNameForDependency error but got %s", reflect.TypeOf(err))
+	assert.True(t, errors.IsError(err, variables.RequiredFieldMissing("name")), "Expected a RequiredFieldMissing error but got %s", reflect.TypeOf(errors.Unwrap(err)))
 }
 
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
@@ -360,7 +432,7 @@ func TestParseBoilerplateConfigDependencyMissingTemplateFolder(t *testing.T) {
 	_, err := ParseBoilerplateConfig([]byte(CONFIG_DEPENDENCY_MISSING_TEMPLATE_FOLDER))
 
 	assert.NotNil(t, err)
-	assert.True(t, errors.IsError(err, MissingTemplateFolderForDependency("dep1")), "Expected a MissingTemplateFolderForDependency error but got %s", reflect.TypeOf(err))
+	assert.True(t, errors.IsError(err, variables.RequiredFieldMissing("template-folder")), "Expected a RequiredFieldMissing error but got %s", reflect.TypeOf(errors.Unwrap(err)))
 }
 
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
@@ -380,7 +452,7 @@ func TestParseBoilerplateConfigDependencyMissingVariableName(t *testing.T) {
 	_, err := ParseBoilerplateConfig([]byte(CONFIG_DEPENDENCY_MISSING_VARIABLE_NAME))
 
 	assert.NotNil(t, err)
-	assert.True(t, errors.IsError(err, RequiredFieldMissing("name")), "Expected a RequiredFieldMissing error but got %s", reflect.TypeOf(err))
+	assert.True(t, errors.IsError(err, variables.RequiredFieldMissing("name")), "Expected a RequiredFieldMissing error but got %s", reflect.TypeOf(errors.Unwrap(err)))
 }
 
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
@@ -400,7 +472,7 @@ func TestParseBoilerplateConfigDependencyMissingOutputFolder(t *testing.T) {
 	_, err := ParseBoilerplateConfig([]byte(CONFIG_DEPENDENCY_MISSING_OUTPUT_FOLDER))
 
 	assert.NotNil(t, err)
-	assert.True(t, errors.IsError(err, MissingOutputFolderForDependency("dep2")), "Expected a MissingOutputFolderForDependency error but got %s", reflect.TypeOf(err))
+	assert.True(t, errors.IsError(err, variables.RequiredFieldMissing("output-folder")), "Expected a RequiredFieldMissing error but got %s", reflect.TypeOf(errors.Unwrap(err)))
 }
 
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
@@ -425,7 +497,7 @@ func TestParseBoilerplateConfigDependencyDuplicateNames(t *testing.T) {
 	_, err := ParseBoilerplateConfig([]byte(CONFIG_DEPENDENCY_DUPLICATE_NAMES))
 
 	assert.NotNil(t, err)
-	assert.True(t, errors.IsError(err, DuplicateDependencyName("dep1")), "Expected a DuplicateDependencyName error but got %s", reflect.TypeOf(err))
+	assert.True(t, errors.IsError(err, variables.DuplicateDependencyName("dep1")), "Expected a DuplicateDependencyName error but got %s", reflect.TypeOf(errors.Unwrap(err)))
 }
 
 func TestLoadBoilerplateConfigFullConfig(t *testing.T) {
@@ -433,16 +505,16 @@ func TestLoadBoilerplateConfigFullConfig(t *testing.T) {
 
 	actual, err := LoadBoilerplateConfig(&BoilerplateOptions{TemplateFolder: "../test-fixtures/config-test/full-config"})
 	expected := &BoilerplateConfig{
-		Variables: []Variable{
-			{Name: "foo", Type: String},
-			{Name: "bar", Type: String, Description: "example description"},
-			{Name: "baz", Type: String, Description: "example description", Default: "default"},
+		Variables: []variables.Variable{
+			variables.NewStringVariable("foo"),
+			variables.NewStringVariable("bar").WithDescription("example description"),
+			variables.NewStringVariable("baz").WithDescription("example description").WithDefault("default"),
 		},
-		Dependencies: []Dependency{
-			{Name: "dep1", TemplateFolder: "/template/folder1", OutputFolder: "/output/folder1", DontInheritVariables: false},
-			{Name: "dep2", TemplateFolder: "/template/folder2", OutputFolder: "/output/folder2", DontInheritVariables: true, Variables: []Variable{
-				{Name: "baz", Type: String, Description: "example description", Default: "other-default"},
-				{Name: "abc", Type: String, Description: "example description", Default: "default"},
+		Dependencies: []variables.Dependency{
+			{Name: "dep1", TemplateFolder: "/template/folder1", OutputFolder: "/output/folder1", DontInheritVariables: false, Variables: []variables.Variable{}},
+			{Name: "dep2", TemplateFolder: "/template/folder2", OutputFolder: "/output/folder2", DontInheritVariables: true, Variables: []variables.Variable{
+				variables.NewStringVariable("baz").WithDescription("example description").WithDefault("other-default"),
+				variables.NewStringVariable("abc").WithDescription("example description").WithDefault("default"),
 			}},
 		},
 	}

@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	"path"
 	"fmt"
+	"github.com/gruntwork-io/boilerplate/variables"
 )
 
 // Process the boilerplate template specified in the given options and use the existing variables. This function will
@@ -43,7 +44,7 @@ func ProcessTemplate(options *config.BoilerplateOptions) error {
 }
 
 // Execute the boilerplate templates in the given list of dependencies
-func processDependencies(dependencies []config.Dependency, options *config.BoilerplateOptions, variables map[string]interface{}) error {
+func processDependencies(dependencies []variables.Dependency, options *config.BoilerplateOptions, variables map[string]interface{}) error {
 	for _, dependency := range dependencies {
 		err := processDependency(dependency, options, variables)
 		if err != nil {
@@ -55,7 +56,7 @@ func processDependencies(dependencies []config.Dependency, options *config.Boile
 }
 
 // Execute the boilerplate template in the given dependency
-func processDependency(dependency config.Dependency, options *config.BoilerplateOptions, variables map[string]interface{}) error {
+func processDependency(dependency variables.Dependency, options *config.BoilerplateOptions, variables map[string]interface{}) error {
 	shouldProcess, err := shouldProcessDependency(dependency, options)
 	if err != nil {
 		return err
@@ -74,7 +75,7 @@ func processDependency(dependency config.Dependency, options *config.Boilerplate
 
 // Clone the given options for use when rendering the given dependency. The dependency will get the same options as
 // the original passed in, except for the template folder, output folder, and command-line vars.
-func cloneOptionsForDependency(dependency config.Dependency, originalOptions *config.BoilerplateOptions, variables map[string]interface{}) *config.BoilerplateOptions {
+func cloneOptionsForDependency(dependency variables.Dependency, originalOptions *config.BoilerplateOptions, variables map[string]interface{}) *config.BoilerplateOptions {
 	templateFolder := pathRelativeToTemplate(originalOptions.TemplateFolder, dependency.TemplateFolder)
 	outputFolder := pathRelativeToTemplate(originalOptions.OutputFolder, dependency.OutputFolder)
 
@@ -91,7 +92,7 @@ func cloneOptionsForDependency(dependency config.Dependency, originalOptions *co
 // Clone the given variables for use when rendering the given dependency.  The dependency will get the same variables
 // as the originals passed in, filtered to variable names that do not include a dependency or explicitly are for the
 // given dependency. If dependency.DontInheritVariables is set to true, an empty map is returned.
-func cloneVariablesForDependency(dependency config.Dependency, originalVariables map[string]interface{}) map[string]interface{} {
+func cloneVariablesForDependency(dependency variables.Dependency, originalVariables map[string]interface{}) map[string]interface{} {
 	newVariables := map[string]interface{}{}
 
 	if dependency.DontInheritVariables {
@@ -99,7 +100,7 @@ func cloneVariablesForDependency(dependency config.Dependency, originalVariables
 	}
 
 	for variableName, variableValue := range originalVariables {
-		dependencyName, variableOriginalName := config.SplitIntoDependencyNameAndVariableName(variableName)
+		dependencyName, variableOriginalName := variables.SplitIntoDependencyNameAndVariableName(variableName)
 		if dependencyName == dependency.Name {
 			newVariables[variableOriginalName] = variableValue
 		} else if _, alreadyExists := newVariables[variableName]; !alreadyExists {
@@ -112,7 +113,7 @@ func cloneVariablesForDependency(dependency config.Dependency, originalVariables
 
 // Prompt the user to verify if the given dependency should be executed and return true if they confirm. If
 // options.NonInteractive is set to true, this function always returns true.
-func shouldProcessDependency(dependency config.Dependency, options *config.BoilerplateOptions) (bool, error) {
+func shouldProcessDependency(dependency variables.Dependency, options *config.BoilerplateOptions) (bool, error) {
 	if options.NonInteractive {
 		return true, nil
 	}

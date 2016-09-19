@@ -5,12 +5,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"reflect"
 	"github.com/gruntwork-io/boilerplate/errors"
+	"github.com/gruntwork-io/boilerplate/variables"
 )
 
 func TestGetVariableFromVarsEmptyVars(t *testing.T) {
 	t.Parallel()
 
-	variable := Variable{Name: "foo"}
+	variable := variables.NewStringVariable("foo")
 	options := &BoilerplateOptions{}
 
 	_, containsValue := getVariableFromVars(variable, options)
@@ -20,7 +21,7 @@ func TestGetVariableFromVarsEmptyVars(t *testing.T) {
 func TestGetVariableFromVarsNoMatch(t *testing.T) {
 	t.Parallel()
 
-	variable := Variable{Name: "foo"}
+	variable := variables.NewStringVariable("foo")
 	options := &BoilerplateOptions{
 		Vars: map[string]interface{}{
 			"key1": "value1",
@@ -36,7 +37,7 @@ func TestGetVariableFromVarsNoMatch(t *testing.T) {
 func TestGetVariableFromVarsMatch(t *testing.T) {
 	t.Parallel()
 
-	variable := Variable{Name: "foo"}
+	variable := variables.NewStringVariable("foo")
 	options := &BoilerplateOptions{
 		Vars: map[string]interface{}{
 			"key1": "value1",
@@ -55,7 +56,7 @@ func TestGetVariableFromVarsMatch(t *testing.T) {
 func TestGetVariableFromVarsForDependencyNoMatch(t *testing.T) {
 	t.Parallel()
 
-	variable := Variable{Name: "bar.foo"}
+	variable := variables.NewStringVariable("bar.foo")
 	options := &BoilerplateOptions{
 		Vars: map[string]interface{}{
 			"key1": "value1",
@@ -71,7 +72,7 @@ func TestGetVariableFromVarsForDependencyNoMatch(t *testing.T) {
 func TestGetVariableFromVarsForDependencyMatch(t *testing.T) {
 	t.Parallel()
 
-	variable := Variable{Name: "bar.foo"}
+	variable := variables.NewStringVariable("bar.foo")
 	options := &BoilerplateOptions{
 		Vars: map[string]interface{}{
 			"key1": "value1",
@@ -90,7 +91,7 @@ func TestGetVariableFromVarsForDependencyMatch(t *testing.T) {
 func TestGetVariableNoMatchNonInteractive(t *testing.T) {
 	t.Parallel()
 
-	variable := Variable{Name: "foo"}
+	variable := variables.NewStringVariable("foo")
 	options := &BoilerplateOptions{NonInteractive: true}
 
 	_, err := getVariable(variable, options)
@@ -102,7 +103,7 @@ func TestGetVariableNoMatchNonInteractive(t *testing.T) {
 func TestGetVariableInVarsNonInteractive(t *testing.T) {
 	t.Parallel()
 
-	variable := Variable{Name: "foo"}
+	variable := variables.NewStringVariable("foo")
 	options := &BoilerplateOptions{
 		NonInteractive: true,
 		Vars: map[string]interface{}{
@@ -122,7 +123,7 @@ func TestGetVariableInVarsNonInteractive(t *testing.T) {
 func TestGetVariableDefaultNonInteractive(t *testing.T) {
 	t.Parallel()
 
-	variable := Variable{Name: "foo", Default: "bar"}
+	variable := variables.NewStringVariable("foo").WithDefault("bar")
 	options := &BoilerplateOptions{
 		NonInteractive: true,
 		Vars: map[string]interface{}{
@@ -157,8 +158,8 @@ func TestGetVariablesNoMatchNonInteractive(t *testing.T) {
 
 	options := &BoilerplateOptions{NonInteractive: true}
 	boilerplateConfig := &BoilerplateConfig{
-		Variables: []Variable{
-			{Name: "foo", Type: String},
+		Variables: []variables.Variable{
+			variables.NewStringVariable("foo"),
 		},
 	}
 
@@ -179,8 +180,8 @@ func TestGetVariablesMatchFromVars(t *testing.T) {
 	}
 
 	boilerplateConfig := &BoilerplateConfig{
-		Variables: []Variable{
-			{Name: "foo", Type: String},
+		Variables: []variables.Variable{
+			variables.NewStringVariable("foo"),
 		},
 	}
 
@@ -205,10 +206,10 @@ func TestGetVariablesMatchFromVarsAndDefaults(t *testing.T) {
 	}
 
 	boilerplateConfig := &BoilerplateConfig{
-		Variables: []Variable{
-			{Name: "key1", Type: String},
-			{Name: "key2", Type: String},
-			{Name: "key3", Type: String, Default: "value3"},
+		Variables: []variables.Variable{
+			variables.NewStringVariable("key1"),
+			variables.NewStringVariable("key2"),
+			variables.NewStringVariable("key3").WithDefault("value3"),
 		},
 	}
 

@@ -5,6 +5,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"os"
 	"github.com/gruntwork-io/boilerplate/config"
+	"github.com/gruntwork-io/boilerplate/variables"
 )
 
 func TestOutPath(t *testing.T) {
@@ -131,19 +132,19 @@ func TestCloneOptionsForDependency(t *testing.T) {
 	t.Parallel()
 
 	testCases := []struct {
-		dependency      config.Dependency
+		dependency      variables.Dependency
 		options         config.BoilerplateOptions
 		variables       map[string]interface{}
 		expectedOptions config.BoilerplateOptions
 	}{
 		{
-			config.Dependency{Name: "dep1", TemplateFolder: "../dep1", OutputFolder: "../out1"},
+			variables.Dependency{Name: "dep1", TemplateFolder: "../dep1", OutputFolder: "../out1"},
 			config.BoilerplateOptions{TemplateFolder: "/template/path/", OutputFolder: "/output/path/", NonInteractive: true, Vars: map[string]interface{}{}, OnMissingKey: config.ExitWithError},
 			map[string]interface{}{},
 			config.BoilerplateOptions{TemplateFolder: "/template/dep1", OutputFolder: "/output/out1", NonInteractive: true, Vars: map[string]interface{}{}, OnMissingKey: config.ExitWithError},
 		},
 		{
-			config.Dependency{Name: "dep1", TemplateFolder: "../dep1", OutputFolder: "../out1"},
+			variables.Dependency{Name: "dep1", TemplateFolder: "../dep1", OutputFolder: "../out1"},
 			config.BoilerplateOptions{TemplateFolder: "/template/path/", OutputFolder: "/output/path/", NonInteractive: false, Vars: map[string]interface{}{"foo": "bar"}, OnMissingKey: config.Invalid},
 			map[string]interface{}{"baz": "blah"},
 			config.BoilerplateOptions{TemplateFolder: "/template/dep1", OutputFolder: "/output/out1", NonInteractive: false, Vars: map[string]interface{}{"baz": "blah"}, OnMissingKey: config.Invalid},
@@ -160,32 +161,32 @@ func TestCloneVariablesForDependency(t *testing.T) {
 	t.Parallel()
 
 	testCases := []struct {
-		dependency        config.Dependency
+		dependency        variables.Dependency
 		variables         map[string]interface{}
 		expectedVariables map[string]interface{}
 	}{
 		{
-			config.Dependency{Name: "dep1", TemplateFolder: "../dep1", OutputFolder: "../out1"},
+			variables.Dependency{Name: "dep1", TemplateFolder: "../dep1", OutputFolder: "../out1"},
 			map[string]interface{}{},
 			map[string]interface{}{},
 		},
 		{
-			config.Dependency{Name: "dep1", TemplateFolder: "../dep1", OutputFolder: "../out1"},
+			variables.Dependency{Name: "dep1", TemplateFolder: "../dep1", OutputFolder: "../out1"},
 			map[string]interface{}{"foo": "bar", "baz": "blah"},
 			map[string]interface{}{"foo": "bar", "baz": "blah"},
 		},
 		{
-			config.Dependency{Name: "dep1", TemplateFolder: "../dep1", OutputFolder: "../out1"},
+			variables.Dependency{Name: "dep1", TemplateFolder: "../dep1", OutputFolder: "../out1"},
 			map[string]interface{}{"foo": "bar", "baz": "blah", "dep1.abc": "should-modify-name", "dep2.def": "should-copy-unmodified"},
 			map[string]interface{}{"foo": "bar", "baz": "blah", "abc": "should-modify-name", "dep2.def": "should-copy-unmodified"},
 		},
 		{
-			config.Dependency{Name: "dep1", TemplateFolder: "../dep1", OutputFolder: "../out1"},
+			variables.Dependency{Name: "dep1", TemplateFolder: "../dep1", OutputFolder: "../out1"},
 			map[string]interface{}{"foo": "bar", "baz": "blah", "dep1.abc": "should-modify-name", "dep2.def": "should-copy-unmodified", "abc": "should-be-overwritten-by-dep1.abc"},
 			map[string]interface{}{"foo": "bar", "baz": "blah", "abc": "should-modify-name", "dep2.def": "should-copy-unmodified"},
 		},
 		{
-			config.Dependency{Name: "dep1", TemplateFolder: "../dep1", OutputFolder: "../out1", DontInheritVariables: true},
+			variables.Dependency{Name: "dep1", TemplateFolder: "../dep1", OutputFolder: "../out1", DontInheritVariables: true},
 			map[string]interface{}{"foo": "bar", "baz": "blah", "dep1.abc": "should-modify-name", "dep2.def": "should-copy-unmodified"},
 			map[string]interface{}{},
 		},

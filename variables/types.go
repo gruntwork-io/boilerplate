@@ -1,4 +1,4 @@
-package config
+package variables
 
 import (
 	"github.com/gruntwork-io/boilerplate/errors"
@@ -43,4 +43,5 @@ type InvalidBoilerplateType string
 func (err InvalidBoilerplateType) Error() string {
 	return fmt.Sprintf("Invalid InvalidBoilerplateType '%s'. Value must be one of: %s", string(err), ALL_BOILERPLATE_TYPES)
 }
+
 

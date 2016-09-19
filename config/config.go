@@ -7,6 +7,7 @@ import (
 	"github.com/gruntwork-io/boilerplate/util"
 	"fmt"
 	"github.com/gruntwork-io/boilerplate/errors"
+	"github.com/gruntwork-io/boilerplate/variables"
 )
 
 const BOILERPLATE_CONFIG_FILE = "boilerplate.yml"
@@ -21,8 +22,37 @@ const OPT_MISSING_CONFIG_ACTION = "missing-config-action"
 
 // The contents of a boilerplate.yml config file
 type BoilerplateConfig struct {
-	Variables    []Variable
-	Dependencies []Dependency
+	Variables    []variables.Variable
+	Dependencies []variables.Dependency
+}
+
+// Implement the go-yaml unmarshal interface for BoilerplateConfig. We can't let go-yaml handle this itself because we
+// need to:
+//
+// 1. Set Defaults for missing fields (e.g. Type)
+// 2. Validate the type corresponds to the Default value
+// 3. Validate Options are only specified for the Enum Type
+func (config *BoilerplateConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var fields map[string]interface{}
+	if err := unmarshal(&fields); err != nil {
+		return err
+	}
+
+	vars, err := variables.UnmarshalVariables(fields, "variables")
+	if err != nil {
+		return err
+	}
+
+	deps, err := variables.UnmarshalDependencies(fields, "dependencies")
+	if err != nil {
+		return err
+	}
+
+	*config = BoilerplateConfig{
+		Variables: vars,
+		Dependencies: deps,
+	}
+	return nil
 }
 
 // Load the boilerplate.yml config contents for the folder specified in the given options
@@ -53,25 +83,12 @@ func ParseBoilerplateConfig(configContents []byte) (*BoilerplateConfig, error) {
 		return nil, errors.WithStackTrace(err)
 	}
 
-	if err := boilerplateConfig.validate(); err != nil {
-		return nil, err
-	}
-
 	return boilerplateConfig, nil
 }
 
 // Return the default path for a boilerplate.yml config file in the given folder
 func BoilerplateConfigPath(templateFolder string) string {
 	return path.Join(templateFolder, BOILERPLATE_CONFIG_FILE)
-}
-
-// Validate that the config file has reasonable contents and return an error if there is a problem
-func (boilerplateConfig BoilerplateConfig) validate() error {
-	if err := validateDependencies(boilerplateConfig.Dependencies); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // Custom error types

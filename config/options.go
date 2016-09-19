@@ -5,6 +5,7 @@ import (
 	"github.com/gruntwork-io/boilerplate/util"
 	"fmt"
 	"github.com/urfave/cli"
+	"github.com/gruntwork-io/boilerplate/variables"
 )
 
 // The command-line options for the boilerplate app
@@ -36,7 +37,7 @@ func (options *BoilerplateOptions) Validate() error {
 
 // Parse the command line options provided by the user
 func ParseOptions(cliContext *cli.Context) (*BoilerplateOptions, error) {
-	vars, err := parseVars(cliContext.StringSlice(OPT_VAR), cliContext.StringSlice(OPT_VAR_FILE))
+	vars, err := variables.ParseVars(cliContext.StringSlice(OPT_VAR), cliContext.StringSlice(OPT_VAR_FILE))
 	if err != nil {
 		return nil, err
 	}

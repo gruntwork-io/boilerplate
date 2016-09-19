@@ -48,7 +48,19 @@ func ToStringMap(genericMap map[interface{}]interface{}) map[string]string {
 	return stringMap
 }
 
+// Convert a generic map to a map from string to interface
+func ToStringToGenericMap(genericMap map[interface{}]interface{}) map[string]interface{} {
+	stringToGenericMap := map[string]interface{}{}
+
+	for key, value := range genericMap {
+		stringToGenericMap[ToString(key)] = value
+	}
+
+	return stringToGenericMap
+}
+
 // Convert a single value to its string representation
 func ToString(value interface{}) string {
 	return fmt.Sprintf("%v", value)
 }
+

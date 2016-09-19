@@ -1,4 +1,4 @@
-package config
+package variables
 
 import (
 	"github.com/gruntwork-io/boilerplate/errors"
@@ -10,120 +10,65 @@ import (
 	"fmt"
 )
 
-// Given a map where the keys are the fields of a boilerplate Variable, this method crates a Variable struct with those
-// fields filled in with proper types. This method also validates all the fields and returns an error if any problems
-// are found.
-func UnmarshalVariable(fields map[string]interface{}) (*Variable, error) {
-	variable := Variable{}
-	var err error
+func unmarshalListOfFields(fields map[string]interface{}, fieldName string) ([]map[string]interface{}, error) {
+	listOfFields := []map[string]interface{}{}
 
-	variable.Name, err = unmarshalStringField(fields, "name", true, "")
-	if err != nil {
-		return nil, err
+	fieldAsYaml, containsField := fields[fieldName]
+	if !containsField || fieldAsYaml == nil {
+		return listOfFields, nil
 	}
 
-	variable.Description, err = unmarshalStringField(fields, "description", false, variable.Name)
-	if err != nil {
-		return nil, err
+	asYamlList, isYamlList := fieldAsYaml.([]interface{})
+	if !isYamlList {
+		return listOfFields, errors.WithStackTrace(InvalidTypeForField{FieldName: fieldName, ExpectedType: "[]interface{}", ActualType: reflect.TypeOf(fieldAsYaml)})
 	}
 
-	variable.Type, err = unmarshalTypeField(fields, "type", variable.Name)
-	if err != nil {
-		return nil, err
+	for _, asYaml := range asYamlList {
+		asYamlMap, isYamlMap := asYaml.(map[interface{}]interface{})
+		if !isYamlMap {
+			return listOfFields, errors.WithStackTrace(InvalidTypeForField{FieldName: fieldName, ExpectedType: "map[string]interface{}", ActualType: reflect.TypeOf(asYaml)})
+		}
+
+		listOfFields = append(listOfFields, util.ToStringToGenericMap(asYamlMap))
 	}
 
-	variable.Options, err = unmarshalOptionsField(fields, "options", variable.Name, variable.Type)
-	if err != nil {
-		return nil, err
-	}
-
-	variable.Default, err = UnmarshalVariableValue(fields["default"], variable)
-	if err != nil {
-		return nil, err
-	}
-
-	return &variable, nil
-}
-
-// Convert the given value to the proper type for the given variable, or return an error if the type doesn't match.
-// For example, if this variable is of type List, then the returned value will be a list of strings.
-func UnmarshalVariableValue(value interface{}, variable Variable) (interface{}, error) {
-	if value == nil {
-		return nil, nil
-	}
-
-	switch variable.Type {
-	case String:
-		if asString, isString := value.(string); isString {
-			return asString, nil
-		}
-	case Int:
-		if asInt, isInt := value.(int); isInt {
-			return asInt, nil
-		}
-	case Float:
-		if asFloat, isFloat := value.(float64); isFloat {
-			return asFloat, nil
-		}
-	case Bool:
-		if asBool, isBool := value.(bool); isBool {
-			return asBool, nil
-		}
-	case List:
-		if asList, isList := value.([]interface{}); isList {
-			return util.ToStringList(asList), nil
-		}
-	case Map:
-		if asMap, isMap := value.(map[interface{}]interface{}); isMap {
-			return util.ToStringMap(asMap), nil
-		}
-	case Enum:
-		if asString, isString := value.(string); isString {
-			for _, option := range variable.Options {
-				if asString == option {
-					return asString, nil
-				}
-			}
-		}
-	}
-
-	return nil, InvalidVariableValue{Variable: variable, Value: value}
+	return listOfFields, nil
 }
 
 // Extract the options field from the given map of fields using the given field name and convert those options to a
 // list of strings.
-func unmarshalOptionsField(fields map[string]interface{}, fieldName string, variableName string, variableType BoilerplateType) ([]string, error) {
+func unmarshalOptionsField(fields map[string]interface{}, fieldName string, context string, variableType BoilerplateType) ([]string, error) {
 	options, hasOptions := fields[fieldName]
 
 	if !hasOptions {
 		if variableType == Enum {
-			return nil, errors.WithStackTrace(VariableMissingOptions(variableName))
+			return nil, errors.WithStackTrace(OptionsMissing(context))
 		} else {
 			return nil, nil
 		}
 	}
 
 	if variableType != Enum {
-		return nil, errors.WithStackTrace(OptionsCanOnlyBeUsedWithEnum{VariableName: variableName, VariableType: variableType})
+		return nil, errors.WithStackTrace(OptionsCanOnlyBeUsedWithEnum{Context: context, Type: variableType})
 	}
 
 	optionsAsList, isList := options.([]interface{})
 	if !isList {
-		return nil, errors.WithStackTrace(InvalidTypeForField{FieldName: fieldName, ExpectedType: "List", ActualType: reflect.TypeOf(options).String(), VariableName: variableName})
+		return nil, errors.WithStackTrace(InvalidTypeForField{FieldName: fieldName, ExpectedType: "List", ActualType: reflect.TypeOf(options), Context: context})
 	}
 
 	return util.ToStringList(optionsAsList), nil
 }
 
 // Extract the type field from the map of fields using the given field name and convert the type to a BoilerplateType.
-func unmarshalTypeField(fields map[string]interface{}, fieldName string, variableName string) (BoilerplateType, error) {
-	variableTypeAsString, err := unmarshalStringField(fields, fieldName, false, variableName)
+func unmarshalTypeField(fields map[string]interface{}, fieldName string, context string) (BoilerplateType, error) {
+	variableTypeAsString, err := unmarshalStringField(fields, fieldName, false, context)
 	if err != nil {
 		return BOILERPLATE_TYPE_DEFAULT, err
 	}
 
-	if variableTypeAsString != "" {
-		variableType, err := ParseBoilerplateType(variableTypeAsString)
+	if variableTypeAsString != nil {
+		variableType, err := ParseBoilerplateType(*variableTypeAsString)
 		if err != nil {
 			return BOILERPLATE_TYPE_DEFAULT, err
 		}
@@ -135,20 +80,39 @@ func unmarshalTypeField(fields map[string]interface{}, fieldName string, variabl
 
 // Extract a string field from the map of fields using the given field name and convert it to a string. If no such
 // field is in the map of fields but requiredField is set to true, return an error.
-func unmarshalStringField(fields map[string]interface{}, fieldName string, requiredField bool, variableName string) (string, error) {
+func unmarshalStringField(fields map[string]interface{}, fieldName string, requiredField bool, context string) (*string, error) {
 	value, hasValue := fields[fieldName]
 	if !hasValue {
 		if requiredField {
-			return "", errors.WithStackTrace(RequiredFieldMissing(fieldName))
+			return nil, errors.WithStackTrace(RequiredFieldMissing(fieldName))
 		} else {
-			return "", nil
+			return nil, nil
 		}
 	}
 
 	if valueAsString, isString := value.(string); isString {
-		return valueAsString, nil
+		return &valueAsString, nil
 	} else {
-		return "", errors.WithStackTrace(InvalidTypeForField{FieldName: fieldName, ExpectedType: "string", ActualType: reflect.TypeOf(value).String(), VariableName: variableName})
+		return nil, errors.WithStackTrace(InvalidTypeForField{FieldName: fieldName, ExpectedType: "string", ActualType: reflect.TypeOf(value), Context: context})
+	}
+}
+
+// Extract a boolean field from the map of fields using the given field name and convert it to a bool. If no such
+// field is in the map of fields but requiredField is set to true, return an error.
+func unmarshalBooleanField(fields map[string]interface{}, fieldName string, requiredField bool, context string) (bool, error) {
+	value, hasValue := fields[fieldName]
+	if !hasValue {
+		if requiredField {
+			return false, errors.WithStackTrace(RequiredFieldMissing(fieldName))
+		} else {
+			return false, nil
+		}
+	}
+
+	if valueAsBool, isBool:= value.(bool); isBool {
+		return valueAsBool, nil
+	} else {
+		return false, errors.WithStackTrace(InvalidTypeForField{FieldName: fieldName, ExpectedType: "bool", ActualType: reflect.TypeOf(value), Context: context})
 	}
 }
 
@@ -169,7 +133,7 @@ func parseVariablesFromKeyValuePairs(varsList []string) (map[string]interface{},
 			return vars, errors.WithStackTrace(VariableNameCannotBeEmpty(variable))
 		}
 
-		parsedValue, err := parseYamlString(value)
+		parsedValue, err := ParseYamlString(value)
 		if err != nil {
 			return vars, err
 		}
@@ -181,7 +145,7 @@ func parseVariablesFromKeyValuePairs(varsList []string) (map[string]interface{},
 }
 
 // Parse a YAML string into a Go type
-func parseYamlString(str string) (interface{}, error) {
+func ParseYamlString(str string) (interface{}, error) {
 	var parsedValue interface{}
 
 	err := yaml.Unmarshal([]byte(str), &parsedValue)
@@ -235,7 +199,7 @@ func parseVariablesFromVarFileContents(varFileContents []byte)(map[string]interf
 // Parse variables passed in via command line options, either as a list of NAME=VALUE variable pairs in varsList, or a
 // list of paths to YAML files that define NAME: VALUE pairs. Return a map of the NAME: VALUE pairs. Along the way,
 // each VALUE is parsed as YAML.
-func parseVars(varsList []string, varFileList[]string) (map[string]interface{}, error) {
+func ParseVars(varsList []string, varFileList[]string) (map[string]interface{}, error) {
 	variables := map[string]interface{}{}
 
 	varsFromVarsList, err := parseVariablesFromKeyValuePairs(varsList)
@@ -253,9 +217,9 @@ func parseVars(varsList []string, varFileList[]string) (map[string]interface{}, 
 
 // Custom error types
 
-type VariableMissingOptions string
-func (err VariableMissingOptions) Error() string {
-	return fmt.Sprintf("Variable %s has type %s but does not specify any options. You must specify at least one option.", string(err), Enum)
+type OptionsMissing string
+func (err OptionsMissing) Error() string {
+	return fmt.Sprintf("%s has type %s but does not specify any options. You must specify at least one option.", string(err), Enum)
 }
 
 type InvalidVariableValue struct {
@@ -263,32 +227,29 @@ type InvalidVariableValue struct {
 	Variable Variable
 }
 func (err InvalidVariableValue) Error() string {
-	message := fmt.Sprintf("Value '%v' is not a valid value for variable '%s' with type '%s'.", err.Value, err.Variable.Name, err.Variable.Type.String())
-	if err.Variable.Type == Enum {
-		message = fmt.Sprintf("%s. Value must be one of: %s.", message, err.Variable.Options)
+	message := fmt.Sprintf("Value '%v' is not a valid value for variable '%s' with type '%s'.", err.Value, err.Variable.Name(), err.Variable.Type().String())
+	if err.Variable.Type() == Enum {
+		message = fmt.Sprintf("%s. Value must be one of: %s.", message, err.Variable.Options())
 	}
 	return message
 }
 
 type OptionsCanOnlyBeUsedWithEnum struct {
-	VariableName string
-	VariableType BoilerplateType
+	Context string
+	Type    BoilerplateType
 }
 func (err OptionsCanOnlyBeUsedWithEnum) Error() string {
-	return fmt.Sprintf("Variable %s has type %s and tries to specify options. Options may only be specified for variables of type %s.", err.VariableName, err.VariableType.String(), Enum)
+	return fmt.Sprintf("%s has type %s and tries to specify options. Options may only be specified for the %s type.", err.Context, err.Type.String(), Enum)
 }
 
 type InvalidTypeForField struct {
-	FieldName string
-	VariableName string
+	FieldName    string
 	ExpectedType string
-	ActualType string
+	ActualType   reflect.Type
+	Context      string
 }
 func (err InvalidTypeForField) Error() string {
-	message := fmt.Sprintf("%s must have type %s but got %s", err.FieldName, err.ExpectedType, err.ActualType)
-	if err.VariableName != "" {
-		message = fmt.Sprintf("%s for variable %s", message, err.VariableName)
-	}
+	message := fmt.Sprintf("Field %s in %s must have type %s but got %s", err.FieldName, err.Context, err.ExpectedType, err.ActualType)
 	return message
 }
 
@@ -304,5 +265,10 @@ func (varSyntax InvalidVarSyntax) Error() string {
 
 type RequiredFieldMissing string
 func (err RequiredFieldMissing) Error() string {
-	return fmt.Sprintf("Variable is missing required field %s", string(err))
+	return fmt.Sprintf("Required field %s is missing", string(err))
+}
+
+type UnrecognizedBoilerplateType BoilerplateType
+func (err UnrecognizedBoilerplateType) Error() string {
+	return fmt.Sprintf("Unrecognized type: %s", BoilerplateType(err).String())
 }
