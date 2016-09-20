@@ -343,6 +343,8 @@ including conditionals, loops, and functions. Boilerplate also includes several 
 * `mod INT INT`: Return the remainder of dividing the two numbers.
 * `slice START END INCREMENT`: Generate a slice from START to END, incrementing by INCREMENT. This provides a simple
   way to do a for-loop over a range of numbers.
+* `keys MAP`: Return a slice that contains all the keys in the given MAP. Use the built-in Go template helper `.index`
+  to look up these keys in the map.
 
 ## Alternative project generators
 

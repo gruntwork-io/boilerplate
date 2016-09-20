@@ -1,0 +1,11 @@
+CompanyName: acme
+ExampleIntConstant: 42
+IncludeEnum: true
+EnumNames:
+  - Foo
+  - Bar
+  - Baz
+ExampleMap:
+  key1: value1
+  key2: value2
+  key3: value3

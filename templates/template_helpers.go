@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"unicode"
 	"github.com/gruntwork-io/boilerplate/util"
+	"sort"
 )
 
 var SNIPPET_MARKER_REGEX = regexp.MustCompile("boilerplate-snippet:\\s*(.+?)(?:\\s|$)")
@@ -61,6 +62,7 @@ func CreateTemplateHelpers(templatePath string) template.FuncMap {
 		"divide": wrapFloatFloatToFloatFunction(func(arg1 float64, arg2 float64) float64 { return arg1 / arg2 }),
 		"mod": wrapIntIntToIntFunction(func(arg1 int, arg2 int) int { return arg1 % arg2 }),
 		"slice": slice,
+		"keys": keys,
 	}
 }
 
@@ -398,6 +400,20 @@ func slice(start interface{}, end interface{}, increment interface{}) ([]int, er
 	}
 
 	return out, nil
+}
+
+// Return the keys in the given map. This method always returns the keys in sorted order to provide a stable iteration
+// order.
+func keys(m map[string]string) []string {
+	out := []string{}
+
+	for key, _ := range m {
+		out = append(out, key)
+	}
+
+	sort.Strings(out)
+
+	return out
 }
 
 // Custom errors
