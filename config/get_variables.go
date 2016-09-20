@@ -5,6 +5,7 @@ import (
 	"github.com/gruntwork-io/boilerplate/util"
 	"github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/boilerplate/variables"
+	"strings"
 )
 
 // Get a value for each of the variables specified in boilerplateConfig, other than those already in existingVariables.
@@ -89,10 +90,17 @@ func getVariableFromUser(variable variables.Variable, options *BoilerplateOption
 	if variable.Description() != "" {
 		fmt.Printf("  %s\n", variable.Description())
 	}
-	if variable.Default() != nil {
-		fmt.Printf("  (default: %s)\n", variable.Default())
+
+	helpText := []string{
+		fmt.Sprintf("type: %s", variable.Type()),
+		fmt.Sprintf("example value: %s", variable.ExampleValue()),
+
 	}
-	fmt.Printf("  (type: %s, example: %s)\n", variable.Type(), variable.Type().Example())
+	if variable.Default() != nil {
+		helpText = append(helpText, fmt.Sprintf("default: %s", variable.Default()))
+	}
+
+	fmt.Printf("  (%s)\n", strings.Join(helpText, ", "))
 	fmt.Println()
 
 	value, err := util.PromptUserForInput("  Enter a value")

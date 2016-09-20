@@ -23,8 +23,6 @@ func ProcessTemplate(options *config.BoilerplateOptions) error {
 		return err
 	}
 
-	fmt.Printf("variables for template folder %s = %s\n", options.TemplateFolder, boilerplateConfig.Variables)
-
 	variables, err := config.GetVariables(options, boilerplateConfig)
 	if err != nil {
 		return err

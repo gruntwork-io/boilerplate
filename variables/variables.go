@@ -34,6 +34,12 @@ type Variable interface {
 
 	// Return a copy of this variable but with the default set to the given value
 	WithDefault(interface{}) Variable
+
+	// Create a human-readable, string representation of the variable
+	String() string
+
+	// Show an example value that would be valid for this variable
+	ExampleValue() string
 }
 
 // A private implementation of the Variable interface that forces all users to use our public constructors
@@ -144,6 +150,23 @@ func (variable defaultVariable) WithDescription(description string) Variable {
 func (variable defaultVariable) WithDefault(value interface{}) Variable {
 	variable.defaultValue = value
 	return variable
+}
+
+func (variable defaultVariable) String() string {
+	return fmt.Sprintf("Variable {Name: '%s', Description: '%s', Type: '%v', Default: '%v', Options: '%v'}", variable.Name(), variable.Description(), variable.Type(), variable.Default(), variable.Options())
+}
+
+func (variable defaultVariable) ExampleValue() string {
+	switch variable.Type() {
+	case String: return "foo"
+	case Int: return "42"
+	case Float: return "3.1415926"
+	case Bool: return "true or false"
+	case List: return "[foo, bar, baz]"
+	case Map: return "{foo: bar, baz: blah}"
+	case Enum: return fmt.Sprintf("must be one of: %s", variable.Options())
+	default: return ""
+	}
 }
 
 // Convert the given value to a type that can be used with the given variable. If the type of the value cannot be used
