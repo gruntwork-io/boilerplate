@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	"path"
 	"fmt"
+	"github.com/gruntwork-io/boilerplate/variables"
 )
 
 // Process the boilerplate template specified in the given options and use the existing variables. This function will
@@ -41,7 +42,7 @@ func ProcessTemplate(options *config.BoilerplateOptions) error {
 }
 
 // Execute the boilerplate templates in the given list of dependencies
-func processDependencies(dependencies []config.Dependency, options *config.BoilerplateOptions, variables map[string]string) error {
+func processDependencies(dependencies []variables.Dependency, options *config.BoilerplateOptions, variables map[string]interface{}) error {
 	for _, dependency := range dependencies {
 		err := processDependency(dependency, options, variables)
 		if err != nil {
@@ -53,7 +54,7 @@ func processDependencies(dependencies []config.Dependency, options *config.Boile
 }
 
 // Execute the boilerplate template in the given dependency
-func processDependency(dependency config.Dependency, options *config.BoilerplateOptions, variables map[string]string) error {
+func processDependency(dependency variables.Dependency, options *config.BoilerplateOptions, variables map[string]interface{}) error {
 	shouldProcess, err := shouldProcessDependency(dependency, options)
 	if err != nil {
 		return err
@@ -72,7 +73,7 @@ func processDependency(dependency config.Dependency, options *config.Boilerplate
 
 // Clone the given options for use when rendering the given dependency. The dependency will get the same options as
 // the original passed in, except for the template folder, output folder, and command-line vars.
-func cloneOptionsForDependency(dependency config.Dependency, originalOptions *config.BoilerplateOptions, variables map[string]string) *config.BoilerplateOptions {
+func cloneOptionsForDependency(dependency variables.Dependency, originalOptions *config.BoilerplateOptions, variables map[string]interface{}) *config.BoilerplateOptions {
 	templateFolder := pathRelativeToTemplate(originalOptions.TemplateFolder, dependency.TemplateFolder)
 	outputFolder := pathRelativeToTemplate(originalOptions.OutputFolder, dependency.OutputFolder)
 
@@ -82,21 +83,22 @@ func cloneOptionsForDependency(dependency config.Dependency, originalOptions *co
 		NonInteractive: originalOptions.NonInteractive,
 		Vars: cloneVariablesForDependency(dependency, variables),
 		OnMissingKey: originalOptions.OnMissingKey,
+		OnMissingConfig: originalOptions.OnMissingConfig,
 	}
 }
 
 // Clone the given variables for use when rendering the given dependency.  The dependency will get the same variables
 // as the originals passed in, filtered to variable names that do not include a dependency or explicitly are for the
 // given dependency. If dependency.DontInheritVariables is set to true, an empty map is returned.
-func cloneVariablesForDependency(dependency config.Dependency, originalVariables map[string]string) map[string]string {
-	newVariables := map[string]string{}
+func cloneVariablesForDependency(dependency variables.Dependency, originalVariables map[string]interface{}) map[string]interface{} {
+	newVariables := map[string]interface{}{}
 
 	if dependency.DontInheritVariables {
 		return newVariables
 	}
 
 	for variableName, variableValue := range originalVariables {
-		dependencyName, variableOriginalName := config.SplitIntoDependencyNameAndVariableName(variableName)
+		dependencyName, variableOriginalName := variables.SplitIntoDependencyNameAndVariableName(variableName)
 		if dependencyName == dependency.Name {
 			newVariables[variableOriginalName] = variableValue
 		} else if _, alreadyExists := newVariables[variableName]; !alreadyExists {
@@ -109,7 +111,7 @@ func cloneVariablesForDependency(dependency config.Dependency, originalVariables
 
 // Prompt the user to verify if the given dependency should be executed and return true if they confirm. If
 // options.NonInteractive is set to true, this function always returns true.
-func shouldProcessDependency(dependency config.Dependency, options *config.BoilerplateOptions) (bool, error) {
+func shouldProcessDependency(dependency variables.Dependency, options *config.BoilerplateOptions) (bool, error) {
 	if options.NonInteractive {
 		return true, nil
 	}
@@ -119,7 +121,7 @@ func shouldProcessDependency(dependency config.Dependency, options *config.Boile
 
 // Copy all the files and folders in templateFolder to outputFolder, passing text files through the Go template engine
 // with the given set of variables as the data.
-func processTemplateFolder(options *config.BoilerplateOptions, variables map[string]string) error {
+func processTemplateFolder(options *config.BoilerplateOptions, variables map[string]interface{}) error {
 	util.Logger.Printf("Processing templates in %s and outputting generated files to %s", options.TemplateFolder, options.OutputFolder)
 
 	return filepath.Walk(options.TemplateFolder, func(path string, info os.FileInfo, err error) error {
@@ -136,7 +138,7 @@ func processTemplateFolder(options *config.BoilerplateOptions, variables map[str
 
 // Copy the given path, which is in the folder templateFolder, to the outputFolder, passing it through the Go template
 // engine with the given set of variables as the data if it's a text file.
-func processFile(path string, options *config.BoilerplateOptions, variables map[string]string) error {
+func processFile(path string, options *config.BoilerplateOptions, variables map[string]interface{}) error {
 	isText, err := util.IsTextFile(path)
 	if err != nil {
 		return err
@@ -150,7 +152,7 @@ func processFile(path string, options *config.BoilerplateOptions, variables map[
 }
 
 // Create the given directory, which is in templateFolder, in the given outputFolder
-func createOutputDir(dir string, options *config.BoilerplateOptions, variables map[string]string) error {
+func createOutputDir(dir string, options *config.BoilerplateOptions, variables map[string]interface{}) error {
 	destination, err := outPath(dir, options, variables)
 	if err != nil {
 		return err
@@ -163,7 +165,7 @@ func createOutputDir(dir string, options *config.BoilerplateOptions, variables m
 // Compute the path where the given file, which is in templateFolder, should be copied in outputFolder. If the file
 // path contains boilerplate syntax, use the given options and variables to render it to determine the final output
 // path.
-func outPath(file string, options *config.BoilerplateOptions, variables map[string]string) (string, error) {
+func outPath(file string, options *config.BoilerplateOptions, variables map[string]interface{}) (string, error) {
 	templateFolderAbsPath, err := filepath.Abs(options.TemplateFolder)
 	if err != nil {
 		return "", errors.WithStackTrace(err)
@@ -188,7 +190,7 @@ func outPath(file string, options *config.BoilerplateOptions, variables map[stri
 }
 
 // Copy the given file, which is in options.TemplateFolder, to options.OutputFolder
-func copyFile(file string, options *config.BoilerplateOptions, variables map[string]string) error {
+func copyFile(file string, options *config.BoilerplateOptions, variables map[string]interface{}) error {
 	destination, err := outPath(file, options, variables)
 	if err != nil {
 		return err
@@ -200,7 +202,7 @@ func copyFile(file string, options *config.BoilerplateOptions, variables map[str
 
 // Run the template at templatePath, which is in templateFolder, through the Go template engine with the given
 // variables as data and write the result to outputFolder
-func processTemplate(templatePath string, options *config.BoilerplateOptions, variables map[string]string) error {
+func processTemplate(templatePath string, options *config.BoilerplateOptions, variables map[string]interface{}) error {
 	destination, err := outPath(templatePath, options, variables)
 	if err != nil {
 		return err
@@ -227,8 +229,9 @@ func shouldSkipPath(path string, options *config.BoilerplateOptions) bool {
 
 // Render the template at templatePath, with contents templateContents, using the Go template engine, passing in the
 // given variables as data.
-func renderTemplate(templatePath string, templateContents string, variables map[string]string, missingKeyAction config.MissingKeyAction) (string, error) {
-	template := template.New(templatePath).Funcs(CreateTemplateHelpers(templatePath)).Option("missingkey=" + string(missingKeyAction))
+func renderTemplate(templatePath string, templateContents string, variables map[string]interface{}, missingKeyAction config.MissingKeyAction) (string, error) {
+	option := fmt.Sprintf("missingkey=%s", string(missingKeyAction))
+	template := template.New(templatePath).Funcs(CreateTemplateHelpers(templatePath)).Option(option)
 
 	parsedTemplate, err := template.Parse(templateContents)
 	if err != nil {

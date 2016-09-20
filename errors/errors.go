@@ -29,7 +29,7 @@ func WithStackTraceAndPrefix(err error, message string, args ... interface{}) er
 // Returns true if actual is the same type of error as expected. This method unwraps the given error objects (if they
 // are wrapped in objects with a stacktrace) and then does a simple equality check on them.
 func IsError(actual error, expected error) bool {
-	return goerrors.Is(actual, expected)
+	return goerrors.Is(Unwrap(actual), expected)
 }
 
 // If the given error is a wrapper that contains a stacktrace, unwrap it and return the original, underlying error.

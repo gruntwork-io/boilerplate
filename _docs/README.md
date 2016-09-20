@@ -23,7 +23,7 @@ Create a folder called `website-boilerplate` and put a file called `boilerplate.
 ```
 
 This file defines 3 variables: `Title`, `WelcomeText`, and `ShowLogo`. When you run Boilerplate, it will prompt
-the user (with the specified `prompt`, if specified) for each one.
+the user for each one.
 
 Next, create an `index.html` in the `website-boilerplate` folder that uses these variables using [Go
 Template](https://golang.org/pkg/text/template) syntax:
@@ -40,9 +40,19 @@ where you want the generated code to go:
 ```
 boilerplate --template-folder /home/ubuntu/website-boilerplate --output-folder /home/ubuntu/website-output
 
-Enter the value for 'Title': Boilerplate Example
-Enter the welcome text for the website: Welcome!
-Should the website show the logo? (y/n) (default: "y"): y
+Title
+
+  Enter a value [type: string]: Boilerplate Example
+
+WelcomeText
+  Enter the welcome text for the website
+
+  Enter a value [type: string]: Welcome!
+
+ShowLogo
+  Should the website show the logo?
+
+  Enter a [type: bool]: true
 
 Generating /home/ubuntu/website-output/index.html
 Copying /home/ubuntu/website-output/logo.png
@@ -66,7 +76,7 @@ boilerplate \
   --non-interactive \
   --var Title="Boilerplate Example" \
   --var WelcomeText="Welcome!" \
-  --var ShowLogo="y"
+  --var ShowLogo="true"
 
 Generating /home/ubuntu/website-output/index.html
 Copying /home/ubuntu/website-output/logo.png
@@ -91,6 +101,8 @@ You can find older versions on the [Releases Page](https://github.com/gruntwork-
 1. **Flexible templating**: Boilerplate uses [Go Template](https://golang.org/pkg/text/template) for templating,
    which gives you the ability to do formatting, conditionals, loops, and call out to Go functions. It also includes
    helpers for common tasks such as loading the contents of another file.
+1. **Variable types**: Boilerplate variables support types, so you have first-class support for strings, ints, bools,
+   lists, maps, and enums.
 1. **Cross-platform**: Boilerplate is easy to install (it's a standalone binary) and works on all major platforms (Mac,
    Linux, Windows).
 
@@ -164,7 +176,11 @@ variables or dependencies will be available.
 ```yaml
 variables:
   - name: <NAME>
-    prompt: <PROMPT>
+    description: <DESCRIPTION>
+    type: <TYPE>
+    options:
+      - <CHOICE>
+      - <CHOICE>
     default: <DEFAULT>
 
 dependencies:
@@ -174,41 +190,26 @@ dependencies:
     dont-inherit-variables: <BOOLEAN>
     variables:
       - name: <NAME>
-        prompt: <PROMPT>
+        description: <DESCRIPTION>
+        type: <TYPE>
         default: <DEFAULT>
 ```
 
 Here's an example:
 
 ```yaml
-variables:
-  - name: Title
-    prompt: Enter a title for the home page
-
-  - name: IncludeLogo
-    prompt: Should we include a logo on the website?
-    default: true
-
-  - name: Description
-    prompt: Enter a description for the home page
-    default: Welcome to my home page!
-
-dependencies:
-  - name: about
-    template-folder: ../about-us-page
-    output-folder: ../about-us-page
-    variables:
-      - name: Description
-        prompt: Enter a description for the about page
-        default: About Us
+{{snippet "../examples/dependencies/boilerplate.yml"}}
 ```
 
 **Variables**: A list of objects (i.e. dictionaries) that define variables. Each variable may contain the following
 keys:
 
 * `name` (Required): The name of the variable.
-* `prompt` (Optional): The prompt to display to the user when asking them for a value. Default:
-  "Enter a value for <VARIABLE_NAME>".
+* `description` (Optional): The description of the variable. `boilerplate` will show this description to the user when
+  prompting them for a value.
+* `type` (Optional): The type of the variable. Must be one of: `string`, `int`, `float`, `bool`, `map`, `list`, `enum`.
+  If unspecified, the default is `string`.
+* `options` (Optional): If the `type` is `enum`, you can specify a list of valid options. Each option must be a string.
 * `default` (Optional): A default value for this variable. The user can just hit ENTER at the command line to use the
   default value, if one is provided. If running Boilerplate with the `--non-interactive` flag, the default is
   used for this value if no value is provided via the `--var` or `--var-file` options.
@@ -229,7 +230,7 @@ executing the current one. Each dependency may contain the following keys:
 * `variables`: If a dependency contains a variable of the same name as a variable in the root `boilerplate.yml` file,
   but you want the dependency to get a different value for the variable, you can specify overrides here. `boilerplate`
   will include a separate prompt for variables defined under a `dependency`. You can also override the dependency's
-  prompt and default values here.
+  description and default values here.
 
 See the [Dependencies](#dependencies) section for more info.
 
@@ -239,8 +240,10 @@ You must provide a value for every variable defined in `boilerplate.yml`, or pro
 four ways to provide a value for a variable:
 
 1. `--var` option(s) you pass in when calling boilerplate. Example:
-   `boilerplate --var Title=Boilerplate --var ShowLogo=false`. If you want to specify the value of a variable for a
-   specific dependency, use the `<DEPENDENCY_NAME>.<VARIABLE_NAME>` syntax. For example:
+   `boilerplate --var Title=Boilerplate --var ShowLogo=false`. To specify a complex type like a map or a list on the
+   command-line, use YAML syntax (preferably the shorthand variety to keep it a one-liner). For example
+   `--var foo='{key: "value"}' --var bar='["a", "b", "c"]'`. If you want to specify the value of a
+   variable for a specific dependency, use the `<DEPENDENCY_NAME>.<VARIABLE_NAME>` syntax. For example:
    `boilerplate --var Description='Welcome to my home page!' --var about.Description='About Us' --var ShowLogo=false`.
 1. `--var-file` option(s) you pass in when calling boilerplate. Example: `boilerplate --var-file vars.yml`. The vars
    file must be a simple YAML file that defines key, value pairs, where the key is the name of a variable (or
@@ -252,6 +255,12 @@ four ways to provide a value for a variable:
    ShowLogo: false
    Description: Welcome to my home page!
    about.Description: Welcome to my home page!
+   ExampleOfAMap:
+     key1: value1
+     key2: value2
+   ExampleOfAList:
+     - value1
+     - value2
    ```
 1. Manual input. If no value is specified via the `--var` or `--var-file` flags, Boilerplate will interactively prompt
    the user to provide a value. Note that the `--non-interactive` flag disables this functionality.
@@ -285,7 +294,8 @@ non-binary file through the [Go Template](https://golang.org/pkg/text/template) 
 data structure.
 
 For example, if you had a variable called `Title` in your `boilerplate.yml` file, then you could access that variable
-in any of your templates using the syntax `{{"{{"}}.Title{{"}}"}}`.
+in any of your templates using the syntax `{{"{{"}}.Title{{"}}"}}`. You can also use Go template syntax to do
+if-statements, for loops, and use the provided [template helpers](#template-helpers).
 
 You can even use Go template syntax and boilerplate variables in the names of your files and folders. For example, if
 you were using `boilerplate` to generate a Java project, your template folder could contain the path
@@ -333,6 +343,8 @@ including conditionals, loops, and functions. Boilerplate also includes several 
 * `mod INT INT`: Return the remainder of dividing the two numbers.
 * `slice START END INCREMENT`: Generate a slice from START to END, incrementing by INCREMENT. This provides a simple
   way to do a for-loop over a range of numbers.
+* `keys MAP`: Return a slice that contains all the keys in the given MAP. Use the built-in Go template helper `.index`
+  to look up these keys in the map.
 
 ## Alternative project generators
 
@@ -361,26 +373,3 @@ inspiring many of the ideas in Boilerplate and so you can try out other projects
 * [play-doc](https://github.com/playframework/play-doc): Documentation generator used by the Play Framework that allows
   code snippets to be loaded from external files. Great for ensuring the code snippets in your docs are from files that
   are compiled and tested, but does not work as a general-purpose project generator.
-
-## TODO
-
-1. Add support for using Go template syntax in the paths of files so they can be copied dynamically.
-1. Add support for callbacks. For example, a `start` callback called just after Boilerplate gathers all variables but
-   before it starts generating; an `file` callback called for each file and folder Boilerplate processes; and an
-   `end` callback called after project generation is finished. The callbacks could be defined as simple shell
-   commands in `boilerplate.yml`:
-
-   ```yaml
-   variables:
-     - name: foo
-     - name: bar
-
-   callbacks:
-     start: echo "Boilerplate is generating files to $2 from templates in $1"
-     file: echo "Boilerplate is processing file $1"
-     end: echo "Boilerplate finished generating files in $2 from templates in $1"
-   ```
-1. Support a list of `ignore` files in `boilerplate.yml` or even a `.boilerplate-ignore` file for files that should be
-   skipped over while generating code.
-1. Consider supporting different types for variables. Currently, all variables are strings, but there may be value
-   in specifying a `type` in `boilerplate.yml`. Useful types: string, int, bool, float, list, map.

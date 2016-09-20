@@ -22,7 +22,7 @@ Here is how to use the `snippet` helper to embed files or parts of files from so
   </head>
   <body>
     <h1>{{.WelcomeText}}</h1>
-    {{if eq .ShowLogo "true"}}<img src="logo.png">{{end}}
+    {{if .ShowLogo}}<img src="logo.png">{{end}}
   </body>
 </html>
 ```
