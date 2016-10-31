@@ -197,9 +197,15 @@ func UnmarshalValueForVariable(value interface{}, variable Variable) (interface{
 		if asList, isList := value.([]interface{}); isList {
 			return util.ToStringList(asList), nil
 		}
+		if asList, isList := value.([]string); isList {
+			return asList, nil
+		}
 	case Map:
 		if asMap, isMap := value.(map[interface{}]interface{}); isMap {
 			return util.ToStringMap(asMap), nil
+		}
+		if asMap, isMap := value.(map[string]string); isMap {
+			return asMap, nil
 		}
 	case Enum:
 		if asString, isString := value.(string); isString {

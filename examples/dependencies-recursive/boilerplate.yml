@@ -26,3 +26,27 @@ dependencies:
 
         - name: Title
           description: Enter the title for the dependencies example
+
+    - name: java-project
+      template-folder: ../java-project
+      output-folder: ./java-project
+      variables:
+        - name: CompanyName
+          description: Enter the name of the company
+          type: string
+
+        - name: ExampleIntConstant
+          description: Enter the value for an integer constant in the Java file
+          type: int
+
+        - name: IncludeEnum
+          description: Should we create an example Enum in the Java file?
+          type: bool
+
+        - name: EnumNames
+          description: Enter the names of the Enums in the Java file
+          type: list
+
+        - name: ExampleMap
+          description: Enter some example values to store in a HashMap
+          type: map

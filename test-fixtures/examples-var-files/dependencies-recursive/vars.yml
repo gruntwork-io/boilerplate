@@ -1,8 +1,21 @@
 Version: 0.0.3
 Title: Recursive dependencies example
+WelcomeText: Welcome!
+Description: This is a boilerplate template that shows an example of using recursive dependencies
+
 dependencies.Title: Dependencies example
 dependencies.Description: This is a boilerplate template that shows an example of using dependencies
 dependencies.website.Title: Boilerplate
 dependencies.docs.Title: Docs example
-WelcomeText: Welcome!
-Description: This is a boilerplate template that shows an example of using recursive dependencies
+
+java-project.CompanyName: acme
+java-project.ExampleIntConstant: 42
+java-project.IncludeEnum: true
+java-project.EnumNames:
+  - Foo
+  - Bar
+  - Baz
+java-project.ExampleMap:
+  key1: value1
+  key2: value2
+  key3: value3
