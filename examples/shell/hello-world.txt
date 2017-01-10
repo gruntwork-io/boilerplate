@@ -1,0 +1,3 @@
+Example of executing an arbitrary shell command using the shell helper:
+
+{{ shell "echo" .Text }}
