@@ -1,0 +1,3 @@
+variables:
+  - name: Text
+    description: Enter the text to display
