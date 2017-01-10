@@ -63,6 +63,7 @@ func CreateTemplateHelpers(templatePath string) template.FuncMap {
 		"mod": wrapIntIntToIntFunction(func(arg1 int, arg2 int) int { return arg1 % arg2 }),
 		"slice": slice,
 		"keys": keys,
+		"shell": shell,
 	}
 }
 
@@ -416,6 +417,15 @@ func keys(m map[string]string) []string {
 	return out
 }
 
+// Run the given shell command and return whatever that command wrote to stdout
+func shell(args ... string) (string, error) {
+	if len(args) == 0 {
+		return "", errors.WithStackTrace(NoArgsPassedToShellHelper)
+	}
+
+	return util.RunShellCommandAndGetOutput(args[0], args[1:]...)
+}
+
 // Custom errors
 
 type SnippetNotFound string
@@ -432,3 +442,5 @@ type InvalidSnippetArguments []string
 func (args InvalidSnippetArguments) Error() string {
 	return fmt.Sprintf("The snippet helper expects the following args: snippet <TEMPLATE_PATH> <PATH> [SNIPPET_NAME]. Instead, got args: %s", []string(args))
 }
+
+var NoArgsPassedToShellHelper = fmt.Errorf("The shell helper requires at least one argument")

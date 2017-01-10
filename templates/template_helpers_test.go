@@ -418,6 +418,23 @@ func TestLowerFirst(t *testing.T) {
 	}
 }
 
+func TestShellSuccess(t *testing.T) {
+	t.Parallel()
+
+	output, err := shell("echo", "hi")
+	assert.Nil(t, err, "Unexpected error: %v", err)
+	assert.Equal(t, "hi\n", output)
+}
+
+func TestShellError(t *testing.T) {
+	t.Parallel()
+
+	_, err := shell("not-a-real-command")
+	if assert.NotNil(t, err) {
+		assert.Contains(t, err.Error(), "executable file not found in $PATH", "Unexpected error message: %s", err.Error())
+	}
+}
+
 // I cannot believe I have to write my own function and test code for rounding numbers in Go. FML.
 func TestRound(t *testing.T) {
 	t.Parallel()
