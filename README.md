@@ -114,7 +114,7 @@ for full documentation.
 
 ## Install
 
-Download the latest binary for your OS here: [boilerplate v0.2.0](https://github.com/gruntwork-io/boilerplate/releases/tag/v0.2.0).
+Download the latest binary for your OS here: [boilerplate v0.2.1](https://github.com/gruntwork-io/boilerplate/releases/tag/v0.2.1).
 
 You can find older versions on the [Releases Page](https://github.com/gruntwork-io/usage-patterns/releases).
 
@@ -402,6 +402,7 @@ including conditionals, loops, and functions. Boilerplate also includes several 
   way to do a for-loop over a range of numbers.
 * `keys MAP`: Return a slice that contains all the keys in the given MAP. Use the built-in Go template helper `.index`
   to look up these keys in the map.
+* `shell CMD`: Execute the given shell command and render whatever that command prints to stdout.
 
 ## Alternative project generators
 
