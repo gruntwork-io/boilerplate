@@ -14,6 +14,7 @@ func RunShellCommandAndGetOutput(workingDir string, command string, args ... str
 	cmd := exec.Command(command, args...)
 
 	cmd.Stdin = os.Stdin
+	cmd.Stderr = os.Stderr
 	cmd.Dir = workingDir
 
 	out, err := cmd.Output()
