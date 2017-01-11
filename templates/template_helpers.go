@@ -63,7 +63,7 @@ func CreateTemplateHelpers(templatePath string) template.FuncMap {
 		"mod": wrapIntIntToIntFunction(func(arg1 int, arg2 int) int { return arg1 % arg2 }),
 		"slice": slice,
 		"keys": keys,
-		"shell": shell,
+		"shell": wrapWithTemplatePath(templatePath, shell),
 	}
 }
 
@@ -417,13 +417,14 @@ func keys(m map[string]string) []string {
 	return out
 }
 
-// Run the given shell command and return whatever that command wrote to stdout
-func shell(args ... string) (string, error) {
+// Run the given shell command specified in args in the working dir specified by templatePath and return stdout as a
+// string.
+func shell(templatePath string, args ... string) (string, error) {
 	if len(args) == 0 {
 		return "", errors.WithStackTrace(NoArgsPassedToShellHelper)
 	}
 
-	return util.RunShellCommandAndGetOutput(args[0], args[1:]...)
+	return util.RunShellCommandAndGetOutput(filepath.Dir(templatePath), args[0], args[1:]...)
 }
 
 // Custom errors
