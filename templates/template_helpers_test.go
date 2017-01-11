@@ -421,7 +421,7 @@ func TestLowerFirst(t *testing.T) {
 func TestShellSuccess(t *testing.T) {
 	t.Parallel()
 
-	output, err := shell("echo", "hi")
+	output, err := shell(".", "echo", "hi")
 	assert.Nil(t, err, "Unexpected error: %v", err)
 	assert.Equal(t, "hi\n", output)
 }
@@ -429,7 +429,7 @@ func TestShellSuccess(t *testing.T) {
 func TestShellError(t *testing.T) {
 	t.Parallel()
 
-	_, err := shell("not-a-real-command")
+	_, err := shell(".", "not-a-real-command")
 	if assert.NotNil(t, err) {
 		assert.Contains(t, err.Error(), "executable file not found in $PATH", "Unexpected error message: %s", err.Error())
 	}
