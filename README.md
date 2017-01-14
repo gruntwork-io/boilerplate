@@ -114,7 +114,7 @@ for full documentation.
 
 ## Install
 
-Download the latest binary for your OS here: [boilerplate v0.2.3](https://github.com/gruntwork-io/boilerplate/releases/tag/v0.2.3).
+Download the latest binary for your OS here: [boilerplate v0.2.4](https://github.com/gruntwork-io/boilerplate/releases/tag/v0.2.4).
 
 You can find older versions on the [Releases Page](https://github.com/gruntwork-io/usage-patterns/releases).
 
@@ -405,6 +405,8 @@ including conditionals, loops, and functions. Boilerplate also includes several 
 * `shell CMD`: Execute the given shell command and render whatever that command prints to stdout. The working directory
   for the command will be set to the directory of the template being rendered, so you can use paths relative to the
   file from which you are calling the `shell` helper.
+* `templateFolder`: Return the value of the `--template-folder` command-line option. Useful for building relative paths.
+* `outputFolder`: Return the value of the `--output-folder` command-line option. Useful for building relative paths.
 
 ## Alternative project generators
 
