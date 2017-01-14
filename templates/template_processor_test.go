@@ -115,11 +115,13 @@ func TestRenderTemplate(t *testing.T) {
 		{"Slice test: {{ slice 0 5 1 }}", map[string]interface{}{}, config.ExitWithError, "", "Slice test: [0 1 2 3 4]"},
 		{"Keys test: {{ keys .Map }}", map[string]interface{}{"Map": map[string]string{"key1": "value1", "key2": "value2", "key3": "value3"}}, config.ExitWithError, "", "Keys test: [key1 key2 key3]"},
 		{"Shell test: {{ shell \"echo\" .Text }}", map[string]interface{}{"Text": "Hello, World"}, config.ExitWithError, "", "Shell test: Hello, World\n"},
+		{"Template folder test: {{ templateFolder }}", map[string]interface{}{}, config.ExitWithError, "", "Template folder test: /templates"},
+		{"Output folder test: {{ outputFolder }}", map[string]interface{}{}, config.ExitWithError, "", "Output folder test: /output"},
 		{"Filter chain test: {{ .Foo | downcase | replaceAll \" \" \"\" }}", map[string]interface{}{"Foo": "foo BAR baz!"}, config.ExitWithError, "", "Filter chain test: foobarbaz!"},
 	}
 
 	for _, testCase := range testCases {
-		actualOutput, err := renderTemplate(pwd + "/template.txt", testCase.templateContents, testCase.variables, testCase.missingKeyAction)
+		actualOutput, err := renderTemplate(pwd + "/template.txt", testCase.templateContents, testCase.variables, &config.BoilerplateOptions{TemplateFolder: "/templates", OutputFolder: "/output", OnMissingKey: testCase.missingKeyAction})
 		if testCase.expectedErrorText == "" {
 			assert.Nil(t, err, "template = %s, variables = %s, missingKeyAction = %s, err = %v", testCase.templateContents, testCase.variables, testCase.missingKeyAction, err)
 			assert.Equal(t, testCase.expectedOutput, actualOutput, "template = %s, variables = %s, missingKeyAction = %s", testCase.templateContents, testCase.variables, testCase.missingKeyAction)
