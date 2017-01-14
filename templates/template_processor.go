@@ -171,7 +171,7 @@ func outPath(file string, options *config.BoilerplateOptions, variables map[stri
 		return "", errors.WithStackTrace(err)
 	}
 
-	interpolatedFilePath, err := renderTemplate(file, file, variables, options.OnMissingKey)
+	interpolatedFilePath, err := renderTemplate(file, file, variables, options)
 	if err != nil {
 		return "", errors.WithStackTrace(err)
 	}
@@ -214,7 +214,7 @@ func processTemplate(templatePath string, options *config.BoilerplateOptions, va
 		return errors.WithStackTrace(err)
 	}
 
-	out, err := renderTemplate(templatePath, string(bytes), variables, options.OnMissingKey)
+	out, err := renderTemplate(templatePath, string(bytes), variables, options)
 	if err != nil {
 		return err
 	}
@@ -229,11 +229,11 @@ func shouldSkipPath(path string, options *config.BoilerplateOptions) bool {
 
 // Render the template at templatePath, with contents templateContents, using the Go template engine, passing in the
 // given variables as data.
-func renderTemplate(templatePath string, templateContents string, variables map[string]interface{}, missingKeyAction config.MissingKeyAction) (string, error) {
-	option := fmt.Sprintf("missingkey=%s", string(missingKeyAction))
-	template := template.New(templatePath).Funcs(CreateTemplateHelpers(templatePath)).Option(option)
+func renderTemplate(templatePath string, templateContents string, variables map[string]interface{}, options *config.BoilerplateOptions) (string, error) {
+	option := fmt.Sprintf("missingkey=%s", string(options.OnMissingKey))
+	tmpl := template.New(templatePath).Funcs(CreateTemplateHelpers(templatePath, options)).Option(option)
 
-	parsedTemplate, err := template.Parse(templateContents)
+	parsedTemplate, err := tmpl.Parse(templateContents)
 	if err != nil {
 		return "", errors.WithStackTrace(err)
 	}
