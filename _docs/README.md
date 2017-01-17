@@ -329,8 +329,8 @@ Note the following:
     before:
       - command: foo.sh 
         args:
-          - {{ .SomeVariable }} 
-          - {{ .AnotherVariable }}
+          - {{"{{"}} .SomeVariable {{"}}"}} 
+          - {{"{{"}} .AnotherVariable {{"}}"}}
     ```
 * Boilerplate runs your `command` with the working directory set to the `--template-folder` option.
 * For an alternative way to execute commands, see the `shell` helper in [template helpers](#template-helpers).
