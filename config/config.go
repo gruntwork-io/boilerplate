@@ -24,6 +24,7 @@ const OPT_MISSING_CONFIG_ACTION = "missing-config-action"
 type BoilerplateConfig struct {
 	Variables    []variables.Variable
 	Dependencies []variables.Dependency
+	Hooks        variables.Hooks
 }
 
 // Implement the go-yaml unmarshal interface for BoilerplateConfig. We can't let go-yaml handle this itself because:
@@ -48,9 +49,15 @@ func (config *BoilerplateConfig) UnmarshalYAML(unmarshal func(interface{}) error
 		return err
 	}
 
+	hooks, err := variables.UnmarshalHooksFromBoilerplateConfigYaml(fields)
+	if err != nil {
+		return err
+	}
+
 	*config = BoilerplateConfig{
 		Variables: vars,
 		Dependencies: deps,
+		Hooks: hooks,
 	}
 	return nil
 }

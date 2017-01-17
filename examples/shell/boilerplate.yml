@@ -1,3 +1,24 @@
 variables:
   - name: Text
     description: Enter the text to display
+
+hooks:
+  before:
+    - command: echo
+      args:
+        - Running before hooks
+
+    - command: ./example-script-2.sh
+      args:
+        - "{{ .Text }} - executed via a before hook"
+        - "{{ outputFolder }}/before-hook-example.txt"
+
+  after:
+    - command: echo
+      args:
+        - Running after hooks
+
+    - command: ./example-script-2.sh
+      args:
+        - "{{ .Text }} - executed via an after hook"
+        - "{{ outputFolder }}/after-hook-example.txt"

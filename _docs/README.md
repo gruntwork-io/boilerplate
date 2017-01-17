@@ -103,6 +103,8 @@ You can find older versions on the [Releases Page](https://github.com/gruntwork-
    helpers for common tasks such as loading the contents of another file.
 1. **Variable types**: Boilerplate variables support types, so you have first-class support for strings, ints, bools,
    lists, maps, and enums.
+1. **Scripting**: Need more power than static templates and variables? Boilerplate includes several hooks that allow 
+   you to run arbitrary scripts.  
 1. **Cross-platform**: Boilerplate is easy to install (it's a standalone binary) and works on all major platforms (Mac,
    Linux, Windows).
 
@@ -123,6 +125,7 @@ Learn more about boilerplate in the following sections:
 1. [The boilerplate.yml file](#the-boilerplate.yml-file)
 1. [Variables](#variables)
 1. [Dependencies](#dependencies)
+1. [Hooks](#hooks)
 1. [Templates](#templates)
 1. [Template helpers](#template-helpers)
 
@@ -193,6 +196,16 @@ dependencies:
         description: <DESCRIPTION>
         type: <TYPE>
         default: <DEFAULT>
+
+hooks:
+  before:
+    - command: <CMD>
+      args:
+        - <ARG>
+  after:              
+    - command: <CMD>
+      args:
+        - <ARG>
 ```
 
 Here's an example:
@@ -233,6 +246,13 @@ executing the current one. Each dependency may contain the following keys:
   description and default values here.
 
 See the [Dependencies](#dependencies) section for more info.
+
+**Hooks**: Boilerplate provides hooks to execute arbitrary shell commands. There are two types of hooks:
+
+* `before` (Optional): A list of scripts to execute before any template rendering has started.
+* `after` (Optional): A list of scripts to execute after all template rendering has completed.
+
+See the [Hooks](#hooks) section for more info.
 
 #### Variables
 
@@ -285,6 +305,35 @@ Note the following:
   prompt you for each of those variables separately from the root ones. You can also use the
   `<DEPENDENCY_NAME>.<VARIABLE_NAME>` syntax as the name of the variable with the `-var` flag and inside of a var file
   to provide a value for a variable in a dependency.
+
+#### Hooks
+
+You can specify `hooks` in `boilerplate.yml` to tell Boilerplate to execute arbitrary shell commands. 
+ 
+Note the following:
+
+* The `before` hook allows you to run scripts before Boilerplate has started rendering.
+* The `after` hook allows you to run scripts after Boilerplate has finished rendering.
+* Each hook consists of a `command` to execute (required) plus a list of `args` to pass to that command (optional).
+  Example:
+    ```yaml
+    before:
+      - command: echo
+        args:
+          - Hello
+          - World
+    ```
+* You can use Go templating syntax in both `command` and `args`. For example, you can pass Boilerplate variables to 
+  your scripts as follows:
+    ```yaml
+    before:
+      - command: foo.sh 
+        args:
+          - {{ .SomeVariable }} 
+          - {{ .AnotherVariable }}
+    ```
+* Boilerplate runs your `command` with the working directory set to the `--template-folder` option.
+* For an alternative way to execute commands, see the `shell` helper in [template helpers](#template-helpers).
 
 #### Templates
 
@@ -347,7 +396,7 @@ including conditionals, loops, and functions. Boilerplate also includes several 
   to look up these keys in the map.
 * `shell CMD`: Execute the given shell command and render whatever that command prints to stdout. The working directory
   for the command will be set to the directory of the template being rendered, so you can use paths relative to the
-  file from which you are calling the `shell` helper.
+  file from which you are calling the `shell` helper. For another way to execute commands, see [hooks](#hooks).
 * `templateFolder`: Return the value of the `--template-folder` command-line option. Useful for building relative paths.
 * `outputFolder`: Return the value of the `--output-folder` command-line option. Useful for building relative paths.
 
