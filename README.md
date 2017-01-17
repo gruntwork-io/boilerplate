@@ -373,6 +373,7 @@ Note the following:
 * The `after` hook allows you to run scripts after Boilerplate has finished rendering.
 * Each hook consists of a `command` to execute (required) plus a list of `args` to pass to that command (optional).
   Example:
+   
     ```yaml
     before:
       - command: echo
@@ -382,6 +383,7 @@ Note the following:
     ```
 * You can use Go templating syntax in both `command` and `args`. For example, you can pass Boilerplate variables to 
   your scripts as follows:
+    
     ```yaml
     before:
       - command: foo.sh 
