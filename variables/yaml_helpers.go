@@ -13,6 +13,71 @@ import (
 // Given a map of key:value pairs read from a Boilerplate YAML config file of the format:
 //
 // fieldName:
+//   key1: value1
+//   key2: value2
+//   key3: value3
+//
+// This method takes looks up the given fieldName in the map and unmarshals the data inside of it it into a map of the
+// key:value pairs.
+func unmarshalMapOfFields(fields map[string]interface{}, fieldName string) (map[string]interface{}, error) {
+	fieldAsYaml, containsField := fields[fieldName]
+	if !containsField || fieldAsYaml == nil {
+		return nil, nil
+	}
+
+	asYamlMap, isYamlMap := fieldAsYaml.(map[interface{}]interface{})
+	if !isYamlMap {
+		return nil, errors.WithStackTrace(InvalidTypeForField{FieldName: fieldName, ExpectedType: "map[string]interface{}", ActualType: reflect.TypeOf(fieldAsYaml)})
+	}
+
+	stringMap := map[string]interface{}{}
+	for key, value := range asYamlMap {
+		if keyAsString, isString := key.(string); isString {
+			stringMap[keyAsString] = value
+		} else {
+			return nil, errors.WithStackTrace(InvalidTypeForField{FieldName: fieldName, ExpectedType: "string", ActualType: reflect.TypeOf(key)})
+		}
+	}
+
+	return stringMap, nil
+}
+
+// Given a map of key:value pairs read from a Boilerplate YAML config file of the format:
+//
+// fieldName:
+//   - value1
+//   - value2
+//   - value3
+//
+// This method takes looks up the given fieldName in the map and unmarshals the data inside of it it into a list of
+// strings with the given values.
+func unmarshalListOfStrings(fields map[string]interface{}, fieldName string) ([]string, error) {
+	fieldAsYaml, containsField := fields[fieldName]
+	if !containsField || fieldAsYaml == nil {
+		return nil, nil
+	}
+
+	asYamlList, isYamlList := fieldAsYaml.([]interface{})
+	if !isYamlList {
+		return nil, errors.WithStackTrace(InvalidTypeForField{FieldName: fieldName, ExpectedType: "[]interface{}", ActualType: reflect.TypeOf(fieldAsYaml)})
+	}
+
+	listOfStrings := []string{}
+
+	for _, asYaml := range asYamlList {
+		if valueAsString, isString := asYaml.(string); isString {
+			listOfStrings = append(listOfStrings, valueAsString)
+		} else {
+			return nil, errors.WithStackTrace(InvalidTypeForField{FieldName: fieldName, ExpectedType: "string", ActualType: reflect.TypeOf(asYamlList)})
+		}
+	}
+
+	return listOfStrings, nil
+}
+
+// Given a map of key:value pairs read from a Boilerplate YAML config file of the format:
+//
+// fieldName:
 //   - key1: value1
 //     key2: value2
 //     key3: value3
@@ -24,22 +89,22 @@ import (
 // This method takes looks up the given fieldName in the map and unmarshals the data inside of it it into a list of
 // maps, where each map contains the set of key:value pairs
 func unmarshalListOfFields(fields map[string]interface{}, fieldName string) ([]map[string]interface{}, error) {
-	listOfFields := []map[string]interface{}{}
-
 	fieldAsYaml, containsField := fields[fieldName]
 	if !containsField || fieldAsYaml == nil {
-		return listOfFields, nil
+		return nil, nil
 	}
 
 	asYamlList, isYamlList := fieldAsYaml.([]interface{})
 	if !isYamlList {
-		return listOfFields, errors.WithStackTrace(InvalidTypeForField{FieldName: fieldName, ExpectedType: "[]interface{}", ActualType: reflect.TypeOf(fieldAsYaml)})
+		return nil, errors.WithStackTrace(InvalidTypeForField{FieldName: fieldName, ExpectedType: "[]interface{}", ActualType: reflect.TypeOf(fieldAsYaml)})
 	}
+
+	listOfFields := []map[string]interface{}{}
 
 	for _, asYaml := range asYamlList {
 		asYamlMap, isYamlMap := asYaml.(map[interface{}]interface{})
 		if !isYamlMap {
-			return listOfFields, errors.WithStackTrace(InvalidTypeForField{FieldName: fieldName, ExpectedType: "map[string]interface{}", ActualType: reflect.TypeOf(asYaml)})
+			return nil, errors.WithStackTrace(InvalidTypeForField{FieldName: fieldName, ExpectedType: "map[string]interface{}", ActualType: reflect.TypeOf(asYaml)})
 		}
 
 		listOfFields = append(listOfFields, util.ToStringToGenericMap(asYamlMap))

@@ -16,7 +16,7 @@ func TestParseBoilerplateConfigEmpty(t *testing.T) {
 	actual, err := ParseBoilerplateConfig([]byte(""))
 	expected := &BoilerplateConfig{}
 
-	assert.Nil(t, err)
+	assert.Nil(t, err, "Unexpected error: %v", err)
 	assert.Equal(t, expected, actual)
 }
 
@@ -45,9 +45,10 @@ func TestParseBoilerplateConfigEmptyVariablesAndDependencies(t *testing.T) {
 	expected := &BoilerplateConfig{
 		Variables: []variables.Variable{},
 		Dependencies: []variables.Dependency{},
+		Hooks: variables.Hooks{},
 	}
 
-	assert.Nil(t, err)
+	assert.Nil(t, err, "Unexpected error: %v", err)
 	assert.Equal(t, expected, actual)
 }
 
@@ -66,9 +67,10 @@ func TestParseBoilerplateConfigOneVariableMinimal(t *testing.T) {
 			variables.NewStringVariable("foo"),
 		},
 		Dependencies: []variables.Dependency{},
+		Hooks: variables.Hooks{},
 	}
 
-	assert.Nil(t, err)
+	assert.Nil(t, err, "Unexpected error: %v", err)
 	assert.Equal(t, expected, actual)
 }
 
@@ -90,9 +92,10 @@ func TestParseBoilerplateConfigOneVariableFull(t *testing.T) {
 			variables.NewStringVariable("foo").WithDescription("example description").WithDefault("default"),
 		},
 		Dependencies: []variables.Dependency{},
+		Hooks: variables.Hooks{},
 	}
 
-	assert.Nil(t, err)
+	assert.Nil(t, err, "Unexpected error: %v", err)
 	assert.Equal(t, expected, actual)
 }
 
@@ -249,9 +252,10 @@ func TestParseBoilerplateConfigMultipleVariables(t *testing.T) {
 			variables.NewBoolVariable("dep1.baz").WithDescription("another example description").WithDefault(true),
 		},
 		Dependencies: []variables.Dependency{},
+		Hooks: variables.Hooks{},
 	}
 
-	assert.Nil(t, err)
+	assert.Nil(t, err, "Unexpected error: %v", err)
 	assert.Equal(t, expected, actual)
 }
 
@@ -316,9 +320,10 @@ func TestParseBoilerplateConfigAllTypes(t *testing.T) {
 			variables.NewEnumVariable("var8", []string{"foo", "bar", "baz"}).WithDefault("bar"),
 		},
 		Dependencies: []variables.Dependency{},
+		Hooks: variables.Hooks{},
 	}
 
-	assert.Nil(t, err)
+	assert.Nil(t, err, "Unexpected error: %v", err)
 	assert.Equal(t, expected, actual)
 }
 
@@ -339,9 +344,10 @@ func TestParseBoilerplateConfigOneDependency(t *testing.T) {
 		Dependencies: []variables.Dependency{
 			{Name: "dep1", TemplateFolder: "/template/folder1", OutputFolder: "/output/folder1", DontInheritVariables: false, Variables: []variables.Variable{}},
 		},
+		Hooks: variables.Hooks{},
 	}
 
-	assert.Nil(t, err)
+	assert.Nil(t, err, "Unexpected error: %v", err)
 	assert.Equal(t, expected, actual)
 }
 
@@ -397,9 +403,10 @@ func TestParseBoilerplateConfigMultipleDependencies(t *testing.T) {
 				Variables: []variables.Variable{},
 			},
 		},
+		Hooks: variables.Hooks{},
 	}
 
-	assert.Nil(t, err)
+	assert.Nil(t, err, "Unexpected error: %v", err)
 	assert.Equal(t, expected, actual)
 }
 
@@ -500,6 +507,140 @@ func TestParseBoilerplateConfigDependencyDuplicateNames(t *testing.T) {
 	assert.True(t, errors.IsError(err, variables.DuplicateDependencyName("dep1")), "Expected a DuplicateDependencyName error but got %s", reflect.TypeOf(errors.Unwrap(err)))
 }
 
+// YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
+const CONFIG_EMPTY_HOOKS =
+`hooks:
+`
+
+func TestParseBoilerplateConfigEmptyHooks(t *testing.T) {
+	t.Parallel()
+
+	actual, err := ParseBoilerplateConfig([]byte(CONFIG_EMPTY_HOOKS))
+	expected := &BoilerplateConfig{
+		Variables: []variables.Variable{},
+		Dependencies: []variables.Dependency{},
+		Hooks: variables.Hooks{},
+	}
+
+	assert.Nil(t, err, "Unexpected error: %v", err)
+	assert.Equal(t, expected, actual)
+}
+
+// YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
+const CONFIG_EMPTY_BEFORE_AND_AFTER_HOOKS =
+`hooks:
+   before:
+   after:
+`
+
+func TestParseBoilerplateConfigEmptyBeforeAndAfterHooks(t *testing.T) {
+	t.Parallel()
+
+	actual, err := ParseBoilerplateConfig([]byte(CONFIG_EMPTY_BEFORE_AND_AFTER_HOOKS))
+	expected := &BoilerplateConfig{
+		Variables: []variables.Variable{},
+		Dependencies: []variables.Dependency{},
+		Hooks: variables.Hooks{},
+	}
+
+	assert.Nil(t, err, "Unexpected error: %v", err)
+	assert.Equal(t, expected, actual)
+}
+
+// YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
+const CONFIG_ONE_BEFORE_HOOK_NO_ARGS =
+`hooks:
+   before:
+     - command: foo
+`
+
+func TestParseBoilerplateConfigOneBeforeHookNoArgs(t *testing.T) {
+	t.Parallel()
+
+	actual, err := ParseBoilerplateConfig([]byte(CONFIG_ONE_BEFORE_HOOK_NO_ARGS))
+	expected := &BoilerplateConfig{
+		Variables: []variables.Variable{},
+		Dependencies: []variables.Dependency{},
+		Hooks: variables.Hooks{
+			BeforeHooks: []variables.Hook{
+				{Command: "foo"},
+			},
+		},
+	}
+
+	assert.Nil(t, err, "Unexpected error: %v", err)
+	assert.Equal(t, expected, actual)
+}
+
+// YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
+const CONFIG_ONE_AFTER_HOOK_WITH_ARGS =
+`hooks:
+   after:
+     - command: foo
+       args:
+         - bar
+         - baz
+`
+
+func TestParseBoilerplateConfigOneAfterHookWithArgs(t *testing.T) {
+	t.Parallel()
+
+	actual, err := ParseBoilerplateConfig([]byte(CONFIG_ONE_AFTER_HOOK_WITH_ARGS))
+	expected := &BoilerplateConfig{
+		Variables: []variables.Variable{},
+		Dependencies: []variables.Dependency{},
+		Hooks: variables.Hooks{
+			AfterHooks: []variables.Hook{
+				{Command: "foo", Args: []string{"bar", "baz"}},
+			},
+		},
+	}
+
+	assert.Nil(t, err, "Unexpected error: %v", err)
+	assert.Equal(t, expected, actual)
+}
+
+// YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
+const CONFIG_MULTIPLE_HOOKS =
+`hooks:
+   before:
+     - command: echo
+       args:
+         - Hello World
+
+     - command: run-some-script.sh
+       args:
+         - "{{ .foo }}"
+         - "{{ .bar }}"
+
+   after:
+     - command: foo
+     - command: bar
+`
+
+func TestParseBoilerplateConfigMultipleHooks(t *testing.T) {
+	t.Parallel()
+
+	actual, err := ParseBoilerplateConfig([]byte(CONFIG_MULTIPLE_HOOKS))
+	expected := &BoilerplateConfig{
+		Variables: []variables.Variable{},
+		Dependencies: []variables.Dependency{},
+		Hooks: variables.Hooks{
+			BeforeHooks: []variables.Hook{
+				{Command: "echo", Args: []string{"Hello World"}},
+				{Command: "run-some-script.sh", Args: []string{"{{ .foo }}", "{{ .bar }}"}},
+			},
+			AfterHooks: []variables.Hook{
+				{Command: "foo"},
+				{Command: "bar"},
+			},
+		},
+	}
+
+	assert.Nil(t, err, "Unexpected error: %v", err)
+	assert.Equal(t, expected, actual)
+}
+
 func TestLoadBoilerplateConfigFullConfig(t *testing.T) {
 	t.Parallel()
 
@@ -517,9 +658,18 @@ func TestLoadBoilerplateConfigFullConfig(t *testing.T) {
 				variables.NewStringVariable("abc").WithDescription("example description").WithDefault("default"),
 			}},
 		},
+		Hooks: variables.Hooks{
+			BeforeHooks: []variables.Hook{
+				{Command: "echo", Args: []string{"Hello World"}},
+			},
+			AfterHooks: []variables.Hook{
+				{Command: "foo"},
+				{Command: "bar"},
+			},
+		},
 	}
 
-	assert.Nil(t, err)
+	assert.Nil(t, err, "Unexpected error: %v", err)
 	assert.Equal(t, expected, actual)
 }
 
@@ -540,7 +690,7 @@ func TestLoadBoilerplateConfigNoConfigIgnore(t *testing.T) {
 	actual, err := LoadBoilerplateConfig(&BoilerplateOptions{TemplateFolder: templateFolder, OnMissingConfig: Ignore})
 	expected := &BoilerplateConfig{}
 
-	assert.Nil(t, err)
+	assert.Nil(t, err, "Unexpected error: %v", err)
 	assert.Equal(t, expected, actual)
 }
 

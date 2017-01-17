@@ -23,7 +23,7 @@ func ProcessTemplate(options *config.BoilerplateOptions) error {
 		return err
 	}
 
-	variables, err := config.GetVariables(options, boilerplateConfig)
+	vars, err := config.GetVariables(options, boilerplateConfig)
 	if err != nil {
 		return err
 	}
@@ -33,12 +33,58 @@ func ProcessTemplate(options *config.BoilerplateOptions) error {
 		return errors.WithStackTrace(err)
 	}
 
-	err = processDependencies(boilerplateConfig.Dependencies, options, variables)
+	err = processDependencies(boilerplateConfig.Dependencies, options, vars)
 	if err != nil {
 		return err
 	}
 
-	return processTemplateFolder(options, variables)
+	err = processHooks(boilerplateConfig.Hooks.BeforeHooks, options, vars)
+	if err != nil {
+		return err
+	}
+
+	err = processTemplateFolder(options, vars)
+	if err != nil {
+		return err
+	}
+
+	err = processHooks(boilerplateConfig.Hooks.AfterHooks, options, vars)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Process the given list of hooks, which are scripts that should be executed at the command-line
+func processHooks(hooks []variables.Hook, options *config.BoilerplateOptions, vars map[string]interface{}) error {
+	for _, hook := range hooks {
+		err := processHook(hook, options, vars)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// Process the given hook, which is a script that should be execute at the command-line
+func processHook(hook variables.Hook, options *config.BoilerplateOptions, vars map[string]interface{}) error {
+	cmd, err := renderTemplate(config.BoilerplateConfigPath(options.TemplateFolder), hook.Command, vars, options)
+	if err != nil {
+		return err
+	}
+
+	args := []string{}
+	for _, arg := range hook.Args {
+		renderedArg, err := renderTemplate(config.BoilerplateConfigPath(options.TemplateFolder), arg, vars, options)
+		if err != nil {
+			return err
+		}
+		args = append(args, renderedArg)
+	}
+
+	return util.RunShellCommand(options.TemplateFolder, cmd, args...)
 }
 
 // Execute the boilerplate templates in the given list of dependencies

@@ -26,3 +26,12 @@ dependencies:
         description: example description
         default: default
 
+hooks:
+  before:
+    - command: echo
+      args:
+        - Hello World
+
+  after:
+    - command: foo
+    - command: bar
