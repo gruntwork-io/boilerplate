@@ -33,12 +33,12 @@ func ProcessTemplate(options *config.BoilerplateOptions) error {
 		return errors.WithStackTrace(err)
 	}
 
-	err = processDependencies(boilerplateConfig.Dependencies, options, vars)
+	err = processHooks(boilerplateConfig.Hooks.BeforeHooks, options, vars)
 	if err != nil {
 		return err
 	}
 
-	err = processHooks(boilerplateConfig.Hooks.BeforeHooks, options, vars)
+	err = processDependencies(boilerplateConfig.Dependencies, options, vars)
 	if err != nil {
 		return err
 	}
