@@ -17,6 +17,7 @@ import (
 	"github.com/gruntwork-io/boilerplate/util"
 	"sort"
 	"github.com/gruntwork-io/boilerplate/config"
+	"github.com/gruntwork-io/boilerplate/variables"
 )
 
 var SNIPPET_MARKER_REGEX = regexp.MustCompile("boilerplate-snippet:\\s*(.+?)(?:\\s|$)")
@@ -41,7 +42,7 @@ var CAMEL_CASE_REGEX = regexp.MustCompile(
 type TemplateHelper func(templatePath string, args ... string) (string, error)
 
 // Create a map of custom template helpers exposed by boilerplate
-func CreateTemplateHelpers(templatePath string, options *config.BoilerplateOptions) template.FuncMap {
+func CreateTemplateHelpers(templatePath string, options *config.BoilerplateOptions, rootDependencies []variables.Dependency) template.FuncMap {
 	return map[string]interface{}{
 		"snippet": wrapWithTemplatePath(templatePath, snippet),
 		"downcase": strings.ToLower,
