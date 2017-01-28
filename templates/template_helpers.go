@@ -17,6 +17,7 @@ import (
 	"github.com/gruntwork-io/boilerplate/util"
 	"sort"
 	"github.com/gruntwork-io/boilerplate/config"
+	"github.com/gruntwork-io/boilerplate/variables"
 )
 
 var SNIPPET_MARKER_REGEX = regexp.MustCompile("boilerplate-snippet:\\s*(.+?)(?:\\s|$)")
@@ -67,7 +68,8 @@ func CreateTemplateHelpers(templatePath string, options *config.BoilerplateOptio
 		"shell": wrapWithTemplatePath(templatePath, shell),
 		"templateFolder": func() string { return options.TemplateFolder },
 		"outputFolder": func() string { return options.OutputFolder },
-		"dependencyOutputFolder": func() string { return rootConfig.Dependencies[0].OutputFolder },
+		"dependencyOutputFolder": dependencyOutputFolder(rootConfig.Dependencies),
+		//"dependencyOutputFolder": func() string { return rootConfig.Dependencies[0].OutputFolder },
 	}
 }
 
@@ -429,6 +431,26 @@ func shell(templatePath string, args ... string) (string, error) {
 	}
 
 	return util.RunShellCommandAndGetOutput(filepath.Dir(templatePath), args[0], args[1:]...)
+}
+
+// Look up a Dependency by name (most likely as declared in a boilerplate.yml), and return the outputFolder value, but
+// with the given stringToDelete removed from the value.
+// This is useful to extract a relative path from a particular outputFolder dependency.
+func dependencyOutputFolder(dependencies []variables.Dependency) func(string, string) string {
+	return func(dependencyName string, stringToDelete string) string {
+		var outputFolder string
+
+		for _, dependency := range dependencies {
+			if dependency.Name == dependencyName {
+				outputFolder = dependency.OutputFolder
+				break;
+			}
+		}
+
+		outputFolder = strings.Replace(outputFolder, stringToDelete, "", 1)
+
+		return outputFolder
+	}
 }
 
 // Custom errors

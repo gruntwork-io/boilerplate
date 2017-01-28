@@ -1,1 +1,1 @@
-{{ .SomeGlobalVar }}
+{{ dependencyOutputFolder "website" "./web" }}
