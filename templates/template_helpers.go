@@ -435,12 +435,12 @@ func shell(templatePath string, args ... string) (string, error) {
 // Look up a Dependency by name (most likely as declared in a boilerplate.yml), and return the outputFolder value, but
 // with the given stringToDelete removed from the value.
 // This is useful to extract a relative path from a particular outputFolder dependency.
-func dependencyOutputFolderName(rootConfig *config.BoilerplateConfig) func(string, string) string {
+func dependencyOutputFolderName(rootConfig *config.BoilerplateConfig) func(string, string) (string, error) {
 	if rootConfig == nil {
 		return nil
 	}
 
-	return func(dependencyName string, stringToDelete string) string {
+	return func(dependencyName string, stringToDelete string) (string, error) {
 		var outputFolder string
 
 		for _, dependency := range rootConfig.Dependencies {
@@ -450,9 +450,13 @@ func dependencyOutputFolderName(rootConfig *config.BoilerplateConfig) func(strin
 			}
 		}
 
+		if outputFolder == "" {
+			return "", fmt.Errorf("The Dependency '%s' was not found!\n", dependencyName)
+		}
+
 		outputFolder = strings.Replace(outputFolder, stringToDelete, "", 1)
 
-		return outputFolder
+		return outputFolder, nil
 	}
 }
 
