@@ -67,6 +67,7 @@ func CreateTemplateHelpers(templatePath string, options *config.BoilerplateOptio
 		"shell": wrapWithTemplatePath(templatePath, shell),
 		"templateFolder": func() string { return options.TemplateFolder },
 		"outputFolder": func() string { return options.OutputFolder },
+		"dependencyOutputFolder": func() string { return rootConfig.Dependencies[0].OutputFolder },
 	}
 }
 

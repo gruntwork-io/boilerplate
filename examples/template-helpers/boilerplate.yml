@@ -1,0 +1,19 @@
+variables:
+
+  - name: SomeGlobalVar
+    type: string
+
+dependencies:
+    - name: docs
+      template-folder: ../docs
+      output-folder: ./docs
+      variables:
+        - name: Title
+          description: Enter the title of the docs page
+
+    - name: website
+      template-folder: ../website
+      output-folder: ./website
+      variables:
+        - name: Title
+          description: Enter the title of the website
