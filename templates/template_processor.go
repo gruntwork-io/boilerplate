@@ -33,7 +33,7 @@ func ProcessTemplate(options *config.BoilerplateOptions) error {
 		return errors.WithStackTrace(err)
 	}
 
-	err = processHooks(boilerplateConfig.Hooks.BeforeHooks, options, vars)
+	err = processHooks(boilerplateConfig.Hooks.BeforeHooks, options, boilerplateConfig, vars)
 	if err != nil {
 		return err
 	}
@@ -43,12 +43,12 @@ func ProcessTemplate(options *config.BoilerplateOptions) error {
 		return err
 	}
 
-	err = processTemplateFolder(options, vars)
+	err = processTemplateFolder(options, boilerplateConfig, vars)
 	if err != nil {
 		return err
 	}
 
-	err = processHooks(boilerplateConfig.Hooks.AfterHooks, options, vars)
+	err = processHooks(boilerplateConfig.Hooks.AfterHooks, options, boilerplateConfig, vars)
 	if err != nil {
 		return err
 	}
@@ -57,9 +57,9 @@ func ProcessTemplate(options *config.BoilerplateOptions) error {
 }
 
 // Process the given list of hooks, which are scripts that should be executed at the command-line
-func processHooks(hooks []variables.Hook, options *config.BoilerplateOptions, vars map[string]interface{}) error {
+func processHooks(hooks []variables.Hook, options *config.BoilerplateOptions, rootConfig *config.BoilerplateConfig, vars map[string]interface{}) error {
 	for _, hook := range hooks {
-		err := processHook(hook, options, vars)
+		err := processHook(hook, options, rootConfig, vars)
 		if err != nil {
 			return err
 		}
@@ -69,15 +69,15 @@ func processHooks(hooks []variables.Hook, options *config.BoilerplateOptions, va
 }
 
 // Process the given hook, which is a script that should be execute at the command-line
-func processHook(hook variables.Hook, options *config.BoilerplateOptions, vars map[string]interface{}) error {
-	cmd, err := renderTemplate(config.BoilerplateConfigPath(options.TemplateFolder), hook.Command, vars, options)
+func processHook(hook variables.Hook, options *config.BoilerplateOptions, rootConfig *config.BoilerplateConfig, vars map[string]interface{}) error {
+	cmd, err := renderTemplate(config.BoilerplateConfigPath(options.TemplateFolder), hook.Command, vars, options, rootConfig)
 	if err != nil {
 		return err
 	}
 
 	args := []string{}
 	for _, arg := range hook.Args {
-		renderedArg, err := renderTemplate(config.BoilerplateConfigPath(options.TemplateFolder), arg, vars, options)
+		renderedArg, err := renderTemplate(config.BoilerplateConfigPath(options.TemplateFolder), arg, vars, options, rootConfig)
 		if err != nil {
 			return err
 		}
@@ -167,7 +167,7 @@ func shouldProcessDependency(dependency variables.Dependency, options *config.Bo
 
 // Copy all the files and folders in templateFolder to outputFolder, passing text files through the Go template engine
 // with the given set of variables as the data.
-func processTemplateFolder(options *config.BoilerplateOptions, variables map[string]interface{}) error {
+func processTemplateFolder(options *config.BoilerplateOptions, rootConfig *config.BoilerplateConfig, variables map[string]interface{}) error {
 	util.Logger.Printf("Processing templates in %s and outputting generated files to %s", options.TemplateFolder, options.OutputFolder)
 
 	return filepath.Walk(options.TemplateFolder, func(path string, info os.FileInfo, err error) error {
@@ -175,31 +175,31 @@ func processTemplateFolder(options *config.BoilerplateOptions, variables map[str
 			util.Logger.Printf("Skipping %s", path)
 			return nil
 		} else if util.IsDir(path) {
-			return createOutputDir(path, options, variables)
+			return createOutputDir(path, options, rootConfig, variables)
 		} else {
-			return processFile(path, options, variables)
+			return processFile(path, options, rootConfig, variables)
 		}
 	})
 }
 
 // Copy the given path, which is in the folder templateFolder, to the outputFolder, passing it through the Go template
 // engine with the given set of variables as the data if it's a text file.
-func processFile(path string, options *config.BoilerplateOptions, variables map[string]interface{}) error {
+func processFile(path string, options *config.BoilerplateOptions, rootConfig *config.BoilerplateConfig, variables map[string]interface{}) error {
 	isText, err := util.IsTextFile(path)
 	if err != nil {
 		return err
 	}
 
 	if isText {
-		return processTemplate(path, options, variables)
+		return processTemplate(path, options, rootConfig, variables)
 	} else {
-		return copyFile(path, options, variables)
+		return copyFile(path, options, rootConfig, variables)
 	}
 }
 
 // Create the given directory, which is in templateFolder, in the given outputFolder
-func createOutputDir(dir string, options *config.BoilerplateOptions, variables map[string]interface{}) error {
-	destination, err := outPath(dir, options, variables)
+func createOutputDir(dir string, options *config.BoilerplateOptions, rootConfig *config.BoilerplateConfig, variables map[string]interface{}) error {
+	destination, err := outPath(dir, options, rootConfig, variables)
 	if err != nil {
 		return err
 	}
@@ -211,13 +211,13 @@ func createOutputDir(dir string, options *config.BoilerplateOptions, variables m
 // Compute the path where the given file, which is in templateFolder, should be copied in outputFolder. If the file
 // path contains boilerplate syntax, use the given options and variables to render it to determine the final output
 // path.
-func outPath(file string, options *config.BoilerplateOptions, variables map[string]interface{}) (string, error) {
+func outPath(file string, options *config.BoilerplateOptions, rootConfig *config.BoilerplateConfig, variables map[string]interface{}) (string, error) {
 	templateFolderAbsPath, err := filepath.Abs(options.TemplateFolder)
 	if err != nil {
 		return "", errors.WithStackTrace(err)
 	}
 
-	interpolatedFilePath, err := renderTemplate(file, file, variables, options)
+	interpolatedFilePath, err := renderTemplate(file, file, variables, options, rootConfig)
 	if err != nil {
 		return "", errors.WithStackTrace(err)
 	}
@@ -236,8 +236,8 @@ func outPath(file string, options *config.BoilerplateOptions, variables map[stri
 }
 
 // Copy the given file, which is in options.TemplateFolder, to options.OutputFolder
-func copyFile(file string, options *config.BoilerplateOptions, variables map[string]interface{}) error {
-	destination, err := outPath(file, options, variables)
+func copyFile(file string, options *config.BoilerplateOptions, rootConfig *config.BoilerplateConfig, variables map[string]interface{}) error {
+	destination, err := outPath(file, options, rootConfig, variables)
 	if err != nil {
 		return err
 	}
@@ -248,8 +248,8 @@ func copyFile(file string, options *config.BoilerplateOptions, variables map[str
 
 // Run the template at templatePath, which is in templateFolder, through the Go template engine with the given
 // variables as data and write the result to outputFolder
-func processTemplate(templatePath string, options *config.BoilerplateOptions, variables map[string]interface{}) error {
-	destination, err := outPath(templatePath, options, variables)
+func processTemplate(templatePath string, options *config.BoilerplateOptions, rootConfig *config.BoilerplateConfig, variables map[string]interface{}) error {
+	destination, err := outPath(templatePath, options, rootConfig, variables)
 	if err != nil {
 		return err
 	}
@@ -260,7 +260,7 @@ func processTemplate(templatePath string, options *config.BoilerplateOptions, va
 		return errors.WithStackTrace(err)
 	}
 
-	out, err := renderTemplate(templatePath, string(bytes), variables, options)
+	out, err := renderTemplate(templatePath, string(bytes), variables, options, rootConfig)
 	if err != nil {
 		return err
 	}
@@ -275,9 +275,9 @@ func shouldSkipPath(path string, options *config.BoilerplateOptions) bool {
 
 // Render the template at templatePath, with contents templateContents, using the Go template engine, passing in the
 // given variables as data.
-func renderTemplate(templatePath string, templateContents string, variables map[string]interface{}, options *config.BoilerplateOptions) (string, error) {
+func renderTemplate(templatePath string, templateContents string, variables map[string]interface{}, options *config.BoilerplateOptions, rootConfig *config.BoilerplateConfig) (string, error) {
 	option := fmt.Sprintf("missingkey=%s", string(options.OnMissingKey))
-	tmpl := template.New(templatePath).Funcs(CreateTemplateHelpers(templatePath, options)).Option(option)
+	tmpl := template.New(templatePath).Funcs(CreateTemplateHelpers(templatePath, options, rootConfig)).Option(option)
 
 	parsedTemplate, err := tmpl.Parse(templateContents)
 	if err != nil {

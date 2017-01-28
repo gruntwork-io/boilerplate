@@ -41,7 +41,7 @@ var CAMEL_CASE_REGEX = regexp.MustCompile(
 type TemplateHelper func(templatePath string, args ... string) (string, error)
 
 // Create a map of custom template helpers exposed by boilerplate
-func CreateTemplateHelpers(templatePath string, options *config.BoilerplateOptions) template.FuncMap {
+func CreateTemplateHelpers(templatePath string, options *config.BoilerplateOptions, rootConfig *config.BoilerplateConfig) template.FuncMap {
 	return map[string]interface{}{
 		"snippet": wrapWithTemplatePath(templatePath, snippet),
 		"downcase": strings.ToLower,
