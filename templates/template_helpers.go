@@ -69,6 +69,7 @@ func CreateTemplateHelpers(templatePath string, options *config.BoilerplateOptio
 		"outputFolder": func() string { return options.OutputFolder },
 		"dependencyOutputFolderName": dependencyOutputFolderName(rootConfig),
 		"dependencyOutputFolderRelPath": dependencyOutputFolderRelPath(rootConfig),
+		"boilerplateConfig": boilerplateConfig(rootConfig),
 	}
 }
 
@@ -494,6 +495,49 @@ func dependencyOutputFolderRelPath(rootConfig *config.BoilerplateConfig) func(st
 
 		return relPath, nil
 	}
+}
+
+func boilerplateConfig(rootConfig *config.BoilerplateConfig) func(string, ...string) (string, error) {
+	if rootConfig == nil {
+		return nil
+	}
+
+	return func(configProperty string, identifiers ...string) (string, error) {
+
+		switch configProperty {
+		case "dependencies":
+			return boilerplateConfigDependencies(rootConfig, identifiers[0], identifiers[1])
+		case "variables":
+			return "", fmt.Errorf("The property name '%s' not a supported property of the boilerplateConfig function!\n", configProperty)
+		default:
+			return "", fmt.Errorf("The property name '%s' not a supported property of the boilerplateConfig function!\n", configProperty)
+		}
+	}
+}
+
+func boilerplateConfigDependencies(rootConfig *config.BoilerplateConfig, dependencyName string, propertyName string) (string, error) {
+	var val string
+
+	for _, dependency := range rootConfig.Dependencies {
+		if dependency.Name == dependencyName {
+			switch propertyName {
+			case "template-folder":
+				val = dependency.TemplateFolder
+			case "output-folder":
+				val = dependency.OutputFolder
+			default:
+				return "", fmt.Errorf("The property name '%s' is not a supported property of the boilerplateConfig dependencies!\n", propertyName)
+			}
+
+			break;
+		}
+	}
+
+	if val == "" {
+		return "", fmt.Errorf("The dependency '%s' was not found!\n", dependencyName)
+	}
+
+	return val, nil
 }
 
 // Custom errors

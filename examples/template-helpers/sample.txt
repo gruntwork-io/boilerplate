@@ -1,3 +1,4 @@
-{{ dependencyOutputFolderName "website" "./web" }}
-
-{{ dependencyOutputFolderRelPath "docs" "website" }}
+{{ boilerplateConfig "dependencies" "docs" "template-folder" }}
+{{ boilerplateConfig "dependencies" "docs" "output-folder" }}
+{{ boilerplateConfig "dependencies" "website" "template-folder" }}
+{{ boilerplateConfig "dependencies" "website" "output-folder" }}
