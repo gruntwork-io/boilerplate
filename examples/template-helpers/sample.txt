@@ -2,3 +2,6 @@
 {{ boilerplateConfig "dependencies" "docs" "output-folder" }}
 {{ boilerplateConfig "dependencies" "website" "template-folder" }}
 {{ boilerplateConfig "dependencies" "website" "output-folder" }}
+
+{{ .SomeGlobalVar }}
+{{ boilerplateConfig "variables" "SomeGlobalVar" "default" }}

@@ -506,13 +506,46 @@ func boilerplateConfig(rootConfig *config.BoilerplateConfig) func(string, ...str
 
 		switch configProperty {
 		case "dependencies":
+			if len(identifiers) != 2 {
+				return "", fmt.Errorf("The boilerplateConfig argument '%s' requires %d additional arguments, but was called with %d.\n", "dependencies", 2, len(identifiers))
+			}
 			return boilerplateConfigDependencies(rootConfig, identifiers[0], identifiers[1])
 		case "variables":
-			return "", fmt.Errorf("The property name '%s' not a supported property of the boilerplateConfig function!\n", configProperty)
+			if len(identifiers) != 2 {
+				return "", fmt.Errorf("The boilerplateConfig argument '%s' requires %d additional arguments, but was called with %d.\n", "variables", 2, len(identifiers))
+			}
+			return boilerplateConfigVariables(rootConfig, identifiers[0], identifiers[1])
 		default:
-			return "", fmt.Errorf("The property name '%s' not a supported property of the boilerplateConfig function!\n", configProperty)
+			return "", fmt.Errorf("The property name '%s' is not a supported property of the boilerplateConfig function!\n", configProperty)
 		}
 	}
+}
+
+func boilerplateConfigVariables(rootConfig *config.BoilerplateConfig, varName string, propertyName string) (string, error) {
+	var val string
+
+	for _, variable := range rootConfig.Variables {
+		if variable.Name() == varName {
+			switch propertyName {
+			case "default":
+				if variable.Default() != nil {
+					val = variable.Default().(string)
+				} else {
+					val = ""
+				}
+			case "description":
+				val = variable.Description()
+			case "type":
+				val = variable.Type().String()
+			default:
+				return "", fmt.Errorf("The global variable '%s' was not found!\n%+v\n", varName, rootConfig.Variables)
+			}
+
+			break;
+		}
+	}
+
+	return val, nil
 }
 
 func boilerplateConfigDependencies(rootConfig *config.BoilerplateConfig, dependencyName string, propertyName string) (string, error) {

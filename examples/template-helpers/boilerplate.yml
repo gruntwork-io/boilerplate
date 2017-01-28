@@ -2,6 +2,7 @@ variables:
 
   - name: SomeGlobalVar
     type: string
+    default: Inazagi
 
 dependencies:
     - name: docs
