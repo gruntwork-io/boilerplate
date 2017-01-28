@@ -100,5 +100,5 @@ func runApp(cliContext *cli.Context) error {
 		return err
 	}
 
-	return templates.ProcessTemplate(options)
+	return templates.ProcessTemplate(options, options)
 }
