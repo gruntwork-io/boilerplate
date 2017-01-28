@@ -17,7 +17,6 @@ import (
 	"github.com/gruntwork-io/boilerplate/util"
 	"sort"
 	"github.com/gruntwork-io/boilerplate/config"
-	"github.com/gruntwork-io/boilerplate/variables"
 )
 
 var SNIPPET_MARKER_REGEX = regexp.MustCompile("boilerplate-snippet:\\s*(.+?)(?:\\s|$)")
@@ -68,8 +67,8 @@ func CreateTemplateHelpers(templatePath string, options *config.BoilerplateOptio
 		"shell": wrapWithTemplatePath(templatePath, shell),
 		"templateFolder": func() string { return options.TemplateFolder },
 		"outputFolder": func() string { return options.OutputFolder },
-		"dependencyOutputFolderName": dependencyOutputFolderName(rootConfig.Dependencies),
-		"dependencyOutputFolderRelPath": dependencyOutputFolderRelPath(rootConfig.Dependencies),
+		"dependencyOutputFolderName": dependencyOutputFolderName(rootConfig),
+		"dependencyOutputFolderRelPath": dependencyOutputFolderRelPath(rootConfig),
 	}
 }
 
@@ -436,11 +435,15 @@ func shell(templatePath string, args ... string) (string, error) {
 // Look up a Dependency by name (most likely as declared in a boilerplate.yml), and return the outputFolder value, but
 // with the given stringToDelete removed from the value.
 // This is useful to extract a relative path from a particular outputFolder dependency.
-func dependencyOutputFolderName(dependencies []variables.Dependency) func(string, string) string {
+func dependencyOutputFolderName(rootConfig *config.BoilerplateConfig) func(string, string) string {
+	if rootConfig == nil {
+		return nil
+	}
+
 	return func(dependencyName string, stringToDelete string) string {
 		var outputFolder string
 
-		for _, dependency := range dependencies {
+		for _, dependency := range rootConfig.Dependencies {
 			if dependency.Name == dependencyName {
 				outputFolder = dependency.OutputFolder
 				break;
@@ -456,13 +459,17 @@ func dependencyOutputFolderName(dependencies []variables.Dependency) func(string
 // Get the relative path between the output folders of a "base" dependency and a "target" dependency. This is useful
 // for situations where, from within a given boilerplate dependency, you need to know the relative path to another
 // boilerplate dependency (e.g. when declaring terragrunt dependencies).
-func dependencyOutputFolderRelPath(dependencies []variables.Dependency) func(string, string) (string, error) {
+func dependencyOutputFolderRelPath(rootConfig *config.BoilerplateConfig) func(string, string) (string, error) {
+	if rootConfig == nil {
+		return nil
+	}
+
 	return func(baseDependencyName string, targDependencyName string) (string, error) {
 		var baseDepOutputFolderPath string
 		var targDepOutputFolderPath string
 
 		// Look up the output folder for both the base and target dependency
-		for _, dependency := range dependencies {
+		for _, dependency := range rootConfig.Dependencies {
 			if dependency.Name == baseDependencyName {
 				baseDepOutputFolderPath = dependency.OutputFolder
 			}
