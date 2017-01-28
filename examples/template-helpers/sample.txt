@@ -5,3 +5,5 @@
 
 {{ .SomeGlobalVar }}
 {{ boilerplateConfig "variables" "SomeGlobalVar" "default" }}
+
+{{ stripPrefix "hello-world" "hello" }}

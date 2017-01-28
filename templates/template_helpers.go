@@ -67,9 +67,9 @@ func CreateTemplateHelpers(templatePath string, options *config.BoilerplateOptio
 		"shell": wrapWithTemplatePath(templatePath, shell),
 		"templateFolder": func() string { return options.TemplateFolder },
 		"outputFolder": func() string { return options.OutputFolder },
-		"dependencyOutputFolderName": dependencyOutputFolderName(rootConfig),
 		"dependencyOutputFolderRelPath": dependencyOutputFolderRelPath(rootConfig),
 		"boilerplateConfig": boilerplateConfig(rootConfig),
+		"stripPrefix": stripPrefix,
 	}
 }
 
@@ -433,34 +433,6 @@ func shell(templatePath string, args ... string) (string, error) {
 	return util.RunShellCommandAndGetOutput(filepath.Dir(templatePath), args[0], args[1:]...)
 }
 
-// Look up a Dependency by name (most likely as declared in a boilerplate.yml), and return the outputFolder value, but
-// with the given stringToDelete removed from the value.
-// This is useful to extract a relative path from a particular outputFolder dependency.
-func dependencyOutputFolderName(rootConfig *config.BoilerplateConfig) func(string, string) (string, error) {
-	if rootConfig == nil {
-		return nil
-	}
-
-	return func(dependencyName string, stringToDelete string) (string, error) {
-		var outputFolder string
-
-		for _, dependency := range rootConfig.Dependencies {
-			if dependency.Name == dependencyName {
-				outputFolder = dependency.OutputFolder
-				break;
-			}
-		}
-
-		if outputFolder == "" {
-			return "", fmt.Errorf("The Dependency '%s' was not found!\n", dependencyName)
-		}
-
-		outputFolder = strings.Replace(outputFolder, stringToDelete, "", 1)
-
-		return outputFolder, nil
-	}
-}
-
 // Get the relative path between the output folders of a "base" dependency and a "target" dependency. This is useful
 // for situations where, from within a given boilerplate dependency, you need to know the relative path to another
 // boilerplate dependency (e.g. when declaring terragrunt dependencies).
@@ -497,6 +469,7 @@ func dependencyOutputFolderRelPath(rootConfig *config.BoilerplateConfig) func(st
 	}
 }
 
+// TODO: Add description
 func boilerplateConfig(rootConfig *config.BoilerplateConfig) func(string, ...string) (string, error) {
 	if rootConfig == nil {
 		return nil
@@ -521,6 +494,7 @@ func boilerplateConfig(rootConfig *config.BoilerplateConfig) func(string, ...str
 	}
 }
 
+// TODO: Add description
 func boilerplateConfigVariables(rootConfig *config.BoilerplateConfig, varName string, propertyName string) (string, error) {
 	var val string
 
@@ -548,6 +522,7 @@ func boilerplateConfigVariables(rootConfig *config.BoilerplateConfig, varName st
 	return val, nil
 }
 
+// TODO: Add description
 func boilerplateConfigDependencies(rootConfig *config.BoilerplateConfig, dependencyName string, propertyName string) (string, error) {
 	var val string
 
@@ -571,6 +546,12 @@ func boilerplateConfigDependencies(rootConfig *config.BoilerplateConfig, depende
 	}
 
 	return val, nil
+}
+
+// TODO: Add description
+// TODO: Come up with a better name since this is just a string replace, not an actual prefix removal
+func stripPrefix(str, prefix string) string {
+	return strings.Replace(str, prefix, "", 1)
 }
 
 // Custom errors
