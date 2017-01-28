@@ -1,1 +1,3 @@
-{{ dependencyOutputFolder "website" "./web" }}
+{{ dependencyOutputFolderName "website" "./web" }}
+
+{{ dependencyOutputFolderRelPath "docs" "website" }}

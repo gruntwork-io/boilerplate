@@ -68,8 +68,8 @@ func CreateTemplateHelpers(templatePath string, options *config.BoilerplateOptio
 		"shell": wrapWithTemplatePath(templatePath, shell),
 		"templateFolder": func() string { return options.TemplateFolder },
 		"outputFolder": func() string { return options.OutputFolder },
-		"dependencyOutputFolder": dependencyOutputFolder(rootConfig.Dependencies),
-		//"dependencyOutputFolder": func() string { return rootConfig.Dependencies[0].OutputFolder },
+		"dependencyOutputFolderName": dependencyOutputFolderName(rootConfig.Dependencies),
+		"dependencyOutputFolderRelPath": dependencyOutputFolderRelPath(rootConfig.Dependencies),
 	}
 }
 
@@ -436,7 +436,7 @@ func shell(templatePath string, args ... string) (string, error) {
 // Look up a Dependency by name (most likely as declared in a boilerplate.yml), and return the outputFolder value, but
 // with the given stringToDelete removed from the value.
 // This is useful to extract a relative path from a particular outputFolder dependency.
-func dependencyOutputFolder(dependencies []variables.Dependency) func(string, string) string {
+func dependencyOutputFolderName(dependencies []variables.Dependency) func(string, string) string {
 	return func(dependencyName string, stringToDelete string) string {
 		var outputFolder string
 
@@ -450,6 +450,38 @@ func dependencyOutputFolder(dependencies []variables.Dependency) func(string, st
 		outputFolder = strings.Replace(outputFolder, stringToDelete, "", 1)
 
 		return outputFolder
+	}
+}
+
+// Get the relative path between the output folders of a "base" dependency and a "target" dependency. This is useful
+// for situations where, from within a given boilerplate dependency, you need to know the relative path to another
+// boilerplate dependency (e.g. when declaring terragrunt dependencies).
+func dependencyOutputFolderRelPath(dependencies []variables.Dependency) func(string, string) (string, error) {
+	return func(baseDependencyName string, targDependencyName string) (string, error) {
+		var baseDepOutputFolderPath string
+		var targDepOutputFolderPath string
+
+		// Look up the output folder for both the base and target dependency
+		for _, dependency := range dependencies {
+			if dependency.Name == baseDependencyName {
+				baseDepOutputFolderPath = dependency.OutputFolder
+			}
+
+			if dependency.Name == targDependencyName {
+				targDepOutputFolderPath = dependency.OutputFolder
+			}
+
+			if baseDepOutputFolderPath != "" && targDepOutputFolderPath != "" {
+				break;
+			}
+		}
+
+		relPath, err := filepath.Rel(baseDepOutputFolderPath, targDepOutputFolderPath)
+		if err != nil {
+			return "", errors.WithStackTrace(err)
+		}
+
+		return relPath, nil
 	}
 }
 
