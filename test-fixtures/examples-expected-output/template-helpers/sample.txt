@@ -7,3 +7,5 @@ foo
 Inazagi
 
 -world
+
+../../d

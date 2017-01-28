@@ -70,6 +70,7 @@ func CreateTemplateHelpers(templatePath string, options *config.BoilerplateOptio
 		"dependencyOutputFolderRelPath": dependencyOutputFolderRelPath(rootConfig),
 		"boilerplateConfig": boilerplateConfig(rootConfig),
 		"stripPrefix": stripPrefix,
+		"relPath": relPath,
 	}
 }
 
@@ -552,6 +553,16 @@ func boilerplateConfigDependencies(rootConfig *config.BoilerplateConfig, depende
 // TODO: Come up with a better name since this is just a string replace, not an actual prefix removal
 func stripPrefix(str, prefix string) string {
 	return strings.Replace(str, prefix, "", 1)
+}
+
+// TODO: Add description
+func relPath(basePath, targetPath string) (string, error) {
+	relPath, err := filepath.Rel(basePath, targetPath)
+	if err != nil {
+		return "", errors.WithStackTrace(err)
+	}
+
+	return relPath, nil
 }
 
 // Custom errors

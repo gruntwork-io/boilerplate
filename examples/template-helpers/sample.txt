@@ -7,3 +7,5 @@
 {{ boilerplateConfig "variables" "SomeGlobalVar" "default" }}
 
 {{ stripPrefix "hello-world" "hello" }}
+
+{{ relPath "/a/b/c" "/a/d" }}
