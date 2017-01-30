@@ -11,7 +11,7 @@ import (
 // Get a value for each of the variables specified in boilerplateConfig, other than those already in existingVariables.
 // The value for a variable can come from the user (if the  non-interactive option isn't set), the default value in the
 // config, or a command line option.
-func GetVariables(options *BoilerplateOptions, boilerplateConfig, rootBoilerplateConfig *BoilerplateConfig) (map[string]interface{}, error) {
+func GetVariables(options *BoilerplateOptions, boilerplateConfig, rootBoilerplateConfig *BoilerplateConfig, thisDep variables.Dependency) (map[string]interface{}, error) {
 	vars := map[string]interface{}{}
 	for key, value := range options.Vars {
 		vars[key] = value
@@ -54,6 +54,8 @@ func GetVariables(options *BoilerplateOptions, boilerplateConfig, rootBoilerplat
 		rootConfigDeps[dep.Name] = dep
 	}
 	vars["BoilerplateConfigDeps"] = rootConfigDeps
+
+	vars["This"] = thisDep
 
 	return vars, nil
 }

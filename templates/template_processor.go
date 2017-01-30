@@ -18,7 +18,7 @@ import (
 // load any missing variables (either from command line options or by prompting the user), execute all the dependent
 // boilerplate templates, and then execute this template. Note that we pass in rootOptions so that template dependencies
 // can inspect properties of the root template.
-func ProcessTemplate(options, rootOptions *config.BoilerplateOptions) error {
+func ProcessTemplate(options, rootOptions *config.BoilerplateOptions, thisDep variables.Dependency) error {
 	rootBoilerplateConfig, err := config.LoadBoilerplateConfig(rootOptions)
 	if err != nil {
 		return err
@@ -29,7 +29,7 @@ func ProcessTemplate(options, rootOptions *config.BoilerplateOptions) error {
 		return err
 	}
 
-	vars, err := config.GetVariables(options, boilerplateConfig, rootBoilerplateConfig)
+	vars, err := config.GetVariables(options, boilerplateConfig, rootBoilerplateConfig, thisDep)
 	if err != nil {
 		return err
 	}
@@ -116,7 +116,7 @@ func processDependency(dependency variables.Dependency, options *config.Boilerpl
 		dependencyOptions := cloneOptionsForDependency(dependency, options, variables)
 
 		util.Logger.Printf("Processing dependency %s, with template folder %s and output folder %s", dependency.Name, dependencyOptions.TemplateFolder, dependencyOptions.OutputFolder)
-		return ProcessTemplate(dependencyOptions, options)
+		return ProcessTemplate(dependencyOptions, options, dependency)
 	} else {
 		util.Logger.Printf("Skipping dependency %s", dependency.Name)
 		return nil
