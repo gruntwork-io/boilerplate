@@ -461,6 +461,8 @@ including conditionals, loops, and functions. Boilerplate also includes several 
 * `trimPrefix STRING PREFIX`: Return THE `STRING` without the provided leading `PREFIX`. 
 * `trimSuffix STRING SUFFIX`: Return THE `STRING` without the provided trailing `SUFFIX`. 
 * `relPath BASE_PATH TARGET_PATH`: Return the relative path between the `BASE_PATH` and `TARGET_PATH`.
+* `boilerplateConfigDeps DEPENDENCY_NAME PROPERTY`: Return the value of the given property for the given [Dependency](#dependencies) 
+* `boilerplateConfigVars VAR_NAME PROPERTY`: Return the value of the given property for the given [Variable](#variables) 
 
 #### Global Template Variables
 

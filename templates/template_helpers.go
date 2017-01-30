@@ -17,6 +17,8 @@ import (
 	"github.com/gruntwork-io/boilerplate/util"
 	"sort"
 	"github.com/gruntwork-io/boilerplate/config"
+	"reflect"
+	"github.com/gruntwork-io/boilerplate/variables"
 )
 
 var SNIPPET_MARKER_REGEX = regexp.MustCompile("boilerplate-snippet:\\s*(.+?)(?:\\s|$)")
@@ -70,6 +72,8 @@ func CreateTemplateHelpers(templatePath string, options *config.BoilerplateOptio
 		"trimPrefix": trimPrefix,
 		"trimSuffix": trimSuffix,
 		"relPath": relPath,
+		"boilerplateConfigDeps": boilerplateConfigDeps(options),
+		"boilerplateConfigVars": boilerplateConfigVars(options),
 	}
 }
 
@@ -452,6 +456,34 @@ func relPath(basePath, targetPath string) (string, error) {
 
 	return relPath, nil
 }
+
+// Find the value of the given property of the given Dependency.
+func boilerplateConfigDeps(options *config.BoilerplateOptions) func(string, string) string {
+	return func(name string, property string) string {
+		deps := options.Vars["BoilerplateConfigDeps"].(map[string]variables.Dependency)
+		dep := deps[name]
+
+		r := reflect.ValueOf(dep)
+		f := reflect.Indirect(r).FieldByName(property)
+		return f.String()
+	}
+}
+
+// Find the value of the given property of the given Variable.
+func boilerplateConfigVars(options *config.BoilerplateOptions) func(string, string) string {
+	return func(name string, property string) string {
+		vars := options.Vars["BoilerplateConfigVars"].(map[string]variables.Variable)
+		myVar := vars[name]
+
+		r := reflect.ValueOf(myVar)
+		f := reflect.Indirect(r).FieldByName(property)
+		return f.String()
+	}
+}
+
+//func boilerplateConfigDeps(name, property string) string {
+//
+//}
 
 // Custom errors
 
