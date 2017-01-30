@@ -1,7 +1,7 @@
 {{ boilerplateConfig "dependencies" "docs" "template-folder" }}
 {{ boilerplateConfig "dependencies" "docs" "output-folder" }}
 {{ boilerplateConfig "dependencies" "website" "template-folder" }}
-{{ boilerplateConfig "dependencies" "website" "output-folder" }}
+{{ .BoilerplateConfigDeps.website.OutputFolder }}
 
 {{ .SomeGlobalVar }}
 {{ boilerplateConfig "variables" "SomeGlobalVar" "default" }}
@@ -9,3 +9,5 @@
 {{ stripPrefix "hello-world" "hello" }}
 
 {{ relPath "/a/b/c" "/a/d" }}
+
+{{ .BoilerplateConfigVars.SomeGlobalVar.Default }}

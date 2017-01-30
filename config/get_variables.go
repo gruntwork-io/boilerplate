@@ -11,7 +11,7 @@ import (
 // Get a value for each of the variables specified in boilerplateConfig, other than those already in existingVariables.
 // The value for a variable can come from the user (if the  non-interactive option isn't set), the default value in the
 // config, or a command line option.
-func GetVariables(options *BoilerplateOptions, boilerplateConfig *BoilerplateConfig) (map[string]interface{}, error) {
+func GetVariables(options *BoilerplateOptions, boilerplateConfig, rootBoilerplateConfig *BoilerplateConfig) (map[string]interface{}, error) {
 	vars := map[string]interface{}{}
 	for key, value := range options.Vars {
 		vars[key] = value
@@ -38,6 +38,22 @@ func GetVariables(options *BoilerplateOptions, boilerplateConfig *BoilerplateCon
 
 		vars[variable.Name()] = unmarshalled
 	}
+
+	// Add a variable for all variables contained in the root config file. This will allow Golang template users
+	// to directly access these with an expression like "{{ .BoilerplateConfigVars.foo.Default }}"
+	rootConfigVars := map[string]variables.Variable{}
+	for _, configVar := range rootBoilerplateConfig.Variables {
+		rootConfigVars[configVar.Name()] = configVar
+	}
+	vars["BoilerplateConfigVars"] = rootConfigVars
+
+	// Add a variable for all dependencies contained in the root config file. This will allow Golang template users
+	// to directly access these with an expression like "{{ .BoilerplateConfigDeps.foo.OutputFolder }}"
+	rootConfigDeps := map[string]variables.Dependency{}
+	for _, dep := range rootBoilerplateConfig.Dependencies {
+		rootConfigDeps[dep.Name] = dep
+	}
+	vars["BoilerplateConfigDeps"] = rootConfigDeps
 
 	return vars, nil
 }
