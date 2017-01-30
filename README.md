@@ -458,10 +458,29 @@ including conditionals, loops, and functions. Boilerplate also includes several 
   file from which you are calling the `shell` helper. For another way to execute commands, see [hooks](#hooks).
 * `templateFolder`: Return the value of the `--template-folder` command-line option. Useful for building relative paths.
 * `outputFolder`: Return the value of the `--output-folder` command-line option. Useful for building relative paths.
-* `dependencyOutputFolderName DEPENDENCY_NAME STRING_TO_DELETE`: Return the value of the `output-folder` property of a 
-   dependency named `DEPENDENCY_NAME` with the substring `STRING_TO_DELETE` removed from it. 
-* `dependencyOutputFolderRelPath BASE_DEPENDENCY_NAME TARGET_DEPENDENCY_NAME`: Return the relative path between the 
-   value of the `output-folder` property of the `BASE_DEPENDENCY_NAME` and `TARGET_DEPENDENCY_NAME`.
+* `trimPrefix STRING PREFIX`: Return THE `STRING` without the provided leading `PREFIX`. 
+* `trimSuffix STRING SUFFIX`: Return THE `STRING` without the provided trailing `SUFFIX`. 
+* `relPath BASE_PATH TARGET_PATH`: Return the relative path between the `BASE_PATH` and `TARGET_PATH`.
+
+#### Global Template Variables
+
+The following "global" variables are defined:
+ 
+* `BoilerplateConfigVars`: A map of all [Variables](/variables/variables.go) defined in the root `boilerplate.yml`.
+* `BoilerplateConfigDeps`: A map of all [Dependencies](/variables/dependencies.go) defined in the root `boilerplate.yml`.
+
+To access a Global Var, specify the variable name (listed above), followed by the name of the Variable or Dependency,
+followed by a chain of one or more property names taken directly from the struct definitions of the respective Global Var,
+ with each value separated by a `.`.
+ 
+For example:
+
+```
+{{ .BoilerplateConfigVars.SomeVar.Default }}
+
+{{ .BoilerplateConfigDeps.website.TemplateFolder }}
+{{ .BoilerplateConfigDeps.website.OutputFolder }}
+```
 
 ## Alternative project generators
 
