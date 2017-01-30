@@ -1,12 +1,12 @@
-{{ boilerplateConfig "dependencies" "docs" "template-folder" }}
-{{ boilerplateConfig "dependencies" "docs" "output-folder" }}
-{{ boilerplateConfig "dependencies" "website" "template-folder" }}
+{{ .BoilerplateConfigDeps.docs.TemplateFolder }}
+{{ .BoilerplateConfigDeps.docs.OutputFolder }}
+{{ .BoilerplateConfigDeps.website.TemplateFolder }}
 {{ .BoilerplateConfigDeps.website.OutputFolder }}
 
 {{ .SomeGlobalVar }}
-{{ boilerplateConfig "variables" "SomeGlobalVar" "default" }}
+{{ .BoilerplateConfigVars.SomeGlobalVar.Default }}
 
-{{ stripPrefix "hello-world" "hello" }}
+{{ trimPrefix "hello-world" "hello" }}
 
 {{ relPath "/a/b/c" "/a/d" }}
 

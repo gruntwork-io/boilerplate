@@ -67,8 +67,8 @@ func CreateTemplateHelpers(templatePath string, options *config.BoilerplateOptio
 		"shell": wrapWithTemplatePath(templatePath, shell),
 		"templateFolder": func() string { return options.TemplateFolder },
 		"outputFolder": func() string { return options.OutputFolder },
-		"boilerplateConfig": boilerplateConfig(rootConfig),
-		"stripPrefix": stripPrefix,
+		"trimPrefix": trimPrefix,
+		"trimSuffix": trimSuffix,
 		"relPath": relPath,
 	}
 }
@@ -433,95 +433,17 @@ func shell(templatePath string, args ... string) (string, error) {
 	return util.RunShellCommandAndGetOutput(filepath.Dir(templatePath), args[0], args[1:]...)
 }
 
-// TODO: Add description
-func boilerplateConfig(rootConfig *config.BoilerplateConfig) func(string, ...string) (string, error) {
-	if rootConfig == nil {
-		return nil
-	}
-
-	return func(configProperty string, identifiers ...string) (string, error) {
-
-		switch configProperty {
-		case "dependencies":
-			if len(identifiers) != 2 {
-				return "", fmt.Errorf("The boilerplateConfig argument '%s' requires %d additional arguments, but was called with %d.\n", "dependencies", 2, len(identifiers))
-			}
-			return boilerplateConfigDependencies(rootConfig, identifiers[0], identifiers[1])
-		case "variables":
-			if len(identifiers) != 2 {
-				return "", fmt.Errorf("The boilerplateConfig argument '%s' requires %d additional arguments, but was called with %d.\n", "variables", 2, len(identifiers))
-			}
-			return boilerplateConfigVariables(rootConfig, identifiers[0], identifiers[1])
-		default:
-			return "", fmt.Errorf("The property name '%s' is not a supported property of the boilerplateConfig function!\n", configProperty)
-		}
-	}
+// Returns str without the provided leading prefix string. If str doesn't start with prefix, str is returned unchanged.
+func trimPrefix(str, prefix string) string {
+	return strings.TrimPrefix(str, prefix)
 }
 
-// TODO: Add description
-func boilerplateConfigVariables(rootConfig *config.BoilerplateConfig, varName string, propertyName string) (string, error) {
-	var val string
-
-	for _, variable := range rootConfig.Variables {
-		if variable.Name() == varName {
-			switch propertyName {
-			case "default":
-				if variable.Default() != nil {
-					val = variable.Default().(string)
-				} else {
-					val = ""
-				}
-			case "description":
-				val = variable.Description()
-			case "type":
-				val = variable.Type().String()
-			default:
-				return "", fmt.Errorf("The global variable '%s' was not found!\n%+v\n", varName, rootConfig.Variables)
-			}
-
-			break;
-		}
-	}
-
-	return val, nil
+// Returns str without the provided trailing suffix string. If str doesn't end with suffix, str is returned unchanged.
+func trimSuffix(str, suffix string) string {
+	return strings.TrimPrefix(str, suffix)
 }
 
-// TODO: Add description
-func boilerplateConfigDependencies(rootConfig *config.BoilerplateConfig, dependencyName string, propertyName string) (string, error) {
-	var val string
-
-	for _, dependency := range rootConfig.Dependencies {
-		if dependency.Name == dependencyName {
-			switch propertyName {
-			case "template-folder":
-				val = dependency.TemplateFolder
-			case "output-folder":
-				val = dependency.OutputFolder
-			default:
-				return "", fmt.Errorf("The property name '%s' is not a supported property of the boilerplateConfig dependencies!\n", propertyName)
-			}
-
-			break;
-		}
-	}
-
-	if val == "" {
-		return "", fmt.Errorf("The dependency '%s' was not found!\n", dependencyName)
-	}
-
-	return val, nil
-}
-
-// TODO: Add description
-// TODO: Come up with a better name since this is just a string replace, not an actual prefix removal
-func stripPrefix(str, prefix string) string {
-	return strings.Replace(str, prefix, "", 1)
-}
-
-// TODO: Revise description
-// Get the relative path between the output folders of a "base" dependency and a "target" dependency. This is useful
-// for situations where, from within a given boilerplate dependency, you need to know the relative path to another
-// boilerplate dependency (e.g. when declaring terragrunt dependencies).
+// Returns the relative path between the output folders of a "base" path and a "target" path.
 func relPath(basePath, targetPath string) (string, error) {
 	relPath, err := filepath.Rel(basePath, targetPath)
 	if err != nil {
