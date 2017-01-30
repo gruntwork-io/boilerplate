@@ -146,11 +146,13 @@ func TestGetVariablesNoVariables(t *testing.T) {
 	options := &BoilerplateOptions{NonInteractive: true}
 	boilerplateConfig := &BoilerplateConfig{}
 	rootBoilerplateConfig := &BoilerplateConfig{}
+	dependency := variables.Dependency{}
 
-	actual, err := GetVariables(options, boilerplateConfig, rootBoilerplateConfig)
+	actual, err := GetVariables(options, boilerplateConfig, rootBoilerplateConfig, dependency)
 	expected := map[string]interface{}{
 		"BoilerplateConfigVars": map[string]variables.Variable{},
 		"BoilerplateConfigDeps": map[string]variables.Dependency{},
+		"This": dependency,
 	}
 
 	assert.Nil(t, err)
@@ -167,8 +169,9 @@ func TestGetVariablesNoMatchNonInteractive(t *testing.T) {
 		},
 	}
 	rootBoilerplateConfig := &BoilerplateConfig{}
+	dependency := variables.Dependency{}
 
-	_, err := GetVariables(options, boilerplateConfig, rootBoilerplateConfig)
+	_, err := GetVariables(options, boilerplateConfig, rootBoilerplateConfig, dependency)
 
 	assert.NotNil(t, err)
 	assert.True(t, errors.IsError(err, MissingVariableWithNonInteractiveMode("foo")), "Expected a MissingVariableWithNonInteractiveMode error but got %s", reflect.TypeOf(err))
@@ -189,13 +192,17 @@ func TestGetVariablesMatchFromVars(t *testing.T) {
 			variables.NewStringVariable("foo"),
 		},
 	}
+
 	rootBoilerplateConfig := &BoilerplateConfig{}
 
-	actual, err := GetVariables(options, boilerplateConfig, rootBoilerplateConfig)
+	dependency := variables.Dependency{}
+
+	actual, err := GetVariables(options, boilerplateConfig, rootBoilerplateConfig, dependency)
 	expected := map[string]interface{}{
 		"foo": "bar",
 		"BoilerplateConfigVars": map[string]variables.Variable{},
 		"BoilerplateConfigDeps": map[string]variables.Dependency{},
+		"This": dependency,
 	}
 
 	assert.Nil(t, err)
@@ -223,13 +230,16 @@ func TestGetVariablesMatchFromVarsAndDefaults(t *testing.T) {
 
 	rootBoilerplateConfig := &BoilerplateConfig{}
 
-	actual, err := GetVariables(options, boilerplateConfig, rootBoilerplateConfig)
+	dependency := variables.Dependency{}
+
+	actual, err := GetVariables(options, boilerplateConfig, rootBoilerplateConfig, dependency)
 	expected := map[string]interface{}{
 		"key1": "value1",
 		"key2": "value2",
 		"key3": "value3",
 		"BoilerplateConfigVars": map[string]variables.Variable{},
 		"BoilerplateConfigDeps": map[string]variables.Dependency{},
+		"This": dependency,
 	}
 
 	assert.Nil(t, err)
