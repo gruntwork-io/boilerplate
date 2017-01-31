@@ -152,7 +152,11 @@ func TestGetVariablesNoVariables(t *testing.T) {
 	expected := map[string]interface{}{
 		"BoilerplateConfigVars": map[string]variables.Variable{},
 		"BoilerplateConfigDeps": map[string]variables.Dependency{},
-		"This": dependency,
+		"This": map[string]interface{}{
+			"Config": boilerplateConfig,
+			"Options": options,
+			"CurrentDep": dependency,
+		},
 	}
 
 	assert.Nil(t, err)
@@ -202,7 +206,11 @@ func TestGetVariablesMatchFromVars(t *testing.T) {
 		"foo": "bar",
 		"BoilerplateConfigVars": map[string]variables.Variable{},
 		"BoilerplateConfigDeps": map[string]variables.Dependency{},
-		"This": dependency,
+		"This": map[string]interface{}{
+			"Config": boilerplateConfig,
+			"Options": options,
+			"CurrentDep": dependency,
+		},
 	}
 
 	assert.Nil(t, err)
@@ -239,7 +247,11 @@ func TestGetVariablesMatchFromVarsAndDefaults(t *testing.T) {
 		"key3": "value3",
 		"BoilerplateConfigVars": map[string]variables.Variable{},
 		"BoilerplateConfigDeps": map[string]variables.Dependency{},
-		"This": dependency,
+		"This": map[string]interface{}{
+			"Config": boilerplateConfig,
+			"Options": options,
+			"CurrentDep": dependency,
+		},
 	}
 
 	assert.Nil(t, err)

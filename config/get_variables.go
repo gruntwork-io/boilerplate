@@ -55,7 +55,12 @@ func GetVariables(options *BoilerplateOptions, boilerplateConfig, rootBoilerplat
 	}
 	vars["BoilerplateConfigDeps"] = rootConfigDeps
 
-	vars["This"] = thisDep
+	// Add a variable for "the boilerplate template currently being processed.
+	thisTemplateProps := map[string]interface{}{}
+	thisTemplateProps["Config"] = boilerplateConfig
+	thisTemplateProps["Options"] = options
+	thisTemplateProps["CurrentDep"] = thisDep
+	vars["This"] = thisTemplateProps
 
 	return vars, nil
 }
