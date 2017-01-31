@@ -470,6 +470,10 @@ The following "global" variables are defined:
  
 * `BoilerplateConfigVars`: A map of all [Variables](/variables/variables.go) defined in the root `boilerplate.yml`.
 * `BoilerplateConfigDeps`: A map of all [Dependencies](/variables/dependencies.go) defined in the root `boilerplate.yml`.
+* `This`: A map of the current `boilerplate.yml` being processed.
+  * `This.Config`: A map of the Boilerplate configuration in use.
+  * `This.Options`: A map of the Boilerplate options in use.
+  * `This.CurrentDep`: A map of the Boilerplate Dependency currently being processed.
 
 To access a Global Var, specify the variable name (listed above), followed by the name of the Variable or Dependency,
 followed by a chain of one or more property names taken directly from the struct definitions of the respective Global Var,
