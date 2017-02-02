@@ -1,0 +1,13 @@
+../docs
+./docs
+../website
+./website
+
+foo
+Inazagi
+
+-world
+
+../../d
+
+Inazagi

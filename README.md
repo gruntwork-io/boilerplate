@@ -458,6 +458,35 @@ including conditionals, loops, and functions. Boilerplate also includes several 
   file from which you are calling the `shell` helper. For another way to execute commands, see [hooks](#hooks).
 * `templateFolder`: Return the value of the `--template-folder` command-line option. Useful for building relative paths.
 * `outputFolder`: Return the value of the `--output-folder` command-line option. Useful for building relative paths.
+* `trimPrefix STRING PREFIX`: Return THE `STRING` without the provided leading `PREFIX`. 
+* `trimSuffix STRING SUFFIX`: Return THE `STRING` without the provided trailing `SUFFIX`. 
+* `relPath BASE_PATH TARGET_PATH`: Return the relative path between the `BASE_PATH` and `TARGET_PATH`.
+* `boilerplateConfigDeps DEPENDENCY_NAME PROPERTY`: Return the value of the given property for the given [Dependency](#dependencies) 
+* `boilerplateConfigVars VAR_NAME PROPERTY`: Return the value of the given property for the given [Variable](#variables) 
+
+#### Global Template Variables
+
+The following "global" variables are defined:
+ 
+* `BoilerplateConfigVars`: A map of all [Variables](/variables/variables.go) defined in the root `boilerplate.yml`.
+* `BoilerplateConfigDeps`: A map of all [Dependencies](/variables/dependencies.go) defined in the root `boilerplate.yml`.
+* `This`: A map of the current `boilerplate.yml` being processed.
+  * `This.Config`: A map of the Boilerplate configuration in use.
+  * `This.Options`: A map of the Boilerplate options in use.
+  * `This.CurrentDep`: A map of the Boilerplate Dependency currently being processed.
+
+To access a Global Var, specify the variable name (listed above), followed by the name of the Variable or Dependency,
+followed by a chain of one or more property names taken directly from the struct definitions of the respective Global Var,
+ with each value separated by a `.`.
+ 
+For example:
+
+```
+{{ .BoilerplateConfigVars.SomeVar.Default }}
+
+{{ .BoilerplateConfigDeps.website.TemplateFolder }}
+{{ .BoilerplateConfigDeps.website.OutputFolder }}
+```
 
 ## Alternative project generators
 

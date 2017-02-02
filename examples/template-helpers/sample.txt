@@ -1,0 +1,13 @@
+{{ .BoilerplateConfigDeps.docs.TemplateFolder }}
+{{ .BoilerplateConfigDeps.docs.OutputFolder }}
+{{ .BoilerplateConfigDeps.website.TemplateFolder }}
+{{ .BoilerplateConfigDeps.website.OutputFolder }}
+
+{{ .SomeGlobalVar }}
+{{ .BoilerplateConfigVars.SomeGlobalVar.Default }}
+
+{{ trimPrefix "hello-world" "hello" }}
+
+{{ relPath "/a/b/c" "/a/d" }}
+
+{{ .BoilerplateConfigVars.SomeGlobalVar.Default }}

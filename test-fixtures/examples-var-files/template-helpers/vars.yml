@@ -1,0 +1,5 @@
+SomeGlobalVar: foo
+website.Title: Boilerplate
+website.WelcomeText: Welcome!
+docs.Title: Docs example
+docs.Version: 0.0.3

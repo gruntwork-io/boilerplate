@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/gruntwork-io/boilerplate/config"
 	"github.com/gruntwork-io/boilerplate/templates"
+	"github.com/gruntwork-io/boilerplate/variables"
 )
 
 // Customize the --help text for the app so we don't show extraneous info
@@ -100,5 +101,8 @@ func runApp(cliContext *cli.Context) error {
 		return err
 	}
 
-	return templates.ProcessTemplate(options)
+	// The root boilerplate.yml is not itself a dependency, so we pass an empty Dependency.
+	emptyDep := variables.Dependency{}
+
+	return templates.ProcessTemplate(options, options, emptyDep)
 }

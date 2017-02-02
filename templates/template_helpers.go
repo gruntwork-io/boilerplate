@@ -17,6 +17,8 @@ import (
 	"github.com/gruntwork-io/boilerplate/util"
 	"sort"
 	"github.com/gruntwork-io/boilerplate/config"
+	"reflect"
+	"github.com/gruntwork-io/boilerplate/variables"
 )
 
 var SNIPPET_MARKER_REGEX = regexp.MustCompile("boilerplate-snippet:\\s*(.+?)(?:\\s|$)")
@@ -67,6 +69,11 @@ func CreateTemplateHelpers(templatePath string, options *config.BoilerplateOptio
 		"shell": wrapWithTemplatePath(templatePath, shell),
 		"templateFolder": func() string { return options.TemplateFolder },
 		"outputFolder": func() string { return options.OutputFolder },
+		"trimPrefix": trimPrefix,
+		"trimSuffix": trimSuffix,
+		"relPath": relPath,
+		"boilerplateConfigDeps": boilerplateConfigDeps(options),
+		"boilerplateConfigVars": boilerplateConfigVars(options),
 	}
 }
 
@@ -428,6 +435,58 @@ func shell(templatePath string, args ... string) (string, error) {
 	}
 
 	return util.RunShellCommandAndGetOutput(filepath.Dir(templatePath), args[0], args[1:]...)
+}
+
+// Returns str without the provided leading prefix string. If str doesn't start with prefix, str is returned unchanged.
+func trimPrefix(str, prefix string) string {
+	return strings.TrimPrefix(str, prefix)
+}
+
+// Returns str without the provided trailing suffix string. If str doesn't end with suffix, str is returned unchanged.
+func trimSuffix(str, suffix string) string {
+	return strings.TrimPrefix(str, suffix)
+}
+
+// Returns the relative path between the output folders of a "base" path and a "target" path.
+func relPath(basePath, targetPath string) (string, error) {
+	relPath, err := filepath.Rel(basePath, targetPath)
+	if err != nil {
+		return "", errors.WithStackTrace(err)
+	}
+
+	return relPath, nil
+}
+
+// Find the value of the given property of the given Dependency.
+func boilerplateConfigDeps(options *config.BoilerplateOptions) func(string, string) (string, error) {
+	return func(name string, property string) (string, error) {
+		deps := options.Vars["BoilerplateConfigDeps"].(map[string]variables.Dependency)
+		dep := deps[name]
+
+		if dep.Name == "" {
+			return "", fmt.Errorf(`The dependency "%s" was not found.`, name)
+		}
+
+		r := reflect.ValueOf(dep)
+		f := reflect.Indirect(r).FieldByName(property)
+		return f.String(), nil
+	}
+}
+
+// Find the value of the given property of the given Variable.
+func boilerplateConfigVars(options *config.BoilerplateOptions) func(string, string) (string, error) {
+	return func(name string, property string) (string, error) {
+		vars := options.Vars["BoilerplateConfigVars"].(map[string]variables.Variable)
+		myVar := vars[name]
+
+		if myVar.Name() == "" {
+			return "", fmt.Errorf(`The variable "%s" was not found.`, name)
+		}
+
+		r := reflect.ValueOf(myVar)
+		f := reflect.Indirect(r).FieldByName(property)
+		return f.String(), nil
+	}
 }
 
 // Custom errors
