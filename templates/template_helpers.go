@@ -458,32 +458,36 @@ func relPath(basePath, targetPath string) (string, error) {
 }
 
 // Find the value of the given property of the given Dependency.
-func boilerplateConfigDeps(options *config.BoilerplateOptions) func(string, string) string {
-	return func(name string, property string) string {
+func boilerplateConfigDeps(options *config.BoilerplateOptions) func(string, string) (string, error) {
+	return func(name string, property string) (string, error) {
 		deps := options.Vars["BoilerplateConfigDeps"].(map[string]variables.Dependency)
 		dep := deps[name]
 
+		if dep.Name == "" {
+			return "", fmt.Errorf(`The dependency "%s" was not found.`, name)
+		}
+
 		r := reflect.ValueOf(dep)
 		f := reflect.Indirect(r).FieldByName(property)
-		return f.String()
+		return f.String(), nil
 	}
 }
 
 // Find the value of the given property of the given Variable.
-func boilerplateConfigVars(options *config.BoilerplateOptions) func(string, string) string {
-	return func(name string, property string) string {
+func boilerplateConfigVars(options *config.BoilerplateOptions) func(string, string) (string, error) {
+	return func(name string, property string) (string, error) {
 		vars := options.Vars["BoilerplateConfigVars"].(map[string]variables.Variable)
 		myVar := vars[name]
 
+		if myVar.Name() == "" {
+			return "", fmt.Errorf(`The variable "%s" was not found.`, name)
+		}
+
 		r := reflect.ValueOf(myVar)
 		f := reflect.Indirect(r).FieldByName(property)
-		return f.String()
+		return f.String(), nil
 	}
 }
-
-//func boilerplateConfigDeps(name, property string) string {
-//
-//}
 
 // Custom errors
 
