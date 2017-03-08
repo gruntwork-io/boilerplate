@@ -441,7 +441,7 @@ func shell(templatePath string, rawArgs ... string) (string, error) {
 }
 
 // To pass env vars to the shell helper, we use the format ENV:KEY=VALUE. This method goes through the given list of
-// arguments and split it into two lists: the list of cmd-line args and the list of env vars.
+// arguments and splits it into two lists: the list of cmd-line args and the list of env vars.
 func separateArgsAndEnvVars(rawArgs []string) ([]string, []string) {
 	args := []string{}
 	envVars := []string{}
