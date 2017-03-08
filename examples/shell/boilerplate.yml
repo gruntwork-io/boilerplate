@@ -10,8 +10,9 @@ hooks:
 
     - command: ./example-script-2.sh
       args:
-        - "{{ .Text }} - executed via a before hook"
         - "{{ outputFolder }}/before-hook-example.txt"
+      env:
+        TEXT: "{{ .Text }} - executed via a before hook"
 
   after:
     - command: echo
@@ -20,5 +21,6 @@ hooks:
 
     - command: ./example-script-2.sh
       args:
-        - "{{ .Text }} - executed via an after hook"
         - "{{ outputFolder }}/after-hook-example.txt"
+      env:
+        TEXT: "{{ .Text }} - executed via an after hook"

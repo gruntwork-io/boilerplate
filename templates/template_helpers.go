@@ -25,6 +25,8 @@ var WHITESPACE_REGEX = regexp.MustCompile("[[:space:]]+")
 
 var PUNCTUATION_OR_WHITESPACE_REGEX = regexp.MustCompile("([[:space:]]|[[:punct:]])+")
 
+var ENV_VAR_REGEX = regexp.MustCompile("^ENV:(.+?)=(.*)$")
+
 // This regex can be used to split CamelCase strings into "words". That is, given a string like FooBarBaz, you can use
 // this regex to split it into an array ["Foo", "Bar", "Baz"]. It also handles lower camel case, which is the same as
 // camel case, except it starts with a lower case word, such as fooBarBaz.
@@ -422,12 +424,33 @@ func keys(m map[string]string) []string {
 
 // Run the given shell command specified in args in the working dir specified by templatePath and return stdout as a
 // string.
-func shell(templatePath string, args ... string) (string, error) {
-	if len(args) == 0 {
+func shell(templatePath string, rawArgs ... string) (string, error) {
+	if len(rawArgs) == 0 {
 		return "", errors.WithStackTrace(NoArgsPassedToShellHelper)
 	}
 
-	return util.RunShellCommandAndGetOutput(filepath.Dir(templatePath), args[0], args[1:]...)
+	args, envVars := separateArgsAndEnvVars(rawArgs)
+	return util.RunShellCommandAndGetOutput(filepath.Dir(templatePath), envVars, args[0], args[1:]...)
+}
+
+// To pass env vars to the shell helper, we use the format ENV:KEY=VALUE. This method goes through the given list of
+// arguments and split it into two lists: the list of cmd-line args and the list of env vars.
+func separateArgsAndEnvVars(rawArgs []string) ([]string, []string) {
+	args := []string{}
+	envVars := []string{}
+
+	for _, rawArg := range rawArgs {
+		matches := ENV_VAR_REGEX.FindStringSubmatch(rawArg)
+		if len(matches) == 3 {
+			key := matches[1]
+			value := matches[2]
+			envVars = append(envVars, fmt.Sprintf("%s=%s", key, value))
+		} else {
+			args = append(args, rawArg)
+		}
+	}
+
+	return args, envVars
 }
 
 // Custom errors

@@ -84,7 +84,22 @@ func processHook(hook variables.Hook, options *config.BoilerplateOptions, vars m
 		args = append(args, renderedArg)
 	}
 
-	return util.RunShellCommand(options.TemplateFolder, cmd, args...)
+	envVars := []string{}
+	for key, value := range hook.Env {
+		renderedKey, err := renderTemplate(config.BoilerplateConfigPath(options.TemplateFolder), key, vars, options)
+		if err != nil {
+			return err
+		}
+
+		renderedValue, err := renderTemplate(config.BoilerplateConfigPath(options.TemplateFolder), value, vars, options)
+		if err != nil {
+			return err
+		}
+
+		envVars = append(envVars, fmt.Sprintf("%s=%s", renderedKey, renderedValue))
+	}
+
+	return util.RunShellCommand(options.TemplateFolder, envVars, cmd, args...)
 }
 
 // Execute the boilerplate templates in the given list of dependencies
