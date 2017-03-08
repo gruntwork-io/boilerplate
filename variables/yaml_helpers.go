@@ -17,7 +17,7 @@ import (
 //   key2: value2
 //   key3: value3
 //
-// This method takes looks up the given fieldName in the map and unmarshals the data inside of it it into a map of the
+// This method looks up the given fieldName in the map and unmarshals the data inside of it it into a map of the
 // key:value pairs.
 func unmarshalMapOfFields(fields map[string]interface{}, fieldName string) (map[string]interface{}, error) {
 	fieldAsYaml, containsField := fields[fieldName]
@@ -37,6 +37,33 @@ func unmarshalMapOfFields(fields map[string]interface{}, fieldName string) (map[
 		} else {
 			return nil, errors.WithStackTrace(InvalidTypeForField{FieldName: fieldName, ExpectedType: "string", ActualType: reflect.TypeOf(key)})
 		}
+	}
+
+	return stringMap, nil
+}
+
+// Given a map of key:value pairs read from a Boilerplate YAML config file of the format:
+//
+// fieldName:
+//   key1: value1
+//   key2: value2
+//   key3: value3
+//
+// This method looks up the given fieldName in the map and unmarshals the data inside of it it into a map of the
+// key:value pairs, where both the keys and values are strings.
+func unmarshalMapOfStrings(fields map[string]interface{}, fieldName string) (map[string]string, error) {
+	rawMap, err := unmarshalMapOfFields(fields, fieldName)
+	if err != nil {
+		return nil, err
+	}
+	if len(rawMap) == 0 {
+		return nil, nil
+	}
+
+	stringMap := map[string]string{}
+
+	for key, value := range rawMap {
+		stringMap[key] = fmt.Sprintf("%v", value)
 	}
 
 	return stringMap, nil

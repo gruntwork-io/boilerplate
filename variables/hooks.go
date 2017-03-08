@@ -4,6 +4,7 @@ package variables
 type Hook struct {
 	Command string
 	Args    []string
+	Env     map[string]string
 }
 
 // All the scripts to execute as boilerplate hooks
@@ -19,11 +20,15 @@ type Hooks struct {
 //     - command: <CMD>
 //       args:
 //         - <ARG>
+//       env:
+//         <KEY>: <VALUE>
 //
 //   after:
 //     - command: <CMD>
 //       args:
 //         - <ARG>
+//       env:
+//         <KEY>: <VALUE>
 //
 // This method takes the data above and unmarshals it into a Hooks struct
 func UnmarshalHooksFromBoilerplateConfigYaml(fields map[string]interface{}) (Hooks, error) {
@@ -51,10 +56,14 @@ func UnmarshalHooksFromBoilerplateConfigYaml(fields map[string]interface{}) (Hoo
 //   - command: <CMD>
 //     args:
 //       - <ARG>
+//     env:
+//       <KEY>: <VALUE>
 //
 //   - command: <CMD>
 //     args:
 //       - <ARG>
+//     env:
+//       <KEY>: <VALUE>
 //
 // This method takes looks up the given hookName in the map and unmarshals the data inside of it it into a list of
 // Hook structs
@@ -82,6 +91,8 @@ func unmarshalHooksFromBoilerplateConfigYaml(fields map[string]interface{}, hook
 // command: <CMD>
 // args:
 //   - <ARG>
+// env:
+//   <KEY>: <VALUE>
 //
 // This method unmarshals the YAML data into a Hook struct
 func unmarshalHookFromBoilerplateConfigYaml(fields map[string]interface{}, hookName string) (*Hook, error) {
@@ -95,5 +106,10 @@ func unmarshalHookFromBoilerplateConfigYaml(fields map[string]interface{}, hookN
 		return nil, err
 	}
 
-	return &Hook{Command: *command, Args: args}, nil
+	env, err := unmarshalMapOfStrings(fields, "env")
+	if err != nil {
+		return nil, err
+	}
+
+	return &Hook{Command: *command, Args: args, Env: env}, nil
 }

@@ -580,6 +580,8 @@ const CONFIG_ONE_AFTER_HOOK_WITH_ARGS =
        args:
          - bar
          - baz
+       env:
+         foo: bar
 `
 
 func TestParseBoilerplateConfigOneAfterHookWithArgs(t *testing.T) {
@@ -591,7 +593,7 @@ func TestParseBoilerplateConfigOneAfterHookWithArgs(t *testing.T) {
 		Dependencies: []variables.Dependency{},
 		Hooks: variables.Hooks{
 			AfterHooks: []variables.Hook{
-				{Command: "foo", Args: []string{"bar", "baz"}},
+				{Command: "foo", Args: []string{"bar", "baz"}, Env: map[string]string{"foo": "bar"}},
 			},
 		},
 	}
@@ -607,6 +609,9 @@ const CONFIG_MULTIPLE_HOOKS =
      - command: echo
        args:
          - Hello World
+       env:
+         foo: bar
+         baz: blah
 
      - command: run-some-script.sh
        args:
@@ -627,7 +632,7 @@ func TestParseBoilerplateConfigMultipleHooks(t *testing.T) {
 		Dependencies: []variables.Dependency{},
 		Hooks: variables.Hooks{
 			BeforeHooks: []variables.Hook{
-				{Command: "echo", Args: []string{"Hello World"}},
+				{Command: "echo", Args: []string{"Hello World"}, Env: map[string]string{"foo": "bar", "baz": "blah"}},
 				{Command: "run-some-script.sh", Args: []string{"{{ .foo }}", "{{ .bar }}"}},
 			},
 			AfterHooks: []variables.Hook{
