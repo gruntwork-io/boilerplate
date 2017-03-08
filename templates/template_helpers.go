@@ -76,6 +76,7 @@ func CreateTemplateHelpers(templatePath string, options *config.BoilerplateOptio
 		"relPath": relPath,
 		"boilerplateConfigDeps": boilerplateConfigDeps(options),
 		"boilerplateConfigVars": boilerplateConfigVars(options),
+		"env": env,
 	}
 }
 
@@ -478,6 +479,16 @@ func relPath(basePath, targetPath string) (string, error) {
 	}
 
 	return relPath, nil
+}
+
+// Returns the value of the environment variable with the given name. If that variable is not set, return fallbackValue.
+func env(name string, fallbackValue string) string {
+	value := os.Getenv(name)
+	if value == "" {
+		return fallbackValue
+	} else {
+		return value
+	}
 }
 
 // Find the value of the given property of the given Dependency.

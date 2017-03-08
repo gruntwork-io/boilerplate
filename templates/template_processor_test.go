@@ -6,6 +6,7 @@ import (
 	"os"
 	"github.com/gruntwork-io/boilerplate/config"
 	"github.com/gruntwork-io/boilerplate/variables"
+	"fmt"
 )
 
 func TestOutPath(t *testing.T) {
@@ -77,6 +78,10 @@ func TestRenderTemplate(t *testing.T) {
 	pwd, err := os.Getwd()
 	assert.Nil(t, err, "Couldn't get working directory")
 
+	// Read an environment variable that's probably present on all systems so we can check that the env helper
+	// returns the same value
+	userFromEnvVar := os.Getenv("USER")
+
 	testCases := []struct {
 		templateContents  string
 		variables   	  map[string]interface{}
@@ -115,7 +120,9 @@ func TestRenderTemplate(t *testing.T) {
 		{"Slice test: {{ slice 0 5 1 }}", map[string]interface{}{}, config.ExitWithError, "", "Slice test: [0 1 2 3 4]"},
 		{"Keys test: {{ keys .Map }}", map[string]interface{}{"Map": map[string]string{"key1": "value1", "key2": "value2", "key3": "value3"}}, config.ExitWithError, "", "Keys test: [key1 key2 key3]"},
 		{"Shell test: {{ shell \"echo\" .Text }}", map[string]interface{}{"Text": "Hello, World"}, config.ExitWithError, "", "Shell test: Hello, World\n"},
-		{"Shell env vars test: {{ shell \"printenv\" \"FOO\" \"ENV:FOO=bar\" }}", map[string]interface{}{}, config.ExitWithError, "", "Shell env vars test: bar\n"},
+		{"Shell set env vars test: {{ shell \"printenv\" \"FOO\" \"ENV:FOO=bar\" }}", map[string]interface{}{}, config.ExitWithError, "", "Shell set env vars test: bar\n"},
+		{"Shell read env vars test: {{ env \"USER\" \"should-not-get-fallback\" }}", map[string]interface{}{}, config.ExitWithError, "", fmt.Sprintf("Shell read env vars test: %s", userFromEnvVar)},
+		{"Shell read env vars test, fallback: {{ env \"not-a-valid-env-var\" \"should-get-fallback\" }}", map[string]interface{}{}, config.ExitWithError, "", "Shell read env vars test, fallback: should-get-fallback"},
 		{"Template folder test: {{ templateFolder }}", map[string]interface{}{}, config.ExitWithError, "", "Template folder test: /templates"},
 		{"Output folder test: {{ outputFolder }}", map[string]interface{}{}, config.ExitWithError, "", "Output folder test: /output"},
 		{"Filter chain test: {{ .Foo | downcase | replaceAll \" \" \"\" }}", map[string]interface{}{"Foo": "foo BAR baz!"}, config.ExitWithError, "", "Filter chain test: foobarbaz!"},
