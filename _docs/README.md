@@ -202,10 +202,14 @@ hooks:
     - command: <CMD>
       args:
         - <ARG>
+      env:
+        <KEY>: <VALUE>        
   after:              
     - command: <CMD>
       args:
         - <ARG>
+      env:
+        <KEY>: <VALUE>
 ```
 
 Here's an example:
@@ -314,8 +318,8 @@ Note the following:
 
 * The `before` hook allows you to run scripts before Boilerplate has started rendering.
 * The `after` hook allows you to run scripts after Boilerplate has finished rendering.
-* Each hook consists of a `command` to execute (required) plus a list of `args` to pass to that command (optional).
-  Example:
+* Each hook consists of a `command` to execute (required), a list of `args` to pass to that command (optional), and
+  a map of environment variables in `env` to set for the command (optional). Example:
    
     ```yaml
     before:
@@ -323,9 +327,11 @@ Note the following:
         args:
           - Hello
           - World
+        env:
+          FOO: BAR
     ```
-* You can use Go templating syntax in both `command` and `args`. For example, you can pass Boilerplate variables to 
-  your scripts as follows:
+* You can use Go templating syntax in both `command`, `args`, and `env`. For example, you can pass Boilerplate 
+  variables to your scripts as follows:
     
     ```yaml
     before:
@@ -396,12 +402,16 @@ including conditionals, loops, and functions. Boilerplate also includes several 
   way to do a for-loop over a range of numbers.
 * `keys MAP`: Return a slice that contains all the keys in the given MAP. Use the built-in Go template helper `.index`
   to look up these keys in the map.
-* `shell CMD`: Execute the given shell command and render whatever that command prints to stdout. The working directory
-  for the command will be set to the directory of the template being rendered, so you can use paths relative to the
-  file from which you are calling the `shell` helper. For another way to execute commands, see [hooks](#hooks).
+* `shell CMD ARGS...`: Execute the given shell command, passing it the given args, and render whatever that command 
+  prints to stdout. The working directory for the command will be set to the directory of the template being rendered, 
+  so you can use paths relative to the file from which you are calling the `shell` helper. Any argument you pass of the
+  form `ENV:KEY=VALUE` will be set as an environment variable for the command rather than an argument. For another way 
+  to execute commands, see [hooks](#hooks).
 * `templateFolder`: Return the value of the `--template-folder` command-line option. Useful for building relative paths.
 * `outputFolder`: Return the value of the `--output-folder` command-line option. Useful for building relative paths.
-
+* `env NAME DEFAULT`: Render the value of environment variable `NAME`. If that environment variable is empty or not 
+  defined, render `DEFAULT` instead.
+  
 ## Alternative project generators
 
 Before creating Boilerplate, we tried a number of other project generators, but none of them met all of our
