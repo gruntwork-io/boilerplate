@@ -114,7 +114,7 @@ for full documentation.
 
 ## Install
 
-Download the latest binary for your OS here: [boilerplate v0.2.7](https://github.com/gruntwork-io/boilerplate/releases/tag/v0.2.7).
+Download the latest binary for your OS here: [boilerplate v0.2.9](https://github.com/gruntwork-io/boilerplate/releases/tag/v0.2.9).
 
 You can find older versions on the [Releases Page](https://github.com/gruntwork-io/usage-patterns/releases).
 
@@ -229,7 +229,7 @@ hooks:
       args:
         - <ARG>
       env:
-        <KEY>: <VALUE>
+        <KEY>: <VALUE>        
   after:              
     - command: <CMD>
       args:
@@ -376,8 +376,7 @@ Note the following:
 * The `before` hook allows you to run scripts before Boilerplate has started rendering.
 * The `after` hook allows you to run scripts after Boilerplate has finished rendering.
 * Each hook consists of a `command` to execute (required), a list of `args` to pass to that command (optional), and
-  a map of environment variables in `env` to set for the command (optional).
-  Example:
+  a map of environment variables in `env` to set for the command (optional). Example:
    
     ```yaml
     before:
@@ -388,8 +387,8 @@ Note the following:
         env:
           FOO: BAR
     ```
-* You can use Go templating syntax in `command`, `args`, and `env`. For example, you can pass Boilerplate variables to 
-  your scripts as follows:
+* You can use Go templating syntax in both `command`, `args`, and `env`. For example, you can pass Boilerplate 
+  variables to your scripts as follows:
     
     ```yaml
     before:
@@ -467,7 +466,9 @@ including conditionals, loops, and functions. Boilerplate also includes several 
   to execute commands, see [hooks](#hooks).
 * `templateFolder`: Return the value of the `--template-folder` command-line option. Useful for building relative paths.
 * `outputFolder`: Return the value of the `--output-folder` command-line option. Useful for building relative paths.
-
+* `env NAME DEFAULT`: Render the value of environment variable `NAME`. If that environment variable is empty or not 
+  defined, render `DEFAULT` instead.
+  
 ## Alternative project generators
 
 Before creating Boilerplate, we tried a number of other project generators, but none of them met all of our
