@@ -60,7 +60,17 @@ func getUnmarshalledValueForVariable(variable variables.Variable, variablesInCon
 		return nil, errors.WithStackTrace(CyclicalReference{VariableName: variable.Name(), ReferenceName: variable.Reference()})
 	}
 
+	value, alreadyExists := alreadyUnmarshalledVariables[variable.Name()]
+	if alreadyExists {
+		return variables.UnmarshalValueForVariable(value, variable)
+	}
+
 	if variable.Reference() != "" {
+		value, alreadyExists := alreadyUnmarshalledVariables[variable.Reference()]
+		if alreadyExists {
+			return variables.UnmarshalValueForVariable(value, variable)
+		}
+
 		reference, containsReference := variablesInConfig[variable.Reference()]
 		if !containsReference {
 			return nil, errors.WithStackTrace(MissingReference{VariableName: variable.Name(), ReferenceName: variable.Reference()})
@@ -68,15 +78,10 @@ func getUnmarshalledValueForVariable(variable variables.Variable, variablesInCon
 		return getUnmarshalledValueForVariable(reference, variablesInConfig, alreadyUnmarshalledVariables, options, referenceDepth + 1)
 	}
 
-	value, alreadyExists := alreadyUnmarshalledVariables[variable.Name()]
-	if !alreadyExists {
-		variableValue, err := getVariable(variable, options)
-		if err != nil {
-			return nil, err
-		}
-		value = variableValue
+	value, err := getVariable(variable, options)
+	if err != nil {
+		return nil, err
 	}
-
 	return variables.UnmarshalValueForVariable(value, variable)
 }
 
