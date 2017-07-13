@@ -185,6 +185,7 @@ variables:
       - <CHOICE>
       - <CHOICE>
     default: <DEFAULT>
+    reference: <NAME>
 
 dependencies:
   - name: <DEPENDENCY_NAME>
@@ -230,6 +231,7 @@ keys:
 * `default` (Optional): A default value for this variable. The user can just hit ENTER at the command line to use the
   default value, if one is provided. If running Boilerplate with the `--non-interactive` flag, the default is
   used for this value if no value is provided via the `--var` or `--var-file` options.
+* `reference` (Optional): The name of another variable whose value should be used for this one.
 
 See the [Variables](#variables) section for more info.
 
