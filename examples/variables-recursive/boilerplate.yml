@@ -28,3 +28,8 @@ variables:
   - name: BarMap
     type: map
     reference: FooMap
+
+dependencies:
+  - name: variables
+    template-folder: ../variables
+    output-folder: .

@@ -1,0 +1,5 @@
+variables:
+  - name: BazMap
+    type: map
+    reference: FooMap
+

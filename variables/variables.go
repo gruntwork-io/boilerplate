@@ -161,7 +161,7 @@ func (variable defaultVariable) WithDefault(value interface{}) Variable {
 }
 
 func (variable defaultVariable) String() string {
-	return fmt.Sprintf("Variable {Name: '%s', Description: '%s', Type: '%v', Default: '%v', Options: '%v'}", variable.Name(), variable.Description(), variable.Type(), variable.Default(), variable.Options())
+	return fmt.Sprintf("Variable {Name: '%s', Description: '%s', Type: '%v', Default: '%v', Options: '%v', Reference: '%v'}", variable.Name(), variable.Description(), variable.Type(), variable.Default(), variable.Options(), variable.Reference())
 }
 
 func (variable defaultVariable) ExampleValue() string {

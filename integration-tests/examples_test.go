@@ -11,6 +11,7 @@ import (
 	"os"
 	"strings"
 	"github.com/gruntwork-io/boilerplate/config"
+	"github.com/gruntwork-io/boilerplate/util"
 )
 
 // Our integration tests run through all the examples in the /examples folder, generate them, and check that they
@@ -26,26 +27,39 @@ func TestExamples(t *testing.T) {
 	assert.Nil(t, err)
 	defer os.Remove(outputBasePath)
 
-	files, err := ioutil.ReadDir(examplesBasePath)
+	examples, err := ioutil.ReadDir(examplesBasePath)
 	assert.Nil(t, err)
 
-	app := cli.CreateBoilerplateCli("test")
+	for _, example := range examples {
+		if !example.IsDir() {
+			continue
+		}
 
-	for _, file := range files {
-		if file.IsDir() {
-			for _, missingKeyAction := range config.ALL_MISSING_KEY_ACTIONS {
-				templateFolder := path.Join(examplesBasePath, file.Name())
-				outputFolder := path.Join(outputBasePath, file.Name())
-				varFile := path.Join(examplesVarFilesBasePath, file.Name(), "vars.yml")
-				expectedOutputFolder := path.Join(examplesExpectedOutputBasePath, file.Name())
+		templateFolder := path.Join(examplesBasePath, example.Name())
+		outputFolder := path.Join(outputBasePath, example.Name())
+		varFile := path.Join(examplesVarFilesBasePath, example.Name(), "vars.yml")
+		expectedOutputFolder := path.Join(examplesExpectedOutputBasePath, example.Name())
 
-				command := fmt.Sprintf("boilerplate --template-folder %s --output-folder %s --var-file %s --non-interactive --missing-key-action %s", templateFolder, outputFolder, varFile, string(missingKeyAction))
-				err := app.Run(strings.Split(command, " "))
-				assert.Nil(t, err, "boilerplate exited with an error when trying to generate example %s: %s", templateFolder, err)
-				assertDirectoriesEqual(t, expectedOutputFolder, outputFolder)
-			}
+		if !util.PathExists(varFile) || !util.PathExists(expectedOutputFolder) {
+			t.Logf("Skipping example %s because either the var file (%s) or expected output folder (%s) does not exist.", templateFolder, varFile, expectedOutputFolder)
+			continue
+		}
+
+		for _, missingKeyAction := range config.ALL_MISSING_KEY_ACTIONS {
+			t.Run(fmt.Sprintf("%s-missing-key-%s", example.Name(), string(missingKeyAction)), func(t *testing.T) {
+				testExample(t, templateFolder, outputFolder, varFile, expectedOutputFolder, string(missingKeyAction))
+			})
 		}
 	}
+}
+
+func testExample(t *testing.T, templateFolder string, outputFolder string, varFile string, expectedOutputFolder string, missingKeyAction string) {
+	app := cli.CreateBoilerplateCli("test")
+
+	command := fmt.Sprintf("boilerplate --template-folder %s --output-folder %s --var-file %s --non-interactive --missing-key-action %s", templateFolder, outputFolder, varFile, missingKeyAction)
+	err := app.Run(strings.Split(command, " "))
+	assert.Nil(t, err, "boilerplate exited with an error when trying to generate example %s: %s", templateFolder, err)
+	assertDirectoriesEqual(t, expectedOutputFolder, outputFolder)
 }
 
 // Diffing two directories to ensure they have the exact same files, contents, etc and showing exactly what's different
