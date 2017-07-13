@@ -1,0 +1,38 @@
+variables:
+  - name: Description
+    description: Enter the description of this template
+
+  - name: Version
+    description: Enter the version number that will be used by the docs dependency
+
+  - name: Title
+    description: Enter the title for the dependencies example
+
+  - name: WelcomeText
+    description: Enter the welcome text used by the website dependency
+
+  - name: ShowLogo
+    description: Should the webiste show the logo (true or false)?
+    type: bool
+    default: true
+
+  - name: WebsiteTemplateFolder
+    description: The path to the website templates folder. This is used to check that interpolations work in the template-folder parameter of dependencies.
+
+  - name: WebsiteOutputFolder
+    description: The path to the website output folder. This is used to check that interpolations work in the output-folder parameter of dependencies.
+
+dependencies:
+    - name: docs
+      template-folder: ../docs
+      output-folder: ./docs
+      variables:
+        - name: Title
+          description: Enter the title of the docs page
+
+    - name: website
+      template-folder: "{{ .WebsiteTemplateFolder }}"
+      output-folder: "{{ .WebsiteOutputFolder }}"
+      variables:
+        - name: Title
+          description: Enter the title of the website
