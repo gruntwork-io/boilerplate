@@ -114,7 +114,7 @@ for full documentation.
 
 ## Install
 
-Download the latest binary for your OS here: [boilerplate v0.2.11](https://github.com/gruntwork-io/boilerplate/releases/tag/v0.2.11).
+Download the latest binary for your OS here: [boilerplate v0.2.12](https://github.com/gruntwork-io/boilerplate/releases/tag/v0.2.12).
 
 You can find older versions on the [Releases Page](https://github.com/gruntwork-io/usage-patterns/releases).
 
@@ -211,6 +211,7 @@ variables:
       - <CHOICE>
       - <CHOICE>
     default: <DEFAULT>
+    reference: <NAME>
 
 dependencies:
   - name: <DEPENDENCY_NAME>
@@ -287,6 +288,7 @@ keys:
 * `default` (Optional): A default value for this variable. The user can just hit ENTER at the command line to use the
   default value, if one is provided. If running Boilerplate with the `--non-interactive` flag, the default is
   used for this value if no value is provided via the `--var` or `--var-file` options.
+* `reference` (Optional): The name of another variable whose value should be used for this one.
 
 See the [Variables](#variables) section for more info.
 
@@ -348,7 +350,7 @@ four ways to provide a value for a variable:
 1. Defaults defined in `boilerplate.yml`. The final fallback is the optional `default` that you can include as part of
    the variable definition in `boilerplate.yml`.
 
-Note that variables can reference other variables using interpolation syntax:
+Note that variables can reference other variables using Go templating syntax:
 
 ```yaml
 variables:
@@ -359,7 +361,25 @@ variables:
     default: "{{ .Foo }}-bar"
 ```
 
-If you rendered `{{ .Bar }}` with the variables above, you would get `foo-bar`.
+If you rendered `{{ .Bar }}` with the variables above, you would get `foo-bar`. Note that this will always
+return a string. If you want to reference another variable of a non-string type (e.g. a list), use the `reference`
+keyword:
+
+```yaml
+variables:
+  - name: Foo
+    type: list
+    default: 
+      - 1
+      - 2
+      - 3 
+    
+  - name: Bar
+    type: list
+    reference: Foo
+```
+
+In the example above, the `Bar` variable will be set to the same (list) value as `Foo`. 
 
 #### Dependencies
 
