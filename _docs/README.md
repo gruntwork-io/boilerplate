@@ -291,7 +291,7 @@ four ways to provide a value for a variable:
 1. Defaults defined in `boilerplate.yml`. The final fallback is the optional `default` that you can include as part of
    the variable definition in `boilerplate.yml`.
 
-Note that variables can reference other variables using interpolation syntax:
+Note that variables can reference other variables using Go templating syntax:
 
 ```yaml
 variables:
@@ -302,7 +302,25 @@ variables:
     default: "{{"{{"}} .Foo {{"}}"}}-bar"
 ```
 
-If you rendered `{{"{{"}} .Bar {{"}}"}}` with the variables above, you would get `foo-bar`.
+If you rendered `{{"{{"}} .Bar {{"}}"}}` with the variables above, you would get `foo-bar`. Note that this will always
+return a string. If you want to reference another variable of a non-string type (e.g. a list), use the `reference`
+keyword:
+
+```yaml
+variables:
+  - name: Foo
+    type: list
+    default: 
+      - 1
+      - 2
+      - 3 
+    
+  - name: Bar
+    type: list
+    reference: Foo
+```
+
+In the example above, the `Bar` variable will be set to the same (list) value as `Foo`. 
 
 #### Dependencies
 

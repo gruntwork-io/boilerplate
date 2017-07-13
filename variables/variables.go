@@ -23,6 +23,9 @@ type Variable interface {
 	// The default value for teh variable, if any
 	Default() interface{}
 
+	// The name of another variable from which this variable should take its value
+	Reference() string
+
 	// The values this variable can take. Applies only if Type() is Enum.
 	Options() []string
 
@@ -47,6 +50,7 @@ type defaultVariable struct {
 	name         string
 	description  string
 	defaultValue interface{}
+	reference    string
 	variableType BoilerplateType
 	options      []string
 }
@@ -131,6 +135,10 @@ func (variable defaultVariable) Type() BoilerplateType {
 
 func (variable defaultVariable) Default() interface{} {
 	return variable.defaultValue
+}
+
+func (variable defaultVariable) Reference() string {
+	return variable.reference
 }
 
 func (variable defaultVariable) Options() []string {
@@ -280,6 +288,14 @@ func UnmarshalVariableFromBoilerplateConfigYaml(fields map[string]interface{}) (
 	}
 	if description != nil {
 		variable.description = *description
+	}
+
+	reference, err := unmarshalStringField(fields, "reference", false, *name)
+	if err != nil {
+		return nil, err
+	}
+	if reference != nil {
+		variable.reference = *reference
 	}
 
 	options, err := unmarshalOptionsField(fields, *name, variableType)
