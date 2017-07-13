@@ -114,7 +114,7 @@ for full documentation.
 
 ## Install
 
-Download the latest binary for your OS here: [boilerplate v0.2.9](https://github.com/gruntwork-io/boilerplate/releases/tag/v0.2.9).
+Download the latest binary for your OS here: [boilerplate v0.2.11](https://github.com/gruntwork-io/boilerplate/releases/tag/v0.2.11).
 
 You can find older versions on the [Releases Page](https://github.com/gruntwork-io/usage-patterns/releases).
 
@@ -348,6 +348,19 @@ four ways to provide a value for a variable:
 1. Defaults defined in `boilerplate.yml`. The final fallback is the optional `default` that you can include as part of
    the variable definition in `boilerplate.yml`.
 
+Note that variables can reference other variables using interpolation syntax:
+
+```yaml
+variables:
+  - name: Foo
+    default: foo
+    
+  - name: Bar
+    default: "{{ .Foo }}-bar"
+```
+
+If you rendered `{{ .Bar }}` with the variables above, you would get `foo-bar`.
+
 #### Dependencies
 
 Specifying dependencies within your `boilerplate.yml` files allows you to chain multiple `boilerplate` templates
@@ -366,6 +379,8 @@ Note the following:
   prompt you for each of those variables separately from the root ones. You can also use the
   `<DEPENDENCY_NAME>.<VARIABLE_NAME>` syntax as the name of the variable with the `-var` flag and inside of a var file
   to provide a value for a variable in a dependency.
+* Interpolation: You may use interpolation in the `template-folder` and `output-folder` parameters of your 
+  dependencies. This allows you to use specify the paths to your template and output folders dynamically.
 
 #### Hooks
 
