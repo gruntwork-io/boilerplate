@@ -6,3 +6,25 @@ variables:
 
   - name: Baz
     default: "{{ .Bar }}-baz"
+
+  - name: FooList
+    type: list
+    default:
+      - foo
+      - bar
+      - baz
+
+  - name: BarList
+    type: list
+    reference: FooList
+
+  - name: FooMap
+    type: map
+    default:
+      foo: 1
+      bar: 2
+      baz: 3
+
+  - name: BarMap
+    type: map
+    reference: FooMap

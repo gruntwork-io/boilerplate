@@ -8,6 +8,8 @@ import (
 	"strings"
 )
 
+const MaxReferenceDepth = 20
+
 // Get a value for each of the variables specified in boilerplateConfig, other than those already in existingVariables.
 // The value for a variable can come from the user (if the  non-interactive option isn't set), the default value in the
 // config, or a command line option.
@@ -15,28 +17,6 @@ func GetVariables(options *BoilerplateOptions, boilerplateConfig, rootBoilerplat
 	vars := map[string]interface{}{}
 	for key, value := range options.Vars {
 		vars[key] = value
-	}
-
-	variablesInConfig := getAllVariablesInConfig(boilerplateConfig)
-
-	for _, variable := range variablesInConfig {
-		var value interface{}
-		var err error
-
-		value, alreadyExists := vars[variable.Name()]
-		if !alreadyExists {
-			value, err = getVariable(variable, options)
-			if err != nil {
-				return vars, err
-			}
-		}
-
-		unmarshalled, err := variables.UnmarshalValueForVariable(value, variable)
-		if err != nil {
-			return vars, err
-		}
-
-		vars[variable.Name()] = unmarshalled
 	}
 
 	// Add a variable for all variables contained in the root config file. This will allow Golang template users
@@ -62,17 +42,56 @@ func GetVariables(options *BoilerplateOptions, boilerplateConfig, rootBoilerplat
 	thisTemplateProps["CurrentDep"] = thisDep
 	vars["This"] = thisTemplateProps
 
+	variablesInConfig := getAllVariablesInConfig(boilerplateConfig)
+
+	for _, variable := range variablesInConfig {
+		unmarshalled, err := getUnmarshalledValueForVariable(variable, variablesInConfig, vars, options, 0)
+		if err != nil {
+			return nil, err
+		}
+		vars[variable.Name()] = unmarshalled
+	}
+
 	return vars, nil
 }
 
-// Get all the variables defined in the given config and its dependencies
-func getAllVariablesInConfig(boilerplateConfig *BoilerplateConfig) []variables.Variable {
-	allVariables := []variables.Variable{}
+func getUnmarshalledValueForVariable(variable variables.Variable, variablesInConfig map[string]variables.Variable, alreadyUnmarshalledVariables map[string]interface{}, options *BoilerplateOptions, referenceDepth int) (interface{}, error) {
+	if referenceDepth > MaxReferenceDepth {
+		return nil, errors.WithStackTrace(CyclicalReference{VariableName: variable.Name(), ReferenceName: variable.Reference()})
+	}
 
-	allVariables = append(allVariables, boilerplateConfig.Variables...)
+	if variable.Reference() != "" {
+		reference, containsReference := variablesInConfig[variable.Reference()]
+		if !containsReference {
+			return nil, errors.WithStackTrace(MissingReference{VariableName: variable.Name(), ReferenceName: variable.Reference()})
+		}
+		return getUnmarshalledValueForVariable(reference, variablesInConfig, alreadyUnmarshalledVariables, options, referenceDepth + 1)
+	}
+
+	value, alreadyExists := alreadyUnmarshalledVariables[variable.Name()]
+	if !alreadyExists {
+		variableValue, err := getVariable(variable, options)
+		if err != nil {
+			return nil, err
+		}
+		value = variableValue
+	}
+
+	return variables.UnmarshalValueForVariable(value, variable)
+}
+
+// Get all the variables defined in the given config and its dependencies
+func getAllVariablesInConfig(boilerplateConfig *BoilerplateConfig) map[string]variables.Variable {
+	allVariables := map[string]variables.Variable{}
+
+	for _, variable := range boilerplateConfig.Variables {
+		allVariables[variable.Name()] = variable
+	}
 
 	for _, dependency := range boilerplateConfig.Dependencies {
-		allVariables = append(allVariables, dependency.GetNamespacedVariables()...)
+		for _, variable := range dependency.GetNamespacedVariables() {
+			allVariables[variable.Name()] = variable
+		}
 	}
 
 	return allVariables
@@ -145,4 +164,20 @@ func getVariableFromUser(variable variables.Variable, options *BoilerplateOption
 type MissingVariableWithNonInteractiveMode string
 func (variableName MissingVariableWithNonInteractiveMode) Error() string {
 	return fmt.Sprintf("Variable '%s' does not have a default, no value was specified at the command line using the --%s option, and the --%s flag is set, so cannot prompt user for a value.", string(variableName), OPT_VAR, OPT_NON_INTERACTIVE)
+}
+
+type MissingReference struct {
+	VariableName  string
+	ReferenceName string
+}
+func (err MissingReference) Error() string {
+	return fmt.Sprintf("Variable %s references unknown variable %s", err.VariableName, err.ReferenceName)
+}
+
+type CyclicalReference struct {
+	VariableName  string
+	ReferenceName string
+}
+func (err CyclicalReference) Error() string {
+	return fmt.Sprintf("Variable %s seems to have an cyclical reference with variable %s", err.VariableName, err.ReferenceName)
 }
