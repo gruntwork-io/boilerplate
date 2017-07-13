@@ -299,10 +299,10 @@ variables:
     default: foo
     
   - name: Bar
-    default: "{{ .Foo }}-bar"
+    default: "{{"{{"}} .Foo {{"}}"}}-bar"
 ```
 
-If you rendered `{{ .Bar }}` with the variables above, you would get `foo-bar`.
+If you rendered `{{"{{"}} .Bar {{"}}"}}` with the variables above, you would get `foo-bar`.
 
 #### Dependencies
 
