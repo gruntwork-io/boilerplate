@@ -309,6 +309,8 @@ Note the following:
   prompt you for each of those variables separately from the root ones. You can also use the
   `<DEPENDENCY_NAME>.<VARIABLE_NAME>` syntax as the name of the variable with the `-var` flag and inside of a var file
   to provide a value for a variable in a dependency.
+* Interpolation: You may use interpolation in the `template-folder` and `output-folder` parameters of your 
+  dependencies. This allows you to use specify the paths to your template and output folders dynamically.
 
 #### Hooks
 

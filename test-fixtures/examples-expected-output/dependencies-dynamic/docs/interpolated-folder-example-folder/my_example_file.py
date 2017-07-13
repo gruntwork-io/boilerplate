@@ -1,0 +1,1 @@
+# This file and its parent folder both show an example of using Go template syntax and boilerplate variables in their names

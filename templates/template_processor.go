@@ -128,7 +128,10 @@ func processDependency(dependency variables.Dependency, options *config.Boilerpl
 	}
 
 	if shouldProcess {
-		dependencyOptions := cloneOptionsForDependency(dependency, options, variables)
+		dependencyOptions, err := cloneOptionsForDependency(dependency, options, variables)
+		if err != nil {
+			return err
+		}
 
 		util.Logger.Printf("Processing dependency %s, with template folder %s and output folder %s", dependency.Name, dependencyOptions.TemplateFolder, dependencyOptions.OutputFolder)
 		return ProcessTemplate(dependencyOptions, options, dependency)
@@ -140,9 +143,18 @@ func processDependency(dependency variables.Dependency, options *config.Boilerpl
 
 // Clone the given options for use when rendering the given dependency. The dependency will get the same options as
 // the original passed in, except for the template folder, output folder, and command-line vars.
-func cloneOptionsForDependency(dependency variables.Dependency, originalOptions *config.BoilerplateOptions, variables map[string]interface{}) *config.BoilerplateOptions {
-	templateFolder := pathRelativeToTemplate(originalOptions.TemplateFolder, dependency.TemplateFolder)
-	outputFolder := pathRelativeToTemplate(originalOptions.OutputFolder, dependency.OutputFolder)
+func cloneOptionsForDependency(dependency variables.Dependency, originalOptions *config.BoilerplateOptions, variables map[string]interface{}) (*config.BoilerplateOptions, error) {
+	renderedTemplateFolder, err := renderTemplate(originalOptions.TemplateFolder, dependency.TemplateFolder, variables, originalOptions)
+	if err != nil {
+		return nil, err
+	}
+	renderedOutputFolder, err := renderTemplate(originalOptions.TemplateFolder, dependency.OutputFolder, variables, originalOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	templateFolder := pathRelativeToTemplate(originalOptions.TemplateFolder, renderedTemplateFolder)
+	outputFolder := pathRelativeToTemplate(originalOptions.OutputFolder, renderedOutputFolder)
 
 	return &config.BoilerplateOptions{
 		TemplateFolder: templateFolder,
@@ -151,7 +163,7 @@ func cloneOptionsForDependency(dependency variables.Dependency, originalOptions 
 		Vars: cloneVariablesForDependency(dependency, variables),
 		OnMissingKey: originalOptions.OnMissingKey,
 		OnMissingConfig: originalOptions.OnMissingConfig,
-	}
+	}, nil
 }
 
 // Clone the given variables for use when rendering the given dependency.  The dependency will get the same variables

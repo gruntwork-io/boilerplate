@@ -161,10 +161,17 @@ func TestCloneOptionsForDependency(t *testing.T) {
 			map[string]interface{}{"baz": "blah"},
 			config.BoilerplateOptions{TemplateFolder: "/template/dep1", OutputFolder: "/output/out1", NonInteractive: false, Vars: map[string]interface{}{"baz": "blah"}, OnMissingKey: config.Invalid},
 		},
+		{
+			variables.Dependency{Name: "dep1", TemplateFolder: "{{ .foo }}", OutputFolder: "{{ .baz }}"},
+			config.BoilerplateOptions{TemplateFolder: "/template/path/", OutputFolder: "/output/path/", NonInteractive: false, Vars: map[string]interface{}{}, OnMissingKey: config.ExitWithError},
+			map[string]interface{}{"foo": "bar", "baz": "blah"},
+			config.BoilerplateOptions{TemplateFolder: "/template/path/bar", OutputFolder: "/output/path/blah", NonInteractive: false, Vars: map[string]interface{}{"foo": "bar", "baz": "blah"}, OnMissingKey: config.ExitWithError},
+		},
 	}
 
 	for _, testCase := range testCases {
-		actualOptions := cloneOptionsForDependency(testCase.dependency, &testCase.options, testCase.variables)
+		actualOptions, err := cloneOptionsForDependency(testCase.dependency, &testCase.options, testCase.variables)
+		assert.NoError(t, err, "Dependency: %s", testCase.dependency)
 		assert.Equal(t, testCase.expectedOptions, *actualOptions, "Dependency: %s", testCase.dependency)
 	}
 }

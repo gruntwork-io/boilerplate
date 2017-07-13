@@ -1,0 +1,8 @@
+Version: 0.0.3
+Title: Dynamic dependencies example
+website.Title: Boilerplate
+docs.Title: Docs example
+WelcomeText: Welcome!
+Description: This is a boilerplate template that shows an example of using dependencies
+WebsiteTemplateFolder: ../website
+WebsiteOutputFolder: ./website
