@@ -291,6 +291,19 @@ four ways to provide a value for a variable:
 1. Defaults defined in `boilerplate.yml`. The final fallback is the optional `default` that you can include as part of
    the variable definition in `boilerplate.yml`.
 
+Note that variables can reference other variables using interpolation syntax:
+
+```yaml
+variables:
+  - name: Foo
+    default: foo
+    
+  - name: Bar
+    default: "{{ .Foo }}-bar"
+```
+
+If you rendered `{{ .Bar }}` with the variables above, you would get `foo-bar`.
+
 #### Dependencies
 
 Specifying dependencies within your `boilerplate.yml` files allows you to chain multiple `boilerplate` templates
