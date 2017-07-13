@@ -1,0 +1,8 @@
+variables:
+  - name: Foo
+
+  - name: Bar
+    default: "{{ .Foo }}-bar"
+
+  - name: Baz
+    default: "{{ .Bar }}-baz"

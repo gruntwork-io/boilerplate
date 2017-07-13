@@ -134,8 +134,41 @@ func TestRenderTemplate(t *testing.T) {
 			assert.Nil(t, err, "template = %s, variables = %s, missingKeyAction = %s, err = %v", testCase.templateContents, testCase.variables, testCase.missingKeyAction, err)
 			assert.Equal(t, testCase.expectedOutput, actualOutput, "template = %s, variables = %s, missingKeyAction = %s", testCase.templateContents, testCase.variables, testCase.missingKeyAction)
 		} else {
-			assert.NotNil(t, err, "template = %s, variables = %s, missingKeyAction = %s", testCase.templateContents, testCase.variables, testCase.missingKeyAction)
-			assert.Contains(t, err.Error(), testCase.expectedErrorText, "template = %s, variables = %s, missingKeyAction = %s", testCase.templateContents, testCase.variables, testCase.missingKeyAction)
+			if assert.NotNil(t, err, "template = %s, variables = %s, missingKeyAction = %s", testCase.templateContents, testCase.variables, testCase.missingKeyAction) {
+				assert.Contains(t, err.Error(), testCase.expectedErrorText, "template = %s, variables = %s, missingKeyAction = %s", testCase.templateContents, testCase.variables, testCase.missingKeyAction)
+			}
+		}
+	}
+}
+
+func TestRenderTemplateRecursively(t *testing.T) {
+	t.Parallel()
+
+	pwd, err := os.Getwd()
+	assert.Nil(t, err, "Couldn't get working directory")
+
+	testCases := []struct {
+		templateContents  string
+		variables   	  map[string]interface{}
+		missingKeyAction  config.MissingKeyAction
+		expectedErrorText string
+		expectedOutput    string
+	}{
+		{"Non-recursive test: {{ .Foo }}", map[string]interface{}{"Foo": "foo"}, config.ExitWithError, "", "Non-recursive test: foo"},
+		{"Recursive test: {{ .Bar }}", map[string]interface{}{"Foo": "foo", "Bar": "{{ .Foo }}-bar"}, config.ExitWithError, "", "Recursive test: foo-bar"},
+		{"Recursive test, multiple levels: {{ .Baz }}", map[string]interface{}{"Foo": "foo", "Bar": "{{ .Foo }}-bar", "Baz": "{{ .Bar }}-baz"}, config.ExitWithError, "", "Recursive test, multiple levels: foo-bar-baz"},
+		{"Recursive test, infinite cycle: {{ .Bar }}", map[string]interface{}{"Foo": "{{ .Bar }}", "Bar": "{{ .Foo }}"}, config.ExitWithError, "seems to contain infinite loop", ""},
+	}
+
+	for _, testCase := range testCases {
+		actualOutput, err := renderTemplateRecursively(pwd + "/template.txt", testCase.templateContents, testCase.variables, &config.BoilerplateOptions{TemplateFolder: "/templates", OutputFolder: "/output", OnMissingKey: testCase.missingKeyAction})
+		if testCase.expectedErrorText == "" {
+			assert.Nil(t, err, "template = %s, variables = %s, missingKeyAction = %s, err = %v", testCase.templateContents, testCase.variables, testCase.missingKeyAction, err)
+			assert.Equal(t, testCase.expectedOutput, actualOutput, "template = %s, variables = %s, missingKeyAction = %s", testCase.templateContents, testCase.variables, testCase.missingKeyAction)
+		} else {
+			if assert.NotNil(t, err, "template = %s, variables = %s, missingKeyAction = %s", testCase.templateContents, testCase.variables, testCase.missingKeyAction) {
+				assert.Contains(t, err.Error(), testCase.expectedErrorText, "template = %s, variables = %s, missingKeyAction = %s", testCase.templateContents, testCase.variables, testCase.missingKeyAction)
+			}
 		}
 	}
 }

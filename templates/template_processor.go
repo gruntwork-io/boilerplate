@@ -14,6 +14,8 @@ import (
 	"github.com/gruntwork-io/boilerplate/variables"
 )
 
+const MaxRenderAttempts = 15
+
 // Process the boilerplate template specified in the given options and use the existing variables. This function will
 // load any missing variables (either from command line options or by prompting the user), execute all the dependent
 // boilerplate templates, and then execute this template. Note that we pass in rootOptions so that template dependencies
@@ -29,7 +31,12 @@ func ProcessTemplate(options, rootOptions *config.BoilerplateOptions, thisDep va
 		return err
 	}
 
-	vars, err := config.GetVariables(options, boilerplateConfig, rootBoilerplateConfig, thisDep)
+	rawVars, err := config.GetVariables(options, boilerplateConfig, rootBoilerplateConfig, thisDep)
+	if err != nil {
+		return err
+	}
+
+	vars, err := renderVariables(rawVars, options)
 	if err != nil {
 		return err
 	}
@@ -60,6 +67,53 @@ func ProcessTemplate(options, rootOptions *config.BoilerplateOptions, thisDep va
 	}
 
 	return nil
+}
+
+// Variable values are allowed to use Go templating syntax (e.g. to reference other variables), so this function loops
+// over each variable value, renders each one, and returns a new map of rendered variables.
+func renderVariables(variables map[string]interface{}, options *config.BoilerplateOptions) (map[string]interface{}, error) {
+	renderedVariables := map[string]interface{}{}
+
+	for variableName, variableValue := range variables {
+		rendered, err := renderVariable(variableValue, variables, options)
+		if err != nil {
+			return nil, err
+		}
+		renderedVariables[variableName] = rendered
+	}
+
+	return renderedVariables, nil
+}
+
+// Variable values are allowed to use Go templating syntax (e.g. to reference other variables), so here, we render
+// those templates and return a new map of variables that are fully resolved.
+func renderVariable(variable interface{}, variables map[string]interface{}, options *config.BoilerplateOptions) (interface{}, error) {
+	switch variableType := variable.(type) {
+	case string:
+		return renderTemplateRecursively(options.TemplateFolder, variableType, variables, options)
+	case []string:
+		values := []string{}
+		for _, value := range variableType {
+			rendered, err := renderTemplateRecursively(options.TemplateFolder, value, variables, options)
+			if err != nil {
+				return nil, err
+			}
+			values = append(values, rendered)
+		}
+		return values, nil
+	case map[string]string:
+		values := map[string]string{}
+		for key, value := range variableType {
+			rendered, err := renderTemplateRecursively(options.TemplateFolder, value, variables, options)
+			if err != nil {
+				return nil, err
+			}
+			values[key] = rendered
+		}
+		return values, nil
+	default:
+		return variable, nil
+	}
 }
 
 // Process the given list of hooks, which are scripts that should be executed at the command-line
@@ -323,4 +377,43 @@ func renderTemplate(templatePath string, templateContents string, variables map[
 	}
 
 	return output.String(), nil
+}
+
+// Render the template at templatePath, with contents templateContents, using the Go template engine, passing in the
+// given variables as data. If the rendered result contains more Go templating syntax, render it again, and repeat this
+// process recursively until there is no more rendering to be done.
+//
+// The main use case for this is to allow boilerplate variables to reference other boilerplate variables. This can
+// obviously lead to an infinite loop. The proper way to prevent that would be to parse Go template syntax and build a
+// dependency graph, but that is way too complicated. Therefore, we use hacky solution: render the template multiple
+// times. If it is the same as the last time you rendered it, that means no new interpolations were processed, so
+// we're done. If it changes, that means more interpolations are being processed, so keep going, up to a
+// maximum number of render attempts.
+func renderTemplateRecursively(templatePath string, templateContents string, variables map[string]interface{}, options *config.BoilerplateOptions) (string, error) {
+	lastOutput := templateContents
+	for i := 0; i < MaxRenderAttempts; i++ {
+		output, err := renderTemplate(templatePath, lastOutput, variables, options)
+		if err != nil {
+			return "", err
+		}
+
+		if output == lastOutput {
+			return output, nil
+		}
+
+		lastOutput = output
+	}
+
+	return "", errors.WithStackTrace(TemplateContainsInfiniteLoop{TemplatePath: templatePath, TemplateContents: templateContents, RenderAttempts: MaxRenderAttempts})
+}
+
+// Custom error types
+
+type TemplateContainsInfiniteLoop struct {
+	TemplatePath     string
+	TemplateContents string
+	RenderAttempts   int
+}
+func (err TemplateContainsInfiniteLoop) Error() string {
+	return fmt.Sprintf("Template %s seems to contain infinite loop. After %d renderings, the contents continue to change. Template contents:\n%s", err.TemplatePath, err.RenderAttempts, err.TemplateContents)
 }
