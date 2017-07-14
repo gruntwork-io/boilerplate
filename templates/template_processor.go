@@ -104,11 +104,16 @@ func renderVariable(variable interface{}, variables map[string]interface{}, opti
 	case map[string]string:
 		values := map[string]string{}
 		for key, value := range variableType {
-			rendered, err := renderTemplateRecursively(options.TemplateFolder, value, variables, options)
+			renderedKey, err := renderTemplateRecursively(options.TemplateFolder, key, variables, options)
 			if err != nil {
 				return nil, err
 			}
-			values[key] = rendered
+
+			renderedValue, err := renderTemplateRecursively(options.TemplateFolder, value, variables, options)
+			if err != nil {
+				return nil, err
+			}
+			values[renderedKey] = renderedValue
 		}
 		return values, nil
 	default:
