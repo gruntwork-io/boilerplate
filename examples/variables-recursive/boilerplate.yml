@@ -29,6 +29,20 @@ variables:
     type: map
     reference: FooMap
 
+  - name: ListWithTemplates
+    type: list
+    default:
+      - "{{ .Foo }}"
+      - "{{ .Bar }}"
+      - "{{ .Baz }}"
+
+  - name: MapWithTemplates
+    type: map
+    default:
+      "{{ .Foo }}": "{{ .Foo }}"
+      "{{ .Bar }}": "{{ .Bar }}"
+      "{{ .Baz }}": "{{ .Baz }}"
+
 dependencies:
   - name: variables
     template-folder: ../variables

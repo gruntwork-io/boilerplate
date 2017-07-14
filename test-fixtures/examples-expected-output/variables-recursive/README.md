@@ -9,3 +9,5 @@ FooList = foo, bar, baz
 BarList = foo, bar, baz
 FooMap = bar: 2, baz: 3, foo: 1
 BarMap = bar: 2, baz: 3, foo: 1
+ListWithTemplates = foo, foo-bar, foo-bar-baz
+MapWithTemplates = foo: foo, foo-bar: foo-bar, foo-bar-baz: foo-bar-baz
