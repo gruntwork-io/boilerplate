@@ -181,7 +181,7 @@ func processDependencies(dependencies []variables.Dependency, options *config.Bo
 
 // Execute the boilerplate template in the given dependency
 func processDependency(dependency variables.Dependency, options *config.BoilerplateOptions, variables map[string]interface{}) error {
-	shouldProcess, err := shouldProcessDependency(dependency, options)
+	shouldProcess, err := shouldProcessDependency(dependency, options, variables)
 	if err != nil {
 		return err
 	}
@@ -249,12 +249,35 @@ func cloneVariablesForDependency(dependency variables.Dependency, originalVariab
 
 // Prompt the user to verify if the given dependency should be executed and return true if they confirm. If
 // options.NonInteractive is set to true, this function always returns true.
-func shouldProcessDependency(dependency variables.Dependency, options *config.BoilerplateOptions) (bool, error) {
+func shouldProcessDependency(dependency variables.Dependency, options *config.BoilerplateOptions, variables map[string]interface{}) (bool, error) {
+	shouldSkip, err := shouldSkipDependency(dependency, options, variables)
+	if err != nil {
+		return false, err
+	}
+	if shouldSkip {
+		return false, nil
+	}
+
 	if options.NonInteractive {
 		return true, nil
 	}
 
 	return util.PromptUserForYesNo(fmt.Sprintf("This boilerplate template has a dependency! Run boilerplate on dependency %s with template folder %s and output folder %s?", dependency.Name, dependency.TemplateFolder, dependency.OutputFolder))
+}
+
+// Return true if the skip parameter of the given dependency evaluates to a "true" value
+func shouldSkipDependency(dependency variables.Dependency, options *config.BoilerplateOptions, variables map[string]interface{}) (bool, error) {
+	if dependency.Skip == "" {
+		return false, nil
+	}
+
+	rendered, err := renderTemplateRecursively(options.TemplateFolder, dependency.Skip, variables, options)
+	if err != nil {
+		return false, err
+	}
+
+	util.Logger.Printf("Skip attribute for dependency %s evaluated to '%s'", dependency.Name, rendered)
+	return rendered == "true", nil
 }
 
 // Copy all the files and folders in templateFolder to outputFolder, passing text files through the Go template engine

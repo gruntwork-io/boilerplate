@@ -191,6 +191,7 @@ dependencies:
   - name: <DEPENDENCY_NAME>
     template-folder: <FOLDER>
     output-folder: <FOLDER>
+    skip: <CONDITION>
     dont-inherit-variables: <BOOLEAN>
     variables:
       - name: <NAME>
@@ -243,6 +244,9 @@ executing the current one. Each dependency may contain the following keys:
   current template.
 * `output-folder` (Required): Create the output files and folders in this folder. This path is relative to the output
   folder of the current template.
+* `skip` (Optional): Skip this dependency if this condition, which can use Go templating syntax and 
+  boilerplate variables, evaluates to the string `true`. This is useful to conditionally enable or disable 
+  dependencies.
 * `dont-inherit-variables` (Optional): By default, any variables already set as part of the current `boilerplate.yml`
   template will be reused in the dependency, so that the user is not prompted multiple times for the same variable. If
   you set this option to `false`, then the variables from the parent template will not be reused.
@@ -344,6 +348,25 @@ Note the following:
   to provide a value for a variable in a dependency.
 * Interpolation: You may use interpolation in the `template-folder` and `output-folder` parameters of your 
   dependencies. This allows you to use specify the paths to your template and output folders dynamically.
+* Conditional dependencies: You can enable or disable a dependency using the `skip` parameter, which supports Go
+  templating syntax and boilerplate variables. If the `skip` parameter evaluates to the string `true`, the 
+  dependency will be skipped; otherwise, it will be rendered. Example:
+  
+    ```yaml
+    variables:
+      - name: Foo
+        type: bool
+      
+      - name: Bar
+        type: bool
+    
+    dependencies:
+      - name: conditional-dependency-example
+        template-folder: ../foo
+        output-folder: foo
+        # Skip this dependency if both .Foo and .Bar are set to true
+        skip: "{{ and .Foo .Bar }}"
+    ```
 
 #### Hooks
 

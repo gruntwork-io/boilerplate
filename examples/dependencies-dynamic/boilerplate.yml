@@ -22,10 +22,26 @@ variables:
   - name: WebsiteOutputFolder
     description: The path to the website output folder. This is used to check that interpolations work in the output-folder parameter of dependencies.
 
+  - name: SkipAllDependencies
+    description: Set to true to skip all dependencies
+    type: bool
+    default: false
+
+  - name: SkipFirstWebsiteDependency
+    description: Set to true to skip the first website dependency
+    type: bool
+    default: false
+
+  - name: SkipSecondWebsiteDependency
+    description: Set to true to skip the second website dependency
+    type: bool
+    default: true
+
 dependencies:
     - name: docs
       template-folder: ../docs
       output-folder: ./docs
+      skip: "{{ .SkipAllDependencies }}"
       variables:
         - name: Title
           description: Enter the title of the docs page
@@ -33,6 +49,16 @@ dependencies:
     - name: website
       template-folder: "{{ .WebsiteTemplateFolder }}"
       output-folder: "{{ .WebsiteOutputFolder }}"
+      skip: "{{ or .SkipAllDependencies .SkipFirstWebsiteDependency }}"
       variables:
         - name: Title
           description: Enter the title of the website
+
+    - name: skip-website
+      template-folder: "{{ .WebsiteTemplateFolder }}"
+      output-folder: "{{ .WebsiteOutputFolder }}"
+      skip: "{{ or .SkipAllDependencies .SkipSecondWebsiteDependency }}"
+      variables:
+        - name: Title
+          description: Enter the title of the website
+          default: This website dependency should be skipped
