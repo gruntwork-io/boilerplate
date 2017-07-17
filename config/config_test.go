@@ -370,6 +370,7 @@ const CONFIG_MULTIPLE_DEPENDENCIES =
   - name: dep3
     template-folder: /template/folder3
     output-folder: /output/folder3
+    skip: "{{ and .Foo .Bar }}"
 `
 
 func TestParseBoilerplateConfigMultipleDependencies(t *testing.T) {
@@ -401,6 +402,7 @@ func TestParseBoilerplateConfigMultipleDependencies(t *testing.T) {
 				OutputFolder: "/output/folder3",
 				DontInheritVariables: false,
 				Variables: []variables.Variable{},
+				Skip: "{{ and .Foo .Bar }}",
 			},
 		},
 		Hooks: variables.Hooks{},

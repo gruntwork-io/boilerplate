@@ -9,11 +9,12 @@ import (
 
 // A single boilerplate template that this boilerplate.yml depends on being executed first
 type Dependency struct {
-	Name                  string
-	TemplateFolder        string
-	OutputFolder          string
-	DontInheritVariables  bool
-	Variables             []Variable
+	Name                 string
+	TemplateFolder       string
+	OutputFolder         string
+	Skip                 string
+	DontInheritVariables bool
+	Variables            []Variable
 }
 
 // Get all the variables in this dependency, namespacing each variable with the name of this dependency
@@ -102,6 +103,15 @@ func UnmarshalDependencyFromBoilerplateConfigYaml(fields map[string]interface{})
 		return nil, err
 	}
 
+	skipPtr, err := unmarshalStringField(fields, "skip", false, *name)
+	if err != nil {
+		return nil, err
+	}
+	var skip string
+	if skipPtr != nil {
+		skip = *skipPtr
+	}
+
 	dontInheritVariables, err := unmarshalBooleanField(fields, "dont-inherit-variables", false, *name)
 	if err != nil {
 		return nil, err
@@ -116,6 +126,7 @@ func UnmarshalDependencyFromBoilerplateConfigYaml(fields map[string]interface{})
 		Name: *name,
 		TemplateFolder: *templateFolder,
 		OutputFolder: *outputFolder,
+		Skip: skip,
 		DontInheritVariables: dontInheritVariables,
 		Variables: variables,
 	}, nil
