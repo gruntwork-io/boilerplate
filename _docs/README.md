@@ -365,7 +365,7 @@ Note the following:
         template-folder: ../foo
         output-folder: foo
         # Skip this dependency if both .Foo and .Bar are set to true
-        skip: "{{ and .Foo .Bar }}"
+        skip: "{{"{{"}} and .Foo .Bar {{"}}"}}"
     ```
 
 #### Hooks
