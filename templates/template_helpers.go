@@ -418,16 +418,21 @@ func slice(start interface{}, end interface{}, increment interface{}) ([]int, er
 
 // Return the keys in the given map. This method always returns the keys in sorted order to provide a stable iteration
 // order.
-func keys(m map[string]string) []string {
+func keys(value interface{}) ([]string, error) {
+	valueType := reflect.ValueOf(value)
+	if valueType.Kind() != reflect.Map {
+		return nil, errors.WithStackTrace(InvalidTypeForMethodArgument{"keys", "Map", valueType.Kind().String()})
+	}
+
 	out := []string{}
 
-	for key, _ := range m {
-		out = append(out, key)
+	for _, key := range valueType.MapKeys() {
+		out = append(out, fmt.Sprintf("%v", key.Interface()))
 	}
 
 	sort.Strings(out)
 
-	return out
+	return out, nil
 }
 
 // Run the given shell command specified in args in the working dir specified by templatePath and return stdout as a
@@ -541,3 +546,12 @@ func (args InvalidSnippetArguments) Error() string {
 }
 
 var NoArgsPassedToShellHelper = fmt.Errorf("The shell helper requires at least one argument")
+
+type InvalidTypeForMethodArgument struct {
+	MethodName   string
+	ExpectedType string
+	ActualType   string
+}
+func (err InvalidTypeForMethodArgument) Error() string {
+	return fmt.Sprintf("Method %s expects type %s, but got %s", err.MethodName, err.ExpectedType, err.ActualType)
+}
