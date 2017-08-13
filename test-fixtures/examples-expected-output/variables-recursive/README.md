@@ -11,3 +11,5 @@ FooMap = bar: 2, baz: 3, foo: 1
 BarMap = bar: 2, baz: 3, foo: 1
 ListWithTemplates = foo, foo-bar, foo-bar-baz
 MapWithTemplates = foo: foo, foo-bar: foo-bar, foo-bar-baz: foo-bar-baz
+ListWithNestedMap = (name: foo, value: foo), (name: bar, value: bar)
+MapWithNestedList = (key: bar, value: 4, 5, 6), (key: foo, value: 1, 2, 3)

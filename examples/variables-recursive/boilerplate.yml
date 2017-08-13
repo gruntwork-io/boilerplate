@@ -43,6 +43,21 @@ variables:
       "{{ .Bar }}": "{{ .Bar }}"
       "{{ .Baz }}": "{{ .Baz }}"
 
+  - name: ListWithNestedMap
+    type: list
+    default:
+      - name: foo
+        value: foo
+
+      - name: bar
+        value: bar
+
+  - name: MapWithNestedList
+    type: map
+    default:
+      foo: [1, 2, 3]
+      bar: [4, 5, 6]
+
 dependencies:
   - name: variables
     template-folder: ../variables

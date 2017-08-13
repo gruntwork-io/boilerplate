@@ -2,7 +2,7 @@ package variables
 
 import (
 	"fmt"
-	"github.com/gruntwork-io/boilerplate/util"
+	"reflect"
 )
 
 // An interface for a variable defined in a boilerplate.yml config file
@@ -202,18 +202,12 @@ func UnmarshalValueForVariable(value interface{}, variable Variable) (interface{
 			return asBool, nil
 		}
 	case List:
-		if asList, isList := value.([]interface{}); isList {
-			return util.ToStringList(asList), nil
-		}
-		if asList, isList := value.([]string); isList {
-			return asList, nil
+		if reflect.TypeOf(value).Kind() == reflect.Slice {
+			return value, nil
 		}
 	case Map:
-		if asMap, isMap := value.(map[interface{}]interface{}); isMap {
-			return util.ToStringMap(asMap), nil
-		}
-		if asMap, isMap := value.(map[string]string); isMap {
-			return asMap, nil
+		if reflect.TypeOf(value).Kind() == reflect.Map {
+			return value, nil
 		}
 	case Enum:
 		if asString, isString := value.(string); isString {

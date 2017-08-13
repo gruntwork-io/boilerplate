@@ -12,6 +12,7 @@ import (
 	"path"
 	"fmt"
 	"github.com/gruntwork-io/boilerplate/variables"
+	"reflect"
 )
 
 const MaxRenderAttempts = 15
@@ -88,28 +89,29 @@ func renderVariables(variables map[string]interface{}, options *config.Boilerpla
 // Variable values are allowed to use Go templating syntax (e.g. to reference other variables), so here, we render
 // those templates and return a new map of variables that are fully resolved.
 func renderVariable(variable interface{}, variables map[string]interface{}, options *config.BoilerplateOptions) (interface{}, error) {
-	switch variableType := variable.(type) {
-	case string:
-		return renderTemplateRecursively(options.TemplateFolder, variableType, variables, options)
-	case []string:
-		values := []string{}
-		for _, value := range variableType {
-			rendered, err := renderTemplateRecursively(options.TemplateFolder, value, variables, options)
+	valueType := reflect.ValueOf(variable)
+
+	switch valueType.Kind() {
+	case reflect.String:
+		return renderTemplateRecursively(options.TemplateFolder, variable.(string), variables, options)
+	case reflect.Slice:
+		values := []interface{}{}
+		for i := 0; i < valueType.Len(); i++ {
+			rendered, err := renderVariable(valueType.Index(i).Interface(), variables, options)
 			if err != nil {
-				return nil, err
+				return  nil, err
 			}
 			values = append(values, rendered)
 		}
 		return values, nil
-	case map[string]string:
-		values := map[string]string{}
-		for key, value := range variableType {
-			renderedKey, err := renderTemplateRecursively(options.TemplateFolder, key, variables, options)
+	case reflect.Map:
+		values := map[interface{}]interface{}{}
+		for _, key := range valueType.MapKeys() {
+			renderedKey, err := renderVariable(key.Interface(), variables, options)
 			if err != nil {
 				return nil, err
 			}
-
-			renderedValue, err := renderTemplateRecursively(options.TemplateFolder, value, variables, options)
+			renderedValue, err := renderVariable(valueType.MapIndex(key).Interface(), variables, options)
 			if err != nil {
 				return nil, err
 			}
