@@ -3,9 +3,9 @@ package cli
 import (
 	"github.com/urfave/cli"
 	"fmt"
-	"github.com/gruntwork-io/boilerplate/config"
 	"github.com/gruntwork-io/boilerplate/templates"
 	"github.com/gruntwork-io/boilerplate/variables"
+	"github.com/gruntwork-io/boilerplate/options"
 )
 
 // Customize the --help text for the app so we don't show extraneous info
@@ -56,32 +56,32 @@ func CreateBoilerplateCli(version string) *cli.App {
 
 	app.Flags = []cli.Flag {
 		cli.StringFlag{
-			Name: config.OPT_TEMPLATE_FOLDER,
+			Name: options.OPT_TEMPLATE_FOLDER,
 			Usage: "Generate the project from the templates in `FOLDER`.",
 		},
 		cli.StringFlag{
-			Name: config.OPT_OUTPUT_FOLDER,
+			Name: options.OPT_OUTPUT_FOLDER,
 			Usage: "Create the output files and folders in `FOLDER`.",
 		},
 		cli.BoolFlag{
-			Name: config.OPT_NON_INTERACTIVE,
-			Usage: fmt.Sprintf("Do not prompt for input variables. All variables must be set via --%s and --%s options instead.", config.OPT_VAR, config.OPT_VAR_FILE),
+			Name: options.OPT_NON_INTERACTIVE,
+			Usage: fmt.Sprintf("Do not prompt for input variables. All variables must be set via --%s and --%s options instead.", options.OPT_VAR, options.OPT_VAR_FILE),
 		},
 		cli.StringSliceFlag{
-			Name: config.OPT_VAR,
+			Name: options.OPT_VAR,
 			Usage: "Use `NAME=VALUE` to set variable NAME to VALUE. May be specified more than once.",
 		},
 		cli.StringSliceFlag{
-			Name: config.OPT_VAR_FILE,
+			Name: options.OPT_VAR_FILE,
 			Usage: "Load variable values from the YAML file `FILE`. May be specified more than once.",
 		},
 		cli.StringFlag{
-			Name: config.OPT_MISSING_KEY_ACTION,
-			Usage: fmt.Sprintf("What `ACTION` to take if a template looks up a variable that is not defined. Must be one of: %s. Default: %s.", config.ALL_MISSING_KEY_ACTIONS, config.DEFAULT_MISSING_KEY_ACTION),
+			Name: options.OPT_MISSING_KEY_ACTION,
+			Usage: fmt.Sprintf("What `ACTION` to take if a template looks up a variable that is not defined. Must be one of: %s. Default: %s.", options.ALL_MISSING_KEY_ACTIONS, options.DEFAULT_MISSING_KEY_ACTION),
 		},
 		cli.StringFlag{
-			Name: config.OPT_MISSING_CONFIG_ACTION,
-			Usage: fmt.Sprintf("What `ACTION` to take if a the template folder does not contain a boilerplate.yml file. Must be one of: %s. Default: %s.", config.ALL_MISSING_CONFIG_ACTIONS, config.DEFAULT_MISSING_CONFIG_ACTION),
+			Name: options.OPT_MISSING_CONFIG_ACTION,
+			Usage: fmt.Sprintf("What `ACTION` to take if a the template folder does not contain a boilerplate.yml file. Must be one of: %s. Default: %s.", options.ALL_MISSING_CONFIG_ACTIONS, options.DEFAULT_MISSING_CONFIG_ACTION),
 		},
 	}
 
@@ -96,7 +96,7 @@ func runApp(cliContext *cli.Context) error {
 		return nil
 	}
 
-	options, err := config.ParseOptions(cliContext)
+	opts, err := options.ParseOptions(cliContext)
 	if err != nil {
 		return err
 	}
@@ -104,5 +104,5 @@ func runApp(cliContext *cli.Context) error {
 	// The root boilerplate.yml is not itself a dependency, so we pass an empty Dependency.
 	emptyDep := variables.Dependency{}
 
-	return templates.ProcessTemplate(options, options, emptyDep)
+	return templates.ProcessTemplate(opts, opts, emptyDep)
 }

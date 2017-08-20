@@ -5,11 +5,25 @@ This shows an example of variables that reference other variables.
 Foo = {{ .Foo }}
 Bar = {{ .Bar }}
 Baz = {{ .Baz }}
+
 FooList = {{ range $index, $element := .FooList }}{{ if gt $index 0 }}, {{ end }}{{ $element }}{{ end }}
 BarList = {{ range $index, $element := .BarList }}{{ if gt $index 0 }}, {{ end }}{{ $element }}{{ end }}
 FooMap = {{ range $index, $key := (.FooMap | keys) }}{{ if gt $index 0 }}, {{ end }}{{ $key }}: {{ index $.FooMap $key }}{{ end }}
 BarMap = {{ range $index, $key := (.BarMap | keys) }}{{ if gt $index 0 }}, {{ end }}{{ $key }}: {{ index $.BarMap $key }}{{ end }}
+
 ListWithTemplates = {{ range $index, $element := .ListWithTemplates }}{{ if gt $index 0 }}, {{ end }}{{ $element }}{{ end }}
 MapWithTemplates = {{ range $index, $key := (.MapWithTemplates | keys) }}{{ if gt $index 0 }}, {{ end }}{{ $key }}: {{ index $.MapWithTemplates $key }}{{ end }}
 ListWithNestedMap = {{ range $index, $item := .ListWithNestedMap }}{{ if gt $index 0 }}, {{ end }}(name: {{ $item.name }}, value: {{ $item.value }}){{ end }}
 MapWithNestedList = {{ range $index, $key := (.MapWithNestedList | keys) }}{{ if gt $index 0 }}, {{ end }}(key: {{ $key }}, value: {{ range $index2, $value := (index $.MapWithNestedList $key) }}{{ if gt $index2 0 }}, {{ end }}{{ $value }}{{ end }}){{ end }}
+
+IntValue: {{ .IntValue }}
+IntValueInterpolation: {{ .IntValueInterpolation }}
+FloatValue: {{ .FloatValue }}
+FloatValueInterpolation: {{ .FloatValueInterpolation }}
+BoolValue: {{ .BoolValue }}
+BoolValueInterpolationSimple: {{ .BoolValueInterpolationSimple }}
+BoolValueInterpolationSimpleComplex: {{ .BoolValueInterpolationSimpleComplex }}
+ListValue: {{ range $index, $element := .ListValue }}{{ if gt $index 0 }}, {{ end }}{{ $element }}{{ end }}
+ListValueInterpolation: {{ range $index, $element := .ListValueInterpolation }}{{ if gt $index 0 }}, {{ end }}{{ $element }}{{ end }}
+MapValue: {{ range $index, $key := (.MapValue | keys) }}{{ if gt $index 0 }}, {{ end }}{{ $key }}: {{ index $.MapValue $key }}{{ end }}
+MapValueInterpolation: {{ range $index, $key := (.MapValueInterpolation | keys) }}{{ if gt $index 0 }}, {{ end }}{{ $key }}: {{ index $.MapValueInterpolation $key }}{{ end }}

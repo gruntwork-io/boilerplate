@@ -6,15 +6,16 @@ import (
 	"reflect"
 	"github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/boilerplate/variables"
+	"github.com/gruntwork-io/boilerplate/options"
 )
 
 func TestGetVariableFromVarsEmptyVars(t *testing.T) {
 	t.Parallel()
 
 	variable := variables.NewStringVariable("foo")
-	options := &BoilerplateOptions{}
+	opts := &options.BoilerplateOptions{}
 
-	_, containsValue := getVariableFromVars(variable, options)
+	_, containsValue := getVariableFromVars(variable, opts)
 	assert.False(t, containsValue)
 }
 
@@ -22,7 +23,7 @@ func TestGetVariableFromVarsNoMatch(t *testing.T) {
 	t.Parallel()
 
 	variable := variables.NewStringVariable("foo")
-	options := &BoilerplateOptions{
+	opts := &options.BoilerplateOptions{
 		Vars: map[string]interface{}{
 			"key1": "value1",
 			"key2": "value2",
@@ -30,7 +31,7 @@ func TestGetVariableFromVarsNoMatch(t *testing.T) {
 		},
 	}
 
-	_, containsValue := getVariableFromVars(variable, options)
+	_, containsValue := getVariableFromVars(variable, opts)
 	assert.False(t, containsValue)
 }
 
@@ -38,7 +39,7 @@ func TestGetVariableFromVarsMatch(t *testing.T) {
 	t.Parallel()
 
 	variable := variables.NewStringVariable("foo")
-	options := &BoilerplateOptions{
+	opts := &options.BoilerplateOptions{
 		Vars: map[string]interface{}{
 			"key1": "value1",
 			"foo": "bar",
@@ -46,7 +47,7 @@ func TestGetVariableFromVarsMatch(t *testing.T) {
 		},
 	}
 
-	actual, containsValue := getVariableFromVars(variable, options)
+	actual, containsValue := getVariableFromVars(variable, opts)
 	expected := "bar"
 
 	assert.True(t, containsValue)
@@ -57,7 +58,7 @@ func TestGetVariableFromVarsForDependencyNoMatch(t *testing.T) {
 	t.Parallel()
 
 	variable := variables.NewStringVariable("bar.foo")
-	options := &BoilerplateOptions{
+	opts := &options.BoilerplateOptions{
 		Vars: map[string]interface{}{
 			"key1": "value1",
 			"foo": "bar",
@@ -65,7 +66,7 @@ func TestGetVariableFromVarsForDependencyNoMatch(t *testing.T) {
 		},
 	}
 
-	_, containsValue := getVariableFromVars(variable, options)
+	_, containsValue := getVariableFromVars(variable, opts)
 	assert.False(t, containsValue)
 }
 
@@ -73,7 +74,7 @@ func TestGetVariableFromVarsForDependencyMatch(t *testing.T) {
 	t.Parallel()
 
 	variable := variables.NewStringVariable("bar.foo")
-	options := &BoilerplateOptions{
+	opts := &options.BoilerplateOptions{
 		Vars: map[string]interface{}{
 			"key1": "value1",
 			"bar.foo": "bar",
@@ -81,7 +82,7 @@ func TestGetVariableFromVarsForDependencyMatch(t *testing.T) {
 		},
 	}
 
-	actual, containsValue := getVariableFromVars(variable, options)
+	actual, containsValue := getVariableFromVars(variable, opts)
 	expected := "bar"
 
 	assert.True(t, containsValue)
@@ -92,9 +93,9 @@ func TestGetVariableNoMatchNonInteractive(t *testing.T) {
 	t.Parallel()
 
 	variable := variables.NewStringVariable("foo")
-	options := &BoilerplateOptions{NonInteractive: true}
+	opts := &options.BoilerplateOptions{NonInteractive: true}
 
-	_, err := getVariable(variable, options)
+	_, err := getVariable(variable, opts)
 
 	assert.NotNil(t, err)
 	assert.True(t, errors.IsError(err, MissingVariableWithNonInteractiveMode("foo")), "Expected a MissingVariableWithNonInteractiveMode error but got %s", reflect.TypeOf(err))
@@ -104,7 +105,7 @@ func TestGetVariableInVarsNonInteractive(t *testing.T) {
 	t.Parallel()
 
 	variable := variables.NewStringVariable("foo")
-	options := &BoilerplateOptions{
+	opts := &options.BoilerplateOptions{
 		NonInteractive: true,
 		Vars: map[string]interface{}{
 			"key1": "value1",
@@ -113,7 +114,7 @@ func TestGetVariableInVarsNonInteractive(t *testing.T) {
 		},
 	}
 
-	actual, err := getVariable(variable, options)
+	actual, err := getVariable(variable, opts)
 	expected := "bar"
 
 	assert.Nil(t, err)
@@ -124,7 +125,7 @@ func TestGetVariableDefaultNonInteractive(t *testing.T) {
 	t.Parallel()
 
 	variable := variables.NewStringVariable("foo").WithDefault("bar")
-	options := &BoilerplateOptions{
+	opts := &options.BoilerplateOptions{
 		NonInteractive: true,
 		Vars: map[string]interface{}{
 			"key1": "value1",
@@ -133,7 +134,7 @@ func TestGetVariableDefaultNonInteractive(t *testing.T) {
 		},
 	}
 
-	actual, err := getVariable(variable, options)
+	actual, err := getVariable(variable, opts)
 	expected := "bar"
 
 	assert.Nil(t, err)
@@ -143,18 +144,18 @@ func TestGetVariableDefaultNonInteractive(t *testing.T) {
 func TestGetVariablesNoVariables(t *testing.T) {
 	t.Parallel()
 
-	options := &BoilerplateOptions{NonInteractive: true}
+	opts := &options.BoilerplateOptions{NonInteractive: true}
 	boilerplateConfig := &BoilerplateConfig{}
 	rootBoilerplateConfig := &BoilerplateConfig{}
 	dependency := variables.Dependency{}
 
-	actual, err := GetVariables(options, boilerplateConfig, rootBoilerplateConfig, dependency)
+	actual, err := GetVariables(opts, boilerplateConfig, rootBoilerplateConfig, dependency)
 	expected := map[string]interface{}{
 		"BoilerplateConfigVars": map[string]variables.Variable{},
 		"BoilerplateConfigDeps": map[string]variables.Dependency{},
 		"This": map[string]interface{}{
 			"Config": boilerplateConfig,
-			"Options": options,
+			"Options": opts,
 			"CurrentDep": dependency,
 		},
 	}
@@ -166,7 +167,7 @@ func TestGetVariablesNoVariables(t *testing.T) {
 func TestGetVariablesNoMatchNonInteractive(t *testing.T) {
 	t.Parallel()
 
-	options := &BoilerplateOptions{NonInteractive: true}
+	opts := &options.BoilerplateOptions{NonInteractive: true}
 	boilerplateConfig := &BoilerplateConfig{
 		Variables: []variables.Variable{
 			variables.NewStringVariable("foo"),
@@ -175,7 +176,7 @@ func TestGetVariablesNoMatchNonInteractive(t *testing.T) {
 	rootBoilerplateConfig := &BoilerplateConfig{}
 	dependency := variables.Dependency{}
 
-	_, err := GetVariables(options, boilerplateConfig, rootBoilerplateConfig, dependency)
+	_, err := GetVariables(opts, boilerplateConfig, rootBoilerplateConfig, dependency)
 
 	assert.NotNil(t, err)
 	assert.True(t, errors.IsError(err, MissingVariableWithNonInteractiveMode("foo")), "Expected a MissingVariableWithNonInteractiveMode error but got %s", reflect.TypeOf(err))
@@ -184,11 +185,12 @@ func TestGetVariablesNoMatchNonInteractive(t *testing.T) {
 func TestGetVariablesMatchFromVars(t *testing.T) {
 	t.Parallel()
 
-	options := &BoilerplateOptions{
+	opts := &options.BoilerplateOptions{
 		NonInteractive: true,
 		Vars: map[string]interface{}{
 			"foo": "bar",
 		},
+		OnMissingKey: options.ExitWithError,
 	}
 
 	boilerplateConfig := &BoilerplateConfig{
@@ -201,14 +203,14 @@ func TestGetVariablesMatchFromVars(t *testing.T) {
 
 	dependency := variables.Dependency{}
 
-	actual, err := GetVariables(options, boilerplateConfig, rootBoilerplateConfig, dependency)
+	actual, err := GetVariables(opts, boilerplateConfig, rootBoilerplateConfig, dependency)
 	expected := map[string]interface{}{
 		"foo": "bar",
 		"BoilerplateConfigVars": map[string]variables.Variable{},
 		"BoilerplateConfigDeps": map[string]variables.Dependency{},
 		"This": map[string]interface{}{
 			"Config": boilerplateConfig,
-			"Options": options,
+			"Options": opts,
 			"CurrentDep": dependency,
 		},
 	}
@@ -220,12 +222,13 @@ func TestGetVariablesMatchFromVars(t *testing.T) {
 func TestGetVariablesMatchFromVarsAndDefaults(t *testing.T) {
 	t.Parallel()
 
-	options := &BoilerplateOptions{
+	opts := &options.BoilerplateOptions{
 		NonInteractive: true,
 		Vars: map[string]interface{}{
 			"key1": "value1",
 			"key2": "value2",
 		},
+		OnMissingKey: options.ExitWithError,
 	}
 
 	boilerplateConfig := &BoilerplateConfig{
@@ -240,7 +243,7 @@ func TestGetVariablesMatchFromVarsAndDefaults(t *testing.T) {
 
 	dependency := variables.Dependency{}
 
-	actual, err := GetVariables(options, boilerplateConfig, rootBoilerplateConfig, dependency)
+	actual, err := GetVariables(opts, boilerplateConfig, rootBoilerplateConfig, dependency)
 	expected := map[string]interface{}{
 		"key1": "value1",
 		"key2": "value2",
@@ -249,7 +252,7 @@ func TestGetVariablesMatchFromVarsAndDefaults(t *testing.T) {
 		"BoilerplateConfigDeps": map[string]variables.Dependency{},
 		"This": map[string]interface{}{
 			"Config": boilerplateConfig,
-			"Options": options,
+			"Options": opts,
 			"CurrentDep": dependency,
 		},
 	}

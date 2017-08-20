@@ -1,4 +1,4 @@
-package templates
+package render
 
 import (
 	"testing"
@@ -203,7 +203,7 @@ func TestPathRelativeToTemplate(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		actual := pathRelativeToTemplate(testCase.templatePath, testCase.path)
+		actual := PathRelativeToTemplate(testCase.templatePath, testCase.path)
 		assert.Equal(t, testCase.expected, actual)
 	}
 }

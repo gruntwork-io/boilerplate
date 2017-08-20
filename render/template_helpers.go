@@ -1,4 +1,4 @@
-package templates
+package render
 
 import (
 	"io/ioutil"
@@ -16,9 +16,9 @@ import (
 	"unicode"
 	"github.com/gruntwork-io/boilerplate/util"
 	"sort"
-	"github.com/gruntwork-io/boilerplate/config"
 	"reflect"
 	"github.com/gruntwork-io/boilerplate/variables"
+	"github.com/gruntwork-io/boilerplate/options"
 )
 
 var SNIPPET_MARKER_REGEX = regexp.MustCompile("boilerplate-snippet:\\s*(.+?)(?:\\s|$)")
@@ -45,7 +45,7 @@ var CAMEL_CASE_REGEX = regexp.MustCompile(
 type TemplateHelper func(templatePath string, args ... string) (string, error)
 
 // Create a map of custom template helpers exposed by boilerplate
-func CreateTemplateHelpers(templatePath string, options *config.BoilerplateOptions) template.FuncMap {
+func CreateTemplateHelpers(templatePath string, opts *options.BoilerplateOptions) template.FuncMap {
 	return map[string]interface{}{
 		"snippet": wrapWithTemplatePath(templatePath, snippet),
 		"downcase": strings.ToLower,
@@ -69,13 +69,13 @@ func CreateTemplateHelpers(templatePath string, options *config.BoilerplateOptio
 		"slice": slice,
 		"keys": keys,
 		"shell": wrapWithTemplatePath(templatePath, shell),
-		"templateFolder": func() string { return options.TemplateFolder },
-		"outputFolder": func() string { return options.OutputFolder },
+		"templateFolder": func() string { return opts.TemplateFolder },
+		"outputFolder": func() string { return opts.OutputFolder },
 		"trimPrefix": trimPrefix,
 		"trimSuffix": trimSuffix,
 		"relPath": relPath,
-		"boilerplateConfigDeps": boilerplateConfigDeps(options),
-		"boilerplateConfigVars": boilerplateConfigVars(options),
+		"boilerplateConfigDeps": boilerplateConfigDeps(opts),
+		"boilerplateConfigVars": boilerplateConfigVars(opts),
 		"env": env,
 	}
 }
@@ -115,7 +115,7 @@ func snippet(templatePath string, args ... string) (string, error) {
 //
 // pathRelativeToTemplate("/foo/bar/template-file.txt, "../src/code.java")
 //   Returns: "/foo/src/code.java"
-func pathRelativeToTemplate(templatePath string, filePath string) string {
+func PathRelativeToTemplate(templatePath string, filePath string) string {
 	if path.IsAbs(filePath) {
 		return filePath
 	} else if util.IsDir(templatePath) {
@@ -128,7 +128,7 @@ func pathRelativeToTemplate(templatePath string, filePath string) string {
 
 // Returns the contents of the file at path, relative to templatePath, as a string
 func readFile(templatePath, path string) (string, error) {
-	relativePath := pathRelativeToTemplate(templatePath, path)
+	relativePath := PathRelativeToTemplate(templatePath, path)
 	bytes, err := ioutil.ReadFile(relativePath)
 	if err != nil {
 		return "", errors.WithStackTrace(err)
@@ -138,7 +138,7 @@ func readFile(templatePath, path string) (string, error) {
 
 // Returns the contents of snippet snippetName from the file at path, relative to templatePath.
 func readSnippetFromFile(templatePath string, path string, snippetName string) (string, error) {
-	relativePath := pathRelativeToTemplate(templatePath, path)
+	relativePath := PathRelativeToTemplate(templatePath, path)
 	file, err := os.Open(relativePath)
 	if err != nil {
 		return "", errors.WithStackTrace(err)
@@ -497,9 +497,9 @@ func env(name string, fallbackValue string) string {
 }
 
 // Find the value of the given property of the given Dependency.
-func boilerplateConfigDeps(options *config.BoilerplateOptions) func(string, string) (string, error) {
+func boilerplateConfigDeps(opts *options.BoilerplateOptions) func(string, string) (string, error) {
 	return func(name string, property string) (string, error) {
-		deps := options.Vars["BoilerplateConfigDeps"].(map[string]variables.Dependency)
+		deps := opts.Vars["BoilerplateConfigDeps"].(map[string]variables.Dependency)
 		dep := deps[name]
 
 		if dep.Name == "" {
@@ -513,9 +513,9 @@ func boilerplateConfigDeps(options *config.BoilerplateOptions) func(string, stri
 }
 
 // Find the value of the given property of the given Variable.
-func boilerplateConfigVars(options *config.BoilerplateOptions) func(string, string) (string, error) {
+func boilerplateConfigVars(opts *options.BoilerplateOptions) func(string, string) (string, error) {
 	return func(name string, property string) (string, error) {
-		vars := options.Vars["BoilerplateConfigVars"].(map[string]variables.Variable)
+		vars := opts.Vars["BoilerplateConfigVars"].(map[string]variables.Variable)
 		myVar := vars[name]
 
 		if myVar.Name() == "" {

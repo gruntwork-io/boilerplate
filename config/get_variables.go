@@ -6,6 +6,8 @@ import (
 	"github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/boilerplate/variables"
 	"strings"
+	"github.com/gruntwork-io/boilerplate/options"
+	"github.com/gruntwork-io/boilerplate/render"
 )
 
 const MaxReferenceDepth = 20
@@ -13,9 +15,9 @@ const MaxReferenceDepth = 20
 // Get a value for each of the variables specified in boilerplateConfig, other than those already in existingVariables.
 // The value for a variable can come from the user (if the  non-interactive option isn't set), the default value in the
 // config, or a command line option.
-func GetVariables(options *BoilerplateOptions, boilerplateConfig, rootBoilerplateConfig *BoilerplateConfig, thisDep variables.Dependency) (map[string]interface{}, error) {
+func GetVariables(opts *options.BoilerplateOptions, boilerplateConfig, rootBoilerplateConfig *BoilerplateConfig, thisDep variables.Dependency) (map[string]interface{}, error) {
 	vars := map[string]interface{}{}
-	for key, value := range options.Vars {
+	for key, value := range opts.Vars {
 		vars[key] = value
 	}
 
@@ -38,51 +40,65 @@ func GetVariables(options *BoilerplateOptions, boilerplateConfig, rootBoilerplat
 	// Add a variable for "the boilerplate template currently being processed.
 	thisTemplateProps := map[string]interface{}{}
 	thisTemplateProps["Config"] = boilerplateConfig
-	thisTemplateProps["Options"] = options
+	thisTemplateProps["Options"] = opts
 	thisTemplateProps["CurrentDep"] = thisDep
 	vars["This"] = thisTemplateProps
 
 	variablesInConfig := getAllVariablesInConfig(boilerplateConfig)
 
 	for _, variable := range variablesInConfig {
-		unmarshalled, err := getUnmarshalledValueForVariable(variable, variablesInConfig, vars, options, 0)
+		unmarshalled, err := getValueForVariable(variable, variablesInConfig, vars, opts, 0)
 		if err != nil {
 			return nil, err
 		}
 		vars[variable.Name()] = unmarshalled
 	}
 
+	// The reason we loop over variablesInConfig a second time is we want to load them all into our map so if they
+	// are referenced by another variable, we can find them, regardless of the order in which they were defined
+	for _, variable := range variablesInConfig {
+		rawValue := vars[variable.Name()]
+
+		renderedValue, err := render.RenderVariable(rawValue, vars, opts)
+		if err != nil {
+			return nil, err
+		}
+
+		renderedValueWithType, err := variables.ConvertType(renderedValue, variable)
+		if err != nil {
+			return nil, err
+		}
+
+		vars[variable.Name()] = renderedValueWithType
+	}
+
 	return vars, nil
 }
 
-func getUnmarshalledValueForVariable(variable variables.Variable, variablesInConfig map[string]variables.Variable, alreadyUnmarshalledVariables map[string]interface{}, options *BoilerplateOptions, referenceDepth int) (interface{}, error) {
+func getValueForVariable(variable variables.Variable, variablesInConfig map[string]variables.Variable, valuesForPreviousVariables map[string]interface{}, opts *options.BoilerplateOptions, referenceDepth int) (interface{}, error) {
 	if referenceDepth > MaxReferenceDepth {
 		return nil, errors.WithStackTrace(CyclicalReference{VariableName: variable.Name(), ReferenceName: variable.Reference()})
 	}
 
-	value, alreadyExists := alreadyUnmarshalledVariables[variable.Name()]
+	value, alreadyExists := valuesForPreviousVariables[variable.Name()]
 	if alreadyExists {
-		return variables.UnmarshalValueForVariable(value, variable)
+		return value, nil
 	}
 
 	if variable.Reference() != "" {
-		value, alreadyExists := alreadyUnmarshalledVariables[variable.Reference()]
+		value, alreadyExists := valuesForPreviousVariables[variable.Reference()]
 		if alreadyExists {
-			return variables.UnmarshalValueForVariable(value, variable)
+			return value, nil
 		}
 
 		reference, containsReference := variablesInConfig[variable.Reference()]
 		if !containsReference {
 			return nil, errors.WithStackTrace(MissingReference{VariableName: variable.Name(), ReferenceName: variable.Reference()})
 		}
-		return getUnmarshalledValueForVariable(reference, variablesInConfig, alreadyUnmarshalledVariables, options, referenceDepth + 1)
+		return getValueForVariable(reference, variablesInConfig, valuesForPreviousVariables, opts, referenceDepth + 1)
 	}
 
-	value, err := getVariable(variable, options)
-	if err != nil {
-		return nil, err
-	}
-	return variables.UnmarshalValueForVariable(value, variable)
+	return getVariable(variable, opts)
 }
 
 // Get all the variables defined in the given config and its dependencies
@@ -104,25 +120,25 @@ func getAllVariablesInConfig(boilerplateConfig *BoilerplateConfig) map[string]va
 
 // Get a value for the given variable. The value can come from the user (if the non-interactive option isn't set), the
 // default value in the config, or a command line option.
-func getVariable(variable variables.Variable, options *BoilerplateOptions) (interface{}, error) {
-	valueFromVars, valueSpecifiedInVars := getVariableFromVars(variable, options)
+func getVariable(variable variables.Variable, opts *options.BoilerplateOptions) (interface{}, error) {
+	valueFromVars, valueSpecifiedInVars := getVariableFromVars(variable, opts)
 
 	if valueSpecifiedInVars {
 		util.Logger.Printf("Using value specified via command line options for variable '%s': %s", variable.FullName(), valueFromVars)
 		return valueFromVars, nil
-	} else if options.NonInteractive && variable.Default() != nil {
+	} else if opts.NonInteractive && variable.Default() != nil {
 		util.Logger.Printf("Using default value for variable '%s': %v", variable.FullName(), variable.Default())
 		return variable.Default(), nil
-	} else if options.NonInteractive {
+	} else if opts.NonInteractive {
 		return nil, errors.WithStackTrace(MissingVariableWithNonInteractiveMode(variable.FullName()))
 	} else {
-		return getVariableFromUser(variable, options)
+		return getVariableFromUser(variable, opts)
 	}
 }
 
 // Return the value of the given variable from vars passed in as command line options
-func getVariableFromVars(variable variables.Variable, options *BoilerplateOptions) (interface{}, bool) {
-	for name, value := range options.Vars {
+func getVariableFromVars(variable variables.Variable, opts *options.BoilerplateOptions) (interface{}, bool) {
+	for name, value := range opts.Vars {
 		if name == variable.Name() {
 			return value, true
 		}
@@ -132,7 +148,7 @@ func getVariableFromVars(variable variables.Variable, options *BoilerplateOption
 }
 
 // Get the value for the given variable by prompting the user
-func getVariableFromUser(variable variables.Variable, options *BoilerplateOptions) (interface{}, error) {
+func getVariableFromUser(variable variables.Variable, opts *options.BoilerplateOptions) (interface{}, error) {
 	util.BRIGHT_GREEN.Printf("\n%s\n", variable.FullName())
 	if variable.Description() != "" {
 		fmt.Printf("  %s\n", variable.Description())
@@ -168,7 +184,7 @@ func getVariableFromUser(variable variables.Variable, options *BoilerplateOption
 
 type MissingVariableWithNonInteractiveMode string
 func (variableName MissingVariableWithNonInteractiveMode) Error() string {
-	return fmt.Sprintf("Variable '%s' does not have a default, no value was specified at the command line using the --%s option, and the --%s flag is set, so cannot prompt user for a value.", string(variableName), OPT_VAR, OPT_NON_INTERACTIVE)
+	return fmt.Sprintf("Variable '%s' does not have a default, no value was specified at the command line using the --%s option, and the --%s flag is set, so cannot prompt user for a value.", string(variableName), options.OPT_VAR, options.OPT_NON_INTERACTIVE)
 }
 
 type MissingReference struct {

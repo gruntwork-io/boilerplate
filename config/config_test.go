@@ -8,6 +8,7 @@ import (
 	"github.com/gruntwork-io/boilerplate/errors"
 	"path"
 	"github.com/gruntwork-io/boilerplate/variables"
+	"github.com/gruntwork-io/boilerplate/options"
 )
 
 func TestParseBoilerplateConfigEmpty(t *testing.T) {
@@ -179,28 +180,6 @@ func TestParseBoilerplateConfigOneVariableEnumWrongType(t *testing.T) {
 
 	assert.NotNil(t, err)
 	assert.True(t, errors.IsError(err, variables.InvalidTypeForField{FieldName: "options", ExpectedType: "List", ActualType: reflect.TypeOf("string"), Context: "foo"}), "Expected a InvalidTypeForField error but got %s", reflect.TypeOf(errors.Unwrap(err)))
-}
-
-// YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
-const CONFIG_ONE_VARIABLE_ENUM_INVALID_DEFAULT =
-`variables:
-  - name: foo
-    type: enum
-    options:
-      - foo
-      - bar
-      - baz
-    default: invalid
-`
-
-func TestParseBoilerplateConfigOneVariableEnumInvalidDefault(t *testing.T) {
-	t.Parallel()
-
-	_, err := ParseBoilerplateConfig([]byte(CONFIG_ONE_VARIABLE_ENUM_INVALID_DEFAULT))
-
-	assert.NotNil(t, err)
-	_, isInvalidVariableValueErr := errors.Unwrap(err).(variables.InvalidVariableValue)
-	assert.True(t, isInvalidVariableValueErr, "Expected a InvalidVariableValue error but got %s", reflect.TypeOf(errors.Unwrap(err)))
 }
 
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
@@ -651,7 +630,7 @@ func TestParseBoilerplateConfigMultipleHooks(t *testing.T) {
 func TestLoadBoilerplateConfigFullConfig(t *testing.T) {
 	t.Parallel()
 
-	actual, err := LoadBoilerplateConfig(&BoilerplateOptions{TemplateFolder: "../test-fixtures/config-test/full-config"})
+	actual, err := LoadBoilerplateConfig(&options.BoilerplateOptions{TemplateFolder: "../test-fixtures/config-test/full-config"})
 	expected := &BoilerplateConfig{
 		Variables: []variables.Variable{
 			variables.NewStringVariable("foo"),
@@ -684,7 +663,7 @@ func TestLoadBoilerplateConfigNoConfig(t *testing.T) {
 	t.Parallel()
 
 	templateFolder := "../test-fixtures/config-test/no-config"
-	_, err := LoadBoilerplateConfig(&BoilerplateOptions{TemplateFolder: templateFolder})
+	_, err := LoadBoilerplateConfig(&options.BoilerplateOptions{TemplateFolder: templateFolder})
 	expectedErr := BoilerplateConfigNotFound(path.Join(templateFolder, "boilerplate.yml"))
 
 	assert.True(t, errors.IsError(err, expectedErr), "Expected error %v but got %v", expectedErr, err)
@@ -694,7 +673,7 @@ func TestLoadBoilerplateConfigNoConfigIgnore(t *testing.T) {
 	t.Parallel()
 
 	templateFolder := "../test-fixtures/config-test/no-config"
-	actual, err := LoadBoilerplateConfig(&BoilerplateOptions{TemplateFolder: templateFolder, OnMissingConfig: Ignore})
+	actual, err := LoadBoilerplateConfig(&options.BoilerplateOptions{TemplateFolder: templateFolder, OnMissingConfig: options.Ignore})
 	expected := &BoilerplateConfig{}
 
 	assert.Nil(t, err, "Unexpected error: %v", err)
@@ -704,7 +683,7 @@ func TestLoadBoilerplateConfigNoConfigIgnore(t *testing.T) {
 func TestLoadBoilerplateConfigInvalidConfig(t *testing.T) {
 	t.Parallel()
 
-	_, err := LoadBoilerplateConfig(&BoilerplateOptions{TemplateFolder: "../test-fixtures/config-test/invalid-config"})
+	_, err := LoadBoilerplateConfig(&options.BoilerplateOptions{TemplateFolder: "../test-fixtures/config-test/invalid-config"})
 
 	assert.NotNil(t, err)
 
