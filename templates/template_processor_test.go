@@ -4,8 +4,8 @@ import (
 	"testing"
 	"github.com/stretchr/testify/assert"
 	"os"
-	"github.com/gruntwork-io/boilerplate/config"
 	"github.com/gruntwork-io/boilerplate/variables"
+	"github.com/gruntwork-io/boilerplate/options"
 )
 
 func TestOutPath(t *testing.T) {
@@ -30,14 +30,14 @@ func TestOutPath(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		options := config.BoilerplateOptions{
+		opts := options.BoilerplateOptions{
 			TemplateFolder: testCase.templateFolder,
 			OutputFolder: testCase.outputFolder,
 			NonInteractive: true,
-			OnMissingKey: config.ExitWithError,
-			OnMissingConfig: config.Exit,
+			OnMissingKey: options.ExitWithError,
+			OnMissingConfig: options.Exit,
 		}
-		actual, err := outPath(testCase.file, &options, testCase.variables)
+		actual, err := outPath(testCase.file, &opts, testCase.variables)
 		assert.Nil(t, err, "Got unexpected error (file = %s, templateFolder = %s, outputFolder = %s, and variables = %s): %v", testCase.file, testCase.templateFolder, testCase.outputFolder, testCase.variables, err)
 		assert.Equal(t, testCase.expected, actual, "(file = %s, templateFolder = %s, outputFolder = %s, and variables = %s)", testCase.file, testCase.templateFolder, testCase.outputFolder, testCase.variables)
 	}
@@ -47,35 +47,35 @@ func TestCloneOptionsForDependency(t *testing.T) {
 	t.Parallel()
 
 	testCases := []struct {
-		dependency      variables.Dependency
-		options         config.BoilerplateOptions
-		variables       map[string]interface{}
-		expectedOptions config.BoilerplateOptions
+		dependency   variables.Dependency
+		opts         options.BoilerplateOptions
+		variables    map[string]interface{}
+		expectedOpts options.BoilerplateOptions
 	}{
 		{
 			variables.Dependency{Name: "dep1", TemplateFolder: "../dep1", OutputFolder: "../out1"},
-			config.BoilerplateOptions{TemplateFolder: "/template/path/", OutputFolder: "/output/path/", NonInteractive: true, Vars: map[string]interface{}{}, OnMissingKey: config.ExitWithError},
+			options.BoilerplateOptions{TemplateFolder: "/template/path/", OutputFolder: "/output/path/", NonInteractive: true, Vars: map[string]interface{}{}, OnMissingKey: options.ExitWithError},
 			map[string]interface{}{},
-			config.BoilerplateOptions{TemplateFolder: "/template/dep1", OutputFolder: "/output/out1", NonInteractive: true, Vars: map[string]interface{}{}, OnMissingKey: config.ExitWithError},
+			options.BoilerplateOptions{TemplateFolder: "/template/dep1", OutputFolder: "/output/out1", NonInteractive: true, Vars: map[string]interface{}{}, OnMissingKey: options.ExitWithError},
 		},
 		{
 			variables.Dependency{Name: "dep1", TemplateFolder: "../dep1", OutputFolder: "../out1"},
-			config.BoilerplateOptions{TemplateFolder: "/template/path/", OutputFolder: "/output/path/", NonInteractive: false, Vars: map[string]interface{}{"foo": "bar"}, OnMissingKey: config.Invalid},
+			options.BoilerplateOptions{TemplateFolder: "/template/path/", OutputFolder: "/output/path/", NonInteractive: false, Vars: map[string]interface{}{"foo": "bar"}, OnMissingKey: options.Invalid},
 			map[string]interface{}{"baz": "blah"},
-			config.BoilerplateOptions{TemplateFolder: "/template/dep1", OutputFolder: "/output/out1", NonInteractive: false, Vars: map[string]interface{}{"baz": "blah"}, OnMissingKey: config.Invalid},
+			options.BoilerplateOptions{TemplateFolder: "/template/dep1", OutputFolder: "/output/out1", NonInteractive: false, Vars: map[string]interface{}{"baz": "blah"}, OnMissingKey: options.Invalid},
 		},
 		{
 			variables.Dependency{Name: "dep1", TemplateFolder: "{{ .foo }}", OutputFolder: "{{ .baz }}"},
-			config.BoilerplateOptions{TemplateFolder: "/template/path/", OutputFolder: "/output/path/", NonInteractive: false, Vars: map[string]interface{}{}, OnMissingKey: config.ExitWithError},
+			options.BoilerplateOptions{TemplateFolder: "/template/path/", OutputFolder: "/output/path/", NonInteractive: false, Vars: map[string]interface{}{}, OnMissingKey: options.ExitWithError},
 			map[string]interface{}{"foo": "bar", "baz": "blah"},
-			config.BoilerplateOptions{TemplateFolder: "/template/path/bar", OutputFolder: "/output/path/blah", NonInteractive: false, Vars: map[string]interface{}{"foo": "bar", "baz": "blah"}, OnMissingKey: config.ExitWithError},
+			options.BoilerplateOptions{TemplateFolder: "/template/path/bar", OutputFolder: "/output/path/blah", NonInteractive: false, Vars: map[string]interface{}{"foo": "bar", "baz": "blah"}, OnMissingKey: options.ExitWithError},
 		},
 	}
 
 	for _, testCase := range testCases {
-		actualOptions, err := cloneOptionsForDependency(testCase.dependency, &testCase.options, testCase.variables)
+		actualOptions, err := cloneOptionsForDependency(testCase.dependency, &testCase.opts, testCase.variables)
 		assert.NoError(t, err, "Dependency: %s", testCase.dependency)
-		assert.Equal(t, testCase.expectedOptions, *actualOptions, "Dependency: %s", testCase.dependency)
+		assert.Equal(t, testCase.expectedOpts, *actualOptions, "Dependency: %s", testCase.dependency)
 	}
 }
 

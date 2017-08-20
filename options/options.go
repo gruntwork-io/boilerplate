@@ -1,4 +1,4 @@
-package config
+package options
 
 import (
 	"github.com/gruntwork-io/boilerplate/errors"
@@ -7,6 +7,14 @@ import (
 	"github.com/urfave/cli"
 	"github.com/gruntwork-io/boilerplate/variables"
 )
+
+const OPT_TEMPLATE_FOLDER = "template-folder"
+const OPT_OUTPUT_FOLDER = "output-folder"
+const OPT_NON_INTERACTIVE = "non-interactive"
+const OPT_VAR = "var"
+const OPT_VAR_FILE = "var-file"
+const OPT_MISSING_KEY_ACTION = "missing-key-action"
+const OPT_MISSING_CONFIG_ACTION = "missing-config-action"
 
 // The command-line options for the boilerplate app
 type BoilerplateOptions struct {

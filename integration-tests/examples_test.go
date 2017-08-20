@@ -10,8 +10,8 @@ import (
 	"os/exec"
 	"os"
 	"strings"
-	"github.com/gruntwork-io/boilerplate/config"
 	"github.com/gruntwork-io/boilerplate/util"
+	"github.com/gruntwork-io/boilerplate/options"
 )
 
 // Our integration tests run through all the examples in the /examples folder, generate them, and check that they
@@ -45,7 +45,7 @@ func TestExamples(t *testing.T) {
 			continue
 		}
 
-		for _, missingKeyAction := range config.ALL_MISSING_KEY_ACTIONS {
+		for _, missingKeyAction := range options.ALL_MISSING_KEY_ACTIONS {
 			t.Run(fmt.Sprintf("%s-missing-key-%s", example.Name(), string(missingKeyAction)), func(t *testing.T) {
 				testExample(t, templateFolder, outputFolder, varFile, expectedOutputFolder, string(missingKeyAction))
 			})

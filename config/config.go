@@ -8,17 +8,10 @@ import (
 	"fmt"
 	"github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/boilerplate/variables"
+	"github.com/gruntwork-io/boilerplate/options"
 )
 
 const BOILERPLATE_CONFIG_FILE = "boilerplate.yml"
-
-const OPT_TEMPLATE_FOLDER = "template-folder"
-const OPT_OUTPUT_FOLDER = "output-folder"
-const OPT_NON_INTERACTIVE = "non-interactive"
-const OPT_VAR = "var"
-const OPT_VAR_FILE = "var-file"
-const OPT_MISSING_KEY_ACTION = "missing-key-action"
-const OPT_MISSING_CONFIG_ACTION = "missing-config-action"
 
 // The contents of a boilerplate.yml config file
 type BoilerplateConfig struct {
@@ -63,8 +56,8 @@ func (config *BoilerplateConfig) UnmarshalYAML(unmarshal func(interface{}) error
 }
 
 // Load the boilerplate.yml config contents for the folder specified in the given options
-func LoadBoilerplateConfig(options *BoilerplateOptions) (*BoilerplateConfig, error) {
-	configPath := BoilerplateConfigPath(options.TemplateFolder)
+func LoadBoilerplateConfig(opts *options.BoilerplateOptions) (*BoilerplateConfig, error) {
+	configPath := BoilerplateConfigPath(opts.TemplateFolder)
 
 	if util.PathExists(configPath) {
 		util.Logger.Printf("Loading boilerplate config from %s", configPath)
@@ -74,8 +67,8 @@ func LoadBoilerplateConfig(options *BoilerplateOptions) (*BoilerplateConfig, err
 		}
 
 		return ParseBoilerplateConfig(bytes)
-	} else if options.OnMissingConfig == Ignore {
-		util.Logger.Printf("Warning: boilerplate config file not found at %s. The %s flag is set, so ignoring. Note that no variables will be available while generating.", configPath, OPT_MISSING_CONFIG_ACTION)
+	} else if opts.OnMissingConfig == options.Ignore {
+		util.Logger.Printf("Warning: boilerplate config file not found at %s. The %s flag is set, so ignoring. Note that no variables will be available while generating.", configPath, options.OPT_MISSING_CONFIG_ACTION)
 		return &BoilerplateConfig{}, nil
 	} else {
 		return nil, errors.WithStackTrace(BoilerplateConfigNotFound(configPath))
@@ -102,5 +95,5 @@ func BoilerplateConfigPath(templateFolder string) string {
 
 type BoilerplateConfigNotFound string
 func (err BoilerplateConfigNotFound) Error() string {
-	return fmt.Sprintf("Could not find %s in %s and the %s flag is set to %s", BOILERPLATE_CONFIG_FILE, string(err), OPT_MISSING_CONFIG_ACTION, Exit)
+	return fmt.Sprintf("Could not find %s in %s and the %s flag is set to %s", BOILERPLATE_CONFIG_FILE, string(err), options.OPT_MISSING_CONFIG_ACTION, options.Exit)
 }
