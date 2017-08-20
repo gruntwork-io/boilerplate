@@ -1,4 +1,4 @@
-package templates
+package render
 
 import (
 	"io/ioutil"
@@ -115,7 +115,7 @@ func snippet(templatePath string, args ... string) (string, error) {
 //
 // pathRelativeToTemplate("/foo/bar/template-file.txt, "../src/code.java")
 //   Returns: "/foo/src/code.java"
-func pathRelativeToTemplate(templatePath string, filePath string) string {
+func PathRelativeToTemplate(templatePath string, filePath string) string {
 	if path.IsAbs(filePath) {
 		return filePath
 	} else if util.IsDir(templatePath) {
@@ -128,7 +128,7 @@ func pathRelativeToTemplate(templatePath string, filePath string) string {
 
 // Returns the contents of the file at path, relative to templatePath, as a string
 func readFile(templatePath, path string) (string, error) {
-	relativePath := pathRelativeToTemplate(templatePath, path)
+	relativePath := PathRelativeToTemplate(templatePath, path)
 	bytes, err := ioutil.ReadFile(relativePath)
 	if err != nil {
 		return "", errors.WithStackTrace(err)
@@ -138,7 +138,7 @@ func readFile(templatePath, path string) (string, error) {
 
 // Returns the contents of snippet snippetName from the file at path, relative to templatePath.
 func readSnippetFromFile(templatePath string, path string, snippetName string) (string, error) {
-	relativePath := pathRelativeToTemplate(templatePath, path)
+	relativePath := PathRelativeToTemplate(templatePath, path)
 	file, err := os.Open(relativePath)
 	if err != nil {
 		return "", errors.WithStackTrace(err)
