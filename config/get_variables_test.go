@@ -190,6 +190,7 @@ func TestGetVariablesMatchFromVars(t *testing.T) {
 		Vars: map[string]interface{}{
 			"foo": "bar",
 		},
+		OnMissingKey: options.ExitWithError,
 	}
 
 	boilerplateConfig := &BoilerplateConfig{
@@ -227,6 +228,7 @@ func TestGetVariablesMatchFromVarsAndDefaults(t *testing.T) {
 			"key1": "value1",
 			"key2": "value2",
 		},
+		OnMissingKey: options.ExitWithError,
 	}
 
 	boilerplateConfig := &BoilerplateConfig{

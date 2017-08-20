@@ -29,12 +29,7 @@ func ProcessTemplate(options, rootOpts *options.BoilerplateOptions, thisDep vari
 		return err
 	}
 
-	rawVars, err := config.GetVariables(options, boilerplateConfig, rootBoilerplateConfig, thisDep)
-	if err != nil {
-		return err
-	}
-
-	vars, err := render.RenderVariables(rawVars, options)
+	vars, err := config.GetVariables(options, boilerplateConfig, rootBoilerplateConfig, thisDep)
 	if err != nil {
 		return err
 	}

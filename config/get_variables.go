@@ -7,6 +7,7 @@ import (
 	"github.com/gruntwork-io/boilerplate/variables"
 	"strings"
 	"github.com/gruntwork-io/boilerplate/options"
+	"github.com/gruntwork-io/boilerplate/render"
 )
 
 const MaxReferenceDepth = 20
@@ -46,44 +47,58 @@ func GetVariables(opts *options.BoilerplateOptions, boilerplateConfig, rootBoile
 	variablesInConfig := getAllVariablesInConfig(boilerplateConfig)
 
 	for _, variable := range variablesInConfig {
-		unmarshalled, err := getUnmarshalledValueForVariable(variable, variablesInConfig, vars, opts, 0)
+		unmarshalled, err := getValueForVariable(variable, variablesInConfig, vars, opts, 0)
 		if err != nil {
 			return nil, err
 		}
 		vars[variable.Name()] = unmarshalled
 	}
 
+	// The reason we loop over variablesInConfig a second time is we want to load them all into our map so if they
+	// are referenced by another variable, we can find them, regardless of the order in which they were defined
+	for _, variable := range variablesInConfig {
+		rawValue := vars[variable.Name()]
+
+		renderedValue, err := render.RenderVariable(rawValue, vars, opts)
+		if err != nil {
+			return nil, err
+		}
+
+		renderedValueWithType, err := variables.ConvertType(renderedValue, variable)
+		if err != nil {
+			return nil, err
+		}
+
+		vars[variable.Name()] = renderedValueWithType
+	}
+
 	return vars, nil
 }
 
-func getUnmarshalledValueForVariable(variable variables.Variable, variablesInConfig map[string]variables.Variable, alreadyUnmarshalledVariables map[string]interface{}, opts *options.BoilerplateOptions, referenceDepth int) (interface{}, error) {
+func getValueForVariable(variable variables.Variable, variablesInConfig map[string]variables.Variable, valuesForPreviousVariables map[string]interface{}, opts *options.BoilerplateOptions, referenceDepth int) (interface{}, error) {
 	if referenceDepth > MaxReferenceDepth {
 		return nil, errors.WithStackTrace(CyclicalReference{VariableName: variable.Name(), ReferenceName: variable.Reference()})
 	}
 
-	value, alreadyExists := alreadyUnmarshalledVariables[variable.Name()]
+	value, alreadyExists := valuesForPreviousVariables[variable.Name()]
 	if alreadyExists {
-		return variables.UnmarshalValueForVariable(value, variable)
+		return value, nil
 	}
 
 	if variable.Reference() != "" {
-		value, alreadyExists := alreadyUnmarshalledVariables[variable.Reference()]
+		value, alreadyExists := valuesForPreviousVariables[variable.Reference()]
 		if alreadyExists {
-			return variables.UnmarshalValueForVariable(value, variable)
+			return value, nil
 		}
 
 		reference, containsReference := variablesInConfig[variable.Reference()]
 		if !containsReference {
 			return nil, errors.WithStackTrace(MissingReference{VariableName: variable.Name(), ReferenceName: variable.Reference()})
 		}
-		return getUnmarshalledValueForVariable(reference, variablesInConfig, alreadyUnmarshalledVariables, opts, referenceDepth + 1)
+		return getValueForVariable(reference, variablesInConfig, valuesForPreviousVariables, opts, referenceDepth + 1)
 	}
 
-	value, err := getVariable(variable, opts)
-	if err != nil {
-		return nil, err
-	}
-	return variables.UnmarshalValueForVariable(value, variable)
+	return getVariable(variable, opts)
 }
 
 // Get all the variables defined in the given config and its dependencies

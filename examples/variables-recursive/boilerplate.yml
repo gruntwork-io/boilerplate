@@ -58,6 +58,56 @@ variables:
       foo: [1, 2, 3]
       bar: [4, 5, 6]
 
+  - name: IntValue
+    type: int
+    default: 42
+
+  - name: IntValueInterpolation
+    type: int
+    default: "{{ .IntValue }}"
+
+  - name: FloatValue
+    type: float
+    default: 3.14
+
+  - name: FloatValueInterpolation
+    type: float
+    default: "{{ .FloatValue }}"
+
+  - name: BoolValue
+    type: bool
+    default: true
+
+  - name: BoolValueInterpolationSimple
+    type: bool
+    default: "{{ .BoolValue }}"
+
+  - name: BoolValueInterpolationSimpleComplex
+    type: bool
+    default: "{{ eq .IntValue 42 }}"
+
+  - name: ListValue
+    type: list
+    default:
+      - 1
+      - 2
+      - 3
+
+  - name: ListValueInterpolation
+    type: list
+    default: "{{ .ListValue }}"
+
+  - name: MapValue
+    type: map
+    default:
+      foo: 1
+      bar: 2
+      baz: 3
+
+  - name: MapValueInterpolation
+    type: map
+    default: "{{ .MapValue }}"
+
 dependencies:
   - name: variables
     template-folder: ../variables

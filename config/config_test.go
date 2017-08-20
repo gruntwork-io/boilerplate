@@ -183,28 +183,6 @@ func TestParseBoilerplateConfigOneVariableEnumWrongType(t *testing.T) {
 }
 
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
-const CONFIG_ONE_VARIABLE_ENUM_INVALID_DEFAULT =
-`variables:
-  - name: foo
-    type: enum
-    options:
-      - foo
-      - bar
-      - baz
-    default: invalid
-`
-
-func TestParseBoilerplateConfigOneVariableEnumInvalidDefault(t *testing.T) {
-	t.Parallel()
-
-	_, err := ParseBoilerplateConfig([]byte(CONFIG_ONE_VARIABLE_ENUM_INVALID_DEFAULT))
-
-	assert.NotNil(t, err)
-	_, isInvalidVariableValueErr := errors.Unwrap(err).(variables.InvalidVariableValue)
-	assert.True(t, isInvalidVariableValueErr, "Expected a InvalidVariableValue error but got %s", reflect.TypeOf(errors.Unwrap(err)))
-}
-
-// YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
 const CONFIG_ONE_VARIABLE_OPTIONS_FOR_NON_ENUM =
 `variables:
   - name: foo
