@@ -290,12 +290,12 @@ func parseStringAsMap(str string) (map[string]string, error) {
 
 	for _, keyAndValue := range keysAndValues {
 		parts := strings.Split(keyAndValue, ":")
-		if len(parts) != 2 {
+		if len(parts) < 2 {
 			return nil, errors.WithStackTrace(ParseError{ExpectedType: "map", ExpectedFormat: "<key>:<value> for each item in the map", ActualFormat: str})
 		}
 
-		key := parts[0]
-		value := parts[1]
+		key := strings.Join(parts[:(len(parts) - 1)], ":")
+		value := parts[len(parts) - 1]
 
 		result[key] = value
 	}
