@@ -258,7 +258,7 @@ func parseStringAsList(str string) ([]string, error) {
 		return nil, errors.WithStackTrace(ParseError{ExpectedType: "list", ExpectedFormat: "[<value> <value> <value>]", ActualFormat: str})
 	}
 
-	items := matches[1]
+	items := strings.TrimSpace(matches[1])
 	if len(items) == 0 {
 		return []string{}, nil
 	}
@@ -279,7 +279,7 @@ func parseStringAsMap(str string) (map[string]string, error) {
 		return nil, errors.WithStackTrace(ParseError{ExpectedType: "map", ExpectedFormat: "[<key>:<value> <key>:<value> <key>:<value>]", ActualFormat: str})
 	}
 
-	items := matches[1]
+	items := strings.TrimSpace(matches[1])
 
 	if len(items) == 0 {
 		return map[string]string{}, nil
