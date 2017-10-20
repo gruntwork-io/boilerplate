@@ -14,6 +14,13 @@ hooks:
       env:
         TEXT: "{{ .Text }} - executed via a before hook"
 
+    - command: ./example-script-2.sh
+      args:
+        - "{{ outputFolder }}/before-hook-should-be-skipped.txt"
+      env:
+        TEXT: "this hook should be skipped"
+      skip: "true"
+
   after:
     - command: echo
       args:

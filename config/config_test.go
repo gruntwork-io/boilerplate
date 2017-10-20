@@ -593,6 +593,7 @@ const CONFIG_MULTIPLE_HOOKS =
        env:
          foo: bar
          baz: blah
+       skip: "true"
 
      - command: run-some-script.sh
        args:
@@ -601,6 +602,7 @@ const CONFIG_MULTIPLE_HOOKS =
 
    after:
      - command: foo
+       skip: "{{ .baz }}"
      - command: bar
 `
 
@@ -613,11 +615,11 @@ func TestParseBoilerplateConfigMultipleHooks(t *testing.T) {
 		Dependencies: []variables.Dependency{},
 		Hooks: variables.Hooks{
 			BeforeHooks: []variables.Hook{
-				{Command: "echo", Args: []string{"Hello World"}, Env: map[string]string{"foo": "bar", "baz": "blah"}},
+				{Command: "echo", Args: []string{"Hello World"}, Env: map[string]string{"foo": "bar", "baz": "blah"}, Skip: "true"},
 				{Command: "run-some-script.sh", Args: []string{"{{ .foo }}", "{{ .bar }}"}},
 			},
 			AfterHooks: []variables.Hook{
-				{Command: "foo"},
+				{Command: "foo", Skip: "{{ .baz }}"},
 				{Command: "bar"},
 			},
 		},
