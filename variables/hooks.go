@@ -5,6 +5,7 @@ type Hook struct {
 	Command string
 	Args    []string
 	Env     map[string]string
+	Skip    string
 }
 
 // All the scripts to execute as boilerplate hooks
@@ -22,6 +23,7 @@ type Hooks struct {
 //         - <ARG>
 //       env:
 //         <KEY>: <VALUE>
+//       skip: <CONDITION>
 //
 //   after:
 //     - command: <CMD>
@@ -29,6 +31,7 @@ type Hooks struct {
 //         - <ARG>
 //       env:
 //         <KEY>: <VALUE>
+//       skip: <CONDITION>
 //
 // This method takes the data above and unmarshals it into a Hooks struct
 func UnmarshalHooksFromBoilerplateConfigYaml(fields map[string]interface{}) (Hooks, error) {
@@ -111,5 +114,14 @@ func unmarshalHookFromBoilerplateConfigYaml(fields map[string]interface{}, hookN
 		return nil, err
 	}
 
-	return &Hook{Command: *command, Args: args, Env: env}, nil
+	skipPtr, err := unmarshalStringField(fields, "skip", false, hookName)
+	if err != nil {
+		return nil, err
+	}
+	var skip string
+	if skipPtr != nil {
+		skip = *skipPtr
+	}
+
+	return &Hook{Command: *command, Args: args, Env: env, Skip: skip}, nil
 }

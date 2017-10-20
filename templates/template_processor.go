@@ -76,6 +76,15 @@ func processHooks(hooks []variables.Hook, opts *options.BoilerplateOptions, vars
 
 // Process the given hook, which is a script that should be execute at the command-line
 func processHook(hook variables.Hook, opts *options.BoilerplateOptions, vars map[string]interface{}) error {
+	skip, err := shouldSkipHook(hook, opts, vars)
+	if err != nil {
+		return err
+	}
+	if skip {
+		util.Logger.Printf("Skipping hook with command '%s'", hook.Command)
+		return nil
+	}
+
 	cmd, err := render.RenderTemplate(config.BoilerplateConfigPath(opts.TemplateFolder), hook.Command, vars, opts)
 	if err != nil {
 		return err
@@ -106,6 +115,21 @@ func processHook(hook variables.Hook, opts *options.BoilerplateOptions, vars map
 	}
 
 	return util.RunShellCommand(opts.TemplateFolder, envVars, cmd, args...)
+}
+
+// Return true if the "skip" condition of this hook evaluates to true
+func shouldSkipHook(hook variables.Hook, opts *options.BoilerplateOptions, vars map[string]interface{}) (bool, error) {
+	if hook.Skip == "" {
+		return false, nil
+	}
+
+	rendered, err := render.RenderTemplateRecursively(opts.TemplateFolder, hook.Skip, vars, opts)
+	if err != nil {
+		return false, err
+	}
+
+	util.Logger.Printf("Skip attribute for hook with command '%s' evaluated to '%s'", hook.Command, rendered)
+	return rendered == "true", nil
 }
 
 // Execute the boilerplate templates in the given list of dependencies

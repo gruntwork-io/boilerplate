@@ -206,12 +206,14 @@ hooks:
         - <ARG>
       env:
         <KEY>: <VALUE>        
+      skip: <CONDITION>
   after:              
     - command: <CMD>
       args:
         - <ARG>
       env:
         <KEY>: <VALUE>
+      skip: <CONDITION>
 ```
 
 Here's an example:
@@ -399,6 +401,9 @@ Note the following:
           - {{"{{"}} .AnotherVariable {{"}}"}}
     ```
 * Boilerplate runs your `command` with the working directory set to the `--template-folder` option.
+* `skip` (Optional): Skip this hook if this condition, which can use Go templating syntax and 
+  boilerplate variables, evaluates to the string `true`. This is useful to conditionally enable or disable 
+  dependencies.
 * For an alternative way to execute commands, see the `shell` helper in [template helpers](#template-helpers).
 
 #### Templates
