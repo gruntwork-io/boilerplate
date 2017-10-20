@@ -39,6 +39,7 @@ func TestParseStringAsMap(t *testing.T) {
 		{"empty-map", "map[]", map[string]string{}},
 		{"one-item", "map[a:b]", map[string]string{"a": "b"}},
 		{"three-items", "map[a:b c:d e:f]", map[string]string{"a": "b", "c": "d", "e": "f"}},
+		{"multiple-colons", "map[a:b:c:d:e]", map[string]string{"a:b:c:d": "e"}},
 	}
 
 	for _, testCase := range testCases {
