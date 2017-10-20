@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"github.com/gruntwork-io/boilerplate/errors"
 	"strings"
+	"encoding/json"
 )
 
 // An interface for a variable defined in a boilerplate.yml config file
@@ -245,13 +246,35 @@ func ConvertType(value interface{}, variable Variable) (interface{}, error) {
 var GO_LIST_SYNTAX_REGEX = regexp.MustCompile(`\[(.*)]`)
 var GO_MAP_SYNTAX_REGEX = regexp.MustCompile(`map\[(.*)]`)
 
+// This method converts a string to a list. The string can either be a valid JSON list or the string output of a Go
+// list.
+func parseStringAsList(str string) ([]string, error) {
+	jsonOut, jsonErr := parseStringAsJsonList(str)
+	if jsonErr == nil {
+		return jsonOut, nil
+	}
+
+	goOut, goErr := parseStringAsGoList(str)
+	if goErr == nil {
+		return goOut, nil
+	}
+
+	return nil, errors.WithStackTrace(FormatNotJsonOrGo{
+		ExpectedJsonFormat: `["value1", "value2", "value3"]`,
+		ExpectedGoFormat: `[value1 value2 value3]`,
+		ActualFormat: str,
+		JsonErr: jsonErr,
+		GoErr: goErr,
+	})
+}
+
 // If you render a list in Go, it'll have the format [<value> <value> <value>]. This method parses this format back
 // into a Go list. This allows us to use Golang template syntax in variable values and still have the rendered value
 // converted back to the proper type rather than a string.
 //
 // Note that this is a bit of a hack and should generally not be used, as it's not possible to unambiguously parse
 // lists in Go that had spaces in the values.
-func parseStringAsList(str string) ([]string, error) {
+func parseStringAsGoList(str string) ([]string, error) {
 	matches := GO_LIST_SYNTAX_REGEX.FindStringSubmatch(str)
 
 	if len(matches) != 2 {
@@ -259,11 +282,44 @@ func parseStringAsList(str string) ([]string, error) {
 	}
 
 	items := strings.TrimSpace(matches[1])
+
 	if len(items) == 0 {
 		return []string{}, nil
 	}
 
 	return strings.Split(items, " "), nil
+}
+
+// Parse a string as a JSON list
+func parseStringAsJsonList(str string) ([]string, error) {
+	var out []string
+
+	if err := json.Unmarshal([]byte(str), &out); err != nil {
+		return nil, errors.WithStackTrace(err)
+	}
+
+	return out, nil
+}
+
+// This method converts a string to a map. The string can either be a valid JSON map or the string output of a Go map.
+func parseStringAsMap(str string) (map[string]string, error) {
+	jsonOut, jsonErr := parseStringAsJsonMap(str)
+	if jsonErr == nil {
+		return jsonOut, nil
+	}
+
+	goOut, goErr := parseStringAsGoMap(str)
+	if goErr == nil {
+		return goOut, nil
+	}
+
+	return nil, errors.WithStackTrace(FormatNotJsonOrGo{
+		ExpectedJsonFormat: `{"key1": "value1", "key2": "value2", "key3": "value3"}`,
+		ExpectedGoFormat: `map[key1:value1 key2:value2 key3:value3]`,
+		ActualFormat: str,
+		JsonErr: jsonErr,
+		GoErr: goErr,
+	})
 }
 
 // If you render a map in Go, it'll have the format map[<key>:<value> <key>:<value> <key>:<value>]. This method parses
@@ -272,7 +328,7 @@ func parseStringAsList(str string) ([]string, error) {
 //
 // Note that this is a bit of a hack and should generally not be used, as it's not possible to unambiguously parse
 // maps in Go that had spaces in the keys or values.
-func parseStringAsMap(str string) (map[string]string, error) {
+func parseStringAsGoMap(str string) (map[string]string, error) {
 	matches := GO_MAP_SYNTAX_REGEX.FindStringSubmatch(str)
 
 	if len(matches) != 2 {
@@ -301,6 +357,17 @@ func parseStringAsMap(str string) (map[string]string, error) {
 	}
 
 	return result, nil
+}
+
+// Parse a string as a JSON map
+func parseStringAsJsonMap(str string) (map[string]string, error) {
+	var out map[string]string
+
+	if err := json.Unmarshal([]byte(str), &out); err != nil {
+		return nil, errors.WithStackTrace(err)
+	}
+
+	return out, nil
 }
 
 // Given a map of key:value pairs read from a Boilerplate YAML config file of the format:
@@ -393,4 +460,15 @@ type ParseError struct {
 }
 func (err ParseError) Error() string {
 	return fmt.Sprintf("Expected type '%s' with format '%s', but got format '%s'.", err.ExpectedType, err.ExpectedFormat, err.ActualFormat)
+}
+
+type FormatNotJsonOrGo struct {
+	ExpectedJsonFormat	string
+	ExpectedGoFormat	string
+	ActualFormat		string
+	JsonErr 			error
+	GoErr   			error
+}
+func (err FormatNotJsonOrGo) Error() string {
+	return fmt.Sprintf("Expected a string in JSON format (e.g., %s) or Go format (e.g., %s), but got: %s. JSON parsing error: %v. Go parsing error: %v.", err.ExpectedJsonFormat, err.ExpectedGoFormat, err.ActualFormat, err.JsonErr, err.GoErr)
 }
