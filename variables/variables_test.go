@@ -16,6 +16,7 @@ func TestParseStringAsList(t *testing.T) {
 		{"empty-list", "[]", []string{}},
 		{"one-item", "[a]", []string{"a"}},
 		{"three-items", "[a b c]", []string{"a", "b", "c"}},
+		{"leading-trailing-whitespace", "[ a b c ]", []string{"a", "b", "c"}},
 	}
 
 	for _, testCase := range testCases {
@@ -40,6 +41,7 @@ func TestParseStringAsMap(t *testing.T) {
 		{"one-item", "map[a:b]", map[string]string{"a": "b"}},
 		{"three-items", "map[a:b c:d e:f]", map[string]string{"a": "b", "c": "d", "e": "f"}},
 		{"multiple-colons", "map[a:b:c:d:e]", map[string]string{"a:b:c:d": "e"}},
+		{"leading-trailing-whitespace", "map[ a:b c:d e:f ]", map[string]string{"a": "b", "c": "d", "e": "f"}},
 	}
 
 	for _, testCase := range testCases {
