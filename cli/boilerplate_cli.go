@@ -83,6 +83,14 @@ func CreateBoilerplateCli(version string) *cli.App {
 			Name: options.OPT_MISSING_CONFIG_ACTION,
 			Usage: fmt.Sprintf("What `ACTION` to take if a the template folder does not contain a boilerplate.yml file. Must be one of: %s. Default: %s.", options.ALL_MISSING_CONFIG_ACTIONS, options.DEFAULT_MISSING_CONFIG_ACTION),
 		},
+		cli.BoolFlag{
+			Name: options.OPT_DISABLE_HOOKS,
+			Usage: "If this flag is set, no hooks will execute.",
+		},
+		cli.BoolFlag{
+			Name: options.OPT_DISABLE_SHELL,
+			Usage: "If this flag is set, no shell helpers will execute. They will instead return the text 'replace-me'.",
+		},
 	}
 
 	return app

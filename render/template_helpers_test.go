@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"github.com/gruntwork-io/boilerplate/errors"
 	"fmt"
+	"github.com/gruntwork-io/boilerplate/options"
 )
 
 func TestExtractSnippetName(t *testing.T) {
@@ -211,14 +212,24 @@ func TestPathRelativeToTemplate(t *testing.T) {
 func TestWrapWithTemplatePath(t *testing.T) {
 	t.Parallel()
 
-	expected := "/foo/bar/template.txt"
-	wrappedFunc := wrapWithTemplatePath(expected, func(templatePath string, args ... string) (string, error) {
+	expectedPath := "/foo/bar/template.txt"
+	expectedOpts := &options.BoilerplateOptions{NonInteractive: true}
+
+	var actualPath string
+	var actualOpts *options.BoilerplateOptions
+
+	wrappedFunc := wrapWithTemplatePath(expectedPath, expectedOpts, func(templatePath string, opts *options.BoilerplateOptions, args ... string) (string, error) {
+		actualPath = templatePath
+		actualOpts = opts
+
 		return templatePath, nil
 	})
 
-	actual, err := wrappedFunc()
+	returnedPath, err := wrappedFunc()
 	assert.Nil(t, err)
-	assert.Equal(t, expected, actual)
+	assert.Equal(t, expectedPath, returnedPath)
+	assert.Equal(t, expectedPath, actualPath)
+	assert.Equal(t, expectedOpts, actualOpts)
 }
 
 func TestDasherize(t *testing.T) {
@@ -421,7 +432,7 @@ func TestLowerFirst(t *testing.T) {
 func TestShellSuccess(t *testing.T) {
 	t.Parallel()
 
-	output, err := shell(".", "echo", "hi")
+	output, err := shell(".", &options.BoilerplateOptions{NonInteractive: true}, "echo", "hi")
 	assert.Nil(t, err, "Unexpected error: %v", err)
 	assert.Equal(t, "hi\n", output)
 }
@@ -429,10 +440,18 @@ func TestShellSuccess(t *testing.T) {
 func TestShellError(t *testing.T) {
 	t.Parallel()
 
-	_, err := shell(".", "not-a-real-command")
+	_, err := shell(".", &options.BoilerplateOptions{NonInteractive: true},"not-a-real-command")
 	if assert.NotNil(t, err) {
 		assert.Contains(t, err.Error(), "executable file not found in $PATH", "Unexpected error message: %s", err.Error())
 	}
+}
+
+func TestShellDisabled(t *testing.T) {
+	t.Parallel()
+
+	output, err := shell(".", &options.BoilerplateOptions{NonInteractive: true, DisableShell: true},"echo", "hi")
+	assert.Nil(t, err, "Unexpected error: %v", err)
+	assert.Equal(t, SHELL_DISABLED_PLACEHOLDER, output)
 }
 
 // I cannot believe I have to write my own function and test code for rounding numbers in Go. FML.

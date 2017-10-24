@@ -56,8 +56,25 @@ func TestExamples(t *testing.T) {
 func testExample(t *testing.T, templateFolder string, outputFolder string, varFile string, expectedOutputFolder string, missingKeyAction string) {
 	app := cli.CreateBoilerplateCli("test")
 
-	command := fmt.Sprintf("boilerplate --template-folder %s --output-folder %s --var-file %s --non-interactive --missing-key-action %s", templateFolder, outputFolder, varFile, missingKeyAction)
-	err := app.Run(strings.Split(command, " "))
+	args := []string{
+		"boilerplate",
+		"--template-folder",
+		templateFolder,
+		"--output-folder",
+		outputFolder,
+		"--var-file",
+		varFile,
+		"--non-interactive",
+		"--missing-key-action",
+		missingKeyAction,
+	}
+
+	// Special handling for the shell-disabled case, which we use to test that we can disable hooks and shell helpers
+	if strings.Contains(templateFolder, "shell-disabled") {
+		args = append(args, "--disable-hooks", "--disable-shell")
+	}
+
+	err := app.Run(args)
 	assert.Nil(t, err, "boilerplate exited with an error when trying to generate example %s: %s", templateFolder, err)
 	assertDirectoriesEqual(t, expectedOutputFolder, outputFolder)
 }
