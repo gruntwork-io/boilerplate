@@ -114,7 +114,7 @@ for full documentation.
 
 ## Install
 
-Download the latest binary for your OS here: [boilerplate v0.2.15](https://github.com/gruntwork-io/boilerplate/releases/tag/v0.2.15).
+Download the latest binary for your OS here: [boilerplate v0.2.22](https://github.com/gruntwork-io/boilerplate/releases/tag/v0.2.22).
 
 You can find older versions on the [Releases Page](https://github.com/gruntwork-io/usage-patterns/releases).
 
@@ -171,6 +171,8 @@ The `boilerplate` binary supports the following options:
 * `--missing-config-action ACTION` (optional): What to do if a template folder does not have a `boilerplate.yml` file.
   Must be one of: `exit` (return an error and exit immediately) or `ignore` (log a warning and process the template
   folder without any variables). Default: `exit`.
+* `--disable-hooks`: If this flag is set, no hooks will execute.
+* `--disable-shell`: If this flag is set, no `shell` helpers will execute. They will instead return the text "replace-me".
 * `--help`: Show the help text and exit.
 * `--version`: Show the version and exit.
 
@@ -232,12 +234,14 @@ hooks:
         - <ARG>
       env:
         <KEY>: <VALUE>        
+      skip: <CONDITION>
   after:              
     - command: <CMD>
       args:
         - <ARG>
       env:
         <KEY>: <VALUE>
+      skip: <CONDITION>
 ```
 
 Here's an example:
@@ -456,6 +460,9 @@ Note the following:
           - {{ .AnotherVariable }}
     ```
 * Boilerplate runs your `command` with the working directory set to the `--template-folder` option.
+* `skip` (Optional): Skip this hook if this condition, which can use Go templating syntax and 
+  boilerplate variables, evaluates to the string `true`. This is useful to conditionally enable or disable 
+  dependencies.
 * For an alternative way to execute commands, see the `shell` helper in [template helpers](#template-helpers).
 
 #### Templates
