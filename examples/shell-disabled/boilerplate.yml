@@ -1,0 +1,12 @@
+hooks:
+  before:
+    - command: ./example-script.sh
+      args:
+        - "Hooks are disabled for this example, so this should NOT be written!"
+        - "{{ outputFolder }}/before-hook-example.txt"
+
+  after:
+    - command: ./example-script.sh
+      args:
+        - "Hooks are disabled for this example, so this should NOT be written!"
+        - "{{ outputFolder }}/after-hook-example.txt"

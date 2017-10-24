@@ -145,6 +145,8 @@ The `boilerplate` binary supports the following options:
 * `--missing-config-action ACTION` (optional): What to do if a template folder does not have a `boilerplate.yml` file.
   Must be one of: `exit` (return an error and exit immediately) or `ignore` (log a warning and process the template
   folder without any variables). Default: `exit`.
+* `--disable-hooks`: If this flag is set, no hooks will execute.
+* `--disable-shell`: If this flag is set, no `shell` helpers will execute. They will instead return the text "replace-me".
 * `--help`: Show the help text and exit.
 * `--version`: Show the version and exit.
 

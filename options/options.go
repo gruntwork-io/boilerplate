@@ -15,6 +15,8 @@ const OPT_VAR = "var"
 const OPT_VAR_FILE = "var-file"
 const OPT_MISSING_KEY_ACTION = "missing-key-action"
 const OPT_MISSING_CONFIG_ACTION = "missing-config-action"
+const OPT_DISABLE_HOOKS = "disable-hooks"
+const OPT_DISABLE_SHELL = "disable-shell"
 
 // The command-line options for the boilerplate app
 type BoilerplateOptions struct {
@@ -24,6 +26,8 @@ type BoilerplateOptions struct {
 	Vars		 map[string]interface{}
 	OnMissingKey     MissingKeyAction
 	OnMissingConfig  MissingConfigAction
+	DisableHooks     bool
+	DisableShell     bool
 }
 
 // Validate that the options have reasonable values and return an error if they don't
@@ -75,6 +79,8 @@ func ParseOptions(cliContext *cli.Context) (*BoilerplateOptions, error) {
 		OnMissingKey: missingKeyAction,
 		OnMissingConfig: missingConfigAction,
 		Vars: vars,
+		DisableHooks: cliContext.Bool(OPT_DISABLE_HOOKS),
+		DisableShell: cliContext.Bool(OPT_DISABLE_SHELL),
 	}
 
 	if err := options.Validate(); err != nil {

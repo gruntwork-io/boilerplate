@@ -29,6 +29,8 @@ var PUNCTUATION_OR_WHITESPACE_REGEX = regexp.MustCompile("([[:space:]]|[[:punct:
 
 var ENV_VAR_REGEX = regexp.MustCompile("^ENV:(.+?)=(.*)$")
 
+const SHELL_DISABLED_PLACEHOLDER = "replace-me"
+
 // This regex can be used to split CamelCase strings into "words". That is, given a string like FooBarBaz, you can use
 // this regex to split it into an array ["Foo", "Bar", "Baz"]. It also handles lower camel case, which is the same as
 // camel case, except it starts with a lower case word, such as fooBarBaz.
@@ -41,13 +43,14 @@ var CAMEL_CASE_REGEX = regexp.MustCompile(
 	"([[:upper:]]*([[:lower:]]|[[:digit:]]|$)*)")  // Handle normal camel case
 
 // All boilerplate template helpers implement this signature. They get the path of the template they are rendering as
-// the first arg and then any arguments the user passed when calling the helper.
-type TemplateHelper func(templatePath string, args ... string) (string, error)
+// the first arg, the Boilerplate Options as the second arg, and then any arguments the user passed when calling the
+// helper.
+type TemplateHelper func(templatePath string, opts *options.BoilerplateOptions, args ... string) (string, error)
 
 // Create a map of custom template helpers exposed by boilerplate
 func CreateTemplateHelpers(templatePath string, opts *options.BoilerplateOptions) template.FuncMap {
 	return map[string]interface{}{
-		"snippet": wrapWithTemplatePath(templatePath, snippet),
+		"snippet": wrapWithTemplatePath(templatePath, opts, snippet),
 		"downcase": strings.ToLower,
 		"upcase": strings.ToUpper,
 		"capitalize": strings.Title,
@@ -68,7 +71,7 @@ func CreateTemplateHelpers(templatePath string, opts *options.BoilerplateOptions
 		"mod": wrapIntIntToIntFunction(func(arg1 int, arg2 int) int { return arg1 % arg2 }),
 		"slice": slice,
 		"keys": keys,
-		"shell": wrapWithTemplatePath(templatePath, shell),
+		"shell": wrapWithTemplatePath(templatePath, opts, shell),
 		"templateFolder": func() string { return opts.TemplateFolder },
 		"outputFolder": func() string { return opts.OutputFolder },
 		"trimPrefix": trimPrefix,
@@ -86,10 +89,11 @@ func CreateTemplateHelpers(templatePath string, opts *options.BoilerplateOptions
 //
 // However, this only works if boilerplate is called from the same folder as the template itself. To work around this
 // issue, this function can be used to wrap boilerplate template helpers to make the path of the template itself
-// available as the first argument to the helper. The helper can use that path to relativize other paths, if necessary.
-func wrapWithTemplatePath(templatePath string, helper TemplateHelper) func(...string) (string, error) {
+// available as the first argument and the BoilerplateOptions as the second argument. The helper can use that path to
+// relativize other paths, if necessary.
+func wrapWithTemplatePath(templatePath string, opts *options.BoilerplateOptions, helper TemplateHelper) func(...string) (string, error) {
 	return func(args ... string) (string, error) {
-		return helper(templatePath, args...)
+		return helper(templatePath, opts, args...)
 	}
 }
 
@@ -100,7 +104,7 @@ func wrapWithTemplatePath(templatePath string, helper TemplateHelper) func(...st
 // It returns the contents of PATH, relative to TEMPLATE_PATH, as a string. If SNIPPET_NAME is specified, only the
 // contents of that snippet with that name will be returned. A snippet is any text in the file surrounded by a line on
 // each side of the format "boilerplate-snippet: NAME" (typically using the comment syntax for the language).
-func snippet(templatePath string, args ... string) (string, error) {
+func snippet(templatePath string, opts *options.BoilerplateOptions, args ... string) (string, error) {
 	switch len(args) {
 	case 1: return readFile(templatePath, args[0])
 	case 2: return readSnippetFromFile(templatePath, args[0], args[1])
@@ -437,7 +441,12 @@ func keys(value interface{}) ([]string, error) {
 
 // Run the given shell command specified in args in the working dir specified by templatePath and return stdout as a
 // string.
-func shell(templatePath string, rawArgs ... string) (string, error) {
+func shell(templatePath string, opts *options.BoilerplateOptions, rawArgs ... string) (string, error) {
+	if opts.DisableShell {
+		util.Logger.Printf("Shell helpers are disabled. Will not execute shell command '%v'. Returning placeholder value '%s' instead.", rawArgs, SHELL_DISABLED_PLACEHOLDER)
+		return SHELL_DISABLED_PLACEHOLDER, nil
+	}
+
 	if len(rawArgs) == 0 {
 		return "", errors.WithStackTrace(NoArgsPassedToShellHelper)
 	}
