@@ -24,5 +24,6 @@ deployment:
       - build-go-binaries --app-name boilerplate --dest-path bin --ld-flags "-X main.VERSION=$CIRCLE_TAG"
       - upload-github-release-assets bin/*
       # Generate the latest README it in the root folder and commit it to master
+      - git checkout master
       - bin/boilerplate_linux_amd64 --template-folder _docs --output-folder . --non-interactive --var Version=$CIRCLE_TAG
       - git-add-commit-push --path README.md --message "Automatically regenerate README for version $CIRCLE_TAG" --branch-name master --git-push-behavior current
