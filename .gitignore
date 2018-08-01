@@ -2,3 +2,4 @@
 vendor
 .terragrunt
 .DS_Store
+*.iml
