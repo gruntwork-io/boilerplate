@@ -192,6 +192,8 @@ func cloneOptionsForDependency(dependency variables.Dependency, originalOpts *op
 		Vars: cloneVariablesForDependency(dependency, variables),
 		OnMissingKey: originalOpts.OnMissingKey,
 		OnMissingConfig: originalOpts.OnMissingConfig,
+		DisableHooks: originalOpts.DisableHooks,
+		DisableShell: originalOpts.DisableShell,
 	}, nil
 }
 
