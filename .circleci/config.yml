@@ -1,0 +1,58 @@
+defaults: &defaults
+  working_directory: /home/circleci/.go_workspace/src/github.com/gruntwork-io/boilerplate
+  machine: true
+
+version: 2
+jobs:
+  test:
+    <<: *defaults
+    steps:
+      - checkout
+      - run: &install_gruntwork_tooling
+          name: install dependencies
+          command: |
+            # Install the gruntwork-module-circleci-helpers and use it to configure the build environment and run tests.
+            curl -Ls https://raw.githubusercontent.com/gruntwork-io/gruntwork-installer/master/bootstrap-gruntwork-installer.sh | bash /dev/stdin --version v0.0.17
+            gruntwork-install --module-name "gruntwork-module-circleci-helpers" --repo "https://github.com/gruntwork-io/module-ci" --tag "v0.6.0"
+            configure-environment-for-gruntwork-module --circle-ci-2 --terraform-version NONE --packer-version NONE --go-src-path .
+      - run:
+          name: run tests
+          command: run-go-tests --timeout 1h --circle-ci-2
+          no_output_timeout: 3600s
+  deploy:
+    <<: *defaults
+    steps:
+      - checkout
+      - attach_workspace:
+          at: /home/circleci/.go_workspace/src/github.com/gruntwork-io/boilerplate
+      - run:
+          <<: *install_gruntwork_tooling
+      - run:
+          name: generate documentation
+          command: |
+            # Generate the latest README it in the root folder and commit it to master
+            git checkout master
+            bin/boilerplate_linux_amd64 --template-folder _docs --output-folder . --non-interactive --var Version=$CIRCLE_TAG
+            git-add-commit-push --path README.md --message "Automatically regenerate README for version $CIRCLE_TAG" --branch-name master --git-push-behavior current
+      - run:
+          name: release assets
+          command: |
+            # If a new release is tagged in GitHub, build the binaries and upload them to GitHub.
+            build-go-binaries --app-name boilerplate --dest-path bin --ld-flags "-X main.VERSION=$CIRCLE_TAG"
+            upload-github-release-assets bin/*
+workflows:
+  version: 2
+  build-and-test:
+    jobs:
+      - test:
+          filters:
+            tags:
+              only: /^v.*/
+      - deploy:
+          requires:
+            - test
+          filters:
+            tags:
+              only: /^v.*/
+            branches:
+              ignore: /.*/
