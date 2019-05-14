@@ -484,7 +484,14 @@ you were using `boilerplate` to generate a Java project, your template folder co
 #### Template helpers
 
 Your templates have access to all the standard functionality in [Go Template](https://golang.org/pkg/text/template/),
-including conditionals, loops, and functions. Boilerplate also includes several custom helpers that you can access:
+including conditionals, loops, and functions.
+
+Additionally, boilerplate ships with [sprig](https://github.com/Masterminds/sprig), the standard library of template
+functions. You can view all the functions available in sprig [here](http://masterminds.github.io/sprig/). Note that
+there are some differences for some functions due to backwards compatibility. Take a look at [Deprecated
+helpers](#deprecated-helpers).
+
+Boilerplate also includes several custom helpers that you can access that enhance the functionality of sprig:
 
 * `snippet <PATH> [NAME]`: Returns the contents of the file at `PATH` as a string. If you specify the second argument,
   `NAME`, only the contents of the snippet with that name will be returned. A snippet is any text in the file
@@ -499,31 +506,27 @@ including conditionals, loops, and functions. Boilerplate also includes several 
    return str2;
    // boilerplate-snippet: foo
    ```
-* `downcase STRING`: Convert `STRING` to lower case. E.g. "FOO" becomes "foo".
-* `upcase STRING`: Convert `STRING` to upper case. E.g. "foo" becomes "FOO".
-* `capitalize STRING`: Capitalize the first letter of each word in `STRING`. E.g. "foo bar baz" becomes "Foo Bar Baz".
-* `replace OLD NEW`: Replace the first occurrence of `OLD` with `NEW`. This is a literal replace, not regex.
+* `replaceOne OLD NEW`: Replace the first occurrence of `OLD` with `NEW`. This is a literal replace, not regex.
 * `replaceAll OLD NEW`: Replace all occurrences of `OLD` with `NEW`. This is a literal replace, not regex.
-* `trim STRING`: Remove leading and trailing whitespace from `STRING`.
-* `round FLOAT`: Round `FLOAT` to the nearest integer. E.g. 1.5 becomes 2.
-* `ceil FLOAT`: Round up `FLOAT` to the nearest integer. E.g. 1.5 becomes 2.
-* `floor FLOAT`: Round down `FLOAT` to the nearest integer. E.g. 1.5 becomes 1.
+* `roundInt FLOAT`: Round `FLOAT` to the nearest integer. E.g. 1.5 becomes 2.
+* `ceilInt FLOAT`: Round up `FLOAT` to the nearest integer. E.g. 1.5 becomes 2.
+* `floorInt FLOAT`: Round down `FLOAT` to the nearest integer. E.g. 1.5 becomes 1.
 * `dasherize STRING`: Convert `STRING` to a lower case string separated by dashes. E.g. "foo Bar baz" becomes
    "foo-bar-baz".
-* `snakeCase STRING`: Convert `STRING` to a lower case string separated by underscores. E.g. "foo Bar baz" becomes
-   "foo_bar_baz".
-* `camelCase STRING`: Convert `STRING` to a camel case string. E.g. "foo Bar baz" becomes "FooBarBaz".
 * `camelCaseLower STRING`: Convert `STRING` to a camel case string where the first letter is lower case. E.g.
    "foo Bar baz" becomes "fooBarBaz".
-* `plus NUM NUM`: Add the two numbers.
-* `minus NUM NUM`: Subtract the two numbers.
-* `times NUM NUM`: Multiply the two numbers.
-* `divide NUM NUM`: Divide the two numbers.
-* `mod INT INT`: Return the remainder of dividing the two numbers.
-* `slice START END INCREMENT`: Generate a slice from START to END, incrementing by INCREMENT. This provides a simple
+* `plus NUM NUM`: Add the two numbers. Unlike [add in sprig](http://masterminds.github.io/sprig/math.html#add), this
+  supports float.
+* `minus NUM NUM`: Subtract the two numbers. Unlike [sub in sprig](http://masterminds.github.io/sprig/math.html#sub),
+  this supports float.
+* `times NUM NUM`: Multiply the two numbers. Unlike [mul in sprig](http://masterminds.github.io/sprig/math.html#mul),
+  this supports float.
+* `divide NUM NUM`: Divide the two numbers. Unlike [div in sprig](http://masterminds.github.io/sprig/math.html#div),
+  this supports float.
+* `numRange START END INCREMENT`: Generate a slice from START to END, incrementing by INCREMENT. This provides a simple
   way to do a for-loop over a range of numbers.
-* `keys MAP`: Return a slice that contains all the keys in the given MAP. Use the built-in Go template helper `.index`
-  to look up these keys in the map.
+* `keysSorted MAP`: Return a slice that contains all the keys in the given MAP in alphanumeric sorted order. Use the
+  built-in Go template helper `.index` to look up these keys in the map.
 * `shell CMD ARGS...`: Execute the given shell command, passing it the given args, and render whatever that command 
   prints to stdout. The working directory for the command will be set to the directory of the template being rendered, 
   so you can use paths relative to the file from which you are calling the `shell` helper. Any argument you pass of the
@@ -531,8 +534,66 @@ including conditionals, loops, and functions. Boilerplate also includes several 
   to execute commands, see [hooks](#hooks).
 * `templateFolder`: Return the value of the `--template-folder` command-line option. Useful for building relative paths.
 * `outputFolder`: Return the value of the `--output-folder` command-line option. Useful for building relative paths.
-* `env NAME DEFAULT`: Render the value of environment variable `NAME`. If that environment variable is empty or not 
+* `envWithDefault NAME DEFAULT`: Render the value of environment variable `NAME`. If that environment variable is empty or not 
   defined, render `DEFAULT` instead.
+
+#### Deprecated helpers
+
+These helpers are deprecated. They are currently available for backwards compatibility, but may be removed in future
+versions. Please use the alternative supported forms listed in the description.
+
+* `downcase STRING`: Same functionality as [lower in sprig](http://masterminds.github.io/sprig/strings.html#lower).
+* `upcase STRING`: Same functionality as [upper in sprig](http://masterminds.github.io/sprig/strings.html#upper).
+* `capitalize STRING`: Same functionality as [title in sprig](http://masterminds.github.io/sprig/strings.html#title).
+* `snakeCase STRING`: Same functionality as [snakecase in sprig](http://masterminds.github.io/sprig/strings.html#snakecase).
+* `camelCase STRING`: Same functionality as [camelcase in sprig](http://masterminds.github.io/sprig/strings.html#camelcase).
+
+The following functions overlap with sprig, but have different functionality. There is an equivalent function listed
+above under a different name. These point to the boilerplate implementations for backwards compatibility. Please migrate
+to using the new naming scheme, as they will be updated to use the sprig versions in future versions of boilerplate.
+
+* `round`: In `boilerplate`, `round` returns the integer form as opposed to float. E.g `{{ round 123.5555 }}` will return
+  `124`. The following supported alternative functions are available:
+    - `roundFloat`: The sprig version of [round](http://masterminds.github.io/sprig/math.html#round), which supports
+      arbitrary decimal rounding. E.g `{{ round 123.5555 3 }}` returns `123.556`. Note that `{{ round 123.5555 0 }}`
+      returns `124.0`.
+    - `roundInt`: Another name for the `boilerplate` version of `round`. Use this if you would like to keep old behavior.
+* `ceil` and `floor`: In `boilerplate`, `ceil` and `floor` return integer forms as opposed to floats. E.g `{{ ceil 1.1
+  }}` returns `2`, as opposed to `2.0` in the sprig version. The following supported alternative functions are
+  available:
+    - `ceilFloat` and `floorFloat`: The sprig version of [ceil](http://masterminds.github.io/sprig/math.html#ceil) and
+      [floor](http://masterminds.github.io/sprig/math.html#floor).
+    - `ceilInt` and `floorInt`: Another name for the `boilerplate` version `ceil` and `floor`. Use this if you would like to keep old behavior.
+* `env`: In `boilerplate`, `env` supports returning a default value if the environment variable is not defined. The
+  following supported alternative functions are available:
+    - `readEnv`: The sprig version of [env](http://masterminds.github.io/sprig/os.html). This always returns empty
+      string if the environment variable is undefined.
+    - `envWithDefault`: Another name for the `boilerplate` version of `env`. Use this if you would like to keep old
+      behavior.
+* `keys`: In `boilerplate`, `keys` returns the keys of the map in sorted order. The following supported alternative
+  functions are available:
+    - `keysUnordered`: The sprig version of [keys](http://masterminds.github.io/sprig/dicts.html#keys). This returns the
+      list of keys in no particular order, and there is no guarantee that the order of the returned list is consistent.
+    - `keysSorted`: Another name for the `boilerplate` version of `keys`. Use this if you would like to keep old
+      behavior.
+* `replace`: In `boilerplate`, `replace` only replaces the first occurrence in the string, as opposed to all occurrences
+  as in sprig. The following supported alternative functions are available:
+    - `replaceAll`: The sprig version of [replace](http://masterminds.github.io/sprig/strings.html#replace).
+    - `replaceOne`: Another name for the `boilerplate` version of `replace`. Use this if you would like to keep old
+      behavior.
+* `slice`: In `boilerplate`, `slice` returns a list of numbers in the provided range. E.g `{{ slice 1 5 1 }}` returns
+  the list `[1, 2, 3, 4]`. The following supported alternative functions are available:
+    - `sliceList`: The sprig version of [slice](http://masterminds.github.io/sprig/lists.html#slice), which returns the
+      slice of the given list. E.g `{{ slice list n m }}` returns `list[n:m]`.
+    - `numRange`: Another name for the `boilerplate` version of `slice`. Use this if you would like to keep old
+      behavior.
+* `trimPrefix` and `trimSuffix`: In `boilerplate`, `trimPrefix` and `trimSuffix` takes the base string first. E.g
+  `{{ trimPrefix hello-world hello }}` returns `-world`. The following supported alternative functions are available:
+    - `trimPrefixSprig` and `trimSuffixSprig`: The sprig version of
+      [trimPrefix](http://masterminds.github.io/sprig/strings.html#trimPrefix) and
+      [trimSuffix](http://masterminds.github.io/sprig/strings.html#trimSuffix). Unlike the `boilerplate` version, this takes the trim text first so that you can pipeline the trimming. E.g `{{ "hello-world" | trimPrefix "hello" }}` returns `{{ -world }}`.
+    - `trimPrefixBoilerplate` and `trimSuffixBoilerplate`: Another name for the `boilerplate` versions of `trimPrefix`
+      and `trimSuffix`. Use this if you would like to keep old behavior.
   
 ## Alternative project generators
 

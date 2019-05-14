@@ -1,10 +1,11 @@
 package render
 
 import (
-	"fmt"
 	"bytes"
+	"fmt"
 	"reflect"
 	"text/template"
+
 	"github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/boilerplate/options"
 )
@@ -58,7 +59,6 @@ func RenderTemplateRecursively(templatePath string, templateContents string, var
 	return "", errors.WithStackTrace(TemplateContainsInfiniteLoop{TemplatePath: templatePath, TemplateContents: templateContents, RenderAttempts: MaxRenderAttempts})
 }
 
-
 // Variable values are allowed to use Go templating syntax (e.g. to reference other variables), so this function loops
 // over each variable value, renders each one, and returns a new map of rendered variables.
 func RenderVariables(variables map[string]interface{}, opts *options.BoilerplateOptions) (map[string]interface{}, error) {
@@ -88,7 +88,7 @@ func RenderVariable(variable interface{}, variables map[string]interface{}, opts
 		for i := 0; i < valueType.Len(); i++ {
 			rendered, err := RenderVariable(valueType.Index(i).Interface(), variables, opts)
 			if err != nil {
-				return  nil, err
+				return nil, err
 			}
 			values = append(values, rendered)
 		}
@@ -119,6 +119,7 @@ type TemplateContainsInfiniteLoop struct {
 	TemplateContents string
 	RenderAttempts   int
 }
+
 func (err TemplateContainsInfiniteLoop) Error() string {
 	return fmt.Sprintf("Template %s seems to contain infinite loop. After %d renderings, the contents continue to change. Template contents:\n%s", err.TemplatePath, err.RenderAttempts, err.TemplateContents)
 }

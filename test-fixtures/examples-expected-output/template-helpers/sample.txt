@@ -11,3 +11,7 @@ Inazagi
 ../../d
 
 Inazagi
+
+foo
+
+[2 3]

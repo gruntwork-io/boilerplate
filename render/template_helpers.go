@@ -1,24 +1,27 @@
 package render
 
 import (
-	"io/ioutil"
-	"github.com/gruntwork-io/boilerplate/errors"
-	"fmt"
 	"bufio"
-	"os"
-	"regexp"
-	"text/template"
-	"path/filepath"
-	"strings"
-	"path"
+	"fmt"
+	"io/ioutil"
 	"math"
-	"strconv"
-	"unicode"
-	"github.com/gruntwork-io/boilerplate/util"
-	"sort"
+	"os"
+	"path"
+	"path/filepath"
 	"reflect"
-	"github.com/gruntwork-io/boilerplate/variables"
+	"regexp"
+	"sort"
+	"strconv"
+	"strings"
+	"text/template"
+	"unicode"
+
+	"github.com/Masterminds/sprig"
+
+	"github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/boilerplate/options"
+	"github.com/gruntwork-io/boilerplate/util"
+	"github.com/gruntwork-io/boilerplate/variables"
 )
 
 var SNIPPET_MARKER_REGEX = regexp.MustCompile("boilerplate-snippet:\\s*(.+?)(?:\\s|$)")
@@ -39,48 +42,133 @@ const SHELL_DISABLED_PLACEHOLDER = "replace-me"
 // of the string. To capture all other camel case, we look for "words" that start with one or more consecutive upper
 // case letters followed by one or more lower case letters or digits.
 var CAMEL_CASE_REGEX = regexp.MustCompile(
-	"(^([[:lower:]]|[[:digit:]])+)|" +             // Handle lower camel case
-	"([[:upper:]]*([[:lower:]]|[[:digit:]]|$)*)")  // Handle normal camel case
+	"(^([[:lower:]]|[[:digit:]])+)|" + // Handle lower camel case
+		"([[:upper:]]*([[:lower:]]|[[:digit:]]|$)*)") // Handle normal camel case
 
 // All boilerplate template helpers implement this signature. They get the path of the template they are rendering as
 // the first arg, the Boilerplate Options as the second arg, and then any arguments the user passed when calling the
 // helper.
-type TemplateHelper func(templatePath string, opts *options.BoilerplateOptions, args ... string) (string, error)
+type TemplateHelper func(templatePath string, opts *options.BoilerplateOptions, args ...string) (string, error)
 
 // Create a map of custom template helpers exposed by boilerplate
 func CreateTemplateHelpers(templatePath string, opts *options.BoilerplateOptions) template.FuncMap {
-	return map[string]interface{}{
-		"snippet": wrapWithTemplatePath(templatePath, opts, snippet),
-		"downcase": strings.ToLower,
-		"upcase": strings.ToUpper,
-		"capitalize": strings.Title,
-		"replace": func(old string, new string, str string) string { return strings.Replace(str, old, new, 1) },
-		"replaceAll": func(old string, new string, str string) string { return strings.Replace(str, old, new, -1) },
-		"trim": strings.TrimSpace,
-		"round": wrapFloatToIntFunction(round),
-		"ceil": wrapFloatToFloatFunction(math.Ceil),
-		"floor": wrapFloatToFloatFunction(math.Floor),
-		"dasherize": dasherize,
-		"snakeCase": snakeCase,
-		"camelCase": camelCase,
-		"camelCaseLower": camelCaseLower,
-		"plus": wrapFloatFloatToFloatFunction(func(arg1 float64, arg2 float64) float64 { return arg1 + arg2 }),
-		"minus": wrapFloatFloatToFloatFunction(func(arg1 float64, arg2 float64) float64 { return arg1 - arg2 }),
-		"times": wrapFloatFloatToFloatFunction(func(arg1 float64, arg2 float64) float64 { return arg1 * arg2 }),
+	sprigFuncs := sprig.FuncMap()
+	// We rename a few sprig functions that overlap with boilerplate implementations. See DEPRECATED note on boilerplate
+	// functions below for more details.
+	sprigFuncs["listSlice"] = sprigFuncs["slice"]
+	sprigFuncs["replaceAll"] = sprigFuncs["replace"]
+	sprigFuncs["keysUnordered"] = sprigFuncs["keys"]
+	sprigFuncs["readEnv"] = sprigFuncs["env"]
+	sprigFuncs["roundFloat"] = sprigFuncs["round"]
+	sprigFuncs["ceilFloat"] = sprigFuncs["ceil"]
+	sprigFuncs["floorFloat"] = sprigFuncs["floor"]
+	sprigFuncs["trimPrefixSprig"] = sprigFuncs["trimPrefix"]
+	sprigFuncs["trimSuffixSprig"] = sprigFuncs["trimSuffix"]
+
+	boilerplateFuncs := map[string]interface{}{
+		"roundInt": wrapFloatToIntFunction(round),
+		"ceilInt":  wrapFloatToFloatFunction(math.Ceil),
+		"floorInt": wrapFloatToFloatFunction(math.Floor),
+
+		"plus":   wrapFloatFloatToFloatFunction(func(arg1 float64, arg2 float64) float64 { return arg1 + arg2 }),
+		"minus":  wrapFloatFloatToFloatFunction(func(arg1 float64, arg2 float64) float64 { return arg1 - arg2 }),
+		"times":  wrapFloatFloatToFloatFunction(func(arg1 float64, arg2 float64) float64 { return arg1 * arg2 }),
 		"divide": wrapFloatFloatToFloatFunction(func(arg1 float64, arg2 float64) float64 { return arg1 / arg2 }),
-		"mod": wrapIntIntToIntFunction(func(arg1 int, arg2 int) int { return arg1 % arg2 }),
-		"slice": slice,
-		"keys": keys,
-		"shell": wrapWithTemplatePath(templatePath, opts, shell),
-		"templateFolder": func() string { return opts.TemplateFolder },
-		"outputFolder": func() string { return opts.OutputFolder },
-		"trimPrefix": trimPrefix,
-		"trimSuffix": trimSuffix,
-		"relPath": relPath,
+
+		"dasherize":             dasherize,
+		"camelCaseLower":        camelCaseLower,
+		"replaceOne":            func(old string, new string, str string) string { return strings.Replace(str, old, new, 1) },
+		"trimPrefixBoilerplate": trimPrefix,
+		"trimSuffixBoilerplate": trimSuffix,
+
+		"numRange":   slice,
+		"keysSorted": keys,
+
+		"snippet": wrapWithTemplatePath(templatePath, opts, snippet),
+		"shell":   wrapWithTemplatePath(templatePath, opts, shell),
+
+		"templateFolder":        func() string { return opts.TemplateFolder },
+		"outputFolder":          func() string { return opts.OutputFolder },
+		"relPath":               relPath,
 		"boilerplateConfigDeps": boilerplateConfigDeps(opts),
 		"boilerplateConfigVars": boilerplateConfigVars(opts),
+		"envWithDefault":        env,
+
+		// DEPRECATIONS
+
+		// These functions are exactly the same as their sprig counterpart
+		"downcase":   strings.ToLower, // lower
+		"upcase":     strings.ToUpper, // upper
+		"capitalize": strings.Title,   // title
+		"snakeCase":  snakeCase,       // snakecase
+		"camelCase":  camelCase,       // camelcase
+
+		// In sprig, trimPrefix and trimSuffix take the arguments in different orders so that you can use pipelines. For backwards compatibility, we
+		// have:
+		// - trimPrefix : The original boilerplate version of trimPrefix.
+		// - trimPrefixSprig : The sprig version of trimPrefix.
+		// - trimPrefixBoilerplate : Another name for the boilerplate version of trimPrefix.
+		// Users need to upgrade usage of `trimPrefix` with `trimPrefixBoilerplate`. The same with `trimSuffix`.
+		"trimPrefix": trimPrefix,
+		"trimSuffix": trimSuffix,
+
+		// In sprig, round supports arbitrary decimal place rounding. E.g {{ round 123.5555 3 }} returns 123.556. For
+		// backwards compatibility, we have:
+		// - round : The original boilerplate round function that rounds to nearest int.
+		// - roundFloat : The sprig version of round.
+		// - roundInt : Another name for the boilerplate round function that doesn't overlap with sprig.
+		// Users need to upgrade usage of `round` with `roundInt`.
+		"round": wrapFloatToIntFunction(round),
+
+		// In sprig, ceil and floor is functionally the same as the boilerplate versions, except they return floats as
+		// opposed to ints. E.g {{ ceil 1.1 }} returns 2.0. For backwards compatibility, we have:
+		// - ceil : The original boilerplate ceil function that truncates.
+		// - ceilFloat : The sprig version of ceil.
+		// - ceilInt : Another name for the boilerplate version of ceil that doesn't overlap with sprig.
+		// Users need to update usage of `ceil` with `ceilInt`.
+		// Note that the same function naming applies with floor.
+		"ceil":  wrapFloatToFloatFunction(math.Ceil),
+		"floor": wrapFloatToFloatFunction(math.Floor),
+
+		// In sprig, env does not support default values. For backwards compatibility, we have:
+		// - env : The original boilerplate env function that supports default value if env doesn't exist.
+		// - readEnv : The sprig version of env.
+		// - envWithDefault : Another name for the boilerplate env function that doesn't overlap with sprig.
+		// Users need to upgrade usage of `env` with `envWithDefault`.
 		"env": env,
+
+		// In sprig, keys is the unordered keys version. To get the sorted version, you use
+		// {{ keys $myDict | sortAlpha }}. For backwards compatibility, we have:
+		// - keys : The original boilerplate keys function that returns the keys in sorted order.
+		// - keysUnordered : The sprig version of keys.
+		// - keysSorted : Another name for the boilerplate keys function that doesn't overlap with sprig.
+		// Users need to upgrade usage of `keys` with `keysSorted`.
+		"keys": keys,
+
+		// In sprig, replace is replaceAll. For backwards compatibility, we have:
+		// - replace : The original boilerplate replace function
+		// - replaceAll : The sprig version of replace. Compatible with original boilerplate replaceAll.
+		// - replaceOne : Another name for the boilerplate replace function that doesn't overlap with sprig.
+		// Users need to upgrade usage of `replace` with `replaceOne`.
+		"replace": func(old string, new string, str string) string { return strings.Replace(str, old, new, 1) },
+
+		// In sprig, slice is the very useful anylist slice function, that takes a list and returns list[n:m].
+		// For backwards compatibility, we have:
+		// - slice : The original boilerplate slice function
+		// - sliceList : The sprig version of slice
+		// - numRange : Another name for the boilerplate slice function that doesn't overlap with sprig
+		// Users need to upgrade usage of `slice` to `numRange`.
+		"slice": slice,
 	}
+
+	funcs := map[string]interface{}{}
+	for k, v := range sprigFuncs {
+		funcs[k] = v
+	}
+	for k, v := range boilerplateFuncs {
+		funcs[k] = v
+	}
+	return funcs
 }
 
 // When writing a template, it's natural to use a relative path, such as:
@@ -92,7 +180,7 @@ func CreateTemplateHelpers(templatePath string, opts *options.BoilerplateOptions
 // available as the first argument and the BoilerplateOptions as the second argument. The helper can use that path to
 // relativize other paths, if necessary.
 func wrapWithTemplatePath(templatePath string, opts *options.BoilerplateOptions, helper TemplateHelper) func(...string) (string, error) {
-	return func(args ... string) (string, error) {
+	return func(args ...string) (string, error) {
 		return helper(templatePath, opts, args...)
 	}
 }
@@ -104,11 +192,14 @@ func wrapWithTemplatePath(templatePath string, opts *options.BoilerplateOptions,
 // It returns the contents of PATH, relative to TEMPLATE_PATH, as a string. If SNIPPET_NAME is specified, only the
 // contents of that snippet with that name will be returned. A snippet is any text in the file surrounded by a line on
 // each side of the format "boilerplate-snippet: NAME" (typically using the comment syntax for the language).
-func snippet(templatePath string, opts *options.BoilerplateOptions, args ... string) (string, error) {
+func snippet(templatePath string, opts *options.BoilerplateOptions, args ...string) (string, error) {
 	switch len(args) {
-	case 1: return readFile(templatePath, args[0])
-	case 2: return readSnippetFromFile(templatePath, args[0], args[1])
-	default: return "", errors.WithStackTrace(InvalidSnippetArguments(args))
+	case 1:
+		return readFile(templatePath, args[0])
+	case 2:
+		return readSnippetFromFile(templatePath, args[0], args[1])
+	default:
+		return "", errors.WithStackTrace(InvalidSnippetArguments(args))
 	}
 }
 
@@ -259,19 +350,32 @@ func toFloat64(value interface{}) (float64, error) {
 	// (separated by comma), then the variable v would be of type interface{} and we could not use float64(..) to
 	// convert it.
 	switch v := value.(type) {
-	case int: return float64(v), nil
-	case int8: return float64(v), nil
-	case int16: return float64(v), nil
-	case int32: return float64(v), nil
-	case int64: return float64(v), nil
-	case uint: return float64(v), nil
-	case uint8: return float64(v), nil
-	case uint16: return float64(v), nil
-	case uint32: return float64(v), nil
-	case uint64: return float64(v), nil
-	case float32: return float64(v), nil
-	case float64: return v, nil
-	default: return strconv.ParseFloat(fmt.Sprintf("%v", v), 64)
+	case int:
+		return float64(v), nil
+	case int8:
+		return float64(v), nil
+	case int16:
+		return float64(v), nil
+	case int32:
+		return float64(v), nil
+	case int64:
+		return float64(v), nil
+	case uint:
+		return float64(v), nil
+	case uint8:
+		return float64(v), nil
+	case uint16:
+		return float64(v), nil
+	case uint32:
+		return float64(v), nil
+	case uint64:
+		return float64(v), nil
+	case float32:
+		return float64(v), nil
+	case float64:
+		return v, nil
+	default:
+		return strconv.ParseFloat(fmt.Sprintf("%v", v), 64)
 	}
 }
 
@@ -283,19 +387,32 @@ func toInt(value interface{}) (int, error) {
 	// (separated by comma), then the variable v would be of type interface{} and we could not use int(..) to
 	// convert it.
 	switch v := value.(type) {
-	case int: return v, nil
-	case int8: return int(v), nil
-	case int16: return int(v), nil
-	case int32: return int(v), nil
-	case int64: return int(v), nil
-	case uint: return int(v), nil
-	case uint8: return int(v), nil
-	case uint16: return int(v), nil
-	case uint32: return int(v), nil
-	case uint64: return int(v), nil
-	case float32: return int(v), nil
-	case float64: return int(v), nil
-	default: return strconv.Atoi(fmt.Sprintf("%v", v))
+	case int:
+		return v, nil
+	case int8:
+		return int(v), nil
+	case int16:
+		return int(v), nil
+	case int32:
+		return int(v), nil
+	case int64:
+		return int(v), nil
+	case uint:
+		return int(v), nil
+	case uint8:
+		return int(v), nil
+	case uint16:
+		return int(v), nil
+	case uint32:
+		return int(v), nil
+	case uint64:
+		return int(v), nil
+	case float32:
+		return int(v), nil
+	case float64:
+		return int(v), nil
+	default:
+		return strconv.Atoi(fmt.Sprintf("%v", v))
 	}
 }
 
@@ -441,7 +558,7 @@ func keys(value interface{}) ([]string, error) {
 
 // Run the given shell command specified in args in the working dir specified by templatePath and return stdout as a
 // string.
-func shell(templatePath string, opts *options.BoilerplateOptions, rawArgs ... string) (string, error) {
+func shell(templatePath string, opts *options.BoilerplateOptions, rawArgs ...string) (string, error) {
 	if opts.DisableShell {
 		util.Logger.Printf("Shell helpers are disabled. Will not execute shell command '%v'. Returning placeholder value '%s' instead.", rawArgs, SHELL_DISABLED_PLACEHOLDER)
 		return SHELL_DISABLED_PLACEHOLDER, nil
@@ -540,16 +657,19 @@ func boilerplateConfigVars(opts *options.BoilerplateOptions) func(string, string
 // Custom errors
 
 type SnippetNotFound string
+
 func (snippetName SnippetNotFound) Error() string {
 	return fmt.Sprintf("Could not find a snippet named %s", string(snippetName))
 }
 
 type SnippetNotTerminated string
+
 func (snippetName SnippetNotTerminated) Error() string {
 	return fmt.Sprintf("Snippet %s has an opening boilerplate-snippet marker, but not a closing one", string(snippetName))
 }
 
 type InvalidSnippetArguments []string
+
 func (args InvalidSnippetArguments) Error() string {
 	return fmt.Sprintf("The snippet helper expects the following args: snippet <TEMPLATE_PATH> <PATH> [SNIPPET_NAME]. Instead, got args: %s", []string(args))
 }
@@ -561,6 +681,7 @@ type InvalidTypeForMethodArgument struct {
 	ExpectedType string
 	ActualType   string
 }
+
 func (err InvalidTypeForMethodArgument) Error() string {
 	return fmt.Sprintf("Method %s expects type %s, but got %s", err.MethodName, err.ExpectedType, err.ActualType)
 }

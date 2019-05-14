@@ -11,3 +11,8 @@
 {{ relPath "/a/b/c" "/a/d" }}
 
 {{ .BoilerplateConfigVars.SomeGlobalVar.Default }}
+
+{{ true | ternary "foo" "bar" }}
+
+{{ $myList := list 1 2 3 4 5 -}}
+{{ listSlice $myList 1 3 }}

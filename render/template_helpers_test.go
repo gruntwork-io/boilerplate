@@ -1,14 +1,14 @@
 package render
 
 import (
-	"testing"
-	"github.com/stretchr/testify/assert"
-	"reflect"
 	"bufio"
 	"bytes"
-	"github.com/gruntwork-io/boilerplate/errors"
 	"fmt"
+	"github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/boilerplate/options"
+	"github.com/stretchr/testify/assert"
+	"reflect"
+	"testing"
 )
 
 func TestExtractSnippetName(t *testing.T) {
@@ -42,8 +42,7 @@ func TestExtractSnippetName(t *testing.T) {
 	}
 }
 
-const MULTILINE_SNIPPET_NOT_TERMINATED =
-`
+const MULTILINE_SNIPPET_NOT_TERMINATED = `
 foo
 boilerplate-snippet: foo
 bar blah
@@ -52,36 +51,35 @@ boilerplate-snippet: bar
 
 const BODY_TEXT_ONE_LINE = "line1"
 
-const BODY_TEXT_MULTILINE =
-`
+const BODY_TEXT_MULTILINE = `
 line1
 line2
 line3
 `
 
 var FULL_FILE_ONE_LINE_SNIPPET = fmt.Sprintf(
-`
+	`
 boilerplate-snippet: foo
 %s
 boilerplate-snippet: foo
 `, BODY_TEXT_ONE_LINE)
 
 var FULL_FILE_MULTILINE_SNIPPET = fmt.Sprintf(
-`
+	`
 boilerplate-snippet: foo
 %s
 boilerplate-snippet: foo
 `, BODY_TEXT_MULTILINE)
 
 var FULL_FILE_MULTILINE_SNIPPET_IN_HTML_COMMENTS = fmt.Sprintf(
-`
+	`
 <!-- boilerplate-snippet: foo -->
 %s
 <-- boilerplate-snippet: foo -->
 `, BODY_TEXT_MULTILINE)
 
 var PARTIAL_FILE_MULTILINE_SNIPPET_IN_C_COMMENTS = fmt.Sprintf(
-`
+	`
 other text
 this should be ignored
 
@@ -94,7 +92,7 @@ be completely ignored
 `, BODY_TEXT_MULTILINE)
 
 var PARTIAL_FILE_ONE_LINE_SNIPPET_IN_MISMATCHED_COMMENTS = fmt.Sprintf(
-`
+	`
 other text
 this should be ignored
 
@@ -107,7 +105,7 @@ be completely ignored
 `, BODY_TEXT_ONE_LINE)
 
 var PARTIAL_FILE_MUTLIPLE_SNIPPETS = fmt.Sprintf(
-`
+	`
 other text
 this should be ignored
 
@@ -126,7 +124,7 @@ boilerplate-snippet: baz
 `, BODY_TEXT_ONE_LINE)
 
 var PARTIAL_FILE_EMBEDDED_SNIPPETS = fmt.Sprintf(
-`
+	`
 other text
 this should be ignored
 
@@ -152,7 +150,7 @@ func TestReadSnippetFromScanner(t *testing.T) {
 	testCases := []struct {
 		text                string
 		snippetName         string
-		expectedErr	    error
+		expectedErr         error
 		expectedSnippetText string
 	}{
 		{"", "foo", SnippetNotFound("foo"), ""},
@@ -218,7 +216,7 @@ func TestWrapWithTemplatePath(t *testing.T) {
 	var actualPath string
 	var actualOpts *options.BoilerplateOptions
 
-	wrappedFunc := wrapWithTemplatePath(expectedPath, expectedOpts, func(templatePath string, opts *options.BoilerplateOptions, args ... string) (string, error) {
+	wrappedFunc := wrapWithTemplatePath(expectedPath, expectedOpts, func(templatePath string, opts *options.BoilerplateOptions, args ...string) (string, error) {
 		actualPath = templatePath
 		actualOpts = opts
 
@@ -440,7 +438,7 @@ func TestShellSuccess(t *testing.T) {
 func TestShellError(t *testing.T) {
 	t.Parallel()
 
-	_, err := shell(".", &options.BoilerplateOptions{NonInteractive: true},"not-a-real-command")
+	_, err := shell(".", &options.BoilerplateOptions{NonInteractive: true}, "not-a-real-command")
 	if assert.NotNil(t, err) {
 		assert.Contains(t, err.Error(), "executable file not found in $PATH", "Unexpected error message: %s", err.Error())
 	}
@@ -449,7 +447,7 @@ func TestShellError(t *testing.T) {
 func TestShellDisabled(t *testing.T) {
 	t.Parallel()
 
-	output, err := shell(".", &options.BoilerplateOptions{NonInteractive: true, DisableShell: true},"echo", "hi")
+	output, err := shell(".", &options.BoilerplateOptions{NonInteractive: true, DisableShell: true}, "echo", "hi")
 	assert.Nil(t, err, "Unexpected error: %v", err)
 	assert.Equal(t, SHELL_DISABLED_PLACEHOLDER, output)
 }
@@ -481,4 +479,3 @@ func TestRound(t *testing.T) {
 		assert.Equal(t, testCase.expected, actual, "When calling round on %f, expected %d, but got %d", testCase.input, testCase.expected, actual)
 	}
 }
-
