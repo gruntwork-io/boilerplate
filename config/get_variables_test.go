@@ -1,12 +1,14 @@
 package config
 
 import (
-	"testing"
-	"github.com/stretchr/testify/assert"
 	"reflect"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+
 	"github.com/gruntwork-io/boilerplate/errors"
-	"github.com/gruntwork-io/boilerplate/variables"
 	"github.com/gruntwork-io/boilerplate/options"
+	"github.com/gruntwork-io/boilerplate/variables"
 )
 
 func TestGetVariableFromVarsEmptyVars(t *testing.T) {
@@ -42,7 +44,7 @@ func TestGetVariableFromVarsMatch(t *testing.T) {
 	opts := &options.BoilerplateOptions{
 		Vars: map[string]interface{}{
 			"key1": "value1",
-			"foo": "bar",
+			"foo":  "bar",
 			"key3": "value3",
 		},
 	}
@@ -61,7 +63,7 @@ func TestGetVariableFromVarsForDependencyNoMatch(t *testing.T) {
 	opts := &options.BoilerplateOptions{
 		Vars: map[string]interface{}{
 			"key1": "value1",
-			"foo": "bar",
+			"foo":  "bar",
 			"key3": "value3",
 		},
 	}
@@ -76,9 +78,9 @@ func TestGetVariableFromVarsForDependencyMatch(t *testing.T) {
 	variable := variables.NewStringVariable("bar.foo")
 	opts := &options.BoilerplateOptions{
 		Vars: map[string]interface{}{
-			"key1": "value1",
+			"key1":    "value1",
 			"bar.foo": "bar",
-			"key3": "value3",
+			"key3":    "value3",
 		},
 	}
 
@@ -109,7 +111,7 @@ func TestGetVariableInVarsNonInteractive(t *testing.T) {
 		NonInteractive: true,
 		Vars: map[string]interface{}{
 			"key1": "value1",
-			"foo": "bar",
+			"foo":  "bar",
 			"key3": "value3",
 		},
 	}
@@ -154,8 +156,8 @@ func TestGetVariablesNoVariables(t *testing.T) {
 		"BoilerplateConfigVars": map[string]variables.Variable{},
 		"BoilerplateConfigDeps": map[string]variables.Dependency{},
 		"This": map[string]interface{}{
-			"Config": boilerplateConfig,
-			"Options": opts,
+			"Config":     boilerplateConfig,
+			"Options":    opts,
 			"CurrentDep": dependency,
 		},
 	}
@@ -205,12 +207,12 @@ func TestGetVariablesMatchFromVars(t *testing.T) {
 
 	actual, err := GetVariables(opts, boilerplateConfig, rootBoilerplateConfig, dependency)
 	expected := map[string]interface{}{
-		"foo": "bar",
+		"foo":                   "bar",
 		"BoilerplateConfigVars": map[string]variables.Variable{},
 		"BoilerplateConfigDeps": map[string]variables.Dependency{},
 		"This": map[string]interface{}{
-			"Config": boilerplateConfig,
-			"Options": opts,
+			"Config":     boilerplateConfig,
+			"Options":    opts,
 			"CurrentDep": dependency,
 		},
 	}
@@ -245,14 +247,14 @@ func TestGetVariablesMatchFromVarsAndDefaults(t *testing.T) {
 
 	actual, err := GetVariables(opts, boilerplateConfig, rootBoilerplateConfig, dependency)
 	expected := map[string]interface{}{
-		"key1": "value1",
-		"key2": "value2",
-		"key3": "value3",
+		"key1":                  "value1",
+		"key2":                  "value2",
+		"key3":                  "value3",
 		"BoilerplateConfigVars": map[string]variables.Variable{},
 		"BoilerplateConfigDeps": map[string]variables.Dependency{},
 		"This": map[string]interface{}{
-			"Config": boilerplateConfig,
-			"Options": opts,
+			"Config":     boilerplateConfig,
+			"Options":    opts,
 			"CurrentDep": dependency,
 		},
 	}
@@ -260,5 +262,3 @@ func TestGetVariablesMatchFromVarsAndDefaults(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, expected, actual)
 }
-
-

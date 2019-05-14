@@ -1,11 +1,13 @@
 package templates
 
 import (
-	"testing"
-	"github.com/stretchr/testify/assert"
 	"os"
-	"github.com/gruntwork-io/boilerplate/variables"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+
 	"github.com/gruntwork-io/boilerplate/options"
+	"github.com/gruntwork-io/boilerplate/variables"
 )
 
 func TestOutPath(t *testing.T) {
@@ -15,7 +17,7 @@ func TestOutPath(t *testing.T) {
 	assert.Nil(t, err, "Couldn't get working directory")
 
 	testCases := []struct {
-		file	       string
+		file           string
 		templateFolder string
 		outputFolder   string
 		variables      map[string]interface{}
@@ -31,10 +33,10 @@ func TestOutPath(t *testing.T) {
 
 	for _, testCase := range testCases {
 		opts := options.BoilerplateOptions{
-			TemplateFolder: testCase.templateFolder,
-			OutputFolder: testCase.outputFolder,
-			NonInteractive: true,
-			OnMissingKey: options.ExitWithError,
+			TemplateFolder:  testCase.templateFolder,
+			OutputFolder:    testCase.outputFolder,
+			NonInteractive:  true,
+			OnMissingKey:    options.ExitWithError,
 			OnMissingConfig: options.Exit,
 		}
 		actual, err := outPath(testCase.file, &opts, testCase.variables)

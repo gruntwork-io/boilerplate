@@ -1,10 +1,11 @@
 package variables
 
 import (
+	"fmt"
 	"strings"
+
 	"github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/boilerplate/util"
-	"fmt"
 )
 
 // A single boilerplate template that this boilerplate.yml depends on being executed first
@@ -123,18 +124,19 @@ func UnmarshalDependencyFromBoilerplateConfigYaml(fields map[string]interface{})
 	}
 
 	return &Dependency{
-		Name: *name,
-		TemplateFolder: *templateFolder,
-		OutputFolder: *outputFolder,
-		Skip: skip,
+		Name:                 *name,
+		TemplateFolder:       *templateFolder,
+		OutputFolder:         *outputFolder,
+		Skip:                 skip,
 		DontInheritVariables: dontInheritVariables,
-		Variables: variables,
+		Variables:            variables,
 	}, nil
 }
 
 // Custom error types
 
 type DuplicateDependencyName string
+
 func (name DuplicateDependencyName) Error() string {
 	return fmt.Sprintf("Found a duplicate dependency name: %s. All dependency names must be unique!", string(name))
 }

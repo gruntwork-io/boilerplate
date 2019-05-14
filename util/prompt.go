@@ -1,12 +1,14 @@
 package util
 
 import (
-	"strings"
+	"bufio"
 	"fmt"
 	"os"
-	"bufio"
-	"github.com/gruntwork-io/boilerplate/errors"
+	"strings"
+
 	"github.com/fatih/color"
+
+	"github.com/gruntwork-io/boilerplate/errors"
 )
 
 var BRIGHT_GREEN = color.New(color.FgHiGreen, color.Bold)
@@ -33,7 +35,9 @@ func PromptUserForYesNo(prompt string) (bool, error) {
 	}
 
 	switch strings.ToLower(resp) {
-	case "y", "yes": return true, nil
-	default: return false, nil
+	case "y", "yes":
+		return true, nil
+	default:
+		return false, nil
 	}
 }

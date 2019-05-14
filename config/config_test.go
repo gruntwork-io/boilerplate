@@ -1,14 +1,16 @@
 package config
 
 import (
-	"testing"
-	"github.com/stretchr/testify/assert"
-	"reflect"
-	"gopkg.in/yaml.v2"
-	"github.com/gruntwork-io/boilerplate/errors"
 	"path"
-	"github.com/gruntwork-io/boilerplate/variables"
+	"reflect"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v2"
+
+	"github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/boilerplate/options"
+	"github.com/gruntwork-io/boilerplate/variables"
 )
 
 func TestParseBoilerplateConfigEmpty(t *testing.T) {
@@ -34,8 +36,7 @@ func TestParseBoilerplateConfigInvalid(t *testing.T) {
 }
 
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
-const CONFIG_EMPTY_VARIABLES_AND_DEPENDENCIES =
-`variables:
+const CONFIG_EMPTY_VARIABLES_AND_DEPENDENCIES = `variables:
 dependencies:
 `
 
@@ -44,9 +45,9 @@ func TestParseBoilerplateConfigEmptyVariablesAndDependencies(t *testing.T) {
 
 	actual, err := ParseBoilerplateConfig([]byte(CONFIG_EMPTY_VARIABLES_AND_DEPENDENCIES))
 	expected := &BoilerplateConfig{
-		Variables: []variables.Variable{},
+		Variables:    []variables.Variable{},
 		Dependencies: []variables.Dependency{},
-		Hooks: variables.Hooks{},
+		Hooks:        variables.Hooks{},
 	}
 
 	assert.Nil(t, err, "Unexpected error: %v", err)
@@ -54,8 +55,7 @@ func TestParseBoilerplateConfigEmptyVariablesAndDependencies(t *testing.T) {
 }
 
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
-const CONFIG_ONE_VARIABLE_MINIMAL =
-`variables:
+const CONFIG_ONE_VARIABLE_MINIMAL = `variables:
   - name: foo
 `
 
@@ -68,7 +68,7 @@ func TestParseBoilerplateConfigOneVariableMinimal(t *testing.T) {
 			variables.NewStringVariable("foo"),
 		},
 		Dependencies: []variables.Dependency{},
-		Hooks: variables.Hooks{},
+		Hooks:        variables.Hooks{},
 	}
 
 	assert.Nil(t, err, "Unexpected error: %v", err)
@@ -76,8 +76,7 @@ func TestParseBoilerplateConfigOneVariableMinimal(t *testing.T) {
 }
 
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
-const CONFIG_ONE_VARIABLE_FULL =
-`variables:
+const CONFIG_ONE_VARIABLE_FULL = `variables:
   - name: foo
     description: example description
     type: string
@@ -93,7 +92,7 @@ func TestParseBoilerplateConfigOneVariableFull(t *testing.T) {
 			variables.NewStringVariable("foo").WithDescription("example description").WithDefault("default"),
 		},
 		Dependencies: []variables.Dependency{},
-		Hooks: variables.Hooks{},
+		Hooks:        variables.Hooks{},
 	}
 
 	assert.Nil(t, err, "Unexpected error: %v", err)
@@ -101,8 +100,7 @@ func TestParseBoilerplateConfigOneVariableFull(t *testing.T) {
 }
 
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
-const CONFIG_ONE_VARIABLE_MISSING_NAME =
-`variables:
+const CONFIG_ONE_VARIABLE_MISSING_NAME = `variables:
   - description: example description
     default: default
 `
@@ -117,8 +115,7 @@ func TestParseBoilerplateConfigOneVariableMissingName(t *testing.T) {
 }
 
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
-const CONFIG_ONE_VARIABLE_INVALID_TYPE =
-`variables:
+const CONFIG_ONE_VARIABLE_INVALID_TYPE = `variables:
   - name: foo
     type: foo
 `
@@ -133,8 +130,7 @@ func TestParseBoilerplateConfigOneVariableInvalidType(t *testing.T) {
 }
 
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
-const CONFIG_ONE_VARIABLE_INVALID_TYPE_FOR_NAME_FIELD =
-`variables:
+const CONFIG_ONE_VARIABLE_INVALID_TYPE_FOR_NAME_FIELD = `variables:
   - name:
       - foo
       - bar
@@ -150,8 +146,7 @@ func TestParseBoilerplateConfigInvalidTypeForNameField(t *testing.T) {
 }
 
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
-const CONFIG_ONE_VARIABLE_ENUM_NO_OPTIONS =
-`variables:
+const CONFIG_ONE_VARIABLE_ENUM_NO_OPTIONS = `variables:
   - name: foo
     type: enum
 `
@@ -166,8 +161,7 @@ func TestParseBoilerplateConfigOneVariableEnumNoOptions(t *testing.T) {
 }
 
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
-const CONFIG_ONE_VARIABLE_ENUM_OPTIONS_WRONG_TYPE =
-`variables:
+const CONFIG_ONE_VARIABLE_ENUM_OPTIONS_WRONG_TYPE = `variables:
   - name: foo
     type: enum
     options: foo
@@ -183,8 +177,7 @@ func TestParseBoilerplateConfigOneVariableEnumWrongType(t *testing.T) {
 }
 
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
-const CONFIG_ONE_VARIABLE_OPTIONS_FOR_NON_ENUM =
-`variables:
+const CONFIG_ONE_VARIABLE_OPTIONS_FOR_NON_ENUM = `variables:
   - name: foo
     options:
       - foo
@@ -201,8 +194,7 @@ func TestParseBoilerplateConfigOneVariableOptionsForNonEnum(t *testing.T) {
 }
 
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
-const CONFIG_MULTIPLE_VARIABLES =
-`variables:
+const CONFIG_MULTIPLE_VARIABLES = `variables:
   - name: foo
 
   - name: bar
@@ -231,7 +223,7 @@ func TestParseBoilerplateConfigMultipleVariables(t *testing.T) {
 			variables.NewBoolVariable("dep1.baz").WithDescription("another example description").WithDefault(true),
 		},
 		Dependencies: []variables.Dependency{},
-		Hooks: variables.Hooks{},
+		Hooks:        variables.Hooks{},
 	}
 
 	assert.Nil(t, err, "Unexpected error: %v", err)
@@ -239,8 +231,7 @@ func TestParseBoilerplateConfigMultipleVariables(t *testing.T) {
 }
 
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
-const CONFIG_ALL_TYPES =
-`variables:
+const CONFIG_ALL_TYPES = `variables:
   - name: var1
     default: foo
 
@@ -299,7 +290,7 @@ func TestParseBoilerplateConfigAllTypes(t *testing.T) {
 			variables.NewEnumVariable("var8", []string{"foo", "bar", "baz"}).WithDefault("bar"),
 		},
 		Dependencies: []variables.Dependency{},
-		Hooks: variables.Hooks{},
+		Hooks:        variables.Hooks{},
 	}
 
 	assert.Nil(t, err, "Unexpected error: %v", err)
@@ -307,8 +298,7 @@ func TestParseBoilerplateConfigAllTypes(t *testing.T) {
 }
 
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
-const CONFIG_ONE_DEPENDENCY =
-`dependencies:
+const CONFIG_ONE_DEPENDENCY = `dependencies:
   - name: dep1
     template-folder: /template/folder1
     output-folder: /output/folder1
@@ -331,8 +321,7 @@ func TestParseBoilerplateConfigOneDependency(t *testing.T) {
 }
 
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
-const CONFIG_MULTIPLE_DEPENDENCIES =
-`dependencies:
+const CONFIG_MULTIPLE_DEPENDENCIES = `dependencies:
   - name: dep1
     template-folder: /template/folder1
     output-folder: /output/folder1
@@ -360,28 +349,28 @@ func TestParseBoilerplateConfigMultipleDependencies(t *testing.T) {
 		Variables: []variables.Variable{},
 		Dependencies: []variables.Dependency{
 			{
-				Name: "dep1",
-				TemplateFolder: "/template/folder1",
-				OutputFolder: "/output/folder1",
+				Name:                 "dep1",
+				TemplateFolder:       "/template/folder1",
+				OutputFolder:         "/output/folder1",
 				DontInheritVariables: false,
-				Variables: []variables.Variable{},
+				Variables:            []variables.Variable{},
 			},
 			{
-				Name: "dep2",
-				TemplateFolder: "/template/folder2",
-				OutputFolder: "/output/folder2",
+				Name:                 "dep2",
+				TemplateFolder:       "/template/folder2",
+				OutputFolder:         "/output/folder2",
 				DontInheritVariables: true,
 				Variables: []variables.Variable{
 					variables.NewStringVariable("var1").WithDescription("Enter var1").WithDefault("foo"),
 				},
 			},
 			{
-				Name: "dep3",
-				TemplateFolder: "/template/folder3",
-				OutputFolder: "/output/folder3",
+				Name:                 "dep3",
+				TemplateFolder:       "/template/folder3",
+				OutputFolder:         "/output/folder3",
 				DontInheritVariables: false,
-				Variables: []variables.Variable{},
-				Skip: "{{ and .Foo .Bar }}",
+				Variables:            []variables.Variable{},
+				Skip:                 "{{ and .Foo .Bar }}",
 			},
 		},
 		Hooks: variables.Hooks{},
@@ -392,8 +381,7 @@ func TestParseBoilerplateConfigMultipleDependencies(t *testing.T) {
 }
 
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
-const CONFIG_DEPENDENCY_MISSING_NAME =
-`dependencies:
+const CONFIG_DEPENDENCY_MISSING_NAME = `dependencies:
   - template-folder: /template/folder1
     output-folder: /output/folder1
 `
@@ -408,8 +396,7 @@ func TestParseBoilerplateConfigDependencyMissingName(t *testing.T) {
 }
 
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
-const CONFIG_DEPENDENCY_MISSING_TEMPLATE_FOLDER =
-`dependencies:
+const CONFIG_DEPENDENCY_MISSING_TEMPLATE_FOLDER = `dependencies:
   - name: dep1
     output-folder: /output/folder1
 `
@@ -424,8 +411,7 @@ func TestParseBoilerplateConfigDependencyMissingTemplateFolder(t *testing.T) {
 }
 
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
-const CONFIG_DEPENDENCY_MISSING_VARIABLE_NAME =
-`dependencies:
+const CONFIG_DEPENDENCY_MISSING_VARIABLE_NAME = `dependencies:
   - name: dep1
     template-folder: /template/folder1
     output-folder: /output/folder1
@@ -444,8 +430,7 @@ func TestParseBoilerplateConfigDependencyMissingVariableName(t *testing.T) {
 }
 
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
-const CONFIG_DEPENDENCY_MISSING_OUTPUT_FOLDER =
-`dependencies:
+const CONFIG_DEPENDENCY_MISSING_OUTPUT_FOLDER = `dependencies:
   - name: dep1
     template-folder: /template/folder1
     output-folder: /output/folder1
@@ -464,8 +449,7 @@ func TestParseBoilerplateConfigDependencyMissingOutputFolder(t *testing.T) {
 }
 
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
-const CONFIG_DEPENDENCY_DUPLICATE_NAMES =
-`dependencies:
+const CONFIG_DEPENDENCY_DUPLICATE_NAMES = `dependencies:
   - name: dep1
     template-folder: /template/folder1
     output-folder: /output/folder1
@@ -489,8 +473,7 @@ func TestParseBoilerplateConfigDependencyDuplicateNames(t *testing.T) {
 }
 
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
-const CONFIG_EMPTY_HOOKS =
-`hooks:
+const CONFIG_EMPTY_HOOKS = `hooks:
 `
 
 func TestParseBoilerplateConfigEmptyHooks(t *testing.T) {
@@ -498,9 +481,9 @@ func TestParseBoilerplateConfigEmptyHooks(t *testing.T) {
 
 	actual, err := ParseBoilerplateConfig([]byte(CONFIG_EMPTY_HOOKS))
 	expected := &BoilerplateConfig{
-		Variables: []variables.Variable{},
+		Variables:    []variables.Variable{},
 		Dependencies: []variables.Dependency{},
-		Hooks: variables.Hooks{},
+		Hooks:        variables.Hooks{},
 	}
 
 	assert.Nil(t, err, "Unexpected error: %v", err)
@@ -508,8 +491,7 @@ func TestParseBoilerplateConfigEmptyHooks(t *testing.T) {
 }
 
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
-const CONFIG_EMPTY_BEFORE_AND_AFTER_HOOKS =
-`hooks:
+const CONFIG_EMPTY_BEFORE_AND_AFTER_HOOKS = `hooks:
    before:
    after:
 `
@@ -519,9 +501,9 @@ func TestParseBoilerplateConfigEmptyBeforeAndAfterHooks(t *testing.T) {
 
 	actual, err := ParseBoilerplateConfig([]byte(CONFIG_EMPTY_BEFORE_AND_AFTER_HOOKS))
 	expected := &BoilerplateConfig{
-		Variables: []variables.Variable{},
+		Variables:    []variables.Variable{},
 		Dependencies: []variables.Dependency{},
-		Hooks: variables.Hooks{},
+		Hooks:        variables.Hooks{},
 	}
 
 	assert.Nil(t, err, "Unexpected error: %v", err)
@@ -529,8 +511,7 @@ func TestParseBoilerplateConfigEmptyBeforeAndAfterHooks(t *testing.T) {
 }
 
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
-const CONFIG_ONE_BEFORE_HOOK_NO_ARGS =
-`hooks:
+const CONFIG_ONE_BEFORE_HOOK_NO_ARGS = `hooks:
    before:
      - command: foo
 `
@@ -540,7 +521,7 @@ func TestParseBoilerplateConfigOneBeforeHookNoArgs(t *testing.T) {
 
 	actual, err := ParseBoilerplateConfig([]byte(CONFIG_ONE_BEFORE_HOOK_NO_ARGS))
 	expected := &BoilerplateConfig{
-		Variables: []variables.Variable{},
+		Variables:    []variables.Variable{},
 		Dependencies: []variables.Dependency{},
 		Hooks: variables.Hooks{
 			BeforeHooks: []variables.Hook{
@@ -554,8 +535,7 @@ func TestParseBoilerplateConfigOneBeforeHookNoArgs(t *testing.T) {
 }
 
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
-const CONFIG_ONE_AFTER_HOOK_WITH_ARGS =
-`hooks:
+const CONFIG_ONE_AFTER_HOOK_WITH_ARGS = `hooks:
    after:
      - command: foo
        args:
@@ -570,7 +550,7 @@ func TestParseBoilerplateConfigOneAfterHookWithArgs(t *testing.T) {
 
 	actual, err := ParseBoilerplateConfig([]byte(CONFIG_ONE_AFTER_HOOK_WITH_ARGS))
 	expected := &BoilerplateConfig{
-		Variables: []variables.Variable{},
+		Variables:    []variables.Variable{},
 		Dependencies: []variables.Dependency{},
 		Hooks: variables.Hooks{
 			AfterHooks: []variables.Hook{
@@ -584,8 +564,7 @@ func TestParseBoilerplateConfigOneAfterHookWithArgs(t *testing.T) {
 }
 
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
-const CONFIG_MULTIPLE_HOOKS =
-`hooks:
+const CONFIG_MULTIPLE_HOOKS = `hooks:
    before:
      - command: echo
        args:
@@ -611,7 +590,7 @@ func TestParseBoilerplateConfigMultipleHooks(t *testing.T) {
 
 	actual, err := ParseBoilerplateConfig([]byte(CONFIG_MULTIPLE_HOOKS))
 	expected := &BoilerplateConfig{
-		Variables: []variables.Variable{},
+		Variables:    []variables.Variable{},
 		Dependencies: []variables.Dependency{},
 		Hooks: variables.Hooks{
 			BeforeHooks: []variables.Hook{

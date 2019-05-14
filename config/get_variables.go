@@ -2,12 +2,13 @@ package config
 
 import (
 	"fmt"
-	"github.com/gruntwork-io/boilerplate/util"
-	"github.com/gruntwork-io/boilerplate/errors"
-	"github.com/gruntwork-io/boilerplate/variables"
 	"strings"
+
+	"github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/render"
+	"github.com/gruntwork-io/boilerplate/util"
+	"github.com/gruntwork-io/boilerplate/variables"
 )
 
 const MaxReferenceDepth = 20
@@ -95,7 +96,7 @@ func getValueForVariable(variable variables.Variable, variablesInConfig map[stri
 		if !containsReference {
 			return nil, errors.WithStackTrace(MissingReference{VariableName: variable.Name(), ReferenceName: variable.Reference()})
 		}
-		return getValueForVariable(reference, variablesInConfig, valuesForPreviousVariables, opts, referenceDepth + 1)
+		return getValueForVariable(reference, variablesInConfig, valuesForPreviousVariables, opts, referenceDepth+1)
 	}
 
 	return getVariable(variable, opts)
@@ -157,7 +158,6 @@ func getVariableFromUser(variable variables.Variable, opts *options.BoilerplateO
 	helpText := []string{
 		fmt.Sprintf("type: %s", variable.Type()),
 		fmt.Sprintf("example value: %s", variable.ExampleValue()),
-
 	}
 	if variable.Default() != nil {
 		helpText = append(helpText, fmt.Sprintf("default: %s", variable.Default()))
@@ -183,6 +183,7 @@ func getVariableFromUser(variable variables.Variable, opts *options.BoilerplateO
 // Custom error types
 
 type MissingVariableWithNonInteractiveMode string
+
 func (variableName MissingVariableWithNonInteractiveMode) Error() string {
 	return fmt.Sprintf("Variable '%s' does not have a default, no value was specified at the command line using the --%s option, and the --%s flag is set, so cannot prompt user for a value.", string(variableName), options.OPT_VAR, options.OPT_NON_INTERACTIVE)
 }
@@ -191,6 +192,7 @@ type MissingReference struct {
 	VariableName  string
 	ReferenceName string
 }
+
 func (err MissingReference) Error() string {
 	return fmt.Sprintf("Variable %s references unknown variable %s", err.VariableName, err.ReferenceName)
 }
@@ -199,6 +201,7 @@ type CyclicalReference struct {
 	VariableName  string
 	ReferenceName string
 }
+
 func (err CyclicalReference) Error() string {
 	return fmt.Sprintf("Variable %s seems to have an cyclical reference with variable %s", err.VariableName, err.ReferenceName)
 }

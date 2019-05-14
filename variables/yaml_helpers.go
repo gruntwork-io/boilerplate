@@ -1,13 +1,15 @@
 package variables
 
 import (
-	"github.com/gruntwork-io/boilerplate/errors"
-	"reflect"
-	"gopkg.in/yaml.v2"
-	"io/ioutil"
-	"github.com/gruntwork-io/boilerplate/util"
-	"strings"
 	"fmt"
+	"io/ioutil"
+	"reflect"
+	"strings"
+
+	"gopkg.in/yaml.v2"
+
+	"github.com/gruntwork-io/boilerplate/errors"
+	"github.com/gruntwork-io/boilerplate/util"
 )
 
 // Given a map of key:value pairs read from a Boilerplate YAML config file of the format:
@@ -237,7 +239,7 @@ func unmarshalBooleanField(fields map[string]interface{}, fieldName string, requ
 		}
 	}
 
-	if valueAsBool, isBool:= value.(bool); isBool {
+	if valueAsBool, isBool := value.(bool); isBool {
 		return valueAsBool, nil
 	} else {
 		return false, errors.WithStackTrace(InvalidTypeForField{FieldName: fieldName, ExpectedType: "bool", ActualType: reflect.TypeOf(value), Context: context})
@@ -312,7 +314,7 @@ func ParseVariablesFromVarFile(varFilePath string) (map[string]interface{}, erro
 
 // Parse the variables in the given YAML contents into a map of variable name to variable value. Along the way, each
 // value is parsed as YAML.
-func parseVariablesFromVarFileContents(varFileContents []byte)(map[string]interface{}, error) {
+func parseVariablesFromVarFileContents(varFileContents []byte) (map[string]interface{}, error) {
 	vars := map[string]interface{}{}
 
 	err := yaml.Unmarshal(varFileContents, &vars)
@@ -323,11 +325,10 @@ func parseVariablesFromVarFileContents(varFileContents []byte)(map[string]interf
 	return vars, nil
 }
 
-
 // Parse variables passed in via command line options, either as a list of NAME=VALUE variable pairs in varsList, or a
 // list of paths to YAML files that define NAME: VALUE pairs. Return a map of the NAME: VALUE pairs. Along the way,
 // each VALUE is parsed as YAML.
-func ParseVars(varsList []string, varFileList[]string) (map[string]interface{}, error) {
+func ParseVars(varsList []string, varFileList []string) (map[string]interface{}, error) {
 	variables := map[string]interface{}{}
 
 	varsFromVarsList, err := parseVariablesFromKeyValuePairs(varsList)
@@ -346,6 +347,7 @@ func ParseVars(varsList []string, varFileList[]string) (map[string]interface{}, 
 // Custom error types
 
 type OptionsMissing string
+
 func (err OptionsMissing) Error() string {
 	return fmt.Sprintf("%s has type %s but does not specify any options. You must specify at least one option.", string(err), Enum)
 }
@@ -354,6 +356,7 @@ type InvalidVariableValue struct {
 	Value    interface{}
 	Variable Variable
 }
+
 func (err InvalidVariableValue) Error() string {
 	message := fmt.Sprintf("Value '%v' is not a valid value for variable '%s' with type '%s'.", err.Value, err.Variable.Name(), err.Variable.Type().String())
 	if err.Variable.Type() == Enum {
@@ -366,6 +369,7 @@ type OptionsCanOnlyBeUsedWithEnum struct {
 	Context string
 	Type    BoilerplateType
 }
+
 func (err OptionsCanOnlyBeUsedWithEnum) Error() string {
 	return fmt.Sprintf("%s has type %s and tries to specify options. Options may only be specified for the %s type.", err.Context, err.Type.String(), Enum)
 }
@@ -376,27 +380,32 @@ type InvalidTypeForField struct {
 	ActualType   reflect.Type
 	Context      string
 }
+
 func (err InvalidTypeForField) Error() string {
 	message := fmt.Sprintf("Field %s in %s must have type %s but got %s", err.FieldName, err.Context, err.ExpectedType, err.ActualType)
 	return message
 }
 
 type VariableNameCannotBeEmpty string
+
 func (varSyntax VariableNameCannotBeEmpty) Error() string {
 	return fmt.Sprintf("Variable name cannot be empty. Expected NAME=VALUE but got %s", string(varSyntax))
 }
 
 type InvalidVarSyntax string
+
 func (varSyntax InvalidVarSyntax) Error() string {
 	return fmt.Sprintf("Invalid syntax for variable. Expected NAME=VALUE but got %s", string(varSyntax))
 }
 
 type RequiredFieldMissing string
+
 func (err RequiredFieldMissing) Error() string {
 	return fmt.Sprintf("Required field %s is missing", string(err))
 }
 
 type UnrecognizedBoilerplateType BoilerplateType
+
 func (err UnrecognizedBoilerplateType) Error() string {
 	return fmt.Sprintf("Unrecognized type: %s", BoilerplateType(err).String())
 }

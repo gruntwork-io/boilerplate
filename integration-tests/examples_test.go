@@ -1,17 +1,19 @@
 package integration_tests
 
 import (
-	"testing"
-	"io/ioutil"
-	"github.com/stretchr/testify/assert"
-	"github.com/gruntwork-io/boilerplate/cli"
 	"fmt"
-	"path"
-	"os/exec"
+	"io/ioutil"
 	"os"
+	"os/exec"
+	"path"
 	"strings"
-	"github.com/gruntwork-io/boilerplate/util"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+
+	"github.com/gruntwork-io/boilerplate/cli"
 	"github.com/gruntwork-io/boilerplate/options"
+	"github.com/gruntwork-io/boilerplate/util"
 )
 
 // Our integration tests run through all the examples in the /examples folder, generate them, and check that they
