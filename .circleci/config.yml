@@ -1,5 +1,4 @@
 defaults: &defaults
-  working_directory: /home/circleci/.go_workspace/src/github.com/gruntwork-io/boilerplate
   machine: true
   environment:
     GRUNTWORK_INSTALLER_VERSION: v0.0.21
