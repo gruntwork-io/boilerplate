@@ -30,7 +30,7 @@ jobs:
               --go-src-path ./
       - run:
           name: run tests
-          command: run-go-tests --timeout 1h --circle-ci-2
+          command: run-go-tests --path . --timeout 1h
           no_output_timeout: 3600s
   deploy:
     <<: *defaults
