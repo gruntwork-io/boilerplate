@@ -1,17 +1,18 @@
 package templates
 
 import (
-	"github.com/gruntwork-io/boilerplate/errors"
-	"os"
-	"path/filepath"
-	"github.com/gruntwork-io/boilerplate/config"
-	"github.com/gruntwork-io/boilerplate/util"
-	"io/ioutil"
-	"path"
 	"fmt"
-	"github.com/gruntwork-io/boilerplate/variables"
-	"github.com/gruntwork-io/boilerplate/render"
+	"io/ioutil"
+	"os"
+	"path"
+	"path/filepath"
+
+	"github.com/gruntwork-io/boilerplate/config"
+	"github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/boilerplate/options"
+	"github.com/gruntwork-io/boilerplate/render"
+	"github.com/gruntwork-io/boilerplate/util"
+	"github.com/gruntwork-io/boilerplate/variables"
 )
 
 // Process the boilerplate template specified in the given options and use the existing variables. This function will
@@ -186,14 +187,14 @@ func cloneOptionsForDependency(dependency variables.Dependency, originalOpts *op
 	outputFolder := render.PathRelativeToTemplate(originalOpts.OutputFolder, renderedOutputFolder)
 
 	return &options.BoilerplateOptions{
-		TemplateFolder: templateFolder,
-		OutputFolder: outputFolder,
-		NonInteractive: originalOpts.NonInteractive,
-		Vars: cloneVariablesForDependency(dependency, variables),
-		OnMissingKey: originalOpts.OnMissingKey,
+		TemplateFolder:  templateFolder,
+		OutputFolder:    outputFolder,
+		NonInteractive:  originalOpts.NonInteractive,
+		Vars:            cloneVariablesForDependency(dependency, variables),
+		OnMissingKey:    originalOpts.OnMissingKey,
 		OnMissingConfig: originalOpts.OnMissingConfig,
-		DisableHooks: originalOpts.DisableHooks,
-		DisableShell: originalOpts.DisableShell,
+		DisableHooks:    originalOpts.DisableHooks,
+		DisableShell:    originalOpts.DisableShell,
 	}, nil
 }
 

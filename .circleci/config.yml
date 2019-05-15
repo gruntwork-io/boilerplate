@@ -1,6 +1,12 @@
 defaults: &defaults
-  working_directory: /home/circleci/.go_workspace/src/github.com/gruntwork-io/boilerplate
   machine: true
+  environment:
+    GRUNTWORK_INSTALLER_VERSION: v0.0.21
+    MODULE_CI_VERSION: v0.13.12
+    TERRAFORM_VERSION: NONE
+    TERRAGRUNT_VERSION: NONE
+    PACKER_VERSION: NONE
+    GOLANG_VERSION: 1.11.2
 
 version: 2
 jobs:
@@ -12,12 +18,19 @@ jobs:
           name: install dependencies
           command: |
             # Install the gruntwork-module-circleci-helpers and use it to configure the build environment and run tests.
-            curl -Ls https://raw.githubusercontent.com/gruntwork-io/gruntwork-installer/master/bootstrap-gruntwork-installer.sh | bash /dev/stdin --version v0.0.17
-            gruntwork-install --module-name "gruntwork-module-circleci-helpers" --repo "https://github.com/gruntwork-io/module-ci" --tag "v0.6.0"
-            configure-environment-for-gruntwork-module --circle-ci-2 --terraform-version NONE --packer-version NONE --go-src-path .
+            curl -Ls https://raw.githubusercontent.com/gruntwork-io/gruntwork-installer/master/bootstrap-gruntwork-installer.sh | bash /dev/stdin --version "${GRUNTWORK_INSTALLER_VERSION}"
+            gruntwork-install --module-name "gruntwork-module-circleci-helpers" --repo "https://github.com/gruntwork-io/module-ci" --tag "${MODULE_CI_VERSION}"
+            configure-environment-for-gruntwork-module \
+              --circle-ci-2-machine-executor \
+              --terraform-version ${TERRAFORM_VERSION} \
+              --terragrunt-version ${TERRAGRUNT_VERSION} \
+              --packer-version ${PACKER_VERSION} \
+              --use-go-dep \
+              --go-version ${GOLANG_VERSION} \
+              --go-src-path ./
       - run:
           name: run tests
-          command: run-go-tests --timeout 1h --circle-ci-2
+          command: run-go-tests --path . --timeout 1h
           no_output_timeout: 3600s
   deploy:
     <<: *defaults
@@ -38,7 +51,7 @@ jobs:
           name: release assets
           command: |
             # If a new release is tagged in GitHub, build the binaries and upload them to GitHub.
-            build-go-binaries --app-name boilerplate --dest-path bin --ld-flags "-X main.VERSION=$CIRCLE_TAG"
+            build-go-binaries --circle-ci-2 --app-name boilerplate --dest-path bin --ld-flags "-X main.VERSION=$CIRCLE_TAG"
             upload-github-release-assets bin/*
 workflows:
   version: 2
