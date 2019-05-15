@@ -36,10 +36,14 @@ jobs:
     <<: *defaults
     steps:
       - checkout
-      - attach_workspace:
-          at: /home/circleci/.go_workspace/src/github.com/gruntwork-io/boilerplate
       - run:
           <<: *install_gruntwork_tooling
+      - run:
+          name: release assets
+          command: |
+            # If a new release is tagged in GitHub, build the binaries and upload them to GitHub.
+            build-go-binaries --circle-ci-2 --app-name boilerplate --dest-path bin --ld-flags "-X main.VERSION=$CIRCLE_TAG"
+            upload-github-release-assets bin/*
       - run:
           name: generate documentation
           command: |
@@ -47,12 +51,7 @@ jobs:
             git checkout master
             bin/boilerplate_linux_amd64 --template-folder _docs --output-folder . --non-interactive --var Version=$CIRCLE_TAG
             git-add-commit-push --path README.md --message "Automatically regenerate README for version $CIRCLE_TAG" --branch-name master --git-push-behavior current
-      - run:
-          name: release assets
-          command: |
-            # If a new release is tagged in GitHub, build the binaries and upload them to GitHub.
-            build-go-binaries --circle-ci-2 --app-name boilerplate --dest-path bin --ld-flags "-X main.VERSION=$CIRCLE_TAG"
-            upload-github-release-assets bin/*
+
 workflows:
   version: 2
   build-and-test:
