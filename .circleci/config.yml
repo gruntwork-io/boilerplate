@@ -38,11 +38,21 @@ jobs:
       - checkout
       - run:
           <<: *install_gruntwork_tooling
+
+      - run: go get github.com/mitchellh/gox
+
       - run:
           name: release assets
           command: |
+            cd ~/.go_workspace/src/github.com/gruntwork-io/boilerplate
+
             # If a new release is tagged in GitHub, build the binaries and upload them to GitHub.
-            build-go-binaries --circle-ci-2 --app-name boilerplate --dest-path bin --ld-flags "-X main.VERSION=$CIRCLE_TAG"
+            build-go-binaries \
+              --circle-ci-2 \
+              --app-name boilerplate \
+              --dest-path bin \
+              --ld-flags "-X main.VERSION=$CIRCLE_TAG"
+
             upload-github-release-assets bin/*
       - run:
           name: generate documentation
