@@ -1,8 +1,8 @@
 package util
 
 import (
-	"os"
 	"log"
+	"os"
 )
 
 // A simple logger we can use to get consistent log formatting through out the app

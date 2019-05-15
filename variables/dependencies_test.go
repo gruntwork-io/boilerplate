@@ -1,8 +1,9 @@
 package variables
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestSplitIntoDependencyNameAndVariableName(t *testing.T) {
@@ -26,4 +27,3 @@ func TestSplitIntoDependencyNameAndVariableName(t *testing.T) {
 		assert.Equal(t, testCase.expectedOriginalVariableName, actualOriginalVariableName, "Variable name: %s", testCase.variableName)
 	}
 }
-

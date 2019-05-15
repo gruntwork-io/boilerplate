@@ -1,13 +1,14 @@
 package variables
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
-	"strconv"
 	"regexp"
-	"github.com/gruntwork-io/boilerplate/errors"
+	"strconv"
 	"strings"
-	"encoding/json"
+
+	"github.com/gruntwork-io/boilerplate/errors"
 )
 
 // An interface for a variable defined in a boilerplate.yml config file
@@ -63,7 +64,7 @@ type defaultVariable struct {
 // Create a new variable that holds a string
 func NewStringVariable(name string) Variable {
 	return defaultVariable{
-		name: name,
+		name:         name,
 		variableType: String,
 	}
 }
@@ -71,7 +72,7 @@ func NewStringVariable(name string) Variable {
 // Create a new variable that holds an int
 func NewIntVariable(name string) Variable {
 	return defaultVariable{
-		name: name,
+		name:         name,
 		variableType: Int,
 	}
 }
@@ -79,7 +80,7 @@ func NewIntVariable(name string) Variable {
 // Create a new variable that holds a float
 func NewFloatVariable(name string) Variable {
 	return defaultVariable{
-		name: name,
+		name:         name,
 		variableType: Float,
 	}
 }
@@ -87,15 +88,15 @@ func NewFloatVariable(name string) Variable {
 // Create a new variable that holds a bool
 func NewBoolVariable(name string) Variable {
 	return defaultVariable{
-		name: name,
+		name:         name,
 		variableType: Bool,
 	}
 }
 
 // Create a new variable that holds a list of strings
-func NewListVariable(name string, ) Variable {
+func NewListVariable(name string) Variable {
 	return defaultVariable{
-		name: name,
+		name:         name,
 		variableType: List,
 	}
 }
@@ -103,7 +104,7 @@ func NewListVariable(name string, ) Variable {
 // Create a new variable that holds a map of string to string
 func NewMapVariable(name string) Variable {
 	return defaultVariable{
-		name: name,
+		name:         name,
 		variableType: Map,
 	}
 }
@@ -111,9 +112,9 @@ func NewMapVariable(name string) Variable {
 // Create a new variable that holds an enum with the given possible values
 func NewEnumVariable(name string, options []string) Variable {
 	return defaultVariable{
-		name: name,
+		name:         name,
 		variableType: Enum,
-		options: options,
+		options:      options,
 	}
 }
 
@@ -171,14 +172,22 @@ func (variable defaultVariable) String() string {
 
 func (variable defaultVariable) ExampleValue() string {
 	switch variable.Type() {
-	case String: return "foo"
-	case Int: return "42"
-	case Float: return "3.1415926"
-	case Bool: return "true or false"
-	case List: return "[foo, bar, baz]"
-	case Map: return "{foo: bar, baz: blah}"
-	case Enum: return fmt.Sprintf("must be one of: %s", variable.Options())
-	default: return ""
+	case String:
+		return "foo"
+	case Int:
+		return "42"
+	case Float:
+		return "3.1415926"
+	case Bool:
+		return "true or false"
+	case List:
+		return "[foo, bar, baz]"
+	case Map:
+		return "{foo: bar, baz: blah}"
+	case Enum:
+		return fmt.Sprintf("must be one of: %s", variable.Options())
+	default:
+		return ""
 	}
 }
 
@@ -261,10 +270,10 @@ func parseStringAsList(str string) ([]string, error) {
 
 	return nil, errors.WithStackTrace(FormatNotJsonOrGo{
 		ExpectedJsonFormat: `["value1", "value2", "value3"]`,
-		ExpectedGoFormat: `[value1 value2 value3]`,
-		ActualFormat: str,
-		JsonErr: jsonErr,
-		GoErr: goErr,
+		ExpectedGoFormat:   `[value1 value2 value3]`,
+		ActualFormat:       str,
+		JsonErr:            jsonErr,
+		GoErr:              goErr,
 	})
 }
 
@@ -315,10 +324,10 @@ func parseStringAsMap(str string) (map[string]string, error) {
 
 	return nil, errors.WithStackTrace(FormatNotJsonOrGo{
 		ExpectedJsonFormat: `{"key1": "value1", "key2": "value2", "key3": "value3"}`,
-		ExpectedGoFormat: `map[key1:value1 key2:value2 key3:value3]`,
-		ActualFormat: str,
-		JsonErr: jsonErr,
-		GoErr: goErr,
+		ExpectedGoFormat:   `map[key1:value1 key2:value2 key3:value3]`,
+		ActualFormat:       str,
+		JsonErr:            jsonErr,
+		GoErr:              goErr,
 	})
 }
 
@@ -350,8 +359,8 @@ func parseStringAsGoMap(str string) (map[string]string, error) {
 			return nil, errors.WithStackTrace(ParseError{ExpectedType: "map", ExpectedFormat: "<key>:<value> for each item in the map", ActualFormat: str})
 		}
 
-		key := strings.Join(parts[:(len(parts) - 1)], ":")
-		value := parts[len(parts) - 1]
+		key := strings.Join(parts[:(len(parts)-1)], ":")
+		value := parts[len(parts)-1]
 
 		result[key] = value
 	}
@@ -458,17 +467,19 @@ type ParseError struct {
 	ExpectedFormat string
 	ActualFormat   string
 }
+
 func (err ParseError) Error() string {
 	return fmt.Sprintf("Expected type '%s' with format '%s', but got format '%s'.", err.ExpectedType, err.ExpectedFormat, err.ActualFormat)
 }
 
 type FormatNotJsonOrGo struct {
-	ExpectedJsonFormat	string
-	ExpectedGoFormat	string
-	ActualFormat		string
-	JsonErr 			error
-	GoErr   			error
+	ExpectedJsonFormat string
+	ExpectedGoFormat   string
+	ActualFormat       string
+	JsonErr            error
+	GoErr              error
 }
+
 func (err FormatNotJsonOrGo) Error() string {
 	return fmt.Sprintf("Expected a string in JSON format (e.g., %s) or Go format (e.g., %s), but got: %s. JSON parsing error: %v. Go parsing error: %v.", err.ExpectedJsonFormat, err.ExpectedGoFormat, err.ActualFormat, err.JsonErr, err.GoErr)
 }

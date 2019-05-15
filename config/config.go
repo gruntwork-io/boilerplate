@@ -1,14 +1,16 @@
 package config
 
 import (
+	"fmt"
 	"io/ioutil"
 	"path"
+
 	"gopkg.in/yaml.v2"
-	"github.com/gruntwork-io/boilerplate/util"
-	"fmt"
+
 	"github.com/gruntwork-io/boilerplate/errors"
-	"github.com/gruntwork-io/boilerplate/variables"
 	"github.com/gruntwork-io/boilerplate/options"
+	"github.com/gruntwork-io/boilerplate/util"
+	"github.com/gruntwork-io/boilerplate/variables"
 )
 
 const BOILERPLATE_CONFIG_FILE = "boilerplate.yml"
@@ -48,9 +50,9 @@ func (config *BoilerplateConfig) UnmarshalYAML(unmarshal func(interface{}) error
 	}
 
 	*config = BoilerplateConfig{
-		Variables: vars,
+		Variables:    vars,
 		Dependencies: deps,
-		Hooks: hooks,
+		Hooks:        hooks,
 	}
 	return nil
 }
@@ -94,6 +96,7 @@ func BoilerplateConfigPath(templateFolder string) string {
 // Custom error types
 
 type BoilerplateConfigNotFound string
+
 func (err BoilerplateConfigNotFound) Error() string {
 	return fmt.Sprintf("Could not find %s in %s and the %s flag is set to %s", BOILERPLATE_CONFIG_FILE, string(err), options.OPT_MISSING_CONFIG_ACTION, options.Exit)
 }

@@ -1,10 +1,12 @@
 package options
 
 import (
+	"fmt"
+
+	"github.com/urfave/cli"
+
 	"github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/boilerplate/util"
-	"fmt"
-	"github.com/urfave/cli"
 	"github.com/gruntwork-io/boilerplate/variables"
 )
 
@@ -20,14 +22,14 @@ const OPT_DISABLE_SHELL = "disable-shell"
 
 // The command-line options for the boilerplate app
 type BoilerplateOptions struct {
-	TemplateFolder 	 string
-	OutputFolder 	 string
-	NonInteractive	 bool
-	Vars		 map[string]interface{}
-	OnMissingKey     MissingKeyAction
-	OnMissingConfig  MissingConfigAction
-	DisableHooks     bool
-	DisableShell     bool
+	TemplateFolder  string
+	OutputFolder    string
+	NonInteractive  bool
+	Vars            map[string]interface{}
+	OnMissingKey    MissingKeyAction
+	OnMissingConfig MissingConfigAction
+	DisableHooks    bool
+	DisableShell    bool
 }
 
 // Validate that the options have reasonable values and return an error if they don't
@@ -73,14 +75,14 @@ func ParseOptions(cliContext *cli.Context) (*BoilerplateOptions, error) {
 	}
 
 	options := &BoilerplateOptions{
-		TemplateFolder: cliContext.String(OPT_TEMPLATE_FOLDER),
-		OutputFolder: cliContext.String(OPT_OUTPUT_FOLDER),
-		NonInteractive: cliContext.Bool(OPT_NON_INTERACTIVE),
-		OnMissingKey: missingKeyAction,
+		TemplateFolder:  cliContext.String(OPT_TEMPLATE_FOLDER),
+		OutputFolder:    cliContext.String(OPT_OUTPUT_FOLDER),
+		NonInteractive:  cliContext.Bool(OPT_NON_INTERACTIVE),
+		OnMissingKey:    missingKeyAction,
 		OnMissingConfig: missingConfigAction,
-		Vars: vars,
-		DisableHooks: cliContext.Bool(OPT_DISABLE_HOOKS),
-		DisableShell: cliContext.Bool(OPT_DISABLE_SHELL),
+		Vars:            vars,
+		DisableHooks:    cliContext.Bool(OPT_DISABLE_HOOKS),
+		DisableShell:    cliContext.Bool(OPT_DISABLE_SHELL),
 	}
 
 	if err := options.Validate(); err != nil {
@@ -93,10 +95,11 @@ func ParseOptions(cliContext *cli.Context) (*BoilerplateOptions, error) {
 // This type is an enum that represents what we can do when a template looks up a missing key. This typically happens
 // when there is a typo in the variable name in a template.
 type MissingKeyAction string
+
 var (
-	Invalid = MissingKeyAction("invalid")		// print <no value> for any missing key
-	ZeroValue = MissingKeyAction("zero")		// print the zero value of the missing key
-	ExitWithError = MissingKeyAction("error")	// exit with an error when there is a missing key
+	Invalid       = MissingKeyAction("invalid") // print <no value> for any missing key
+	ZeroValue     = MissingKeyAction("zero")    // print the zero value of the missing key
+	ExitWithError = MissingKeyAction("error")   // exit with an error when there is a missing key
 )
 
 var ALL_MISSING_KEY_ACTIONS = []MissingKeyAction{Invalid, ZeroValue, ExitWithError}
@@ -116,8 +119,9 @@ func ParseMissingKeyAction(str string) (MissingKeyAction, error) {
 // This type is an enum that represents what to do when the template folder passed to boilerplate does not contain a
 // boilerplate.yml file.
 type MissingConfigAction string
+
 var (
-	Exit = MissingConfigAction("exit")
+	Exit   = MissingConfigAction("exit")
 	Ignore = MissingConfigAction("ignore")
 )
 var ALL_MISSING_CONFIG_ACTIONS = []MissingConfigAction{Exit, Ignore}
@@ -140,17 +144,19 @@ var TemplateFolderOptionCannotBeEmpty = fmt.Errorf("The --%s option cannot be em
 var OutputFolderOptionCannotBeEmpty = fmt.Errorf("The --%s option cannot be empty", OPT_OUTPUT_FOLDER)
 
 type TemplateFolderDoesNotExist string
+
 func (err TemplateFolderDoesNotExist) Error() string {
 	return fmt.Sprintf("Folder %s does not exist", string(err))
 }
 
 type InvalidMissingKeyAction string
+
 func (err InvalidMissingKeyAction) Error() string {
 	return fmt.Sprintf("Invalid MissingKeyAction '%s'. Value must be one of: %s", string(err), ALL_MISSING_KEY_ACTIONS)
 }
 
 type InvalidMissingConfigAction string
+
 func (err InvalidMissingConfigAction) Error() string {
 	return fmt.Sprintf("Invalid MissingConfigAction '%s'. Value must be one of: %s", string(err), ALL_MISSING_CONFIG_ACTIONS)
 }
-

@@ -1,20 +1,20 @@
 package variables
 
 import (
-	"testing"
 	"reflect"
-	"github.com/stretchr/testify/assert"
-	"github.com/gruntwork-io/boilerplate/errors"
+	"testing"
+
 	"gopkg.in/yaml.v2"
+
+	"github.com/gruntwork-io/boilerplate/errors"
+	"github.com/stretchr/testify/assert"
 )
 
-const YAML_FILE_ONE_VAR =
-`
+const YAML_FILE_ONE_VAR = `
 key: value
 `
 
-const YAML_FILE_MULTIPLE_VARS =
-`
+const YAML_FILE_MULTIPLE_VARS = `
 key1: value1
 key2: value2
 key3: value3
@@ -24,7 +24,7 @@ func TestParseVariablesFromVarFileContents(t *testing.T) {
 	t.Parallel()
 
 	testCases := []struct {
-		fileContents  	    string
+		fileContents        string
 		expectYamlTypeError bool
 		expectedVars        map[string]interface{}
 	}{
@@ -47,7 +47,6 @@ func TestParseVariablesFromVarFileContents(t *testing.T) {
 		}
 	}
 }
-
 
 func TestParseVariablesFromKeyValuePairs(t *testing.T) {
 	t.Parallel()

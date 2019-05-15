@@ -1,21 +1,21 @@
 package render
 
 import (
-	"os"
 	"fmt"
+	"os"
 	"testing"
+
 	"github.com/stretchr/testify/assert"
+
 	"github.com/gruntwork-io/boilerplate/options"
 )
 
-const EMBED_WHOLE_FILE_TEMPLATE =
-`
+const EMBED_WHOLE_FILE_TEMPLATE = `
 embed file:
 {{snippet "../test-fixtures/templates-test/full-file-snippet.txt"}}
 `
 
-const EMBED_WHOLE_FILE_TEMPLATE_OUTPUT =
-`
+const EMBED_WHOLE_FILE_TEMPLATE_OUTPUT = `
 embed file:
 Hi
 boilerplate-snippet: foo
@@ -24,14 +24,12 @@ boilerplate-snippet: foo
 Bye
 `
 
-const EMBED_SNIPPET_TEMPLATE =
-`
+const EMBED_SNIPPET_TEMPLATE = `
 embed snippet:
 {{snippet "../test-fixtures/templates-test/full-file-snippet.txt" "foo"}}
 `
 
-const EMBED_SNIPPET_TEMPLATE_OUTPUT =
-`
+const EMBED_SNIPPET_TEMPLATE_OUTPUT = `
 embed snippet:
 Hello, World!
 `
@@ -48,7 +46,7 @@ func TestRenderTemplate(t *testing.T) {
 
 	testCases := []struct {
 		templateContents  string
-		variables   	  map[string]interface{}
+		variables         map[string]interface{}
 		missingKeyAction  options.MissingKeyAction
 		expectedErrorText string
 		expectedOutput    string
@@ -93,7 +91,7 @@ func TestRenderTemplate(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		actualOutput, err := RenderTemplate(pwd + "/template.txt", testCase.templateContents, testCase.variables, &options.BoilerplateOptions{TemplateFolder: "/templates", OutputFolder: "/output", OnMissingKey: testCase.missingKeyAction})
+		actualOutput, err := RenderTemplate(pwd+"/template.txt", testCase.templateContents, testCase.variables, &options.BoilerplateOptions{TemplateFolder: "/templates", OutputFolder: "/output", OnMissingKey: testCase.missingKeyAction})
 		if testCase.expectedErrorText == "" {
 			assert.Nil(t, err, "template = %s, variables = %s, missingKeyAction = %s, err = %v", testCase.templateContents, testCase.variables, testCase.missingKeyAction, err)
 			assert.Equal(t, testCase.expectedOutput, actualOutput, "template = %s, variables = %s, missingKeyAction = %s", testCase.templateContents, testCase.variables, testCase.missingKeyAction)
@@ -113,7 +111,7 @@ func TestRenderTemplateRecursively(t *testing.T) {
 
 	testCases := []struct {
 		templateContents  string
-		variables   	  map[string]interface{}
+		variables         map[string]interface{}
 		missingKeyAction  options.MissingKeyAction
 		expectedErrorText string
 		expectedOutput    string
@@ -125,7 +123,7 @@ func TestRenderTemplateRecursively(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		actualOutput, err := RenderTemplateRecursively(pwd + "/template.txt", testCase.templateContents, testCase.variables, &options.BoilerplateOptions{TemplateFolder: "/templates", OutputFolder: "/output", OnMissingKey: testCase.missingKeyAction})
+		actualOutput, err := RenderTemplateRecursively(pwd+"/template.txt", testCase.templateContents, testCase.variables, &options.BoilerplateOptions{TemplateFolder: "/templates", OutputFolder: "/output", OnMissingKey: testCase.missingKeyAction})
 		if testCase.expectedErrorText == "" {
 			assert.Nil(t, err, "template = %s, variables = %s, missingKeyAction = %s, err = %v", testCase.templateContents, testCase.variables, testCase.missingKeyAction, err)
 			assert.Equal(t, testCase.expectedOutput, actualOutput, "template = %s, variables = %s, missingKeyAction = %s", testCase.templateContents, testCase.variables, testCase.missingKeyAction)
@@ -136,4 +134,3 @@ func TestRenderTemplateRecursively(t *testing.T) {
 		}
 	}
 }
-

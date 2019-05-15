@@ -2,6 +2,7 @@ package variables
 
 import (
 	"testing"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -10,7 +11,7 @@ func TestParseStringAsList(t *testing.T) {
 
 	testCases := []struct {
 		testName     string
-		str  	     string
+		str          string
 		expectedList []string
 	}{
 		{"empty-list", "[]", []string{}},
@@ -35,9 +36,9 @@ func TestParseStringAsMap(t *testing.T) {
 	t.Parallel()
 
 	testCases := []struct {
-		testName     string
-		str  	     string
-		expectedMap  map[string]string
+		testName    string
+		str         string
+		expectedMap map[string]string
 	}{
 		{"empty-map", "map[]", map[string]string{}},
 		{"one-item", "map[a:b]", map[string]string{"a": "b"}},

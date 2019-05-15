@@ -1,10 +1,12 @@
 package util
 
 import (
-	"testing"
-	"github.com/stretchr/testify/assert"
 	"fmt"
 	"reflect"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+
 	"github.com/gruntwork-io/boilerplate/errors"
 )
 

@@ -1,14 +1,15 @@
 package util
 
 import (
-	"os"
-	"strings"
-	"net/http"
-	"github.com/gruntwork-io/boilerplate/errors"
-	"io/ioutil"
-	"io"
-	"os/exec"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"net/http"
+	"os"
+	"os/exec"
+	"strings"
+
+	"github.com/gruntwork-io/boilerplate/errors"
 )
 
 // Return true if the path exists
@@ -85,7 +86,7 @@ func CommandInstalled(command string) bool {
 }
 
 // Run the given command return its stdout and stderr as a string
-func RunCommandAndGetOutput(command string, args ... string) (string, error) {
+func RunCommandAndGetOutput(command string, args ...string) (string, error) {
 	cmd := exec.Command(command, args...)
 
 	bytes, err := cmd.Output()
@@ -119,6 +120,7 @@ func WriteFileWithSamePermissions(source string, destination string, contents []
 // custom error types
 
 type NoSuchFile string
+
 func (path NoSuchFile) Error() string {
 	return fmt.Sprintf("File %s does not exist", string(path))
 }
