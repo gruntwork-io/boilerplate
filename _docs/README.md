@@ -495,14 +495,14 @@ The following functions overlap with sprig, but have different functionality. Th
 above under a different name. These point to the boilerplate implementations for backwards compatibility. Please migrate
 to using the new naming scheme, as they will be updated to use the sprig versions in future versions of boilerplate.
 
-* `round`: In boilerplate, `round` returns the integer form as opposed to float. E.g `{{ round 123.5555 }}` will return
+* `round`: In boilerplate, `round` returns the integer form as opposed to float. E.g `{{"{{"}} round 123.5555 {{"}}"}}` will return
   `124`. The following supported alternative functions are available:
     - `roundFloat`: The sprig version of [round](http://masterminds.github.io/sprig/math.html#round), which supports
-      arbitrary decimal rounding. E.g `{{ round 123.5555 3 }}` returns `123.556`. Note that `{{ round 123.5555 0 }}`
+      arbitrary decimal rounding. E.g `{{"{{"}} round 123.5555 3 {{"}}"}}` returns `123.556`. Note that `{{"{{"}} round 123.5555 0 {{"}}"}}`
       returns `124.0`.
     - `roundInt`: Another name for the boilerplate version of `round`. Use this if you would like to keep old behavior.
-* `ceil` and `floor`: In boilerplate, `ceil` and `floor` return integer forms as opposed to floats. E.g `{{ ceil 1.1
-  }}` returns `2`, as opposed to `2.0` in the sprig version. The following supported alternative functions are
+* `ceil` and `floor`: In boilerplate, `ceil` and `floor` return integer forms as opposed to floats. E.g `{{"{{"}} ceil
+  1.1 {{"}}"}}` returns `2`, as opposed to `2.0` in the sprig version. The following supported alternative functions are
   available:
     - `ceilFloat` and `floorFloat`: The sprig version of [ceil](http://masterminds.github.io/sprig/math.html#ceil) and
       [floor](http://masterminds.github.io/sprig/math.html#floor).
@@ -524,20 +524,23 @@ to using the new naming scheme, as they will be updated to use the sprig version
     - `replaceAll`: The sprig version of [replace](http://masterminds.github.io/sprig/strings.html#replace).
     - `replaceOne`: Another name for the boilerplate version of `replace`. Use this if you would like to keep old
       behavior.
-* `slice`: In boilerplate, `slice` returns a list of numbers in the provided range. E.g `{{ slice 1 5 1 }}` returns
-  the list `[1, 2, 3, 4]`. The following supported alternative functions are available:
+* `slice`: In boilerplate, `slice` returns a list of numbers in the provided range. E.g `{{"{{"}} slice 1 5 1 {{"}}"}}`
+  returns the list `[1, 2, 3, 4]`. The following supported alternative functions are available:
     - `sliceList`: The sprig version of [slice](http://masterminds.github.io/sprig/lists.html#slice), which returns the
-      slice of the given list. E.g `{{ slice list n m }}` returns `list[n:m]`.
+      slice of the given list. E.g `{{"{{"}} slice list n m {{"}}"}}` returns `list[n:m]`.
     - `numRange`: Another name for the boilerplate version of `slice`. Use this if you would like to keep old
       behavior.
 * `trimPrefix` and `trimSuffix`: In boilerplate, `trimPrefix` and `trimSuffix` takes the base string first. E.g
-  `{{ trimPrefix hello-world hello }}` returns `-world`. The following supported alternative functions are available:
+  `{{"{{"}} trimPrefix hello-world hello {{"}}"}}` returns `-world`. The following supported alternative functions are
+  available:
     - `trimPrefixSprig` and `trimSuffixSprig`: The sprig version of
       [trimPrefix](http://masterminds.github.io/sprig/strings.html#trimPrefix) and
-      [trimSuffix](http://masterminds.github.io/sprig/strings.html#trimSuffix). Unlike the boilerplate version, this takes the trim text first so that you can pipeline the trimming. E.g `{{ "hello-world" | trimPrefix "hello" }}` returns `{{ -world }}`.
+      [trimSuffix](http://masterminds.github.io/sprig/strings.html#trimSuffix). Unlike the boilerplate version, this
+      takes the trim text first so that you can pipeline the trimming. E.g `{{"{{"}} "hello-world" | trimPrefix "hello"
+      {{"}}"}}` returns `{{"{{"}} -world {{"}}"}}`.
     - `trimPrefixBoilerplate` and `trimSuffixBoilerplate`: Another name for the boilerplate versions of `trimPrefix`
       and `trimSuffix`. Use this if you would like to keep old behavior.
-  
+
 ## Alternative project generators
 
 Before creating Boilerplate, we tried a number of other project generators, but none of them met all of our
