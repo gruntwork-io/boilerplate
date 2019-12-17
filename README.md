@@ -506,6 +506,11 @@ Boilerplate also includes several custom helpers that you can access that enhanc
    return str2;
    // boilerplate-snippet: foo
    ```
+* `include <PATH> <VARIABLES>`: Returns the contents of the file at `PATH` after rendering it through the templating
+  engine with the provided variables, as a string. Use `.` to pass the current variables to the included template. E.g:
+  ```
+  {{ include "../source-template.snippet" . }}
+  ```
 * `replaceOne OLD NEW`: Replace the first occurrence of `OLD` with `NEW`. This is a literal replace, not regex.
 * `replaceAll OLD NEW`: Replace all occurrences of `OLD` with `NEW`. This is a literal replace, not regex.
 * `roundInt FLOAT`: Round `FLOAT` to the nearest integer. E.g. 1.5 becomes 2.
