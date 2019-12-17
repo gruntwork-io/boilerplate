@@ -37,21 +37,23 @@ func TestExamples(t *testing.T) {
 			continue
 		}
 
-		templateFolder := path.Join(examplesBasePath, example.Name())
-		outputFolder := path.Join(outputBasePath, example.Name())
-		varFile := path.Join(examplesVarFilesBasePath, example.Name(), "vars.yml")
-		expectedOutputFolder := path.Join(examplesExpectedOutputBasePath, example.Name())
+		t.Run(path.Base(example.Name()), func(t *testing.T) {
+			templateFolder := path.Join(examplesBasePath, example.Name())
+			outputFolder := path.Join(outputBasePath, example.Name())
+			varFile := path.Join(examplesVarFilesBasePath, example.Name(), "vars.yml")
+			expectedOutputFolder := path.Join(examplesExpectedOutputBasePath, example.Name())
 
-		if !util.PathExists(varFile) || !util.PathExists(expectedOutputFolder) {
-			t.Logf("Skipping example %s because either the var file (%s) or expected output folder (%s) does not exist.", templateFolder, varFile, expectedOutputFolder)
-			continue
-		}
+			if !util.PathExists(varFile) || !util.PathExists(expectedOutputFolder) {
+				t.Logf("Skipping example %s because either the var file (%s) or expected output folder (%s) does not exist.", templateFolder, varFile, expectedOutputFolder)
+				return
+			}
 
-		for _, missingKeyAction := range options.ALL_MISSING_KEY_ACTIONS {
-			t.Run(fmt.Sprintf("%s-missing-key-%s", example.Name(), string(missingKeyAction)), func(t *testing.T) {
-				testExample(t, templateFolder, outputFolder, varFile, expectedOutputFolder, string(missingKeyAction))
-			})
-		}
+			for _, missingKeyAction := range options.ALL_MISSING_KEY_ACTIONS {
+				t.Run(fmt.Sprintf("%s-missing-key-%s", example.Name(), string(missingKeyAction)), func(t *testing.T) {
+					testExample(t, templateFolder, outputFolder, varFile, expectedOutputFolder, string(missingKeyAction))
+				})
+			}
+		})
 	}
 }
 

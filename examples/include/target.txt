@@ -1,0 +1,1 @@
+{{ include "../../test-fixtures/include-test/template.txt" . }}

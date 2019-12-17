@@ -85,6 +85,7 @@ func CreateTemplateHelpers(templatePath string, opts *options.BoilerplateOptions
 		"keysSorted": keys,
 
 		"snippet": wrapWithTemplatePath(templatePath, opts, snippet),
+		"include": wrapIncludeWithTemplatePath(templatePath, opts),
 		"shell":   wrapWithTemplatePath(templatePath, opts, shell),
 
 		"templateFolder":        func() string { return opts.TemplateFolder },
@@ -185,6 +186,13 @@ func wrapWithTemplatePath(templatePath string, opts *options.BoilerplateOptions,
 	}
 }
 
+// This works exactly like wrapWithTemplatePath, but it is adapted to the function args for the include helper function.
+func wrapIncludeWithTemplatePath(templatePath string, opts *options.BoilerplateOptions) func(string, map[string]interface{}) (string, error) {
+	return func(path string, varData map[string]interface{}) (string, error) {
+		return include(templatePath, opts, path, varData)
+	}
+}
+
 // This helper expects the following args:
 //
 // snippet <TEMPLATE_PATH> <PATH> [SNIPPET_NAME]
@@ -201,6 +209,20 @@ func snippet(templatePath string, opts *options.BoilerplateOptions, args ...stri
 	default:
 		return "", errors.WithStackTrace(InvalidSnippetArguments(args))
 	}
+}
+
+// This helper expects the following args:
+//
+// include <TEMPLATE_PATH> <PATH> <VARIABLES>
+//
+// This helper returns the contents of PATH, relative to TEMPLAT_PATH, but rendered through the boilerplate templating
+// engine with the given variables.
+func include(templatePath string, opts *options.BoilerplateOptions, path string, varData map[string]interface{}) (string, error) {
+	templateContents, err := readFile(templatePath, path)
+	if err != nil {
+		return "", err
+	}
+	return RenderTemplate(templatePath, templateContents, varData, opts)
 }
 
 // Returns the given filePath relative to the given templatePath. If filePath is already an absolute path, returns it
