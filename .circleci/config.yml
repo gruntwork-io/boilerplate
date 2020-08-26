@@ -2,11 +2,11 @@ defaults: &defaults
   machine: true
   environment:
     GRUNTWORK_INSTALLER_VERSION: v0.0.21
-    MODULE_CI_VERSION: v0.13.12
+    MODULE_CI_VERSION: v0.27.2
     TERRAFORM_VERSION: NONE
     TERRAGRUNT_VERSION: NONE
     PACKER_VERSION: NONE
-    GOLANG_VERSION: 1.11.2
+    GOLANG_VERSION: "1.14"
 
 version: 2
 jobs:
@@ -22,17 +22,15 @@ jobs:
             gruntwork-install --module-name "gruntwork-module-circleci-helpers" --repo "https://github.com/gruntwork-io/module-ci" --tag "${MODULE_CI_VERSION}"
             gruntwork-install --module-name "git-helpers" --repo "https://github.com/gruntwork-io/module-ci" --tag "${MODULE_CI_VERSION}"
             configure-environment-for-gruntwork-module \
-              --circle-ci-2-machine-executor \
               --terraform-version ${TERRAFORM_VERSION} \
               --terragrunt-version ${TERRAGRUNT_VERSION} \
               --packer-version ${PACKER_VERSION} \
-              --use-go-dep \
-              --go-version ${GOLANG_VERSION} \
-              --go-src-path ./
+              --go-version ${GOLANG_VERSION}
       - run:
           name: run tests
           command: run-go-tests --path . --timeout 1h
           no_output_timeout: 3600s
+
   deploy:
     <<: *defaults
     steps:
@@ -45,11 +43,8 @@ jobs:
       - run:
           name: release assets
           command: |
-            cd ~/.go_workspace/src/github.com/gruntwork-io/boilerplate
-
             # If a new release is tagged in GitHub, build the binaries and upload them to GitHub.
             build-go-binaries \
-              --circle-ci-2 \
               --app-name boilerplate \
               --dest-path bin \
               --ld-flags "-X main.VERSION=$CIRCLE_TAG"
