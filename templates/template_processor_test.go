@@ -1,41 +1,14 @@
 package templates
 
 import (
-	"fmt"
 	"os"
-	"path/filepath"
 	"testing"
 
-	"github.com/gruntwork-io/gruntwork-cli/errors"
-	"github.com/gruntwork-io/terratest/modules/git"
-	"github.com/gruntwork-io/terratest/modules/shell"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/variables"
 )
-
-func TestDownloadTemplatesToTempDir(t *testing.T) {
-	t.Parallel()
-
-	pwd, err := os.Getwd()
-	require.NoError(t, err)
-	examplePath := filepath.Join(pwd, "..", "examples", "variables")
-
-	branch := git.GetCurrentBranchName(t)
-	templateUrl := fmt.Sprintf("git@github.com:gruntwork-io/boilerplate.git//examples/variables?ref=%s", branch)
-	workingDir, err := downloadTemplatesToTemporaryFolder(templateUrl)
-	defer os.RemoveAll(workingDir)
-	require.NoError(t, err, errors.PrintErrorWithStackTrace(err))
-
-	// Run diff to make sure there are no differences
-	cmd := shell.Command{
-		Command: "diff",
-		Args:    []string{examplePath, workingDir},
-	}
-	shell.RunCommand(t, cmd)
-}
 
 func TestOutPath(t *testing.T) {
 	t.Parallel()
