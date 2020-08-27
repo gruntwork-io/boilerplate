@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/gruntwork-io/boilerplate/cli"
+	"github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/util"
 )
@@ -112,7 +113,7 @@ func testExample(t *testing.T, templateFolder string, outputFolder string, varFi
 	}
 
 	err := app.Run(args)
-	assert.NoError(t, err)
+	assert.NoError(t, err, errors.PrintErrorWithStackTrace(err))
 	assertDirectoriesEqual(t, expectedOutputFolder, outputFolder)
 }
 
