@@ -9,6 +9,7 @@ import (
 
 	"github.com/gruntwork-io/boilerplate/config"
 	"github.com/gruntwork-io/boilerplate/errors"
+	getter_helper "github.com/gruntwork-io/boilerplate/getter-helper"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/render"
 	"github.com/gruntwork-io/boilerplate/util"
@@ -16,10 +17,27 @@ import (
 )
 
 // Process the boilerplate template specified in the given options and use the existing variables. This function will
-// load any missing variables (either from command line options or by prompting the user), execute all the dependent
-// boilerplate templates, and then execute this template. Note that we pass in rootOptions so that template dependencies
-// can inspect properties of the root template.
+// download remote templates to a temporary working directory, which is cleaned up at the end of the function. This
+// function will load any missing variables (either from command line options or by prompting the user), execute all the
+// dependent boilerplate templates, and then execute this template. Note that we pass in rootOptions so that template
+// dependencies can inspect properties of the root template.
 func ProcessTemplate(options, rootOpts *options.BoilerplateOptions, thisDep variables.Dependency) error {
+	// If TemplateFolder is already set, use that directly as it is a local template. Otherwise, download to a temporary
+	// working directory.
+	if options.TemplateFolder == "" {
+		workingDir, templateFolder, err := getter_helper.DownloadTemplatesToTemporaryFolder(options.TemplateUrl)
+		defer func() {
+			util.Logger.Printf("Cleaning up working directory.")
+			os.RemoveAll(workingDir)
+		}()
+		if err != nil {
+			return err
+		}
+
+		// Set the TemplateFolder of the options to the download dir
+		options.TemplateFolder = templateFolder
+	}
+
 	rootBoilerplateConfig, err := config.LoadBoilerplateConfig(rootOpts)
 	if err != nil {
 		return err
@@ -174,7 +192,7 @@ func processDependency(dependency variables.Dependency, opts *options.Boilerplat
 // Clone the given options for use when rendering the given dependency. The dependency will get the same options as
 // the original passed in, except for the template folder, output folder, and command-line vars.
 func cloneOptionsForDependency(dependency variables.Dependency, originalOpts *options.BoilerplateOptions, variables map[string]interface{}) (*options.BoilerplateOptions, error) {
-	renderedTemplateFolder, err := render.RenderTemplate(originalOpts.TemplateFolder, dependency.TemplateFolder, variables, originalOpts)
+	renderedTemplateUrl, err := render.RenderTemplate(originalOpts.TemplateFolder, dependency.TemplateUrl, variables, originalOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -183,10 +201,17 @@ func cloneOptionsForDependency(dependency variables.Dependency, originalOpts *op
 		return nil, err
 	}
 
-	templateFolder := render.PathRelativeToTemplate(originalOpts.TemplateFolder, renderedTemplateFolder)
+	templateUrl, templateFolder, err := options.DetermineTemplateConfig(renderedTemplateUrl)
+	// If local, make sure to return relative path in context of original template folder
+	if templateFolder != "" {
+		templateFolder = render.PathRelativeToTemplate(originalOpts.TemplateFolder, renderedTemplateUrl)
+	}
+
+	// Output folder should be local path relative to original output folder, or absolute path
 	outputFolder := render.PathRelativeToTemplate(originalOpts.OutputFolder, renderedOutputFolder)
 
 	return &options.BoilerplateOptions{
+		TemplateUrl:     templateUrl,
 		TemplateFolder:  templateFolder,
 		OutputFolder:    outputFolder,
 		NonInteractive:  originalOpts.NonInteractive,
@@ -235,7 +260,7 @@ func shouldProcessDependency(dependency variables.Dependency, opts *options.Boil
 		return true, nil
 	}
 
-	return util.PromptUserForYesNo(fmt.Sprintf("This boilerplate template has a dependency! Run boilerplate on dependency %s with template folder %s and output folder %s?", dependency.Name, dependency.TemplateFolder, dependency.OutputFolder))
+	return util.PromptUserForYesNo(fmt.Sprintf("This boilerplate template has a dependency! Run boilerplate on dependency %s with template folder %s and output folder %s?", dependency.Name, dependency.TemplateUrl, dependency.OutputFolder))
 }
 
 // Return true if the skip parameter of the given dependency evaluates to a "true" value

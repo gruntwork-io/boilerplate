@@ -300,7 +300,7 @@ func TestParseBoilerplateConfigAllTypes(t *testing.T) {
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
 const CONFIG_ONE_DEPENDENCY = `dependencies:
   - name: dep1
-    template-folder: /template/folder1
+    template-url: /template/folder1
     output-folder: /output/folder1
 `
 
@@ -311,7 +311,7 @@ func TestParseBoilerplateConfigOneDependency(t *testing.T) {
 	expected := &BoilerplateConfig{
 		Variables: []variables.Variable{},
 		Dependencies: []variables.Dependency{
-			{Name: "dep1", TemplateFolder: "/template/folder1", OutputFolder: "/output/folder1", DontInheritVariables: false, Variables: []variables.Variable{}},
+			{Name: "dep1", TemplateUrl: "/template/folder1", OutputFolder: "/output/folder1", DontInheritVariables: false, Variables: []variables.Variable{}},
 		},
 		Hooks: variables.Hooks{},
 	}
@@ -323,11 +323,11 @@ func TestParseBoilerplateConfigOneDependency(t *testing.T) {
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
 const CONFIG_MULTIPLE_DEPENDENCIES = `dependencies:
   - name: dep1
-    template-folder: /template/folder1
+    template-url: /template/folder1
     output-folder: /output/folder1
 
   - name: dep2
-    template-folder: /template/folder2
+    template-url: /template/folder2
     output-folder: /output/folder2
     dont-inherit-variables: true
     variables:
@@ -336,7 +336,7 @@ const CONFIG_MULTIPLE_DEPENDENCIES = `dependencies:
         default: foo
 
   - name: dep3
-    template-folder: /template/folder3
+    template-url: /template/folder3
     output-folder: /output/folder3
     skip: "{{ and .Foo .Bar }}"
 `
@@ -350,14 +350,14 @@ func TestParseBoilerplateConfigMultipleDependencies(t *testing.T) {
 		Dependencies: []variables.Dependency{
 			{
 				Name:                 "dep1",
-				TemplateFolder:       "/template/folder1",
+				TemplateUrl:          "/template/folder1",
 				OutputFolder:         "/output/folder1",
 				DontInheritVariables: false,
 				Variables:            []variables.Variable{},
 			},
 			{
 				Name:                 "dep2",
-				TemplateFolder:       "/template/folder2",
+				TemplateUrl:          "/template/folder2",
 				OutputFolder:         "/output/folder2",
 				DontInheritVariables: true,
 				Variables: []variables.Variable{
@@ -366,7 +366,7 @@ func TestParseBoilerplateConfigMultipleDependencies(t *testing.T) {
 			},
 			{
 				Name:                 "dep3",
-				TemplateFolder:       "/template/folder3",
+				TemplateUrl:          "/template/folder3",
 				OutputFolder:         "/output/folder3",
 				DontInheritVariables: false,
 				Variables:            []variables.Variable{},
@@ -382,7 +382,7 @@ func TestParseBoilerplateConfigMultipleDependencies(t *testing.T) {
 
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
 const CONFIG_DEPENDENCY_MISSING_NAME = `dependencies:
-  - template-folder: /template/folder1
+  - template-url: /template/folder1
     output-folder: /output/folder1
 `
 
@@ -401,19 +401,19 @@ const CONFIG_DEPENDENCY_MISSING_TEMPLATE_FOLDER = `dependencies:
     output-folder: /output/folder1
 `
 
-func TestParseBoilerplateConfigDependencyMissingTemplateFolder(t *testing.T) {
+func TestParseBoilerplateConfigDependencyMissingTemplateUrl(t *testing.T) {
 	t.Parallel()
 
 	_, err := ParseBoilerplateConfig([]byte(CONFIG_DEPENDENCY_MISSING_TEMPLATE_FOLDER))
 
 	assert.NotNil(t, err)
-	assert.True(t, errors.IsError(err, variables.RequiredFieldMissing("template-folder")), "Expected a RequiredFieldMissing error but got %s", reflect.TypeOf(errors.Unwrap(err)))
+	assert.True(t, errors.IsError(err, variables.RequiredFieldMissing("template-url")), "Expected a RequiredFieldMissing error but got %s", reflect.TypeOf(errors.Unwrap(err)))
 }
 
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
 const CONFIG_DEPENDENCY_MISSING_VARIABLE_NAME = `dependencies:
   - name: dep1
-    template-folder: /template/folder1
+    template-url: /template/folder1
     output-folder: /output/folder1
     variables:
       - description: Enter foo
@@ -432,11 +432,11 @@ func TestParseBoilerplateConfigDependencyMissingVariableName(t *testing.T) {
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
 const CONFIG_DEPENDENCY_MISSING_OUTPUT_FOLDER = `dependencies:
   - name: dep1
-    template-folder: /template/folder1
+    template-url: /template/folder1
     output-folder: /output/folder1
 
   - name: dep2
-    template-folder: /template/folder2
+    template-url: /template/folder2
 `
 
 func TestParseBoilerplateConfigDependencyMissingOutputFolder(t *testing.T) {
@@ -451,15 +451,15 @@ func TestParseBoilerplateConfigDependencyMissingOutputFolder(t *testing.T) {
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
 const CONFIG_DEPENDENCY_DUPLICATE_NAMES = `dependencies:
   - name: dep1
-    template-folder: /template/folder1
+    template-url: /template/folder1
     output-folder: /output/folder1
 
   - name: dep2
-    template-folder: /template/folder2
+    template-url: /template/folder2
     output-folder: /output/folder2
 
   - name: dep1
-    template-folder: /template/folder3
+    template-url: /template/folder3
     output-folder: /output/folder3
 `
 
@@ -619,8 +619,8 @@ func TestLoadBoilerplateConfigFullConfig(t *testing.T) {
 			variables.NewStringVariable("baz").WithDescription("example description").WithDefault("default"),
 		},
 		Dependencies: []variables.Dependency{
-			{Name: "dep1", TemplateFolder: "/template/folder1", OutputFolder: "/output/folder1", DontInheritVariables: false, Variables: []variables.Variable{}},
-			{Name: "dep2", TemplateFolder: "/template/folder2", OutputFolder: "/output/folder2", DontInheritVariables: true, Variables: []variables.Variable{
+			{Name: "dep1", TemplateUrl: "/template/folder1", OutputFolder: "/output/folder1", DontInheritVariables: false, Variables: []variables.Variable{}},
+			{Name: "dep2", TemplateUrl: "/template/folder2", OutputFolder: "/output/folder2", DontInheritVariables: true, Variables: []variables.Variable{
 				variables.NewStringVariable("baz").WithDescription("example description").WithDefault("other-default"),
 				variables.NewStringVariable("abc").WithDescription("example description").WithDefault("default"),
 			}},

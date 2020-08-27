@@ -1,6 +1,6 @@
-{{ .BoilerplateConfigDeps.docs.TemplateFolder }}
+{{ .BoilerplateConfigDeps.docs.TemplateUrl }}
 {{ .BoilerplateConfigDeps.docs.OutputFolder }}
-{{ .BoilerplateConfigDeps.website.TemplateFolder }}
+{{ .BoilerplateConfigDeps.website.TemplateUrl }}
 {{ .BoilerplateConfigDeps.website.OutputFolder }}
 
 {{ .SomeGlobalVar }}

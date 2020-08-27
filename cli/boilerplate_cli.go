@@ -17,15 +17,19 @@ A tool for generating files and folders (\"boilerplate\") from a set of template
 
 Generate a project in ~/output from the templates in ~/templates:
 
-    boilerplate --template-folder ~/templates --output-folder ~/output
+    boilerplate --template-url ~/templates --output-folder ~/output
 
 Generate a project in ~/output from the templates in ~/templates, using variables passed in via the command line:
 
-    boilerplate --template-folder ~/templates --output-folder ~/output --var "Title=Boilerplate" --var "ShowLogo=false"
+    boilerplate --template-url ~/templates --output-folder ~/output --var "Title=Boilerplate" --var "ShowLogo=false"
 
 Generate a project in ~/output from the templates in ~/templates, using variables read from a file:
 
-    boilerplate --template-folder ~/templates --output-folder ~/output --var-file vars.yml
+    boilerplate --template-url ~/templates --output-folder ~/output --var-file vars.yml
+
+Generate a project in ~/output from the templates in this repo's include example dir, using variables read from a file:
+
+	boilerplate --template-url "git@github.com:gruntwork-io/boilerplate.git//examples/include?ref=master" --output-folder ~/output --var-file vars.yml
 
 
 Options:
@@ -47,8 +51,8 @@ func CreateBoilerplateCli(version string) *cli.App {
 
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
-			Name:  options.OptTemplateFolder,
-			Usage: "Generate the project from the templates in `FOLDER`.",
+			Name:  options.OptTemplateUrl,
+			Usage: "Generate the project from the templates in `URL`. This can be a local path, or a go-getter compatible URL for remote templates (e.g., `git@github.com:gruntwork-io/boilerplate.git//examples/include?ref=master`).",
 		},
 		cli.StringFlag{
 			Name:  options.OptOutputFolder,
@@ -91,8 +95,7 @@ func CreateBoilerplateCli(version string) *cli.App {
 // When you run the CLI, this is the action function that gets called
 func runApp(cliContext *cli.Context) error {
 	if !cliContext.Args().Present() && cliContext.NumFlags() == 0 {
-		cli.ShowAppHelp(cliContext)
-		return nil
+		return cli.ShowAppHelp(cliContext)
 	}
 
 	opts, err := options.ParseOptions(cliContext)

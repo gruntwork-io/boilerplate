@@ -18,7 +18,7 @@ variables:
 
 dependencies:
     - name: dependencies
-      template-folder: ../dependencies
+      template-url: ../dependencies
       output-folder: ./dependencies
       variables:
         - name: Description
@@ -28,7 +28,7 @@ dependencies:
           description: Enter the title for the dependencies example
 
     - name: java-project
-      template-folder: ../java-project
+      template-url: ../java-project
       output-folder: ./java-project
       variables:
         - name: CompanyName

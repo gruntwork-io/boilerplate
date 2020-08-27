@@ -6,11 +6,11 @@ import (
 	"github.com/urfave/cli"
 
 	"github.com/gruntwork-io/boilerplate/errors"
-	"github.com/gruntwork-io/boilerplate/util"
+	getter_helper "github.com/gruntwork-io/boilerplate/getter-helper"
 	"github.com/gruntwork-io/boilerplate/variables"
 )
 
-const OptTemplateFolder = "template-folder"
+const OptTemplateUrl = "template-url"
 const OptOutputFolder = "output-folder"
 const OptNonInteractive = "non-interactive"
 const OptVar = "var"
@@ -22,7 +22,11 @@ const OptDisableShell = "disable-shell"
 
 // The command-line options for the boilerplate app
 type BoilerplateOptions struct {
-	TemplateFolder  string
+	// go-getter supported URL where the template can be sourced.
+	TemplateUrl string
+	// Working directory where the go-getter defined template is downloaded.
+	TemplateFolder string
+
 	OutputFolder    string
 	NonInteractive  bool
 	Vars            map[string]interface{}
@@ -34,12 +38,12 @@ type BoilerplateOptions struct {
 
 // Validate that the options have reasonable values and return an error if they don't
 func (options *BoilerplateOptions) Validate() error {
-	if options.TemplateFolder == "" {
-		return errors.WithStackTrace(TemplateFolderOptionCannotBeEmpty)
+	if options.TemplateUrl == "" {
+		return errors.WithStackTrace(TemplateUrlOptionCannotBeEmpty)
 	}
 
-	if !util.PathExists(options.TemplateFolder) {
-		return errors.WithStackTrace(TemplateFolderDoesNotExist(options.TemplateFolder))
+	if err := getter_helper.ValidateTemplateUrl(options.TemplateUrl); err != nil {
+		return err
 	}
 
 	if options.OutputFolder == "" {
@@ -74,8 +78,14 @@ func ParseOptions(cliContext *cli.Context) (*BoilerplateOptions, error) {
 		}
 	}
 
+	templateUrl, templateFolder, err := DetermineTemplateConfig(cliContext.String(OptTemplateUrl))
+	if err != nil {
+		return nil, err
+	}
+
 	options := &BoilerplateOptions{
-		TemplateFolder:  cliContext.String(OptTemplateFolder),
+		TemplateUrl:     templateUrl,
+		TemplateFolder:  templateFolder,
 		OutputFolder:    cliContext.String(OptOutputFolder),
 		NonInteractive:  cliContext.Bool(OptNonInteractive),
 		OnMissingKey:    missingKeyAction,
@@ -90,6 +100,23 @@ func ParseOptions(cliContext *cli.Context) (*BoilerplateOptions, error) {
 	}
 
 	return options, nil
+}
+
+// DetermineTemplateConfig decides what should be passed to TemplateUrl and TemplateFolder. This parses the templateUrl
+// and determines if it is a local path. If so, use that path directly instead of downloading it to a temp working dir.
+// We do this by setting the template folder, which will instruct the process routine to skip downloading the template.
+// Returns TemplateUrl, TemplateFolder, error
+func DetermineTemplateConfig(templateUrl string) (string, string, error) {
+	url, err := getter_helper.ParseGetterUrl(templateUrl)
+	if err != nil {
+		return "", "", err
+	}
+	if url.Scheme == "file" {
+		// Intentionally return as both TemplateUrl and TemplateFolder so that validation passes, but still skip
+		// download.
+		return templateUrl, templateUrl, nil
+	}
+	return templateUrl, "", nil
 }
 
 // This type is an enum that represents what we can do when a template looks up a missing key. This typically happens
@@ -140,14 +167,8 @@ func ParseMissingConfigAction(str string) (MissingConfigAction, error) {
 
 // Custom error types
 
-var TemplateFolderOptionCannotBeEmpty = fmt.Errorf("The --%s option cannot be empty", OptTemplateFolder)
+var TemplateUrlOptionCannotBeEmpty = fmt.Errorf("The --%s option cannot be empty", OptTemplateUrl)
 var OutputFolderOptionCannotBeEmpty = fmt.Errorf("The --%s option cannot be empty", OptOutputFolder)
-
-type TemplateFolderDoesNotExist string
-
-func (err TemplateFolderDoesNotExist) Error() string {
-	return fmt.Sprintf("Folder %s does not exist", string(err))
-}
 
 type InvalidMissingKeyAction string
 

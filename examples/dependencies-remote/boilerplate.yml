@@ -18,14 +18,14 @@ variables:
 
 dependencies:
   - name: docs
-    template-url: ../docs
+    template-url: "git@github.com:gruntwork-io/boilerplate.git//docs?ref=master"
     output-folder: ./docs
     variables:
       - name: Title
         description: Enter the title of the docs page
 
   - name: website
-    template-url: ../website
+    template-url: "git@github.com:gruntwork-io/boilerplate.git//website?ref=master"
     output-folder: ./website
     variables:
       - name: Title
