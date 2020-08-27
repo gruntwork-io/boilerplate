@@ -70,7 +70,7 @@ func LoadBoilerplateConfig(opts *options.BoilerplateOptions) (*BoilerplateConfig
 
 		return ParseBoilerplateConfig(bytes)
 	} else if opts.OnMissingConfig == options.Ignore {
-		util.Logger.Printf("Warning: boilerplate config file not found at %s. The %s flag is set, so ignoring. Note that no variables will be available while generating.", configPath, options.OPT_MISSING_CONFIG_ACTION)
+		util.Logger.Printf("Warning: boilerplate config file not found at %s. The %s flag is set, so ignoring. Note that no variables will be available while generating.", configPath, options.OptMissingConfigAction)
 		return &BoilerplateConfig{}, nil
 	} else {
 		return nil, errors.WithStackTrace(BoilerplateConfigNotFound(configPath))
@@ -98,5 +98,5 @@ func BoilerplateConfigPath(templateFolder string) string {
 type BoilerplateConfigNotFound string
 
 func (err BoilerplateConfigNotFound) Error() string {
-	return fmt.Sprintf("Could not find %s in %s and the %s flag is set to %s", BOILERPLATE_CONFIG_FILE, string(err), options.OPT_MISSING_CONFIG_ACTION, options.Exit)
+	return fmt.Sprintf("Could not find %s in %s and the %s flag is set to %s", BOILERPLATE_CONFIG_FILE, string(err), options.OptMissingConfigAction, options.Exit)
 }

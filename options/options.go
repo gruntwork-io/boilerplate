@@ -10,15 +10,15 @@ import (
 	"github.com/gruntwork-io/boilerplate/variables"
 )
 
-const OPT_TEMPLATE_FOLDER = "template-folder"
-const OPT_OUTPUT_FOLDER = "output-folder"
-const OPT_NON_INTERACTIVE = "non-interactive"
-const OPT_VAR = "var"
-const OPT_VAR_FILE = "var-file"
-const OPT_MISSING_KEY_ACTION = "missing-key-action"
-const OPT_MISSING_CONFIG_ACTION = "missing-config-action"
-const OPT_DISABLE_HOOKS = "disable-hooks"
-const OPT_DISABLE_SHELL = "disable-shell"
+const OptTemplateFolder = "template-folder"
+const OptOutputFolder = "output-folder"
+const OptNonInteractive = "non-interactive"
+const OptVar = "var"
+const OptVarFile = "var-file"
+const OptMissingKeyAction = "missing-key-action"
+const OptMissingConfigAction = "missing-config-action"
+const OptDisableHooks = "disable-hooks"
+const OptDisableShell = "disable-shell"
 
 // The command-line options for the boilerplate app
 type BoilerplateOptions struct {
@@ -51,13 +51,13 @@ func (options *BoilerplateOptions) Validate() error {
 
 // Parse the command line options provided by the user
 func ParseOptions(cliContext *cli.Context) (*BoilerplateOptions, error) {
-	vars, err := variables.ParseVars(cliContext.StringSlice(OPT_VAR), cliContext.StringSlice(OPT_VAR_FILE))
+	vars, err := variables.ParseVars(cliContext.StringSlice(OptVar), cliContext.StringSlice(OptVarFile))
 	if err != nil {
 		return nil, err
 	}
 
-	missingKeyAction := DEFAULT_MISSING_KEY_ACTION
-	missingKeyActionValue := cliContext.String(OPT_MISSING_KEY_ACTION)
+	missingKeyAction := DefaultMissingKeyAction
+	missingKeyActionValue := cliContext.String(OptMissingKeyAction)
 	if missingKeyActionValue != "" {
 		missingKeyAction, err = ParseMissingKeyAction(missingKeyActionValue)
 		if err != nil {
@@ -65,8 +65,8 @@ func ParseOptions(cliContext *cli.Context) (*BoilerplateOptions, error) {
 		}
 	}
 
-	missingConfigAction := DEFAULT_MISSING_CONFIG_ACTION
-	missingConfigActionValue := cliContext.String(OPT_MISSING_CONFIG_ACTION)
+	missingConfigAction := DefaultMissingConfigAction
+	missingConfigActionValue := cliContext.String(OptMissingConfigAction)
 	if missingConfigActionValue != "" {
 		missingConfigAction, err = ParseMissingConfigAction(missingConfigActionValue)
 		if err != nil {
@@ -75,14 +75,14 @@ func ParseOptions(cliContext *cli.Context) (*BoilerplateOptions, error) {
 	}
 
 	options := &BoilerplateOptions{
-		TemplateFolder:  cliContext.String(OPT_TEMPLATE_FOLDER),
-		OutputFolder:    cliContext.String(OPT_OUTPUT_FOLDER),
-		NonInteractive:  cliContext.Bool(OPT_NON_INTERACTIVE),
+		TemplateFolder:  cliContext.String(OptTemplateFolder),
+		OutputFolder:    cliContext.String(OptOutputFolder),
+		NonInteractive:  cliContext.Bool(OptNonInteractive),
 		OnMissingKey:    missingKeyAction,
 		OnMissingConfig: missingConfigAction,
 		Vars:            vars,
-		DisableHooks:    cliContext.Bool(OPT_DISABLE_HOOKS),
-		DisableShell:    cliContext.Bool(OPT_DISABLE_SHELL),
+		DisableHooks:    cliContext.Bool(OptDisableHooks),
+		DisableShell:    cliContext.Bool(OptDisableShell),
 	}
 
 	if err := options.Validate(); err != nil {
@@ -102,13 +102,13 @@ var (
 	ExitWithError = MissingKeyAction("error")   // exit with an error when there is a missing key
 )
 
-var ALL_MISSING_KEY_ACTIONS = []MissingKeyAction{Invalid, ZeroValue, ExitWithError}
-var DEFAULT_MISSING_KEY_ACTION = ExitWithError
+var AllMissingKeyActions = []MissingKeyAction{Invalid, ZeroValue, ExitWithError}
+var DefaultMissingKeyAction = ExitWithError
 
 // Convert the given string to a MissingKeyAction enum, or return an error if this is not a valid value for the
 // MissingKeyAction enum
 func ParseMissingKeyAction(str string) (MissingKeyAction, error) {
-	for _, missingKeyAction := range ALL_MISSING_KEY_ACTIONS {
+	for _, missingKeyAction := range AllMissingKeyActions {
 		if string(missingKeyAction) == str {
 			return missingKeyAction, nil
 		}
@@ -124,13 +124,13 @@ var (
 	Exit   = MissingConfigAction("exit")
 	Ignore = MissingConfigAction("ignore")
 )
-var ALL_MISSING_CONFIG_ACTIONS = []MissingConfigAction{Exit, Ignore}
-var DEFAULT_MISSING_CONFIG_ACTION = Exit
+var AllMissingConfigActions = []MissingConfigAction{Exit, Ignore}
+var DefaultMissingConfigAction = Exit
 
 // Convert the given string to a MissingConfigAction enum, or return an error if this is not a valid value for the
 // MissingConfigAction enum
 func ParseMissingConfigAction(str string) (MissingConfigAction, error) {
-	for _, missingConfigAction := range ALL_MISSING_CONFIG_ACTIONS {
+	for _, missingConfigAction := range AllMissingConfigActions {
 		if string(missingConfigAction) == str {
 			return missingConfigAction, nil
 		}
@@ -140,8 +140,8 @@ func ParseMissingConfigAction(str string) (MissingConfigAction, error) {
 
 // Custom error types
 
-var TemplateFolderOptionCannotBeEmpty = fmt.Errorf("The --%s option cannot be empty", OPT_TEMPLATE_FOLDER)
-var OutputFolderOptionCannotBeEmpty = fmt.Errorf("The --%s option cannot be empty", OPT_OUTPUT_FOLDER)
+var TemplateFolderOptionCannotBeEmpty = fmt.Errorf("The --%s option cannot be empty", OptTemplateFolder)
+var OutputFolderOptionCannotBeEmpty = fmt.Errorf("The --%s option cannot be empty", OptOutputFolder)
 
 type TemplateFolderDoesNotExist string
 
@@ -152,11 +152,11 @@ func (err TemplateFolderDoesNotExist) Error() string {
 type InvalidMissingKeyAction string
 
 func (err InvalidMissingKeyAction) Error() string {
-	return fmt.Sprintf("Invalid MissingKeyAction '%s'. Value must be one of: %s", string(err), ALL_MISSING_KEY_ACTIONS)
+	return fmt.Sprintf("Invalid MissingKeyAction '%s'. Value must be one of: %s", string(err), AllMissingKeyActions)
 }
 
 type InvalidMissingConfigAction string
 
 func (err InvalidMissingConfigAction) Error() string {
-	return fmt.Sprintf("Invalid MissingConfigAction '%s'. Value must be one of: %s", string(err), ALL_MISSING_CONFIG_ACTIONS)
+	return fmt.Sprintf("Invalid MissingConfigAction '%s'. Value must be one of: %s", string(err), AllMissingConfigActions)
 }
