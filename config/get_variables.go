@@ -185,7 +185,7 @@ func getVariableFromUser(variable variables.Variable, opts *options.BoilerplateO
 type MissingVariableWithNonInteractiveMode string
 
 func (variableName MissingVariableWithNonInteractiveMode) Error() string {
-	return fmt.Sprintf("Variable '%s' does not have a default, no value was specified at the command line using the --%s option, and the --%s flag is set, so cannot prompt user for a value.", string(variableName), options.OPT_VAR, options.OPT_NON_INTERACTIVE)
+	return fmt.Sprintf("Variable '%s' does not have a default, no value was specified at the command line using the --%s option, and the --%s flag is set, so cannot prompt user for a value.", string(variableName), options.OptVar, options.OptNonInteractive)
 }
 
 type MissingReference struct {

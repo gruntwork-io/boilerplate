@@ -11,7 +11,7 @@ import (
 	"github.com/gruntwork-io/boilerplate/variables"
 )
 
-const CUSTOM_HELP_TEXT = `Usage: {{.UsageText}}
+const customHelpText = `Usage: {{.UsageText}}
 
 A tool for generating files and folders (\"boilerplate\") from a set of templates. Examples:
 
@@ -35,7 +35,7 @@ Options:
 
 func CreateBoilerplateCli(version string) *cli.App {
 	cli.HelpPrinter = entrypoint.WrappedHelpPrinter
-	cli.AppHelpTemplate = CUSTOM_HELP_TEXT
+	cli.AppHelpTemplate = customHelpText
 	app := cli.NewApp()
 	entrypoint.HelpTextLineWidth = 120
 
@@ -47,39 +47,39 @@ func CreateBoilerplateCli(version string) *cli.App {
 
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
-			Name:  options.OPT_TEMPLATE_FOLDER,
+			Name:  options.OptTemplateFolder,
 			Usage: "Generate the project from the templates in `FOLDER`.",
 		},
 		cli.StringFlag{
-			Name:  options.OPT_OUTPUT_FOLDER,
+			Name:  options.OptOutputFolder,
 			Usage: "Create the output files and folders in `FOLDER`.",
 		},
 		cli.BoolFlag{
-			Name:  options.OPT_NON_INTERACTIVE,
-			Usage: fmt.Sprintf("Do not prompt for input variables. All variables must be set via --%s and --%s options instead.", options.OPT_VAR, options.OPT_VAR_FILE),
+			Name:  options.OptNonInteractive,
+			Usage: fmt.Sprintf("Do not prompt for input variables. All variables must be set via --%s and --%s options instead.", options.OptVar, options.OptVarFile),
 		},
 		cli.StringSliceFlag{
-			Name:  options.OPT_VAR,
+			Name:  options.OptVar,
 			Usage: "Use `NAME=VALUE` to set variable NAME to VALUE. May be specified more than once.",
 		},
 		cli.StringSliceFlag{
-			Name:  options.OPT_VAR_FILE,
+			Name:  options.OptVarFile,
 			Usage: "Load variable values from the YAML file `FILE`. May be specified more than once.",
 		},
 		cli.StringFlag{
-			Name:  options.OPT_MISSING_KEY_ACTION,
-			Usage: fmt.Sprintf("What `ACTION` to take if a template looks up a variable that is not defined. Must be one of: %s. Default: %s.", options.ALL_MISSING_KEY_ACTIONS, options.DEFAULT_MISSING_KEY_ACTION),
+			Name:  options.OptMissingKeyAction,
+			Usage: fmt.Sprintf("What `ACTION` to take if a template looks up a variable that is not defined. Must be one of: %s. Default: %s.", options.AllMissingKeyActions, options.DefaultMissingKeyAction),
 		},
 		cli.StringFlag{
-			Name:  options.OPT_MISSING_CONFIG_ACTION,
-			Usage: fmt.Sprintf("What `ACTION` to take if a the template folder does not contain a boilerplate.yml file. Must be one of: %s. Default: %s.", options.ALL_MISSING_CONFIG_ACTIONS, options.DEFAULT_MISSING_CONFIG_ACTION),
+			Name:  options.OptMissingConfigAction,
+			Usage: fmt.Sprintf("What `ACTION` to take if a the template folder does not contain a boilerplate.yml file. Must be one of: %s. Default: %s.", options.AllMissingConfigActions, options.DefaultMissingConfigAction),
 		},
 		cli.BoolFlag{
-			Name:  options.OPT_DISABLE_HOOKS,
+			Name:  options.OptDisableHooks,
 			Usage: "If this flag is set, no hooks will execute.",
 		},
 		cli.BoolFlag{
-			Name:  options.OPT_DISABLE_SHELL,
+			Name:  options.OptDisableShell,
 			Usage: "If this flag is set, no shell helpers will execute. They will instead return the text 'replace-me'.",
 		},
 	}

@@ -48,7 +48,7 @@ func TestExamples(t *testing.T) {
 				return
 			}
 
-			for _, missingKeyAction := range options.ALL_MISSING_KEY_ACTIONS {
+			for _, missingKeyAction := range options.AllMissingKeyActions {
 				t.Run(fmt.Sprintf("%s-missing-key-%s", example.Name(), string(missingKeyAction)), func(t *testing.T) {
 					testExample(t, templateFolder, outputFolder, varFile, expectedOutputFolder, string(missingKeyAction))
 				})
