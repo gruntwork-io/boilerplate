@@ -58,19 +58,19 @@ func TestCloneOptionsForDependency(t *testing.T) {
 			variables.Dependency{Name: "dep1", TemplateUrl: "../dep1", OutputFolder: "../out1"},
 			options.BoilerplateOptions{TemplateFolder: "/template/path/", OutputFolder: "/output/path/", NonInteractive: true, Vars: map[string]interface{}{}, OnMissingKey: options.ExitWithError},
 			map[string]interface{}{},
-			options.BoilerplateOptions{TemplateFolder: "/template/dep1", OutputFolder: "/output/out1", NonInteractive: true, Vars: map[string]interface{}{}, OnMissingKey: options.ExitWithError},
+			options.BoilerplateOptions{TemplateUrl: "../dep1", TemplateFolder: "/template/dep1", OutputFolder: "/output/out1", NonInteractive: true, Vars: map[string]interface{}{}, OnMissingKey: options.ExitWithError},
 		},
 		{
 			variables.Dependency{Name: "dep1", TemplateUrl: "../dep1", OutputFolder: "../out1"},
 			options.BoilerplateOptions{TemplateFolder: "/template/path/", OutputFolder: "/output/path/", NonInteractive: false, Vars: map[string]interface{}{"foo": "bar"}, OnMissingKey: options.Invalid},
 			map[string]interface{}{"baz": "blah"},
-			options.BoilerplateOptions{TemplateFolder: "/template/dep1", OutputFolder: "/output/out1", NonInteractive: false, Vars: map[string]interface{}{"baz": "blah"}, OnMissingKey: options.Invalid},
+			options.BoilerplateOptions{TemplateUrl: "../dep1", TemplateFolder: "/template/dep1", OutputFolder: "/output/out1", NonInteractive: false, Vars: map[string]interface{}{"baz": "blah"}, OnMissingKey: options.Invalid},
 		},
 		{
 			variables.Dependency{Name: "dep1", TemplateUrl: "{{ .foo }}", OutputFolder: "{{ .baz }}"},
 			options.BoilerplateOptions{TemplateFolder: "/template/path/", OutputFolder: "/output/path/", NonInteractive: false, Vars: map[string]interface{}{}, OnMissingKey: options.ExitWithError},
 			map[string]interface{}{"foo": "bar", "baz": "blah"},
-			options.BoilerplateOptions{TemplateFolder: "/template/path/bar", OutputFolder: "/output/path/blah", NonInteractive: false, Vars: map[string]interface{}{"foo": "bar", "baz": "blah"}, OnMissingKey: options.ExitWithError},
+			options.BoilerplateOptions{TemplateUrl: "bar", TemplateFolder: "/template/path/bar", OutputFolder: "/output/path/blah", NonInteractive: false, Vars: map[string]interface{}{"foo": "bar", "baz": "blah"}, OnMissingKey: options.ExitWithError},
 		},
 	}
 

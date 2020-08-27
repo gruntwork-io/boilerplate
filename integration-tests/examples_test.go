@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path"
 	"strings"
 	"testing"
 
 	"github.com/gruntwork-io/terratest/modules/git"
+	"github.com/gruntwork-io/terratest/modules/shell"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -80,6 +80,11 @@ func TestExamplesAsRemoteTemplate(t *testing.T) {
 			continue
 		}
 
+		if example.Name() == "variables" {
+			t.Logf("Skipping example %s because it is implicitly tested via dependencies.", example.Name())
+			continue
+		}
+
 		t.Run(path.Base(example.Name()), func(t *testing.T) {
 			templateFolder := fmt.Sprintf("git@github.com:gruntwork-io/boilerplate.git//examples/%s?ref=%s", example.Name(), branchName)
 			outputFolder := path.Join(outputBasePath, example.Name())
@@ -121,8 +126,9 @@ func testExample(t *testing.T, templateFolder string, outputFolder string, varFi
 // takes a lot of code. Why waste time on that when this functionality is already nicely implemented in the Unix/Linux
 // "diff" command? We shell out to that command at test time.
 func assertDirectoriesEqual(t *testing.T, folderWithExpectedContents string, folderWithActualContents string) {
-	cmd := exec.Command("diff", "-r", "-u", folderWithExpectedContents, folderWithActualContents)
-
-	_, err := cmd.Output()
-	assert.NoError(t, err)
+	cmd := shell.Command{
+		Command: "diff",
+		Args:    []string{"-r", "-u", folderWithExpectedContents, folderWithActualContents},
+	}
+	shell.RunCommand(t, cmd)
 }
