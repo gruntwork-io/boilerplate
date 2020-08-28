@@ -3,7 +3,6 @@ package getter_helper
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -102,7 +101,7 @@ func NewGetterClient(src string, dst string) (*getter.Client, error) {
 // temporary folder and returns the path to that folder. If there is a subdir in the template URL, return the combined
 // path as well.
 func DownloadTemplatesToTemporaryFolder(templateUrl string) (string, string, error) {
-	workingDir, err := ioutil.TempDir("", "boilerplate-cache*")
+	workingDir, err := getTempFolder()
 	if err != nil {
 		return workingDir, workingDir, errors.WithStackTrace(err)
 	}
