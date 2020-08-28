@@ -6,10 +6,8 @@ import (
 	"io/ioutil"
 	"net/url"
 	"os"
-	"os/signal"
 	"path/filepath"
 	"regexp"
-	"sync"
 
 	getter "github.com/hashicorp/go-getter"
 	urlhelper "github.com/hashicorp/go-getter/helper/url"
@@ -71,14 +69,14 @@ func getForcedGetter(sourceUrl string) (string, string) {
 }
 
 // We use this code to force go-getter to copy files instead of creating symlinks.
-func NewGetterClient(ctx context.Context, src string, dst string) (*getter.Client, error) {
+func NewGetterClient(src string, dst string) (*getter.Client, error) {
 	pwd, err := os.Getwd()
 	if err != nil {
 		return nil, errors.WithStackTrace(err)
 	}
 
 	client := &getter.Client{
-		Ctx:  ctx,
+		Ctx:  context.Background(),
 		Src:  src,
 		Dst:  dst,
 		Pwd:  pwd,
@@ -118,45 +116,13 @@ func DownloadTemplatesToTemporaryFolder(templateUrl string) (string, string, err
 	mainPath, subDir := getter.SourceDirSubdir(templateUrl)
 	outDir := filepath.Clean(filepath.Join(cloneDir, subDir))
 
-	ctx, cancel := context.WithCancel(context.Background())
-	client, err := NewGetterClient(ctx, mainPath, cloneDir)
+	client, err := NewGetterClient(mainPath, cloneDir)
 	if err != nil {
-		cancel()
 		return workingDir, outDir, err
 	}
 
-	// Start getter in the background so we can trap and forward interrupt signals
-	wg := sync.WaitGroup{}
-	wg.Add(1)
-	errChan := make(chan error, 2)
-	go func() {
-		defer wg.Done()
-		defer cancel()
-		if err := client.Get(); err != nil {
-			errChan <- err
-		}
-	}()
-
-	// Signal handler
-	c := make(chan os.Signal)
-	signal.Notify(c, os.Interrupt)
-
-	select {
-	// Interrupted
-	case sig := <-c:
-		signal.Reset(os.Interrupt)
-		cancel()
-		wg.Wait()
-		return workingDir, outDir, fmt.Errorf("Download interrupted with signal %v", sig)
-
-	// No errors
-	case <-ctx.Done():
-		wg.Wait()
-		return workingDir, outDir, nil
-
-	// There was an error
-	case err := <-errChan:
-		wg.Wait()
+	if err := client.Get(); err != nil {
 		return workingDir, outDir, err
 	}
+	return workingDir, outDir, nil
 }
