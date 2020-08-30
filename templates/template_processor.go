@@ -390,5 +390,9 @@ func processTemplate(templatePath string, opts *options.BoilerplateOptions, vari
 
 // Return true if this is a path that should not be copied
 func shouldSkipPath(path string, opts *options.BoilerplateOptions) bool {
-	return path == opts.TemplateFolder || path == config.BoilerplateConfigPath(opts.TemplateFolder)
+	// Canonicalize paths for os portability.
+	canonicalPath := filepath.ToSlash(path)
+	canonicalTemplateFolder := filepath.ToSlash(opts.TemplateFolder)
+	canonicalBoilerplateConfigPath := filepath.ToSlash(config.BoilerplateConfigPath(opts.TemplateFolder))
+	return canonicalPath == canonicalTemplateFolder || canonicalPath == canonicalBoilerplateConfigPath
 }

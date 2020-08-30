@@ -14,7 +14,7 @@ func TestOutPath(t *testing.T) {
 	t.Parallel()
 
 	pwd, err := os.Getwd()
-	assert.Nil(t, err, "Couldn't get working directory")
+	assert.NoError(t, err)
 
 	testCases := []struct {
 		file           string
@@ -40,7 +40,7 @@ func TestOutPath(t *testing.T) {
 			OnMissingConfig: options.Exit,
 		}
 		actual, err := outPath(testCase.file, &opts, testCase.variables)
-		assert.Nil(t, err, "Got unexpected error (file = %s, templateFolder = %s, outputFolder = %s, and variables = %s): %v", testCase.file, testCase.templateFolder, testCase.outputFolder, testCase.variables, err)
+		assert.NoError(t, err, "Got unexpected error (file = %s, templateFolder = %s, outputFolder = %s, and variables = %s): %v", testCase.file, testCase.templateFolder, testCase.outputFolder, testCase.variables, err)
 		assert.Equal(t, testCase.expected, actual, "(file = %s, templateFolder = %s, outputFolder = %s, and variables = %s)", testCase.file, testCase.templateFolder, testCase.outputFolder, testCase.variables)
 	}
 }
