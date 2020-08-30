@@ -3,6 +3,7 @@ package templates
 import (
 	"fmt"
 	"io/ioutil"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -330,7 +331,13 @@ func outPath(file string, opts *options.BoilerplateOptions, variables map[string
 		return "", errors.WithStackTrace(err)
 	}
 
-	interpolatedFilePath, err := render.RenderTemplate(file, file, variables, opts)
+	// | is an illegal filename char in Windows, so we also support urlencoded chars in the path. To support this, we
+	// first urldecode the file before passing it through.
+	urlDecodedFile, err := url.QueryUnescape(file)
+	if err != nil {
+		return "", errors.WithStackTrace(err)
+	}
+	interpolatedFilePath, err := render.RenderTemplate(file, urlDecodedFile, variables, opts)
 	if err != nil {
 		return "", errors.WithStackTrace(err)
 	}
@@ -383,5 +390,9 @@ func processTemplate(templatePath string, opts *options.BoilerplateOptions, vari
 
 // Return true if this is a path that should not be copied
 func shouldSkipPath(path string, opts *options.BoilerplateOptions) bool {
-	return path == opts.TemplateFolder || path == config.BoilerplateConfigPath(opts.TemplateFolder)
+	// Canonicalize paths for os portability.
+	canonicalPath := filepath.ToSlash(path)
+	canonicalTemplateFolder := filepath.ToSlash(opts.TemplateFolder)
+	canonicalBoilerplateConfigPath := filepath.ToSlash(config.BoilerplateConfigPath(opts.TemplateFolder))
+	return canonicalPath == canonicalTemplateFolder || canonicalPath == canonicalBoilerplateConfigPath
 }

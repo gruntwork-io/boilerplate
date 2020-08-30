@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/gruntwork-io/terratest/modules/git"
-	"github.com/gruntwork-io/terratest/modules/shell"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -120,15 +119,4 @@ func testExample(t *testing.T, templateFolder string, outputFolder string, varFi
 	err := app.Run(args)
 	assert.NoError(t, err, errors.PrintErrorWithStackTrace(err))
 	assertDirectoriesEqual(t, expectedOutputFolder, outputFolder)
-}
-
-// Diffing two directories to ensure they have the exact same files, contents, etc and showing exactly what's different
-// takes a lot of code. Why waste time on that when this functionality is already nicely implemented in the Unix/Linux
-// "diff" command? We shell out to that command at test time.
-func assertDirectoriesEqual(t *testing.T, folderWithExpectedContents string, folderWithActualContents string) {
-	cmd := shell.Command{
-		Command: "diff",
-		Args:    []string{"-r", "-u", folderWithExpectedContents, folderWithActualContents},
-	}
-	shell.RunCommand(t, cmd)
 }
