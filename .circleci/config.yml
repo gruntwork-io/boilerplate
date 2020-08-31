@@ -46,21 +46,19 @@ jobs:
           name: Install golang
           shell: powershell.exe
           # Download golang, unpack it, and then update the PATH to include gobin
+          # TODO: figure out how to use this to replace the already existing go1.12 on the machine
           command: |
             $golangURI = "https://golang.org/dl/go1.14.7.windows-amd64.zip"
             $output = "go1.14.7.zip"
             Invoke-WebRequest -Uri $golangURI -OutFile $output
             Expand-Archive -LiteralPath $output -DestinationPath "C:\Go"
+            C:\Go\bin\go version
 
       - run:
           name: Run go tests
           shell: powershell.exe
           command: |
-            $oldpath = (Get-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment' -Name PATH).path
-            $newpath = "$oldpath;C:\Go\bin"
-            Set-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment' -Name PATH -Value $newPath
-            go version
-            go test -v ./...
+            C:\Go\bin\go test -v ./...
 
 
   deploy:
