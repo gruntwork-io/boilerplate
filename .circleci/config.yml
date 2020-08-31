@@ -59,13 +59,14 @@ jobs:
             Expand-Archive -LiteralPath $output -DestinationPath "C:\Go"
 
             # Verify installation
-            go version
+            C:\Go\bin\go version
 
       - run:
           name: Run go tests
           shell: powershell.exe
           command: |
-            go test -v ./...
+            C:\Go\bin\go test -v ./...
+            go version
 
 
   deploy:
