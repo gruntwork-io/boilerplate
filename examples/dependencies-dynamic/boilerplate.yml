@@ -17,7 +17,7 @@ variables:
     default: true
 
   - name: WebsiteTemplateFolder
-    description: The path to the website templates folder. This is used to check that interpolations work in the template-folder parameter of dependencies.
+    description: The path to the website templates folder. This is used to check that interpolations work in the template-url parameter of dependencies.
 
   - name: WebsiteOutputFolder
     description: The path to the website output folder. This is used to check that interpolations work in the output-folder parameter of dependencies.
@@ -39,7 +39,7 @@ variables:
 
 dependencies:
     - name: docs
-      template-folder: ../docs
+      template-url: ../docs
       output-folder: ./docs
       skip: "{{ .SkipAllDependencies }}"
       variables:
@@ -47,7 +47,7 @@ dependencies:
           description: Enter the title of the docs page
 
     - name: website
-      template-folder: "{{ .WebsiteTemplateFolder }}"
+      template-url: "{{ .WebsiteTemplateFolder }}"
       output-folder: "{{ .WebsiteOutputFolder }}"
       skip: "{{ or .SkipAllDependencies .SkipFirstWebsiteDependency }}"
       variables:
@@ -55,7 +55,7 @@ dependencies:
           description: Enter the title of the website
 
     - name: skip-website
-      template-folder: "{{ .WebsiteTemplateFolder }}"
+      template-url: "{{ .WebsiteTemplateFolder }}"
       output-folder: "{{ .WebsiteOutputFolder }}"
       skip: "{{ or .SkipAllDependencies .SkipSecondWebsiteDependency }}"
       variables:

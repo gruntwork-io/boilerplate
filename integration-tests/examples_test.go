@@ -4,14 +4,16 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path"
 	"strings"
 	"testing"
 
+	"github.com/gruntwork-io/terratest/modules/git"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/gruntwork-io/boilerplate/cli"
+	"github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/util"
 )
@@ -26,14 +28,18 @@ func TestExamples(t *testing.T) {
 	examplesVarFilesBasePath := "../test-fixtures/examples-var-files"
 
 	outputBasePath, err := ioutil.TempDir("", "boilerplate-test-output")
-	assert.Nil(t, err)
-	defer os.Remove(outputBasePath)
+	require.NoError(t, err)
+	defer os.RemoveAll(outputBasePath)
 
 	examples, err := ioutil.ReadDir(examplesBasePath)
-	assert.Nil(t, err)
+	require.NoError(t, err)
 
 	for _, example := range examples {
 		if !example.IsDir() {
+			continue
+		}
+		if strings.Contains(example.Name(), "shell") {
+			// This is captured in TestExamplesShell
 			continue
 		}
 
@@ -57,12 +63,59 @@ func TestExamples(t *testing.T) {
 	}
 }
 
+func TestExamplesAsRemoteTemplate(t *testing.T) {
+	t.Parallel()
+
+	branchName := git.GetCurrentBranchName(t)
+	examplesBasePath := "../examples"
+	examplesExpectedOutputBasePath := "../test-fixtures/examples-expected-output"
+	examplesVarFilesBasePath := "../test-fixtures/examples-var-files"
+
+	outputBasePath, err := ioutil.TempDir("", "boilerplate-test-output")
+	require.NoError(t, err)
+	defer os.RemoveAll(outputBasePath)
+
+	examples, err := ioutil.ReadDir(examplesBasePath)
+	require.NoError(t, err)
+
+	// Insulate the following parallel tests in a group so that cleanup routines run after all tests are done.
+	t.Run("group", func(t *testing.T) {
+		for _, example := range examples {
+			// Capture range variable to avoid it changing on each iteration during the tests
+			example := example
+
+			if !example.IsDir() {
+				continue
+			}
+			if strings.Contains(example.Name(), "shell") {
+				// This is captured in TestExamplesShell
+				continue
+			}
+
+			if example.Name() == "variables" {
+				t.Logf("Skipping example %s because it is implicitly tested via dependencies.", example.Name())
+				continue
+			}
+
+			t.Run(path.Base(example.Name()), func(t *testing.T) {
+				t.Parallel()
+				templateFolder := fmt.Sprintf("git@github.com:gruntwork-io/boilerplate.git//examples/%s?ref=%s", example.Name(), branchName)
+				outputFolder := path.Join(outputBasePath, example.Name())
+				varFile := path.Join(examplesVarFilesBasePath, example.Name(), "vars.yml")
+				expectedOutputFolder := path.Join(examplesExpectedOutputBasePath, example.Name())
+				testExample(t, templateFolder, outputFolder, varFile, expectedOutputFolder, string(options.ExitWithError))
+			})
+		}
+	})
+
+}
+
 func testExample(t *testing.T, templateFolder string, outputFolder string, varFile string, expectedOutputFolder string, missingKeyAction string) {
 	app := cli.CreateBoilerplateCli("test")
 
 	args := []string{
 		"boilerplate",
-		"--template-folder",
+		"--template-url",
 		templateFolder,
 		"--output-folder",
 		outputFolder,
@@ -79,18 +132,6 @@ func testExample(t *testing.T, templateFolder string, outputFolder string, varFi
 	}
 
 	err := app.Run(args)
-	assert.Nil(t, err, "boilerplate exited with an error when trying to generate example %s: %s", templateFolder, err)
+	assert.NoError(t, err, errors.PrintErrorWithStackTrace(err))
 	assertDirectoriesEqual(t, expectedOutputFolder, outputFolder)
-}
-
-// Diffing two directories to ensure they have the exact same files, contents, etc and showing exactly what's different
-// takes a lot of code. Why waste time on that when this functionality is already nicely implemented in the Unix/Linux
-// "diff" command? We shell out to that command at test time.
-func assertDirectoriesEqual(t *testing.T, folderWithExpectedContents string, folderWithActualContents string) {
-	cmd := exec.Command("diff", "-r", "-u", folderWithExpectedContents, folderWithActualContents)
-
-	bytes, err := cmd.Output()
-	output := string(bytes)
-
-	assert.Nil(t, err, "diff command exited with an error. This likely means the contents of %s and %s are different. Here is the output of the diff command:\n%s", folderWithExpectedContents, folderWithActualContents, output)
 }

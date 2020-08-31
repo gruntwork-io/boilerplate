@@ -110,5 +110,5 @@ variables:
 
 dependencies:
   - name: variables
-    template-folder: ../variables
+    template-url: ../variables
     output-folder: .

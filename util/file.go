@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/gruntwork-io/boilerplate/errors"
@@ -115,6 +116,22 @@ func WriteFileWithSamePermissions(source string, destination string, contents []
 	}
 
 	return ioutil.WriteFile(destination, contents, fileInfo.Mode())
+}
+
+// Copy all the files and folders in srcFolder to targetFolder.
+func CopyFolder(srcFolder string, targetFolder string) error {
+	return filepath.Walk(srcFolder, func(path string, info os.FileInfo, err error) error {
+		relPath, err := filepath.Rel(srcFolder, path)
+		if err != nil {
+			return err
+		}
+
+		if IsDir(path) {
+			return os.MkdirAll(filepath.Join(targetFolder, relPath), 0755)
+		} else {
+			return CopyFile(path, filepath.Join(targetFolder, relPath))
+		}
+	})
 }
 
 // custom error types

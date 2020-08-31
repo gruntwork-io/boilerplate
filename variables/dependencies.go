@@ -11,7 +11,7 @@ import (
 // A single boilerplate template that this boilerplate.yml depends on being executed first
 type Dependency struct {
 	Name                 string
-	TemplateFolder       string
+	TemplateUrl          string
 	OutputFolder         string
 	Skip                 string
 	DontInheritVariables bool
@@ -47,11 +47,11 @@ func SplitIntoDependencyNameAndVariableName(uniqueVariableName string) (string, 
 //
 // dependencies:
 //   - name: <NAME>
-//     template-folder: <TEMPLATE_FOLDER>
+//     template-url: <TEMPLATE_URL>
 //     output-folder: <OUTPUT_FOLDER>
 //
 //   - name: <NAME>
-//     template-folder: <TEMPLATE_FOLDER>
+//     template-url: <TEMPLATE_URL>
 //     output-folder: <OUTPUT_FOLDER>
 //
 // This method takes the data above and unmarshals it into a list of Dependency objects
@@ -84,7 +84,7 @@ func UnmarshalDependenciesFromBoilerplateConfigYaml(fields map[string]interface{
 // Given a map of key:value pairs read from a Boilerplate YAML config file of the format:
 //
 // name: <NAME>
-// template-folder: <TEMPLATE_FOLDER>
+// template-url: <TEMPLATE_URL>
 // output-folder: <OUTPUT_FOLDER>
 //
 // This method takes the data above and unmarshals it into a Dependency object
@@ -94,7 +94,7 @@ func UnmarshalDependencyFromBoilerplateConfigYaml(fields map[string]interface{})
 		return nil, err
 	}
 
-	templateFolder, err := unmarshalStringField(fields, "template-folder", true, *name)
+	templateUrl, err := unmarshalStringField(fields, "template-url", true, *name)
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +125,7 @@ func UnmarshalDependencyFromBoilerplateConfigYaml(fields map[string]interface{})
 
 	return &Dependency{
 		Name:                 *name,
-		TemplateFolder:       *templateFolder,
+		TemplateUrl:          *templateUrl,
 		OutputFolder:         *outputFolder,
 		Skip:                 skip,
 		DontInheritVariables: dontInheritVariables,

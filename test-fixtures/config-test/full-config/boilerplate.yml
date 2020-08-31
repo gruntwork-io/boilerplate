@@ -10,11 +10,11 @@ variables:
 
 dependencies:
   - name: dep1
-    template-folder: /template/folder1
+    template-url: /template/folder1
     output-folder: /output/folder1
 
   - name: dep2
-    template-folder: /template/folder2
+    template-url: /template/folder2
     output-folder: /output/folder2
     dont-inherit-variables: true
     variables:
