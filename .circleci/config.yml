@@ -47,7 +47,11 @@ jobs:
           shell: powershell.exe
           # Download golang, unpack it, and then update the PATH to include gobin
           # TODO: figure out how to use this to replace the already existing go1.12 on the machine
+          # The SilentlyContinue is needed to handle access denied error. See
+          # https://discuss.circleci.com/t/access-denied-error-while-trying-to-download-software-on-windows-cirlcleci-environment/32809/2
           command: |
+            $ProgressPreference = "SilentlyContinue"
+
             $golangURI = "https://golang.org/dl/go1.14.7.windows-amd64.zip"
             $output = "go1.14.7.zip"
             Invoke-WebRequest -Uri $golangURI -OutFile $output
