@@ -58,7 +58,9 @@ jobs:
       - run:
           name: Run go tests
           shell: powershell.exe
-          command: go test -v ./...
+          command: |
+            go version
+            go test -v ./...
 
 
   deploy:
