@@ -2,7 +2,7 @@ version: 2.1
 
 orbs:
   # The Windows orb give us everything we need to start using the Windows executor.
-  win: circleci/windows@2.2.0
+  win: circleci/windows@2.4.0
 
 defaults: &defaults
   machine: true
@@ -52,13 +52,13 @@ jobs:
             Invoke-WebRequest -Uri $golangURI -OutFile $output
             Expand-Archive -LiteralPath $output -DestinationPath "C:\Go"
 
-            $oldpath = (Get-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment' -Name PATH).path
-            $newpath = "$oldpath;C:\Go\bin"
-            Set-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment' -Name PATH -Value $newPath
       - run:
           name: Run go tests
           shell: powershell.exe
           command: |
+            $oldpath = (Get-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment' -Name PATH).path
+            $newpath = "$oldpath;C:\Go\bin"
+            Set-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment' -Name PATH -Value $newPath
             go version
             go test -v ./...
 
