@@ -1,3 +1,9 @@
+version: 2.1
+
+orbs:
+  # The Windows orb give us everything we need to start using the Windows executor.
+  win: circleci/windows@2.2.0
+
 defaults: &defaults
   machine: true
   environment:
@@ -8,7 +14,6 @@ defaults: &defaults
     PACKER_VERSION: NONE
     GOLANG_VERSION: "1.14"
 
-version: 2
 jobs:
   test:
     <<: *defaults
@@ -30,6 +35,31 @@ jobs:
           name: run tests
           command: run-go-tests --path . --timeout 1h
           no_output_timeout: 3600s
+
+  testwindows:
+    executor:
+      name: win/default
+
+    steps:
+      - checkout
+      - run:
+          name: Install golang
+          shell: powershell.exe
+          # Download golang, unpack it, and then update the PATH to include gobin
+          command: |
+            $golangURI = "https://golang.org/dl/go1.14.7.windows-amd64.zip"
+            $output = "go1.14.7.zip"
+            Invoke-WebRequest -Uri $golangURI -OutFile $output
+            Expand-Archive -LiteralPath $output -DestinationPath "C:\Go"
+
+            $oldpath = (Get-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment' -Name PATH).path
+            $newpath = "$oldpath;C:\Go\bin"
+            Set-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment' -Name PATH -Value $newPath
+      - run:
+          name: Run go tests
+          shell: powershell.exe
+          command: go test -v ./...
+
 
   deploy:
     <<: *defaults
@@ -66,9 +96,14 @@ workflows:
           filters:
             tags:
               only: /^v.*/
+      - testwindows:
+          filters:
+            tags:
+              only: /^v.*/
       - deploy:
           requires:
             - test
+            - testwindows
           filters:
             tags:
               only: /^v.*/
