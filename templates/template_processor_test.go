@@ -42,6 +42,9 @@ func TestOutPath(t *testing.T) {
 		}
 		actual, err := outPath(testCase.file, &opts, testCase.variables)
 		assert.NoError(t, err, "Got unexpected error (file = %s, templateFolder = %s, outputFolder = %s, and variables = %s): %v", testCase.file, testCase.templateFolder, testCase.outputFolder, testCase.variables, err)
+
+		// Normalize path to account for windows
+		actual = filepath.ToSlash(actual)
 		assert.Equal(t, testCase.expected, actual, "(file = %s, templateFolder = %s, outputFolder = %s, and variables = %s)", testCase.file, testCase.templateFolder, testCase.outputFolder, testCase.variables)
 	}
 }

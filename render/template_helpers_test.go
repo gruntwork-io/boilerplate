@@ -4,11 +4,15 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"path/filepath"
+	"reflect"
+	"runtime"
+	"testing"
+
 	"github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/stretchr/testify/assert"
-	"reflect"
-	"testing"
+	"github.com/stretchr/testify/require"
 )
 
 func TestExtractSnippetName(t *testing.T) {
@@ -203,6 +207,8 @@ func TestPathRelativeToTemplate(t *testing.T) {
 
 	for _, testCase := range testCases {
 		actual := PathRelativeToTemplate(testCase.templatePath, testCase.path)
+		// Normalize path to account for windows
+		actual = filepath.ToSlash(actual)
 		assert.Equal(t, testCase.expected, actual)
 	}
 }
@@ -439,7 +445,10 @@ func TestShellError(t *testing.T) {
 	t.Parallel()
 
 	_, err := shell(".", &options.BoilerplateOptions{NonInteractive: true}, "not-a-real-command")
-	if assert.NotNil(t, err) {
+	require.NoError(t, err)
+	if runtime.GOOS == "windows" {
+		assert.Contains(t, err.Error(), "executable file not found in %PATH%", "Unexpected error message: %s", err.Error())
+	} else {
 		assert.Contains(t, err.Error(), "executable file not found in $PATH", "Unexpected error message: %s", err.Error())
 	}
 }
