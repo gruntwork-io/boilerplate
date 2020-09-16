@@ -445,11 +445,11 @@ func TestShellError(t *testing.T) {
 	t.Parallel()
 
 	_, err := shell(".", &options.BoilerplateOptions{NonInteractive: true}, "not-a-real-command")
-	require.NoError(t, err)
+	require.Error(t, err)
 	if runtime.GOOS == "windows" {
-		assert.Contains(t, err.Error(), "executable file not found in %PATH%", "Unexpected error message: %s", err.Error())
+		assert.Contains(t, err.Error(), "executable file not found in %PATH%")
 	} else {
-		assert.Contains(t, err.Error(), "executable file not found in $PATH", "Unexpected error message: %s", err.Error())
+		assert.Contains(t, err.Error(), "executable file not found in $PATH")
 	}
 }
 
