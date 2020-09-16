@@ -2,6 +2,7 @@ package templates
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -76,7 +77,12 @@ func TestCloneOptionsForDependency(t *testing.T) {
 
 	for _, testCase := range testCases {
 		actualOptions, err := cloneOptionsForDependency(testCase.dependency, &testCase.opts, testCase.variables)
-		assert.NoError(t, err, "Dependency: %s", testCase.dependency)
+		assert.NoError(t, err, "Error: %s ; Dependency: %s", err, testCase.dependency)
+		assert.NotNil(t, actualOptions)
+
+		// Normalize paths for windows before checking
+		actualOptions.TemplateFolder = filepath.ToSlash(actualOptions.TemplateFolder)
+		actualOptions.OutputFolder = filepath.ToSlash(actualOptions.OutputFolder)
 		assert.Equal(t, testCase.expectedOpts, *actualOptions, "Dependency: %s", testCase.dependency)
 	}
 }
