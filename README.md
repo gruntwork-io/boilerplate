@@ -52,11 +52,11 @@ Template](https://golang.org/pkg/text/template) syntax:
 
 Copy an image into the `website-boilerplate` folder and call it `logo.png`.
 
-Finally, run `boilerplate`, setting the `--template-folder` to `website-boilerplate` and `--output-folder` to the path
+Finally, run `boilerplate`, setting the `--template-url` to `website-boilerplate` and `--output-folder` to the path
 where you want the generated code to go:
 
 ```
-boilerplate --template-folder /home/ubuntu/website-boilerplate --output-folder /home/ubuntu/website-output
+boilerplate --template-url /home/ubuntu/website-boilerplate --output-folder /home/ubuntu/website-output
 
 Title
 
@@ -76,7 +76,7 @@ Generating /home/ubuntu/website-output/index.html
 Copying /home/ubuntu/website-output/logo.png
 ```
 
-Boilerplate copies any files from the `--template-folder` into the `--output-folder`, passing them through the
+Boilerplate copies any files from the `--template-url` into the `--output-folder`, passing them through the
 [Go Template](https://golang.org/pkg/text/template) engine along the way. After running the command above, the
 `website-output` folder will contain a `logo.png` (unchanged from the original) and an `index.html` with the
 following contents:
@@ -97,7 +97,7 @@ You can also run Boilerplate non-interactively, which is great for automation:
 
 ```
 boilerplate \
-  --template-folder /home/ubuntu/website-boilerplate \
+  --template-url /home/ubuntu/website-boilerplate \
   --output-folder /home/ubuntu/website-output \
   --non-interactive \
   --var Title="Boilerplate Example" \
@@ -114,7 +114,7 @@ for full documentation.
 
 ## Install
 
-Download the latest binary for your OS here: [boilerplate v0.2.26](https://github.com/gruntwork-io/boilerplate/releases/tag/v0.2.26).
+Download the latest binary for your OS here: [boilerplate v0.3.0](https://github.com/gruntwork-io/boilerplate/releases/tag/v0.3.0).
 
 You can find older versions on the [Releases Page](https://github.com/gruntwork-io/usage-patterns/releases).
 
@@ -138,11 +138,11 @@ You can find older versions on the [Releases Page](https://github.com/gruntwork-
 
 When you run Boilerplate, it performs the following steps:
 
-1. Read the `boilerplate.yml` file in the folder specified by the `--template-folder` option to find all defined
+1. Read the `boilerplate.yml` file in the folder specified by the `--template-url` option to find all defined
    varaibles.
 1. Gather values for the variables from any `--var` and `--var-file` options that were passed in and prompting the user
    for the rest (unless the `--non-interactive` flag is specified).
-1. Copy each file from `--template-folder` to `--output-folder`, running each non-binary file through the Go
+1. Copy each file from `--template-url` to `--output-folder`, running each non-binary file through the Go
    Template engine with the map of variables as the data structure.
 
 Learn more about boilerplate in the following sections:
@@ -159,7 +159,9 @@ Learn more about boilerplate in the following sections:
 
 The `boilerplate` binary supports the following options:
 
-* `--template-folder FOLDER` (required): Generate the project from the templates in `FOLDER`.
+* `--template-url URL` (required): Generate the project from the templates in `URL`. This can be a local path, or a
+  [go-getter](https://github.com/hashicorp/go-getter) compatible URL for remote templates (e.g.,
+  `git@github.com:gruntwork-io/boilerplate.git//examples/include?ref=master`).
 * `--output-folder` (required): Create the output files and folders in `FOLDER`.
 * `--non-interactive` (optional): Do not prompt for input variables. All variables must be set via `--var` and
   `--var-file` options instead.
@@ -181,20 +183,27 @@ Some examples:
 Generate a project in ~/output from the templates in ~/templates:
 
 ```
-boilerplate --template-folder ~/templates --output-folder ~/output
+boilerplate --template-url ~/templates --output-folder ~/output
 ```
 
 Generate a project in ~/output from the templates in ~/templates, using variables passed in via the command line:
 
 ```
-boilerplate --template-folder ~/templates --output-folder ~/output --var "Title=Boilerplate" --var "ShowLogo=false"
+boilerplate --template-url ~/templates --output-folder ~/output --var "Title=Boilerplate" --var "ShowLogo=false"
 ```
 
 Generate a project in ~/output from the templates in ~/templates, using variables read from a file:
 
 ```
-boilerplate --template-folder ~/templates --output-folder ~/output --var-file vars.yml
+boilerplate --template-url ~/templates --output-folder ~/output --var-file vars.yml
 ```
+
+Generate a project in ~/output from the templates in this repo's `include` example dir, using variables read from a file:
+
+```
+boilerplate --template-url "git@github.com:gruntwork-io/boilerplate.git//examples/include?ref=master" --output-folder ~/output --var-file vars.yml
+```
+
 
 #### The boilerplate.yml file
 
@@ -217,7 +226,7 @@ variables:
 
 dependencies:
   - name: <DEPENDENCY_NAME>
-    template-folder: <FOLDER>
+    template-url: <FOLDER>
     output-folder: <FOLDER>
     skip: <CONDITION>
     dont-inherit-variables: <BOOLEAN>
@@ -266,19 +275,20 @@ variables:
     default: true
 
 dependencies:
-    - name: docs
-      template-folder: ../docs
-      output-folder: ./docs
-      variables:
-        - name: Title
-          description: Enter the title of the docs page
+  - name: docs
+    template-url: ../docs
+    output-folder: ./docs
+    variables:
+      - name: Title
+        description: Enter the title of the docs page
 
-    - name: website
-      template-folder: ../website
-      output-folder: ./website
-      variables:
-        - name: Title
-          description: Enter the title of the website
+  - name: website
+    template-url: ../website
+    output-folder: ./website
+    variables:
+      - name: Title
+        description: Enter the title of the website
+
 ```
 
 **Variables**: A list of objects (i.e. dictionaries) that define variables. Each variable may contain the following
@@ -301,7 +311,7 @@ See the [Variables](#variables) section for more info.
 executing the current one. Each dependency may contain the following keys:
 
 * `name` (Required): A unique name for the dependency.
-* `template-folder` (Required): Run `boilerplate` on the templates in this folder. This path is relative to the
+* `template-url` (Required): Run `boilerplate` on the templates in this folder. This path is relative to the
   current template.
 * `output-folder` (Required): Create the output files and folders in this folder. This path is relative to the output
   folder of the current template.
@@ -407,7 +417,7 @@ Note the following:
   prompt you for each of those variables separately from the root ones. You can also use the
   `<DEPENDENCY_NAME>.<VARIABLE_NAME>` syntax as the name of the variable with the `-var` flag and inside of a var file
   to provide a value for a variable in a dependency.
-* Interpolation: You may use interpolation in the `template-folder` and `output-folder` parameters of your 
+* Interpolation: You may use interpolation in the `template-url` and `output-folder` parameters of your 
   dependencies. This allows you to use specify the paths to your template and output folders dynamically.
 * Conditional dependencies: You can enable or disable a dependency using the `skip` parameter, which supports Go
   templating syntax and boilerplate variables. If the `skip` parameter evaluates to the string `true`, the 
@@ -423,7 +433,7 @@ Note the following:
     
     dependencies:
       - name: conditional-dependency-example
-        template-folder: ../foo
+        template-url: ../foo
         output-folder: foo
         # Skip this dependency if both .Foo and .Bar are set to true
         skip: "{{ and .Foo .Bar }}"
@@ -459,7 +469,7 @@ Note the following:
           - {{ .SomeVariable }} 
           - {{ .AnotherVariable }}
     ```
-* Boilerplate runs your `command` with the working directory set to the `--template-folder` option.
+* Boilerplate runs your `command` with the working directory set to the `--template-url` option.
 * `skip` (Optional): Skip this hook if this condition, which can use Go templating syntax and 
   boilerplate variables, evaluates to the string `true`. This is useful to conditionally enable or disable 
   dependencies.
@@ -468,7 +478,7 @@ Note the following:
 #### Templates
 
 Boilerplate puts all the variables into a Go map where the key is the name of the variable and the value is what
-the user provided. It then starts copying files from the `--template-folder` into the `--output-folder`, passing each
+the user provided. It then starts copying files from the `--template-url` into the `--output-folder`, passing each
 non-binary file through the [Go Template](https://golang.org/pkg/text/template) engine, with the variable map as a
 data structure.
 
@@ -506,6 +516,12 @@ Boilerplate also includes several custom helpers that you can access that enhanc
    return str2;
    // boilerplate-snippet: foo
    ```
+* `include <PATH> <VARIABLES>`: Returns the contents of the file at `PATH` after rendering it through the templating
+  engine with the provided variables, as a string (unlike `snippet`, which returns the contents of the file verbatim).
+  Use `.` to pass the current variables to the included template. E.g:
+  ```
+  {{ include "../source-template.snippet" . }}
+  ```
 * `replaceOne OLD NEW`: Replace the first occurrence of `OLD` with `NEW`. This is a literal replace, not regex.
 * `replaceAll OLD NEW`: Replace all occurrences of `OLD` with `NEW`. This is a literal replace, not regex.
 * `roundInt FLOAT`: Round `FLOAT` to the nearest integer. E.g. 1.5 becomes 2.
@@ -532,7 +548,8 @@ Boilerplate also includes several custom helpers that you can access that enhanc
   so you can use paths relative to the file from which you are calling the `shell` helper. Any argument you pass of the
   form `ENV:KEY=VALUE` will be set as an environment variable for the command rather than an argument. For another way 
   to execute commands, see [hooks](#hooks).
-* `templateFolder`: Return the value of the `--template-folder` command-line option. Useful for building relative paths.
+* `templateFolder`: Return the value of the template working dir. This is the value of the `--template-url` command-line
+  option if local template, or the download dir if remote template. Useful for building relative paths.
 * `outputFolder`: Return the value of the `--output-folder` command-line option. Useful for building relative paths.
 * `envWithDefault NAME DEFAULT`: Render the value of environment variable `NAME`. If that environment variable is empty or not 
   defined, render `DEFAULT` instead.
