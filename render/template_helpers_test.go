@@ -189,23 +189,29 @@ func TestPathRelativeToTemplate(t *testing.T) {
 	t.Parallel()
 
 	testCases := []struct {
-		templatePath string
-		path         string
-		expected     string
+		templatePath    string
+		path            string
+		expected        string
+		ignoreOnWindows bool
 	}{
-		{"/template.txt", ".", "/"},
-		{"/foo/bar/template.txt", ".", "/foo/bar"},
-		{"/foo/bar/template.txt", "..", "/foo"},
-		{"/foo/bar/template.txt", "../..", "/"},
-		{"/foo/bar/template.txt", "../../bar/baz", "/bar/baz"},
-		{"/foo/bar/template.txt", "foo", "/foo/bar/foo"},
-		{"/foo/bar/template.txt", "./foo", "/foo/bar/foo"},
-		{"/foo/bar/template.txt", "/foo", "/foo"},
-		{"/foo/bar/template.txt", "/foo/bar/baz", "/foo/bar/baz"},
-		{"/usr/bin", "../foo", "/usr/foo"}, // Note, we are testing with a real file path here to ensure directories are handled correctly
+		{"/template.txt", ".", "/", false},
+		{"/foo/bar/template.txt", ".", "/foo/bar", false},
+		{"/foo/bar/template.txt", "..", "/foo", false},
+		{"/foo/bar/template.txt", "../..", "/", false},
+		{"/foo/bar/template.txt", "../../bar/baz", "/bar/baz", false},
+		{"/foo/bar/template.txt", "foo", "/foo/bar/foo", false},
+		{"/foo/bar/template.txt", "./foo", "/foo/bar/foo", false},
+		{"/foo/bar/template.txt", "/foo", "/foo", false},
+		{"/foo/bar/template.txt", "/foo/bar/baz", "/foo/bar/baz", false},
+		{"/usr/bin", "../foo", "/usr/foo", true}, // Note, we are testing with a real file path here to ensure directories are handled correctly
 	}
 
 	for _, testCase := range testCases {
+		if runtime.GOOS == "windows" && testCase.ignoreOnWindows {
+			// Ignore this specific test case on windows
+			continue
+		}
+
 		actual := PathRelativeToTemplate(testCase.templatePath, testCase.path)
 		// Normalize path to account for windows
 		actual = filepath.ToSlash(actual)

@@ -3,9 +3,11 @@ package render
 import (
 	"fmt"
 	"os"
+	"regexp"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/gruntwork-io/boilerplate/options"
 )
@@ -93,7 +95,13 @@ func TestRenderTemplate(t *testing.T) {
 	for _, testCase := range testCases {
 		actualOutput, err := RenderTemplate(pwd+"/template.txt", testCase.templateContents, testCase.variables, &options.BoilerplateOptions{TemplateFolder: "/templates", OutputFolder: "/output", OnMissingKey: testCase.missingKeyAction})
 		if testCase.expectedErrorText == "" {
-			assert.Nil(t, err, "template = %s, variables = %s, missingKeyAction = %s, err = %v", testCase.templateContents, testCase.variables, testCase.missingKeyAction, err)
+			assert.NoError(t, err)
+
+			// Remove carriage returns, which is added in windows
+			re, reErr := regexp.Compile(`\r`)
+			require.NoError(t, reErr)
+			actualOutput = re.ReplaceAllString(actualOutput, "")
+
 			assert.Equal(t, testCase.expectedOutput, actualOutput, "template = %s, variables = %s, missingKeyAction = %s", testCase.templateContents, testCase.variables, testCase.missingKeyAction)
 		} else {
 			if assert.NotNil(t, err, "template = %s, variables = %s, missingKeyAction = %s", testCase.templateContents, testCase.variables, testCase.missingKeyAction) {
