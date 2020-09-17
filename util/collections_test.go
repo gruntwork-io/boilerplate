@@ -13,4 +13,8 @@ func TestReverseStringSlice(t *testing.T) {
 	expected := []string{"c", "b", "a"}
 	actual := ReverseStringSlice(s)
 	require.Equal(t, expected, actual)
+
+	// Also verify that the original slice has not changed
+	expected = []string{"a", "b", "c"}
+	require.Equal(t, expected, s)
 }
