@@ -460,8 +460,11 @@ In this example, the following processing order occurs:
 
 If a variable `foo` is defined with different default values in each of these templates, the last value takes
 precedence. Hooks and dependencies are also processed following this same convention. Included files can themselves
-include files, and the ordering is preserved. However, and included file cannot include itself as this would result
-in an infinite loop.
+include files, and the ordering is preserved. 
+
+**WARNING: An included file should not include itself, nor should included files include each other, as this would
+result in an infinite loop! Boilerplate attempts a naive method of detecting this condition, but detection is 
+imperfect.**
 
 #### Templates
 

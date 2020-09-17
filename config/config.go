@@ -91,7 +91,7 @@ func LoadBoilerplateConfig(opts *options.BoilerplateOptions) (*BoilerplateConfig
 
 		// Reverse the order of the BeforeIncludes so that the usage is more intuitive.
 		// If we didn't reverse, the last item of the "before" list would be the first item included, but intuitively,
-		// one would expec tit to be the last item
+		// one would expect it to be the last item
 		beforeIncludes := util.ReverseStringSlice(boilerplateConfig.Includes.BeforeIncludes)
 
 		if err = mergeIncludes(boilerplateConfig, opts, beforeIncludes, mergeBeforeIncludes); err != nil {
