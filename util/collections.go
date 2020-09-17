@@ -63,3 +63,13 @@ func ToStringToGenericMap(genericMap map[interface{}]interface{}) map[string]int
 func ToString(value interface{}) string {
 	return fmt.Sprintf("%v", value)
 }
+
+// ReverseStringSlice returns a slice of strings in reverse order without modifying the original slice
+func ReverseStringSlice(src []string) []string {
+	dst := make([]string, len(src))
+	copy(dst, src)
+	for i, j := 0, len(dst)-1; i < j; i, j = i+1, j-1 {
+		dst[i], dst[j] = dst[j], dst[i]
+	}
+	return dst
+}

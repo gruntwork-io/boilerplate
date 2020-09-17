@@ -24,8 +24,12 @@ const OptDisableShell = "disable-shell"
 type BoilerplateOptions struct {
 	// go-getter supported URL where the template can be sourced.
 	TemplateUrl string
+
 	// Working directory where the go-getter defined template is downloaded.
 	TemplateFolder string
+
+	// A file to include in the current configuration
+	IncludeFile string
 
 	OutputFolder    string
 	NonInteractive  bool

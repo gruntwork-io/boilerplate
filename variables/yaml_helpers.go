@@ -78,7 +78,7 @@ func unmarshalMapOfStrings(fields map[string]interface{}, fieldName string) (map
 //   - value2
 //   - value3
 //
-// This method takes looks up the given fieldName in the map and unmarshals the data inside of it it into a list of
+// This method looks up the given fieldName in the map and unmarshals the data inside of it it into a list of
 // strings with the given values.
 func unmarshalListOfStrings(fields map[string]interface{}, fieldName string) ([]string, error) {
 	fieldAsYaml, containsField := fields[fieldName]
@@ -115,7 +115,7 @@ func unmarshalListOfStrings(fields map[string]interface{}, fieldName string) ([]
 //     key2: value2
 //     key3: value3
 //
-// This method takes looks up the given fieldName in the map and unmarshals the data inside of it it into a list of
+// This method looks up the given fieldName in the map and unmarshals the data inside of it it into a list of
 // maps, where each map contains the set of key:value pairs
 func unmarshalListOfFields(fields map[string]interface{}, fieldName string) ([]map[string]interface{}, error) {
 	fieldAsYaml, containsField := fields[fieldName]
@@ -149,7 +149,7 @@ func unmarshalListOfFields(fields map[string]interface{}, fieldName string) ([]m
 //   - bar
 //   - baz
 //
-// This method takes looks up the options object in the map and unmarshals the data inside of it it into a list of
+// This method looks up the options object in the map and unmarshals the data inside of it it into a list of
 // strings. This is meant to be used to parse the options field of an Enum variable. If the given variableType is not
 // an Enum and options have been specified, or this variable is an Enum and options have not been specified, this
 // method will return an error.
@@ -180,7 +180,7 @@ func unmarshalOptionsField(fields map[string]interface{}, context string, variab
 //
 // type: <TYPE>
 //
-// This method takes looks up the options key in the map and unmarshals the data inside of it it into a
+// This method looks up the options key in the map and unmarshals the data inside of it it into a
 // BoilerplateType. If no type is specified, this method returns the default type (String). If an unrecognized type is
 // specified, this method returns an error.
 func unmarshalTypeField(fields map[string]interface{}, context string) (BoilerplateType, error) {
@@ -204,7 +204,7 @@ func unmarshalTypeField(fields map[string]interface{}, context string) (Boilerpl
 //
 // fieldName: <VALUE>
 //
-// This method takes looks up the given fieldName in the map and unmarshals the data inside of it into a string. If
+// This method looks up the given fieldName in the map and unmarshals the data inside of it into a string. If
 // requiredField is true and fieldName was not in the map, this method will return an error.
 func unmarshalStringField(fields map[string]interface{}, fieldName string, requiredField bool, context string) (*string, error) {
 	value, hasValue := fields[fieldName]
@@ -227,7 +227,7 @@ func unmarshalStringField(fields map[string]interface{}, fieldName string, requi
 //
 // fieldName: <VALUE>
 //
-// This method takes looks up the given fieldName in the map and unmarshals the data inside of it into a bool. If
+// This method looks up the given fieldName in the map and unmarshals the data inside of it into a bool. If
 // requiredField is true and fieldName was not in the map, this method will return an error.
 func unmarshalBooleanField(fields map[string]interface{}, fieldName string, requiredField bool, context string) (bool, error) {
 	value, hasValue := fields[fieldName]

@@ -608,6 +608,33 @@ func TestParseBoilerplateConfigMultipleHooks(t *testing.T) {
 	assert.Equal(t, expected, actual)
 }
 
+func TestLoadBoilerplateConfigIncludes(t *testing.T) {
+	t.Parallel()
+
+	actual, err := LoadBoilerplateConfig(&options.BoilerplateOptions{TemplateFolder: "../test-fixtures/config-test/includes-config"})
+	expected := &BoilerplateConfig{
+		Variables: []variables.Variable{
+			variables.NewStringVariable("before1"),
+			variables.NewStringVariable("before2"),
+			variables.NewStringVariable("templatevar"),
+			variables.NewStringVariable("after1"),
+		},
+		Dependencies: []variables.Dependency{},
+		Includes: variables.Includes{
+			BeforeIncludes: []string{
+				"includes/before1.yml",
+				"includes/before2.yml",
+			},
+			AfterIncludes: []string{
+				"includes/after1.yml",
+			},
+		},
+	}
+
+	assert.Nil(t, err, "Unexpected error: %v", err)
+	assert.Equal(t, expected, actual)
+}
+
 func TestLoadBoilerplateConfigFullConfig(t *testing.T) {
 	t.Parallel()
 
@@ -632,6 +659,16 @@ func TestLoadBoilerplateConfigFullConfig(t *testing.T) {
 			AfterHooks: []variables.Hook{
 				{Command: "foo"},
 				{Command: "bar"},
+			},
+		},
+		Includes: variables.Includes{
+			BeforeIncludes: []string{
+				"includes/before1.yml",
+				"includes/before2.yml",
+			},
+			AfterIncludes: []string{
+				"includes/after1.yml",
+				"includes/after2.yml",
 			},
 		},
 	}

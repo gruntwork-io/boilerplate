@@ -126,6 +126,7 @@ Learn more about boilerplate in the following sections:
 1. [Variables](#variables)
 1. [Dependencies](#dependencies)
 1. [Hooks](#hooks)
+1. [Includes](#includes)
 1. [Templates](#templates)
 1. [Template helpers](#template-helpers)
 
@@ -225,6 +226,14 @@ hooks:
       env:
         <KEY>: <VALUE>
       skip: <CONDITION>
+
+includes:
+  before:
+    - <PATH>
+    - <PATH>
+  after:
+    - <PATH>
+    - <PATH>
 ```
 
 Here's an example:
@@ -277,6 +286,10 @@ See the [Dependencies](#dependencies) section for more info.
 
 See the [Hooks](#hooks) section for more info.
 
+**Includes**: Boilerplate can include the variables, dependencies, and hooks from another boilerplate template. Because order matters (for things like variable default values and hook execution), templates can be included *before* or *after* the current configuration.
+
+See the [Includes](#includes) section for more info.
+
 #### Variables
 
 You must provide a value for every variable defined in `boilerplate.yml`, or project generation will fail. There are
@@ -308,7 +321,8 @@ four ways to provide a value for a variable:
 1. Manual input. If no value is specified via the `--var` or `--var-file` flags, Boilerplate will interactively prompt
    the user to provide a value. Note that the `--non-interactive` flag disables this functionality.
 1. Defaults defined in `boilerplate.yml`. The final fallback is the optional `default` that you can include as part of
-   the variable definition in `boilerplate.yml`.
+   the variable definition in `boilerplate.yml`. See the note in the [Includes](#includes) section on order of precedence
+   for default values when including templates.
 
 Note that variables can reference other variables using Go templating syntax:
 
@@ -417,6 +431,38 @@ Note the following:
   dependencies.
 * For an alternative way to execute commands, see the `shell` helper in [template helpers](#template-helpers).
 
+#### Includes
+
+Boilerplate can include the configuration from one template inside another. Templates can be included *before* or
+*after* the current configuration. Unlike the `template-url`, included files are paths to a file, as opposed to a
+directory. This allows you to include multiple files from the same directory. Included templates can be URLs or
+relative paths to a file. Here's an example:
+
+    ```yaml
+    variables:
+      - name: foo
+        description: my foo variable
+
+    includes:
+      before:
+        - ../includes/beforefile.yml
+        - git@github.com:gruntwork-io/boilerplate.git//examples/include/boilerplate.yml?ref=master
+      after:
+        - ../includes/afterfile.yml
+    ```
+
+In this example, the following processing order occurs:
+
+1. The contents of `beforefile.yml`
+1. The contents of `boilerplate.yml` in the git repository
+1. The contents of the original template
+1. The contents of `afterfile.yml`
+
+If a variable `foo` is defined with different default values in each of these templates, the last value takes
+precedence. Hooks and dependencies are also processed following this same convention. Included files can themselves
+include files, and the ordering is preserved. However, and included file cannot include itself as this would result
+in an infinite loop.
+
 #### Templates
 
 Boilerplate puts all the variables into a Go map where the key is the name of the variable and the value is what
@@ -462,7 +508,7 @@ Boilerplate also includes several custom helpers that you can access that enhanc
   engine with the provided variables, as a string (unlike `snippet`, which returns the contents of the file verbatim).
   Use `.` to pass the current variables to the included template. E.g:
   ```
-  {{ include "../source-template.snippet" . }}
+  {{"{{"}} include "../source-template.snippet" . {{"}}"}}
   ```
 * `replaceOne OLD NEW`: Replace the first occurrence of `OLD` with `NEW`. This is a literal replace, not regex.
 * `replaceAll OLD NEW`: Replace all occurrences of `OLD` with `NEW`. This is a literal replace, not regex.

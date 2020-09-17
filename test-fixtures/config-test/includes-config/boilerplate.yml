@@ -1,0 +1,10 @@
+variables:
+  - name: templatevar
+
+includes:
+  before:
+    - includes/before1.yml
+    - includes/before2.yml
+  after:
+    - includes/after1.yml
+
