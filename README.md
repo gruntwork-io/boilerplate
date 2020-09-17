@@ -491,10 +491,14 @@ Note the following:
 
 #### Includes
 
-Boilerplate can include the configuration from one template inside another. Templates can be included *before* or
-*after* the current configuration. Unlike the `template-url`, included files are paths to a file, as opposed to a
-directory. This allows you to include multiple files from the same directory. Included templates can be URLs or
-relative paths to a file. Here's an example:
+Boilerplate can include the configuration from one template inside another. When including a template, the included
+template's variables, dependencies, and hooks will be combined with those of the original template. This is useful
+when many templates have variables/dependencies/hooks in common because it helps to keep the template more DRY.
+
+Templates can be included *before* or
+*after* the current configuration. Unlike the `template-url`, included files are paths to a boilerplate YAML file,
+as opposed to a directory. This allows you to include multiple files from the same directory. Included templates
+can be URLs or relative paths to a file. Here's an example:
 
     ```yaml
     variables:

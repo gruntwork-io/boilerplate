@@ -91,7 +91,8 @@ func LoadBoilerplateConfig(opts *options.BoilerplateOptions) (*BoilerplateConfig
 
 		// Reverse the order of the BeforeIncludes so that the usage is more intuitive.
 		// If we didn't reverse, the last item of the "before" list would be the first item included, but intuitively,
-		// one would expect it to be the last item
+		// one would expect it to be the last item. This happens because in the before case, the items are prepended to
+		// the list, not appended, and hence each included template prepends to the previous one.
 		beforeIncludes := util.ReverseStringSlice(boilerplateConfig.Includes.BeforeIncludes)
 
 		if err = mergeIncludes(boilerplateConfig, opts, beforeIncludes, mergeBeforeIncludes); err != nil {
@@ -146,7 +147,7 @@ func getIncludeFilePath(include, templateFolder string) (string, string, error) 
 	return "", absPath, nil
 }
 
-// mergeIncludes merges an included file with the original configuration
+// mergeIncludes merges a list of included files with the original configuration
 func mergeIncludes(dstConfig *BoilerplateConfig, opts *options.BoilerplateOptions, includes []string, mergeInclude func(*BoilerplateConfig, *BoilerplateConfig)) error {
 	for _, include := range includes {
 		workingDir, includeFilePath, err := getIncludeFilePath(include, opts.TemplateFolder)
