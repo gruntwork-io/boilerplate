@@ -518,9 +518,8 @@ Foo variable is {{ .Foo }}
 ```
 
 The code above shows two configurations: `first-template` and `second-template`. The templates for both configurations
-call the variable `Foo`, but only `second-template` defines `Foo` with a default value. Even though `first-template`
-has a dependency defined for `second-template`, its variables (and their defualt values) are not available in
-`first-template`.
+call the variable `Foo`, but only `second-template` defines `Foo` with a default value. `Foo` (and its default value)
+is not available in `first-template`, even though `second-template` is a dependency.
 
 Now consider a similar configuration that uses includes instead:
 
@@ -547,12 +546,12 @@ $ cat second-template/example.txt
 Foo variable is {{ .Foo }}
 ```
 
-Using includes, the `Foo` variable is available to both `first-template` and `second-template`.
+Using includes, the `Foo` variable is only defined once, but it is available to both `first-template` and
+`second-template`.
 
-With includes, templates can be included *before* or *after* the current configuration. Unlike the `template-url`
-field of a dependency, included files are paths to a file, not a directory. This allows you to include multiple
-files from the same directory. Included templates can be either URLs or relative paths to a file. Here's another
-example:
+Templates can be included *before* or *after* the current configuration. Unlike the `template-url` field of a
+dependency, included files are paths to a file, not a directory. This allows you to include multiple files from
+the same directory. Included templates can be either URLs or relative paths to a file. Here's another example:
 
     ```yaml
     variables:
@@ -606,8 +605,9 @@ dependencies:
     output-folder: ../another/arbitrary/output/folder
 ```
 
-In this example, `before-dependency` is processed first, followed by `example-dependency` and finally
-`after-dependency`. Hooks follow this same convention.
+In this example, `before-dependency` and `after-dependency` are both included in the `dependencies` configuration. 
+`before-dependency` is processed first, followed by `example-dependency` and finally `after-dependency`. Hooks follow 
+this same convention.
 
 Note that included files can themselves include files.
 
