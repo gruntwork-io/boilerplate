@@ -491,19 +491,73 @@ Note the following:
 
 #### Includes
 
-Boilerplate can include the configuration from one template inside another. When including a template, the included
-template's variables, dependencies, and hooks will be combined with those of the original template. This is useful
-when many templates have variables/dependencies/hooks in common because it helps to keep the template more DRY.
+Boilerplate can include the configuration from one Boilerplate configuration file inside of another. This feature 
+allows you to define variables, hooks, and dependencies in an separate file, and then use them within the current 
+configuration. Including a template will include its variables, hooks, and dependencies, but will not render any
+files. This allows you to reuse the definitions, making your templates more DRY.
 
-Templates can be included *before* or
-*after* the current configuration. Unlike the `template-url`, included files are paths to a boilerplate YAML file,
-as opposed to a directory. This allows you to include multiple files from the same directory. Included templates
-can be URLs or relative paths to a file. Here's an example:
+To explain this feature and how it differs from [Dependencies](#dependencies), consider the following configurations:
+
+```
+$ cat first-template/boilerplate.yml
+dependencies:
+  - name: second-template
+    template-url: ../second-template
+    output-folder: ../some/arbitrary/output/folder
+
+$ cat first-template/example.txt
+Foo variable is {{ .Foo }}
+
+$ cat second-template/boilerplate.yml
+variables:
+  - name: Foo
+    default: Foo value
+
+$ cat second-template/example.txt
+Foo variable is {{ .Foo }}
+```
+
+The code above shows two configurations: `first-template` and `second-template`. The templates for both configurations
+call the variable `Foo`, but only `second-template` defines `Foo` with a default value. Even though `first-template`
+has a dependency defined for `second-template`, its variables (and their defualt values) are not available in
+`first-template`.
+
+Now consider a similar configuration that uses includes instead:
+
+```
+$ cat _includes/foo-var.yml
+variables:
+  - name: Foo
+    default: Foo value
+
+$ cat first-template/boilerplate.yml
+includes:
+  before:
+    - ../includes/foo-var.yml
+
+$ cat first-template/example.txt
+Foo variable is {{ .Foo }}
+
+$ cat second-template/boilerplate.yml
+includes:
+  before:
+    - ../includes/foo-var.yml
+
+$ cat second-template/example.txt
+Foo variable is {{ .Foo }}
+```
+
+Using includes, the `Foo` variable is available to both `first-template` and `second-template`.
+
+With includes, templates can be included *before* or *after* the current configuration. Unlike the `template-url`
+field of a dependency, included files are paths to a file, not a directory. This allows you to include multiple
+files from the same directory. Included templates can be either URLs or relative paths to a file. Here's another
+example:
 
     ```yaml
     variables:
-      - name: foo
-        description: my foo variable
+      - name: Foo
+        default: my Foo value
 
     includes:
       before:
@@ -520,9 +574,51 @@ In this example, the following processing order occurs:
 1. The contents of the original template
 1. The contents of `afterfile.yml`
 
-If a variable `foo` is defined with different default values in each of these templates, the last value takes
-precedence. Hooks and dependencies are also processed following this same convention. Included files can themselves
-include files, and the ordering is preserved. 
+If a variable `Foo` is defined with different default values in each of these templates, the final value (from
+`afterfile.yml`) has precedence.
+
+If hooks or dependencies are defined in the included configurations, they will be added to the current configuration
+and processed according to the order in which they were included. For example:
+
+```
+$ cat template/boilerplate.yml
+includes:
+  before:
+    - ../includes/before.yml
+  after:
+    - ../includes/after.yml
+
+dependencies:
+  - name: example-dependency
+    template-url: ../example-dependency
+    output-folder: ../some/arbitrary/output/folder
+
+$ cat includes/before.yml
+dependencies:
+  - name: before-dependency
+    template-url: ../before-dependency
+    output-folder: ../some/other/arbitrary/output/folder
+
+$ cat includes/after.yml
+dependencies:
+  - name: after-dependency
+    template-url: ../after-dependency
+    output-folder: ../another/arbitrary/output/folder
+```
+
+In this example, `before-dependency` is processed first, followed by `example-dependency` and finally
+`after-dependency`. Hooks follow this same convention.
+
+Note that included files can themselves include files.
+
+Included file paths are not interpolated, so the following does not work:
+
+    ```
+    # This does not work!
+    includes:
+      before:
+        - "{{ SomeVariable }}/beforefile.yml"
+    ```
 
 **WARNING: An included file should not include itself, nor should included files include each other, as this would
 result in an infinite loop! Boilerplate attempts a naive method of detecting this condition, but detection is 
