@@ -2,7 +2,6 @@ package templates
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"path"
@@ -69,7 +68,7 @@ func ProcessTemplate(options, rootOpts *options.BoilerplateOptions, thisDep vari
 		return err
 	}
 
-	err = processTemplateFolder(options, vars)
+	err = processTemplateFolder(options, vars, boilerplateConfig.Partials)
 	if err != nil {
 		return err
 	}
@@ -105,14 +104,14 @@ func processHook(hook variables.Hook, opts *options.BoilerplateOptions, vars map
 		return nil
 	}
 
-	cmd, err := render.RenderTemplate(config.BoilerplateConfigPath(opts.TemplateFolder), hook.Command, vars, opts)
+	cmd, err := render.RenderTemplateFromString(config.BoilerplateConfigPath(opts.TemplateFolder), hook.Command, vars, opts)
 	if err != nil {
 		return err
 	}
 
 	args := []string{}
 	for _, arg := range hook.Args {
-		renderedArg, err := render.RenderTemplate(config.BoilerplateConfigPath(opts.TemplateFolder), arg, vars, opts)
+		renderedArg, err := render.RenderTemplateFromString(config.BoilerplateConfigPath(opts.TemplateFolder), arg, vars, opts)
 		if err != nil {
 			return err
 		}
@@ -121,12 +120,12 @@ func processHook(hook variables.Hook, opts *options.BoilerplateOptions, vars map
 
 	envVars := []string{}
 	for key, value := range hook.Env {
-		renderedKey, err := render.RenderTemplate(config.BoilerplateConfigPath(opts.TemplateFolder), key, vars, opts)
+		renderedKey, err := render.RenderTemplateFromString(config.BoilerplateConfigPath(opts.TemplateFolder), key, vars, opts)
 		if err != nil {
 			return err
 		}
 
-		renderedValue, err := render.RenderTemplate(config.BoilerplateConfigPath(opts.TemplateFolder), value, vars, opts)
+		renderedValue, err := render.RenderTemplateFromString(config.BoilerplateConfigPath(opts.TemplateFolder), value, vars, opts)
 		if err != nil {
 			return err
 		}
@@ -193,11 +192,11 @@ func processDependency(dependency variables.Dependency, opts *options.Boilerplat
 // Clone the given options for use when rendering the given dependency. The dependency will get the same options as
 // the original passed in, except for the template folder, output folder, and command-line vars.
 func cloneOptionsForDependency(dependency variables.Dependency, originalOpts *options.BoilerplateOptions, variables map[string]interface{}) (*options.BoilerplateOptions, error) {
-	renderedTemplateUrl, err := render.RenderTemplate(originalOpts.TemplateFolder, dependency.TemplateUrl, variables, originalOpts)
+	renderedTemplateUrl, err := render.RenderTemplateFromString(originalOpts.TemplateFolder, dependency.TemplateUrl, variables, originalOpts)
 	if err != nil {
 		return nil, err
 	}
-	renderedOutputFolder, err := render.RenderTemplate(originalOpts.TemplateFolder, dependency.OutputFolder, variables, originalOpts)
+	renderedOutputFolder, err := render.RenderTemplateFromString(originalOpts.TemplateFolder, dependency.OutputFolder, variables, originalOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -281,7 +280,7 @@ func shouldSkipDependency(dependency variables.Dependency, opts *options.Boilerp
 
 // Copy all the files and folders in templateFolder to outputFolder, passing text files through the Go template engine
 // with the given set of variables as the data.
-func processTemplateFolder(opts *options.BoilerplateOptions, variables map[string]interface{}) error {
+func processTemplateFolder(opts *options.BoilerplateOptions, variables map[string]interface{}, partials []string) error {
 	util.Logger.Printf("Processing templates in %s and outputting generated files to %s", opts.TemplateFolder, opts.OutputFolder)
 
 	return filepath.Walk(opts.TemplateFolder, func(path string, info os.FileInfo, err error) error {
@@ -291,21 +290,21 @@ func processTemplateFolder(opts *options.BoilerplateOptions, variables map[strin
 		} else if util.IsDir(path) {
 			return createOutputDir(path, opts, variables)
 		} else {
-			return processFile(path, opts, variables)
+			return processFile(path, opts, variables, partials)
 		}
 	})
 }
 
 // Copy the given path, which is in the folder templateFolder, to the outputFolder, passing it through the Go template
 // engine with the given set of variables as the data if it's a text file.
-func processFile(path string, opts *options.BoilerplateOptions, variables map[string]interface{}) error {
+func processFile(path string, opts *options.BoilerplateOptions, variables map[string]interface{}, partials []string) error {
 	isText, err := util.IsTextFile(path)
 	if err != nil {
 		return err
 	}
 
 	if isText {
-		return processTemplate(path, opts, variables)
+		return processTemplate(path, opts, variables, partials)
 	} else {
 		return copyFile(path, opts, variables)
 	}
@@ -337,7 +336,7 @@ func outPath(file string, opts *options.BoilerplateOptions, variables map[string
 	if err != nil {
 		return "", errors.WithStackTrace(err)
 	}
-	interpolatedFilePath, err := render.RenderTemplate(file, urlDecodedFile, variables, opts)
+	interpolatedFilePath, err := render.RenderTemplateFromString(file, urlDecodedFile, variables, opts)
 	if err != nil {
 		return "", errors.WithStackTrace(err)
 	}
@@ -368,19 +367,13 @@ func copyFile(file string, opts *options.BoilerplateOptions, variables map[strin
 
 // Run the template at templatePath, which is in templateFolder, through the Go template engine with the given
 // variables as data and write the result to outputFolder
-func processTemplate(templatePath string, opts *options.BoilerplateOptions, variables map[string]interface{}) error {
+func processTemplate(templatePath string, opts *options.BoilerplateOptions, variables map[string]interface{}, partials []string) error {
 	destination, err := outPath(templatePath, opts, variables)
 	if err != nil {
 		return err
 	}
 
-	util.Logger.Printf("Processing template %s and writing to %s", templatePath, destination)
-	bytes, err := ioutil.ReadFile(templatePath)
-	if err != nil {
-		return errors.WithStackTrace(err)
-	}
-
-	out, err := render.RenderTemplate(templatePath, string(bytes), variables, opts)
+	out, err := render.RenderTemplateWithPartials(templatePath, partials, variables, opts)
 	if err != nil {
 		return err
 	}

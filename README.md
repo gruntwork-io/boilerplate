@@ -152,6 +152,7 @@ Learn more about boilerplate in the following sections:
 1. [Variables](#variables)
 1. [Dependencies](#dependencies)
 1. [Hooks](#hooks)
+1. [Partials](#partials)
 1. [Templates](#templates)
 1. [Template helpers](#template-helpers)
 
@@ -251,6 +252,10 @@ hooks:
       env:
         <KEY>: <VALUE>
       skip: <CONDITION>
+
+partials:
+  - <GLOB>
+  - <GLOB>
 ```
 
 Here's an example:
@@ -289,6 +294,10 @@ dependencies:
       - name: Title
         description: Enter the title of the website
 
+partials:
+  - ../html/*.html
+  - ../css/*.css
+  - ../other/somefile.html
 ```
 
 **Variables**: A list of objects (i.e. dictionaries) that define variables. Each variable may contain the following
@@ -327,6 +336,13 @@ executing the current one. Each dependency may contain the following keys:
   description and default values here.
 
 See the [Dependencies](#dependencies) section for more info.
+
+**Partials**: Use *partials* to include reusable templates. Partials are a defined using a list of glob patterns.
+
+* Globs are matched using [the Go `filepath.Glob` function](https://golang.org/pkg/path/filepath/#Glob)
+* In the event of a template name collision (e.g. multiple templates are defined with the same name), the last one wins.
+
+See the [Partials](#partials) section for more info.
 
 **Hooks**: Boilerplate provides hooks to execute arbitrary shell commands. There are two types of hooks:
 
@@ -553,6 +569,8 @@ Boilerplate also includes several custom helpers that you can access that enhanc
 * `outputFolder`: Return the value of the `--output-folder` command-line option. Useful for building relative paths.
 * `envWithDefault NAME DEFAULT`: Render the value of environment variable `NAME`. If that environment variable is empty or not 
   defined, render `DEFAULT` instead.
+* `templateIsDefined NAME`: Returns a boolean indicating if template called `NAME` is known. Use this to conditionally 
+  include one boilerplate template with another. Most often useful along with [partials](#partials).
 
 #### Deprecated helpers
 
@@ -614,6 +632,120 @@ to using the new naming scheme, as they will be updated to use the sprig version
       }}` returns `{{ -world }}`.
     - `trimPrefixBoilerplate` and `trimSuffixBoilerplate`: Another name for the boilerplate versions of `trimPrefix`
       and `trimSuffix`. Use this if you would like to keep old behavior.
+
+#### Partials
+
+Partials help to keep templates DRY. Using partials, you can define templates in external files, and then use those, 
+templates over and over again in other templates. Partials are common among templating engines, such as in [Hugo](https://gohugo.io/templates/partials/).
+Let's look at an example:
+
+```html
+<html>
+  <head>
+    <title>Welcome!</title>
+  </head>
+  <body>
+    <h1>Welcome to this page!</h1>
+    <img src="logo.png">
+  </body>
+</html>
+```
+
+The example above shows the HTML for a web page, with a title, a welcome message, and a logo. Now, if we wanted to have
+another page showing a different title and body, we'd have to duplicate all of that content.
+
+In the example below, we'll create a partial that represents the basic layout of the site, then reuse that layout for each page. 
+First, we create a directory structure to keep everything organized:
+
+```
+.
+├── partials
+│   └── layout.html
+└── template
+    ├── about
+    │   ├── about.html
+    │   └── boilerplate.yml
+    └── root
+        ├── boilerplate.yml
+        └── index.html
+```
+
+In `partials/layout.html`, we create the basic page layout:
+
+```
+{{ define "basic_layout" }}
+<html>
+  <head>
+    <title>{{ .Title }}</title>
+  </head>
+  <body>
+    {{ template "body" . }}
+  </body>
+</html>
+{{ end }}
+```
+
+Now, in each of the pages on the site, we can reuse this layout. For example, from the site's root, we want the welcome 
+page. We create the `boilerplate.yml` first:
+
+```yaml
+partials:
+  - ../../partials/layout.html
+
+variables:
+  - name: Title
+    description: A title for the page.
+    default: "Welcome!"
+```
+
+Now we can use the layout within our `index.html`:
+
+```
+{{- define "body" -}}
+    <h1>This is index.html.</h1>
+    <img src="logo.png">
+{{- end -}}
+{{- template "basic_layout" . -}}
+```
+
+When we run `boilerplate`, `basic_layout` template will be rendered with the contents of the `index.html`. Then we can 
+use the same layout for the about page, with its corresponding `boilerplate.yml`.
+
+Contents of `about/boilerplate.yml`: 
+
+```yaml
+partials:
+  - ../../partials/layout.html
+
+variables:
+  - name: Title
+    description: A title for the page.
+    default: "About"
+
+```
+
+`about/about.html`:
+
+```
+{{- define "body" -}}
+    <h1>This is about.html.</h1>
+{{- end -}}
+{{- template "basic_layout" . -}}
+```
+
+Partials do not need to be located in a magic `partials` directory. Partials can be located anywhere and referred to using relative 
+paths.
+
+The list of partials is a glob that can match multiple files. The content of all of the files that match the globs will be parsed 
+when rendering the final template. For example, you could match many HTML files at once with:
+
+```
+partials:
+  - ../../html/*.html
+  - ../../css/*.css
+```
+
+You can use the template definitions from any of the included partials throughout your templates.
 
 ## Alternative project generators
 

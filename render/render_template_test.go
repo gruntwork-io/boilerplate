@@ -91,7 +91,7 @@ func TestRenderTemplate(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		actualOutput, err := RenderTemplate(pwd+"/template.txt", testCase.templateContents, testCase.variables, &options.BoilerplateOptions{TemplateFolder: "/templates", OutputFolder: "/output", OnMissingKey: testCase.missingKeyAction})
+		actualOutput, err := RenderTemplateFromString(pwd+"/template.txt", testCase.templateContents, testCase.variables, &options.BoilerplateOptions{TemplateFolder: "/templates", OutputFolder: "/output", OnMissingKey: testCase.missingKeyAction})
 		if testCase.expectedErrorText == "" {
 			assert.Nil(t, err, "template = %s, variables = %s, missingKeyAction = %s, err = %v", testCase.templateContents, testCase.variables, testCase.missingKeyAction, err)
 			assert.Equal(t, testCase.expectedOutput, actualOutput, "template = %s, variables = %s, missingKeyAction = %s", testCase.templateContents, testCase.variables, testCase.missingKeyAction)

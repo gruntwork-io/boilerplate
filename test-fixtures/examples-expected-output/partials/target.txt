@@ -1,0 +1,6 @@
+This is the top of the first template.
+This is the target.
+This is the bottom of the first template.
+This is the top of the second template.
+This is the target.
+This is the bottom of the second template.

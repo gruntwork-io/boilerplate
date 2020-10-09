@@ -1,0 +1,5 @@
+{{- define "second_template" -}}
+This is the top of the second template.
+{{ template "target" . }}
+This is the bottom of the second template.
+{{- end -}}

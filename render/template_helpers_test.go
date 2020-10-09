@@ -4,11 +4,14 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"reflect"
+	"testing"
+	"text/template"
+
 	"github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/stretchr/testify/assert"
-	"reflect"
-	"testing"
+	"github.com/stretchr/testify/require"
 )
 
 func TestExtractSnippetName(t *testing.T) {
@@ -450,6 +453,29 @@ func TestShellDisabled(t *testing.T) {
 	output, err := shell(".", &options.BoilerplateOptions{NonInteractive: true, DisableShell: true}, "echo", "hi")
 	assert.Nil(t, err, "Unexpected error: %v", err)
 	assert.Equal(t, SHELL_DISABLED_PLACEHOLDER, output)
+}
+
+// TestTemplateIsDefined tests that the templateIsDefined function correctly
+// identifies templates that have been added to the parse tree
+func TestTemplateIsDefined(t *testing.T) {
+	t.Parallel()
+
+	fooTemplate := "This is foo."
+	tmplFoo, err := template.New("foo").Parse(fooTemplate)
+	require.NoError(t, err)
+
+	f := wrapIsDefinedWithTemplate(tmplFoo)
+
+	assert.True(t, f("foo"))
+	assert.False(t, f("bar"))
+
+	barTemplate := "This is bar."
+	tmplBar, err := template.New("bar").Parse(barTemplate)
+	require.NoError(t, err)
+
+	tmplFoo.AddParseTree("bar", tmplBar.Tree)
+
+	assert.True(t, f("bar"))
 }
 
 // I cannot believe I have to write my own function and test code for rounding numbers in Go. FML.

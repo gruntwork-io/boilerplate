@@ -613,6 +613,7 @@ func TestLoadBoilerplateConfigFullConfig(t *testing.T) {
 
 	actual, err := LoadBoilerplateConfig(&options.BoilerplateOptions{TemplateFolder: "../test-fixtures/config-test/full-config"})
 	expected := &BoilerplateConfig{
+		Partials: []string{"../templates/foo"},
 		Variables: []variables.Variable{
 			variables.NewStringVariable("foo"),
 			variables.NewStringVariable("bar").WithDescription("example description"),
