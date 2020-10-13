@@ -26,7 +26,9 @@ func RenderTemplateWithPartials(templatePath string, partials []string, variable
 	// first resolve the path, then parse all the files matching the glob. Finally, we add all the templates
 	// found in each glob to the tree.
 	for _, globOfPartials := range partials {
-		relativePath := PathRelativeToTemplate(templatePath, globOfPartials)
+		// Use opts.TemplateFolder because the templatePath may be a subdir, but the partial paths are
+		// relative to the path passed in by the user
+		relativePath := PathRelativeToTemplate(opts.TemplateFolder, globOfPartials)
 		parsedTemplate, err := getTemplate(templatePath, opts).ParseGlob(relativePath)
 		if err != nil {
 			return "", errors.WithStackTrace(err)
