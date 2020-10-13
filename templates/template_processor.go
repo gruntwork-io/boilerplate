@@ -68,7 +68,12 @@ func ProcessTemplate(options, rootOpts *options.BoilerplateOptions, thisDep vari
 		return err
 	}
 
-	err = processTemplateFolder(options, vars, boilerplateConfig.Partials)
+	partials, err := processPartials(boilerplateConfig.Partials, options, vars)
+	if err != nil {
+		return err
+	}
+
+	err = processTemplateFolder(options, vars, partials)
 	if err != nil {
 		return err
 	}
@@ -79,6 +84,18 @@ func ProcessTemplate(options, rootOpts *options.BoilerplateOptions, thisDep vari
 	}
 
 	return nil
+}
+
+func processPartials(partials []string, opts *options.BoilerplateOptions, vars map[string]interface{}) ([]string, error) {
+	var renderedPartials []string
+	for _, partial := range partials {
+		renderedPartial, err := render.RenderTemplateFromString(config.BoilerplateConfigPath(opts.TemplateFolder), partial, vars, opts)
+		if err != nil {
+			return []string{}, err
+		}
+		renderedPartials = append(renderedPartials, renderedPartial)
+	}
+	return renderedPartials, nil
 }
 
 // Process the given list of hooks, which are scripts that should be executed at the command-line

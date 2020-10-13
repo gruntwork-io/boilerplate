@@ -747,6 +747,19 @@ partials:
 
 You can use the template definitions from any of the included partials throughout your templates.
 
+You can use Go templating syntax in partial paths. For example, you can define a convenenience variable for a relative path to 
+make the paths slightly easier to read:
+
+```
+variables:
+  - name: TemplatesRoot
+    description: A convenience variable identify the relative path to the root of the templates directory.
+    default: ../../../../
+partials:
+  - "{{ .TemplatesRoot }}/html/*.html"
+  - "{{ .TemplatesRoot }}/css/*.css"
+```
+
 ## Alternative project generators
 
 Before creating Boilerplate, we tried a number of other project generators, but none of them met all of our
