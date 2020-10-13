@@ -52,13 +52,14 @@ func RenderTemplateFromString(templatePath string, templateContents string, vari
 	return executeTemplate(parsedTemplate, variables)
 }
 
-// getTemplate takes a
+// getTemplate returns new template initialized with options and helper functions
 func getTemplate(templatePath string, opts *options.BoilerplateOptions) *template.Template {
 	tmpl := template.New(path.Base(templatePath))
 	option := fmt.Sprintf("missingkey=%s", string(opts.OnMissingKey))
 	return tmpl.Funcs(CreateTemplateHelpers(templatePath, opts, tmpl)).Option(option)
 }
 
+// executeTemplate executes a parsed template with a given set of variable inputs and return the output as a string
 func executeTemplate(tmpl *template.Template, variables map[string]interface{}) (string, error) {
 	var output bytes.Buffer
 	if err := tmpl.Execute(&output, variables); err != nil {
