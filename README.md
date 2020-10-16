@@ -337,7 +337,7 @@ executing the current one. Each dependency may contain the following keys:
 
 See the [Dependencies](#dependencies) section for more info.
 
-**Partials**: Use *partials* to include reusable templates. Partials are a defined using a list of glob patterns.
+**Partials**: Use *partials* to include reusable templates. Partials are defined using a list of glob patterns.
 
 * Globs are matched using [the Go `filepath.Glob` function](https://golang.org/pkg/path/filepath/#Glob)
 * In the event of a template name collision (e.g. multiple templates are defined with the same name), the last one wins.
