@@ -635,9 +635,56 @@ to using the new naming scheme, as they will be updated to use the sprig version
 
 #### Partials
 
-Partials help to keep templates DRY. Using partials, you can define templates in external files, and then use those, 
-templates over and over again in other templates. Partials are common among templating engines, such as in [Hugo](https://gohugo.io/templates/partials/).
-Let's look at an example:
+Partials help to keep templates DRY. Using partials, you can define templates in external files, and then use those templates over 
+and over again in other templates. Partials are common among templating engines, such as in [Hugo](https://gohugo.io/templates/partials/).
+
+Let's start with a simple example. In an HTML document, we might want to have a common set of `meta` tags to reuse throughout our site:
+
+```html
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="author" content="Gruntwork">
+  </head>
+  <body>
+    <h1>Welcome to this page!</h1>
+    <img src="logo.png">
+  </body>
+</html>
+```
+
+Rather than add these tags in a `<head>` section within each and every file, we could define a partial, then reuse it throughout the site.
+
+We define the header in `partials/header.html`:
+```html
+{{ define "header" }}
+  <head>
+    <meta charset="UTF-8">
+    <meta name="author" content="Gruntwork">
+  </head>
+{{ end }}
+```
+ 
+Then we set up the structure in `templates/boilerplate.yml`:
+```yaml
+partials:
+  - ../partials/*.html
+```
+
+In `templates/page.html`:
+```html
+<html>
+{{ template "header" }}
+  <body>
+    <h1>Welcome to this page!</h1>
+    <img src="logo.png">
+  </body>
+</html>
+```
+
+The contents of the `header` template will be rendered within `page.html` and any other page in which we call the header partial.
+
+Let's see a slightly more involved example.
 
 ```html
 <html>
@@ -690,7 +737,7 @@ page. We create the `boilerplate.yml` first:
 
 ```yaml
 partials:
-  - ../../partials/layout.html
+  - ../../partials/*.html
 
 variables:
   - name: Title
@@ -715,7 +762,7 @@ Contents of `about/boilerplate.yml`:
 
 ```yaml
 partials:
-  - ../../partials/layout.html
+  - ../../partials/*.html
 
 variables:
   - name: Title
