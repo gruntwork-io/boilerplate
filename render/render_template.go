@@ -3,6 +3,7 @@ package render
 import (
 	"bytes"
 	"fmt"
+	"path"
 	"reflect"
 	"text/template"
 
@@ -12,22 +13,58 @@ import (
 
 const MaxRenderAttempts = 15
 
+// RenderTemplateWithPartials renders the template at templatePath with the contents of the root template (the template
+// named by the user on the command line) as well as all of the partials matched by the provided globs using the Go
+// template engine, passing in the given variables as data.
+func RenderTemplateWithPartials(templatePath string, partials []string, variables map[string]interface{}, opts *options.BoilerplateOptions) (string, error) {
+	tmpl, err := getTemplate(templatePath, opts).ParseGlob(templatePath)
+	if err != nil {
+		return "", errors.WithStackTrace(err)
+	}
+
+	// Each item in the list of partials is a glob to a path relative to the templatePath, so we need to
+	// first resolve the path, then parse all the files matching the glob. Finally, we add all the templates
+	// found in each glob to the tree.
+	for _, globOfPartials := range partials {
+		// Use opts.TemplateFolder because the templatePath may be a subdir, but the partial paths are
+		// relative to the path passed in by the user
+		relativePath := PathRelativeToTemplate(opts.TemplateFolder, globOfPartials)
+		parsedTemplate, err := getTemplate(templatePath, opts).ParseGlob(relativePath)
+		if err != nil {
+			return "", errors.WithStackTrace(err)
+		}
+		for _, t := range parsedTemplate.Templates() {
+			tmpl.AddParseTree(t.Name(), t.Tree)
+		}
+	}
+	return executeTemplate(tmpl, variables)
+}
+
 // Render the template at templatePath, with contents templateContents, using the Go template engine, passing in the
 // given variables as data.
-func RenderTemplate(templatePath string, templateContents string, variables map[string]interface{}, opts *options.BoilerplateOptions) (string, error) {
-	option := fmt.Sprintf("missingkey=%s", string(opts.OnMissingKey))
-	tmpl := template.New(templatePath).Funcs(CreateTemplateHelpers(templatePath, opts)).Option(option)
-
+func RenderTemplateFromString(templatePath string, templateContents string, variables map[string]interface{}, opts *options.BoilerplateOptions) (string, error) {
+	tmpl := getTemplate(templatePath, opts)
 	parsedTemplate, err := tmpl.Parse(templateContents)
 	if err != nil {
 		return "", errors.WithStackTrace(err)
 	}
 
+	return executeTemplate(parsedTemplate, variables)
+}
+
+// getTemplate returns new template initialized with options and helper functions
+func getTemplate(templatePath string, opts *options.BoilerplateOptions) *template.Template {
+	tmpl := template.New(path.Base(templatePath))
+	option := fmt.Sprintf("missingkey=%s", string(opts.OnMissingKey))
+	return tmpl.Funcs(CreateTemplateHelpers(templatePath, opts, tmpl)).Option(option)
+}
+
+// executeTemplate executes a parsed template with a given set of variable inputs and return the output as a string
+func executeTemplate(tmpl *template.Template, variables map[string]interface{}) (string, error) {
 	var output bytes.Buffer
-	if err := parsedTemplate.Execute(&output, variables); err != nil {
+	if err := tmpl.Execute(&output, variables); err != nil {
 		return "", errors.WithStackTrace(err)
 	}
-
 	return output.String(), nil
 }
 
@@ -44,7 +81,7 @@ func RenderTemplate(templatePath string, templateContents string, variables map[
 func RenderTemplateRecursively(templatePath string, templateContents string, variables map[string]interface{}, opts *options.BoilerplateOptions) (string, error) {
 	lastOutput := templateContents
 	for i := 0; i < MaxRenderAttempts; i++ {
-		output, err := RenderTemplate(templatePath, lastOutput, variables, opts)
+		output, err := RenderTemplateFromString(templatePath, lastOutput, variables, opts)
 		if err != nil {
 			return "", err
 		}

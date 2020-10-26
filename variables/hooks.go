@@ -104,7 +104,7 @@ func unmarshalHookFromBoilerplateConfigYaml(fields map[string]interface{}, hookN
 		return nil, err
 	}
 
-	args, err := unmarshalListOfStrings(fields, "args")
+	args, err := UnmarshalListOfStrings(fields, "args")
 	if err != nil {
 		return nil, err
 	}

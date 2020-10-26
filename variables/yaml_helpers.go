@@ -80,7 +80,7 @@ func unmarshalMapOfStrings(fields map[string]interface{}, fieldName string) (map
 //
 // This method takes looks up the given fieldName in the map and unmarshals the data inside of it it into a list of
 // strings with the given values.
-func unmarshalListOfStrings(fields map[string]interface{}, fieldName string) ([]string, error) {
+func UnmarshalListOfStrings(fields map[string]interface{}, fieldName string) ([]string, error) {
 	fieldAsYaml, containsField := fields[fieldName]
 	if !containsField || fieldAsYaml == nil {
 		return nil, nil

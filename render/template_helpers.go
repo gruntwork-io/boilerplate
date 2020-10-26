@@ -51,7 +51,7 @@ var CAMEL_CASE_REGEX = regexp.MustCompile(
 type TemplateHelper func(templatePath string, opts *options.BoilerplateOptions, args ...string) (string, error)
 
 // Create a map of custom template helpers exposed by boilerplate
-func CreateTemplateHelpers(templatePath string, opts *options.BoilerplateOptions) template.FuncMap {
+func CreateTemplateHelpers(templatePath string, opts *options.BoilerplateOptions, tmpl *template.Template) template.FuncMap {
 	sprigFuncs := sprig.FuncMap()
 	// We rename a few sprig functions that overlap with boilerplate implementations. See DEPRECATED note on boilerplate
 	// functions below for more details.
@@ -87,6 +87,8 @@ func CreateTemplateHelpers(templatePath string, opts *options.BoilerplateOptions
 		"snippet": wrapWithTemplatePath(templatePath, opts, snippet),
 		"include": wrapIncludeWithTemplatePath(templatePath, opts),
 		"shell":   wrapWithTemplatePath(templatePath, opts, shell),
+
+		"templateIsDefined": wrapIsDefinedWithTemplate(tmpl),
 
 		"templateFolder":        func() string { return opts.TemplateFolder },
 		"outputFolder":          func() string { return opts.OutputFolder },
@@ -193,6 +195,25 @@ func wrapIncludeWithTemplatePath(templatePath string, opts *options.BoilerplateO
 	}
 }
 
+// wrapIsDefinedWithTemplate wraps templateIsDefined, passing in the current *Template to allow the
+// function to introspect what templates have been defined
+func wrapIsDefinedWithTemplate(tmpl *template.Template) func(string) bool {
+	return func(name string) bool {
+		return templateIsDefined(tmpl, name)
+	}
+}
+
+// templateIsDefined determines whether a given template name has been defined or not, allowing
+// boilerplate templates to conditionally include other templates.
+func templateIsDefined(tmpl *template.Template, name string) bool {
+	for _, templateName := range tmpl.Templates() {
+		if templateName.Name() == name {
+			return true
+		}
+	}
+	return false
+}
+
 // This helper expects the following args:
 //
 // snippet <TEMPLATE_PATH> <PATH> [SNIPPET_NAME]
@@ -222,7 +243,7 @@ func include(templatePath string, opts *options.BoilerplateOptions, path string,
 	if err != nil {
 		return "", err
 	}
-	return RenderTemplate(templatePath, templateContents, varData, opts)
+	return RenderTemplateFromString(templatePath, templateContents, varData, opts)
 }
 
 // Returns the given filePath relative to the given templatePath. If filePath is already an absolute path, returns it

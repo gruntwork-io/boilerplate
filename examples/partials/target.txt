@@ -1,0 +1,5 @@
+{{- define "target" -}}
+This is the target.
+{{- end -}}
+{{- template "first_template" . }}
+{{ template "second_template" . -}}

@@ -1,3 +1,6 @@
+partials:
+  - ../templates/foo
+
 variables:
   - name: foo
 
