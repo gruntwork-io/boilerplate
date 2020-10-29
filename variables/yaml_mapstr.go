@@ -2,38 +2,20 @@
 // Copyright (c) 2012–2015 Elasticsearch <http://www.elastic.co>
 //
 // Originally distributed as part of "beats" repository (https://github.com/elastic/beats).
-// Modified specifically for "iodatafmt" package.
 //
 // Distributed underneath "Apache License, Version 2.0" which is compatible with the LICENSE for this package.
 //
-// Works around the issue in go-yaml package described here:
-//     https://github.com/go-yaml/yaml/issues/139
+// This is included as a workaround for the following issue in the go-yaml package:
+//   https://github.com/go-yaml/yaml/issues/139
+// Based off the code here:
+//    https://github.com/go-yaml/yaml/issues/139#issuecomment-220072190
+
 package variables
 
 import (
 	// Base packages.
 	"fmt"
-
-	// Third party packages.
-	"gopkg.in/yaml.v2"
 )
-
-// Unmarshal YAML to map[string]interface{} instead of map[interface{}]interface{}.
-func Unmarshal(in []byte, out interface{}) error {
-	var res interface{}
-
-	if err := yaml.Unmarshal(in, &res); err != nil {
-		return err
-	}
-	*out.(*interface{}) = cleanupMapValue(res)
-
-	return nil
-}
-
-// Marshal YAML wrapper function.
-func Marshal(in interface{}) ([]byte, error) {
-	return yaml.Marshal(in)
-}
 
 func cleanupInterfaceArray(in []interface{}) []interface{} {
 	res := make([]interface{}, len(in))

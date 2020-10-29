@@ -315,15 +315,19 @@ func ParseVariablesFromVarFile(varFilePath string) (map[string]interface{}, erro
 // Parse the variables in the given YAML contents into a map of variable name to variable value. Along the way, each
 // value is parsed as YAML.
 func parseVariablesFromVarFileContents(varFileContents []byte) (map[string]interface{}, error) {
-	var vars interface{}
+	vars := make(map[string]interface{})
 
-	// Use this custom Unmarshal function due to https://github.com/go-yaml/yaml/issues/139
-	err := Unmarshal(varFileContents, &vars)
-	if err != nil {
-		return map[string]interface{}{}, errors.WithStackTrace(err)
+	if err := yaml.Unmarshal(varFileContents, &vars); err != nil {
+		return vars, err
 	}
 
-	return vars.(map[string]interface{}), nil
+	// If the unmarshal did not result in a map, return the default object
+	if reflect.TypeOf(vars).Key().Kind() != reflect.Map {
+		return vars, nil
+	}
+
+	// Works around the issue described in https://github.com/go-yaml/yaml/issues/139
+	return cleanupMapValue(vars).(map[string]interface{}), nil
 }
 
 // Parse variables passed in via command line options, either as a list of NAME=VALUE variable pairs in varsList, or a
