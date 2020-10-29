@@ -36,14 +36,14 @@ func TestParseBoilerplateConfigInvalid(t *testing.T) {
 }
 
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
-const CONFIG_EMPTY_VARIABLES_AND_DEPENDENCIES = `variables:
+const configEmptyVariablesAndDependencies = `variables:
 dependencies:
 `
 
 func TestParseBoilerplateConfigEmptyVariablesAndDependencies(t *testing.T) {
 	t.Parallel()
 
-	actual, err := ParseBoilerplateConfig([]byte(CONFIG_EMPTY_VARIABLES_AND_DEPENDENCIES))
+	actual, err := ParseBoilerplateConfig([]byte(configEmptyVariablesAndDependencies))
 	expected := &BoilerplateConfig{
 		Variables:    []variables.Variable{},
 		Dependencies: []variables.Dependency{},

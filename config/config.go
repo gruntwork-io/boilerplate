@@ -13,7 +13,7 @@ import (
 	"github.com/gruntwork-io/boilerplate/variables"
 )
 
-const BOILERPLATE_CONFIG_FILE = "boilerplate.yml"
+const boilerplateConfigFile = "boilerplate.yml"
 
 // The contents of a boilerplate.yml config file
 type BoilerplateConfig struct {
@@ -97,7 +97,7 @@ func ParseBoilerplateConfig(configContents []byte) (*BoilerplateConfig, error) {
 
 // Return the default path for a boilerplate.yml config file in the given folder
 func BoilerplateConfigPath(templateFolder string) string {
-	return path.Join(templateFolder, BOILERPLATE_CONFIG_FILE)
+	return path.Join(templateFolder, boilerplateConfigFile)
 }
 
 // Custom error types
@@ -105,5 +105,5 @@ func BoilerplateConfigPath(templateFolder string) string {
 type BoilerplateConfigNotFound string
 
 func (err BoilerplateConfigNotFound) Error() string {
-	return fmt.Sprintf("Could not find %s in %s and the %s flag is set to %s", BOILERPLATE_CONFIG_FILE, string(err), options.OptMissingConfigAction, options.Exit)
+	return fmt.Sprintf("Could not find %s in %s and the %s flag is set to %s", boilerplateConfigFile, string(err), options.OptMissingConfigAction, options.Exit)
 }
