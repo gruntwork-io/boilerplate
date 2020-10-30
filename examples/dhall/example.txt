@@ -1,0 +1,1 @@
+BazMap = {{ range $index, $key := (.BazMap | keys) }}{{ if gt $index 0 }}, {{ end }}{{ $key }}: {{ index $.BazMap $key }}{{ end }}
