@@ -6,10 +6,9 @@ import (
 	"reflect"
 	"strings"
 
-	"gopkg.in/yaml.v2"
-
 	"github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/boilerplate/util"
+	"gopkg.in/yaml.v2"
 )
 
 // Given a map of key:value pairs read from a Boilerplate YAML config file of the format:
@@ -283,6 +282,8 @@ func ParseYamlString(str string) (interface{}, error) {
 		return nil, errors.WithStackTrace(err)
 	}
 
+	parsedValue = Convert(parsedValue)
+
 	return parsedValue, nil
 }
 
@@ -317,12 +318,11 @@ func ParseVariablesFromVarFile(varFilePath string) (map[string]interface{}, erro
 func parseVariablesFromVarFileContents(varFileContents []byte) (map[string]interface{}, error) {
 	vars := make(map[string]interface{})
 
-	// Use a custom unmarshaller to work around the issue described in https://github.com/go-yaml/yaml/issues/139
-	if err := UnmarshalYaml(varFileContents, &vars); err != nil {
+	if err := yaml.Unmarshal(varFileContents, &vars); err != nil {
 		return vars, err
 	}
 
-	return vars, nil
+	return Convert(vars).(map[string]interface{}), nil
 }
 
 // Parse variables passed in via command line options, either as a list of NAME=VALUE variable pairs in varsList, or a
@@ -342,6 +342,25 @@ func ParseVars(varsList []string, varFileList []string) (map[string]interface{},
 	}
 
 	return util.MergeMaps(varsFromVarsList, varsFromVarFiles), nil
+}
+
+// Convert converts i of type map[interface{}]interface{} to a map[string]interface{} so that it may be properly
+// marshalled in to JSON.
+// See: https://github.com/go-yaml/yaml/issues/139
+func Convert(i interface{}) interface{} {
+	switch x := i.(type) {
+	case map[interface{}]interface{}:
+		m2 := map[string]interface{}{}
+		for k, v := range x {
+			m2[k.(string)] = Convert(v)
+		}
+		return m2
+	case []interface{}:
+		for i, v := range x {
+			x[i] = Convert(v)
+		}
+	}
+	return i
 }
 
 // Custom error types

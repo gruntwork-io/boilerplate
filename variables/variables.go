@@ -26,7 +26,7 @@ type Variable interface {
 	// The type of the variable
 	Type() BoilerplateType
 
-	// The default value for teh variable, if any
+	// The default value for the variable, if any
 	Default() interface{}
 
 	// The name of another variable from which this variable should take its value
@@ -234,7 +234,7 @@ func ConvertType(value interface{}, variable Variable) (interface{}, error) {
 		}
 	case Map:
 		if reflect.TypeOf(value).Kind() == reflect.Map {
-			return value, nil
+			return Convert(value), nil
 		}
 		if isString {
 			return parseStringAsMap(asString)
