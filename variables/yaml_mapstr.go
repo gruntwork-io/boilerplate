@@ -3,6 +3,8 @@
 //
 // Originally distributed as part of "beats" repository (https://github.com/elastic/beats).
 //
+// Modified for use with Gruntwork Boilerplate
+//
 // Distributed underneath "Apache License, Version 2.0" which is compatible with the LICENSE for this package.
 //
 // This is included as a workaround for the following issue in the go-yaml package:
@@ -15,7 +17,31 @@ package variables
 import (
 	// Base packages.
 	"fmt"
+
+	// Third party packages.
+	"gopkg.in/yaml.v2"
 )
+
+// Unmarshal YAML to map[string]interface{} instead of map[interface{}]interface{}.
+func UnmarshalYaml(in []byte, out interface{}) error {
+	res := make(map[string]interface{})
+
+	if err := yaml.Unmarshal(in, &res); err != nil {
+		return err
+	}
+
+	for k, v := range res {
+		res[k] = cleanupMapValue(v)
+	}
+	*out.(*map[string]interface{}) = res
+
+	return nil
+}
+
+// Marshal YAML wrapper function.
+func Marshal(in interface{}) ([]byte, error) {
+	return yaml.Marshal(in)
+}
 
 func cleanupInterfaceArray(in []interface{}) []interface{} {
 	res := make([]interface{}, len(in))
@@ -39,9 +65,7 @@ func cleanupMapValue(v interface{}) interface{} {
 		return cleanupInterfaceArray(v)
 	case map[interface{}]interface{}:
 		return cleanupInterfaceMap(v)
-	case string:
-		return v
 	default:
-		return fmt.Sprintf("%v", v)
+		return v
 	}
 }
