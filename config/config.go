@@ -5,12 +5,11 @@ import (
 	"io/ioutil"
 	"path"
 
-	"gopkg.in/yaml.v2"
-
 	"github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/util"
 	"github.com/gruntwork-io/boilerplate/variables"
+	"gopkg.in/yaml.v2"
 )
 
 const BOILERPLATE_CONFIG_FILE = "boilerplate.yml"
@@ -90,6 +89,16 @@ func ParseBoilerplateConfig(configContents []byte) (*BoilerplateConfig, error) {
 
 	if err := yaml.Unmarshal(configContents, boilerplateConfig); err != nil {
 		return nil, errors.WithStackTrace(err)
+	}
+
+	converted, err := variables.ConvertYAMLToStringMap(boilerplateConfig)
+	if err != nil {
+		return boilerplateConfig, err
+	}
+
+	boilerplateConfig, ok := converted.(*BoilerplateConfig)
+	if !ok {
+		return nil, variables.YAMLConversionErr{Key: converted}
 	}
 
 	return boilerplateConfig, nil

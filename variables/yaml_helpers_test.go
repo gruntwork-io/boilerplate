@@ -76,3 +76,54 @@ func TestParseVariablesFromKeyValuePairs(t *testing.T) {
 		}
 	}
 }
+
+func TestConvert(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		input        interface{}
+		expectedType interface{}
+	}{
+		{
+			input:        "",
+			expectedType: "string",
+		},
+		{
+			input: map[interface{}]interface{}{
+				"key1": "value1",
+				"key2": "value2",
+			},
+			expectedType: map[string]interface{}{},
+		},
+		{
+			input: map[string]interface{}{
+				"key1": "value1",
+			},
+			expectedType: map[string]interface{}{},
+		},
+		{
+			input: []interface{}{
+				map[interface{}]interface{}{
+					"key1": "value1",
+				},
+				"",
+			},
+			expectedType: []interface{}{},
+		},
+		{
+			input: map[string]interface{}{
+				"key3": 42,
+				"key1": map[string]interface{}{
+					"key2": "value2",
+				},
+			},
+			expectedType: map[string]interface{}{},
+		},
+	}
+
+	for _, testCase := range testCases {
+		actual, err := ConvertYAMLToStringMap(testCase.input)
+		assert.NoError(t, err)
+		assert.IsType(t, testCase.expectedType, actual)
+	}
+}

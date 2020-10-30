@@ -6,10 +6,9 @@ import (
 	"reflect"
 	"strings"
 
-	"gopkg.in/yaml.v2"
-
 	"github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/boilerplate/util"
+	"gopkg.in/yaml.v2"
 )
 
 // Given a map of key:value pairs read from a Boilerplate YAML config file of the format:
@@ -283,6 +282,11 @@ func ParseYamlString(str string) (interface{}, error) {
 		return nil, errors.WithStackTrace(err)
 	}
 
+	parsedValue, err = ConvertYAMLToStringMap(parsedValue)
+	if err != nil {
+		return nil, errors.WithStackTrace(err)
+	}
+
 	return parsedValue, nil
 }
 
@@ -315,11 +319,20 @@ func ParseVariablesFromVarFile(varFilePath string) (map[string]interface{}, erro
 // Parse the variables in the given YAML contents into a map of variable name to variable value. Along the way, each
 // value is parsed as YAML.
 func parseVariablesFromVarFileContents(varFileContents []byte) (map[string]interface{}, error) {
-	vars := map[string]interface{}{}
+	vars := make(map[string]interface{})
 
-	err := yaml.Unmarshal(varFileContents, &vars)
+	if err := yaml.Unmarshal(varFileContents, &vars); err != nil {
+		return vars, err
+	}
+
+	converted, err := ConvertYAMLToStringMap(vars)
 	if err != nil {
-		return vars, errors.WithStackTrace(err)
+		return nil, errors.WithStackTrace(err)
+	}
+
+	vars, ok := converted.(map[string]interface{})
+	if !ok {
+		return nil, YAMLConversionErr{converted}
 	}
 
 	return vars, nil
@@ -344,7 +357,46 @@ func ParseVars(varsList []string, varFileList []string) (map[string]interface{},
 	return util.MergeMaps(varsFromVarsList, varsFromVarFiles), nil
 }
 
+// convertYAMLToStringMap modifies an input with type map[interface{}]interface{} to map[string]interface{} so that it may be
+// properly marshalled in to JSON.
+// See: https://github.com/go-yaml/yaml/issues/139
+func ConvertYAMLToStringMap(yamlMapOrList interface{}) (interface{}, error) {
+	switch mapOrList := yamlMapOrList.(type) {
+	case map[interface{}]interface{}:
+		outputMap := map[string]interface{}{}
+		for k, v := range mapOrList {
+			strK, ok := k.(string)
+			if !ok {
+				return nil, YAMLConversionErr{k}
+			}
+			res, err := ConvertYAMLToStringMap(v)
+			if err != nil {
+				return nil, err
+			}
+			outputMap[strK] = res
+		}
+		return outputMap, nil
+	case []interface{}:
+		for index, value := range mapOrList {
+			res, err := ConvertYAMLToStringMap(value)
+			if err != nil {
+				return nil, err
+			}
+			mapOrList[index] = res
+		}
+	}
+	return yamlMapOrList, nil
+}
+
 // Custom error types
+
+type YAMLConversionErr struct {
+	Key interface{}
+}
+
+func (err YAMLConversionErr) Error() string {
+	return fmt.Sprintf("YAML value has type %s and cannot be cast to to the correct type.", reflect.TypeOf(err.Key))
+}
 
 type OptionsMissing string
 
