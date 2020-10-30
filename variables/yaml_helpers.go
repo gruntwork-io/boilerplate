@@ -282,9 +282,7 @@ func ParseYamlString(str string) (interface{}, error) {
 		return nil, errors.WithStackTrace(err)
 	}
 
-	parsedValue = Convert(parsedValue)
-
-	return parsedValue, nil
+	return Convert(parsedValue), nil
 }
 
 // Parse a list of YAML files that define variables into a map from variable name to variable value. Along the way,
@@ -344,7 +342,7 @@ func ParseVars(varsList []string, varFileList []string) (map[string]interface{},
 	return util.MergeMaps(varsFromVarsList, varsFromVarFiles), nil
 }
 
-// Convert converts i of type map[interface{}]interface{} to a map[string]interface{} so that it may be properly
+// Convert updates i of type map[interface{}]interface{} to a map[string]interface{} so that it may be properly
 // marshalled in to JSON.
 // See: https://github.com/go-yaml/yaml/issues/139
 func Convert(i interface{}) interface{} {
