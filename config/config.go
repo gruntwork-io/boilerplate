@@ -91,7 +91,15 @@ func ParseBoilerplateConfig(configContents []byte) (*BoilerplateConfig, error) {
 		return nil, errors.WithStackTrace(err)
 	}
 
-	boilerplateConfig = variables.Convert(boilerplateConfig).(*BoilerplateConfig)
+	converted, err := variables.ConvertYAMLToStringMap(boilerplateConfig)
+	if err != nil {
+		return boilerplateConfig, err
+	}
+
+	boilerplateConfig, ok := converted.(*BoilerplateConfig)
+	if !ok {
+		return nil, variables.YAMLConversionErr{Key: converted}
+	}
 
 	return boilerplateConfig, nil
 }

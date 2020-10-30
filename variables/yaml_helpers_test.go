@@ -110,10 +110,20 @@ func TestConvert(t *testing.T) {
 			},
 			expectedType: []interface{}{},
 		},
+		{
+			input: map[string]interface{}{
+				"key3": 42,
+				"key1": map[string]interface{}{
+					"key2": "value2",
+				},
+			},
+			expectedType: map[string]interface{}{},
+		},
 	}
 
 	for _, testCase := range testCases {
-		actual := Convert(testCase.input)
+		actual, err := ConvertYAMLToStringMap(testCase.input)
+		assert.NoError(t, err)
 		assert.IsType(t, testCase.expectedType, actual)
 	}
 }

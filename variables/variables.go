@@ -234,7 +234,11 @@ func ConvertType(value interface{}, variable Variable) (interface{}, error) {
 		}
 	case Map:
 		if reflect.TypeOf(value).Kind() == reflect.Map {
-			return Convert(value), nil
+			value, err := ConvertYAMLToStringMap(value)
+			if err != nil {
+				return nil, err
+			}
+			return value, nil
 		}
 		if isString {
 			return parseStringAsMap(asString)
