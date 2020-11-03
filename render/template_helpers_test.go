@@ -478,6 +478,25 @@ func TestTemplateIsDefined(t *testing.T) {
 	assert.True(t, f("bar"))
 }
 
+// TestToYaml tests that a given value can be correctly encoded to YAML
+func TestToYaml(t *testing.T) {
+	t.Parallel()
+	testCases := []struct {
+		input    interface{}
+		expected string
+	}{
+		{nil, "null\n"},
+		{"", "\"\"\n"},
+		{map[string]interface{}{"key": "val"}, "key: val\n"},
+		{map[string][]interface{}{"Key": []interface{}{1, 2, 3}}, "Key:\n- 1\n- 2\n- 3\n"},
+	}
+	for _, testCase := range testCases {
+		actual, err := toYaml(testCase.input)
+		require.NoError(t, err)
+		assert.Equal(t, testCase.expected, actual)
+	}
+}
+
 // I cannot believe I have to write my own function and test code for rounding numbers in Go. FML.
 func TestRound(t *testing.T) {
 	t.Parallel()

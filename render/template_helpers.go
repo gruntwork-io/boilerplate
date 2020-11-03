@@ -22,6 +22,7 @@ import (
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/util"
 	"github.com/gruntwork-io/boilerplate/variables"
+	"gopkg.in/yaml.v2"
 )
 
 var SNIPPET_MARKER_REGEX = regexp.MustCompile("boilerplate-snippet:\\s*(.+?)(?:\\s|$)")
@@ -80,6 +81,7 @@ func CreateTemplateHelpers(templatePath string, opts *options.BoilerplateOptions
 		"replaceOne":            func(old string, new string, str string) string { return strings.Replace(str, old, new, 1) },
 		"trimPrefixBoilerplate": trimPrefix,
 		"trimSuffixBoilerplate": trimSuffix,
+		"toYaml":                toYaml,
 
 		"numRange":   slice,
 		"keysSorted": keys,
@@ -643,6 +645,14 @@ func trimPrefix(str, prefix string) string {
 // Returns str without the provided trailing suffix string. If str doesn't end with suffix, str is returned unchanged.
 func trimSuffix(str, suffix string) string {
 	return strings.TrimPrefix(str, suffix)
+}
+
+func toYaml(obj interface{}) (string, error) {
+	yamlObj, err := yaml.Marshal(&obj)
+	if err != nil {
+		return "", errors.WithStackTrace(err)
+	}
+	return string(yamlObj), nil
 }
 
 // Returns the relative path between the output folders of a "base" path and a "target" path.
