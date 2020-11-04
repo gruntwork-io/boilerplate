@@ -571,6 +571,7 @@ Boilerplate also includes several custom helpers that you can access that enhanc
   defined, render `DEFAULT` instead.
 * `templateIsDefined NAME`: Returns a boolean indicating if template called `NAME` is known. Use this to conditionally 
   include one boilerplate template with another. Most often useful along with [partials](#partials).
+* `toYaml`: Encodes an input variable as a YAML string. Similar to the `toJson` function in sprig.
 
 #### Deprecated helpers
 
