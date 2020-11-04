@@ -103,8 +103,8 @@ You can find older versions on the [Releases Page](https://github.com/gruntwork-
    helpers for common tasks such as loading the contents of another file.
 1. **Variable types**: Boilerplate variables support types, so you have first-class support for strings, ints, bools,
    lists, maps, and enums.
-1. **Scripting**: Need more power than static templates and variables? Boilerplate includes several hooks that allow 
-   you to run arbitrary scripts.  
+1. **Scripting**: Need more power than static templates and variables? Boilerplate includes several hooks that allow
+   you to run arbitrary scripts.
 1. **Cross-platform**: Boilerplate is easy to install (it's a standalone binary) and works on all major platforms (Mac,
    Linux, Windows).
 
@@ -126,6 +126,7 @@ Learn more about boilerplate in the following sections:
 1. [Variables](#variables)
 1. [Dependencies](#dependencies)
 1. [Hooks](#hooks)
+1. [Partials](#partials)
 1. [Templates](#templates)
 1. [Template helpers](#template-helpers)
 
@@ -216,15 +217,19 @@ hooks:
       args:
         - <ARG>
       env:
-        <KEY>: <VALUE>        
+        <KEY>: <VALUE>
       skip: <CONDITION>
-  after:              
+  after:
     - command: <CMD>
       args:
         - <ARG>
       env:
         <KEY>: <VALUE>
       skip: <CONDITION>
+
+partials:
+  - <GLOB>
+  - <GLOB>
 ```
 
 Here's an example:
@@ -257,8 +262,8 @@ executing the current one. Each dependency may contain the following keys:
   current template.
 * `output-folder` (Required): Create the output files and folders in this folder. This path is relative to the output
   folder of the current template.
-* `skip` (Optional): Skip this dependency if this condition, which can use Go templating syntax and 
-  boilerplate variables, evaluates to the string `true`. This is useful to conditionally enable or disable 
+* `skip` (Optional): Skip this dependency if this condition, which can use Go templating syntax and
+  boilerplate variables, evaluates to the string `true`. This is useful to conditionally enable or disable
   dependencies.
 * `dont-inherit-variables` (Optional): By default, any variables already set as part of the current `boilerplate.yml`
   template will be reused in the dependency, so that the user is not prompted multiple times for the same variable. If
@@ -269,6 +274,13 @@ executing the current one. Each dependency may contain the following keys:
   description and default values here.
 
 See the [Dependencies](#dependencies) section for more info.
+
+**Partials**: Use *partials* to include reusable templates. Partials are defined using a list of glob patterns.
+
+* Globs are matched using [the Go `filepath.Glob` function](https://golang.org/pkg/path/filepath/#Glob)
+* In the event of a template name collision (e.g. multiple templates are defined with the same name), the last one wins.
+
+See the [Partials](#partials) section for more info.
 
 **Hooks**: Boilerplate provides hooks to execute arbitrary shell commands. There are two types of hooks:
 
@@ -316,7 +328,7 @@ Note that variables can reference other variables using Go templating syntax:
 variables:
   - name: Foo
     default: foo
-    
+
   - name: Bar
     default: "{{"{{"}} .Foo {{"}}"}}-bar"
 ```
@@ -329,17 +341,17 @@ keyword:
 variables:
   - name: Foo
     type: list
-    default: 
+    default:
       - 1
       - 2
-      - 3 
-    
+      - 3
+
   - name: Bar
     type: list
     reference: Foo
 ```
 
-In the example above, the `Bar` variable will be set to the same (list) value as `Foo`. 
+In the example above, the `Bar` variable will be set to the same (list) value as `Foo`.
 
 #### Dependencies
 
@@ -359,20 +371,20 @@ Note the following:
   prompt you for each of those variables separately from the root ones. You can also use the
   `<DEPENDENCY_NAME>.<VARIABLE_NAME>` syntax as the name of the variable with the `-var` flag and inside of a var file
   to provide a value for a variable in a dependency.
-* Interpolation: You may use interpolation in the `template-url` and `output-folder` parameters of your 
+* Interpolation: You may use interpolation in the `template-url` and `output-folder` parameters of your
   dependencies. This allows you to use specify the paths to your template and output folders dynamically.
 * Conditional dependencies: You can enable or disable a dependency using the `skip` parameter, which supports Go
-  templating syntax and boilerplate variables. If the `skip` parameter evaluates to the string `true`, the 
+  templating syntax and boilerplate variables. If the `skip` parameter evaluates to the string `true`, the
   dependency will be skipped; otherwise, it will be rendered. Example:
-  
+
     ```yaml
     variables:
       - name: Foo
         type: bool
-      
+
       - name: Bar
         type: bool
-    
+
     dependencies:
       - name: conditional-dependency-example
         template-url: ../foo
@@ -383,15 +395,15 @@ Note the following:
 
 #### Hooks
 
-You can specify `hooks` in `boilerplate.yml` to tell Boilerplate to execute arbitrary shell commands. 
- 
+You can specify `hooks` in `boilerplate.yml` to tell Boilerplate to execute arbitrary shell commands.
+
 Note the following:
 
 * The `before` hook allows you to run scripts before Boilerplate has started rendering.
 * The `after` hook allows you to run scripts after Boilerplate has finished rendering.
 * Each hook consists of a `command` to execute (required), a list of `args` to pass to that command (optional), and
   a map of environment variables in `env` to set for the command (optional). Example:
-   
+
     ```yaml
     before:
       - command: echo
@@ -401,21 +413,195 @@ Note the following:
         env:
           FOO: BAR
     ```
-* You can use Go templating syntax in both `command`, `args`, and `env`. For example, you can pass Boilerplate 
+* You can use Go templating syntax in both `command`, `args`, and `env`. For example, you can pass Boilerplate
   variables to your scripts as follows:
-    
+
     ```yaml
     before:
-      - command: foo.sh 
+      - command: foo.sh
         args:
-          - {{"{{"}} .SomeVariable {{"}}"}} 
+          - {{"{{"}} .SomeVariable {{"}}"}}
           - {{"{{"}} .AnotherVariable {{"}}"}}
     ```
 * Boilerplate runs your `command` with the working directory set to the `--template-url` option.
-* `skip` (Optional): Skip this hook if this condition, which can use Go templating syntax and 
-  boilerplate variables, evaluates to the string `true`. This is useful to conditionally enable or disable 
+* `skip` (Optional): Skip this hook if this condition, which can use Go templating syntax and
+  boilerplate variables, evaluates to the string `true`. This is useful to conditionally enable or disable
   dependencies.
 * For an alternative way to execute commands, see the `shell` helper in [template helpers](#template-helpers).
+
+#### Partials
+
+Partials help to keep templates DRY. Using partials, you can define templates in external files, and then use those templates over
+and over again in other templates. Partials are common among templating engines, such as in [Hugo](https://gohugo.io/templates/partials/).
+
+Let's start with a simple example. In an HTML document, we might want to have a common set of `meta` tags to reuse throughout our site:
+
+```html
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="author" content="Gruntwork">
+  </head>
+  <body>
+    <h1>Welcome to this page!</h1>
+    <img src="logo.png">
+  </body>
+</html>
+```
+
+Rather than add these tags in a `<head>` section within each and every file, we could define a partial, then reuse it throughout the site.
+
+We define the header in `partials/header.html`:
+```html
+{{ define "header" }}
+  <head>
+    <meta charset="UTF-8">
+    <meta name="author" content="Gruntwork">
+  </head>
+{{ end }}
+```
+
+Then we set up the structure in `templates/boilerplate.yml`:
+```yaml
+partials:
+  - ../partials/*.html
+```
+
+In `templates/page.html`:
+```html
+<html>
+{{ template "header" }}
+  <body>
+    <h1>Welcome to this page!</h1>
+    <img src="logo.png">
+  </body>
+</html>
+```
+
+The contents of the `header` template will be rendered within `page.html` and any other page in which we call the header partial.
+
+Let's see a slightly more involved example.
+
+```html
+<html>
+  <head>
+    <title>Welcome!</title>
+  </head>
+  <body>
+    <h1>Welcome to this page!</h1>
+    <img src="logo.png">
+  </body>
+</html>
+```
+
+The example above shows the HTML for a web page, with a title, a welcome message, and a logo. Now, if we wanted to have
+another page showing a different title and body, we'd have to duplicate all of that content.
+
+In the example below, we'll create a partial that represents the basic layout of the site, then reuse that layout for each page.
+First, we create a directory structure to keep everything organized:
+
+```
+.
+├── partials
+│   └── layout.html
+└── template
+    ├── about
+    │   ├── about.html
+    │   └── boilerplate.yml
+    └── root
+        ├── boilerplate.yml
+        └── index.html
+```
+
+In `partials/layout.html`, we create the basic page layout:
+
+```
+{{"{{"}} define "basic_layout" {{"}}"}}
+<html>
+  <head>
+    <title>{{"{{"}} .Title {{"}}"}}</title>
+  </head>
+  <body>
+    {{"{{"}} template "body" . {{"}}"}}
+  </body>
+</html>
+{{"{{"}} end {{"}}"}}
+```
+
+Now, in each of the pages on the site, we can reuse this layout. For example, from the site's root, we want the welcome
+page. We create the `boilerplate.yml` first:
+
+```yaml
+partials:
+  - ../../partials/*.html
+
+variables:
+  - name: Title
+    description: A title for the page.
+    default: "Welcome!"
+```
+
+Now we can use the layout within our `index.html`:
+
+```
+{{"{{-"}} define "body" {{"-}}"}}
+    <h1>This is index.html.</h1>
+    <img src="logo.png">
+{{"{{-"}} end {{"-}}"}}
+{{"{{-"}} template "basic_layout" . {{"-}}"}}
+```
+
+When we run `boilerplate`, `basic_layout` template will be rendered with the contents of the `index.html`. Then we can
+use the same layout for the about page, with its corresponding `boilerplate.yml`.
+
+Contents of `about/boilerplate.yml`:
+
+```yaml
+partials:
+  - ../../partials/*.html
+
+variables:
+  - name: Title
+    description: A title for the page.
+    default: "About"
+
+```
+
+`about/about.html`:
+
+```
+{{"{{"}}- define "body" {{"-}}"}}
+    <h1>This is about.html.</h1>
+{{"{{-"}} end {{"-}}"}}
+{{"{{-"}} template "basic_layout" . {{"-}}"}}
+```
+
+Partials do not need to be located in a magic `partials` directory. Partials can be located anywhere and referred to using relative
+paths.
+
+The list of partials is a glob that can match multiple files. The content of all of the files that match the globs will be parsed
+when rendering the final template. For example, you could match many HTML files at once with:
+
+```
+partials:
+  - ../../html/*.html
+  - ../../css/*.css
+```
+
+You can use the template definitions from any of the included partials throughout your templates.
+
+You can use Go templating syntax in partial paths. For example, you can define a convenenience variable for a relative path to
+make the paths slightly easier to read:
+
+```
+variables:
+  - name: TemplatesRoot
+    description: A convenience variable identify the relative path to the root of the templates directory.
+    default: ../../../../
+partials:
+  - "{{"{{"}} .TemplatesRoot {{"}}"}}/html/*.html"
+  - "{{"{{"}} .TemplatesRoot {{"}}"}}/css/*.css"
+```
 
 #### Templates
 
@@ -462,7 +648,7 @@ Boilerplate also includes several custom helpers that you can access that enhanc
   engine with the provided variables, as a string (unlike `snippet`, which returns the contents of the file verbatim).
   Use `.` to pass the current variables to the included template. E.g:
   ```
-  {{ include "../source-template.snippet" . }}
+  {{"{{"}} include "../source-template.snippet" . {{"}}"}}
   ```
 * `replaceOne OLD NEW`: Replace the first occurrence of `OLD` with `NEW`. This is a literal replace, not regex.
 * `replaceAll OLD NEW`: Replace all occurrences of `OLD` with `NEW`. This is a literal replace, not regex.
@@ -485,16 +671,19 @@ Boilerplate also includes several custom helpers that you can access that enhanc
   way to do a for-loop over a range of numbers.
 * `keysSorted MAP`: Return a slice that contains all the keys in the given MAP in alphanumeric sorted order. Use the
   built-in Go template helper `.index` to look up these keys in the map.
-* `shell CMD ARGS...`: Execute the given shell command, passing it the given args, and render whatever that command 
-  prints to stdout. The working directory for the command will be set to the directory of the template being rendered, 
+* `shell CMD ARGS...`: Execute the given shell command, passing it the given args, and render whatever that command
+  prints to stdout. The working directory for the command will be set to the directory of the template being rendered,
   so you can use paths relative to the file from which you are calling the `shell` helper. Any argument you pass of the
-  form `ENV:KEY=VALUE` will be set as an environment variable for the command rather than an argument. For another way 
+  form `ENV:KEY=VALUE` will be set as an environment variable for the command rather than an argument. For another way
   to execute commands, see [hooks](#hooks).
 * `templateFolder`: Return the value of the template working dir. This is the value of the `--template-url` command-line
   option if local template, or the download dir if remote template. Useful for building relative paths.
 * `outputFolder`: Return the value of the `--output-folder` command-line option. Useful for building relative paths.
-* `envWithDefault NAME DEFAULT`: Render the value of environment variable `NAME`. If that environment variable is empty or not 
+* `envWithDefault NAME DEFAULT`: Render the value of environment variable `NAME`. If that environment variable is empty or not
   defined, render `DEFAULT` instead.
+* `templateIsDefined NAME`: Returns a boolean indicating if template called `NAME` is known. Use this to conditionally
+  include one boilerplate template with another. Most often useful along with [partials](#partials).
+* `toYaml`: Encodes an input variable as a YAML string. Similar to the `toJson` function in sprig.
 
 #### Deprecated helpers
 
