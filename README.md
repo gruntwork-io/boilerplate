@@ -11,9 +11,6 @@ Example use cases:
    code often has syntax errors or goes out of date. Now you can keep those code examples in normal source files which
    are built & tested, and embed parts of those files dynamically in your docs.
 
-Note: the README for this project is generated using boilerplate! Check out the templates for it in the
-[_docs folder](/_docs) and the build job configuration in [circle.yml](/circle.yml).
-
 ## Example: creating a new template
 
 Create a folder called `website-boilerplate` and put a file called `boilerplate.yml` in it:
@@ -114,7 +111,7 @@ for full documentation.
 
 ## Install
 
-Download the latest binary for your OS here: [boilerplate v0.3.0](https://github.com/gruntwork-io/boilerplate/releases/tag/v0.3.0).
+Download the latest binary for your OS [here](https://github.com/gruntwork-io/boilerplate/releases/latest).
 
 You can find older versions on the [Releases Page](https://github.com/gruntwork-io/usage-patterns/releases).
 
