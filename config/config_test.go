@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 
 	"github.com/gruntwork-io/boilerplate/errors"
@@ -672,4 +673,29 @@ func TestLoadBoilerplateConfigInvalidConfig(t *testing.T) {
 	unwrapped := errors.Unwrap(err)
 	_, isYamlTypeError := unwrapped.(*yaml.TypeError)
 	assert.True(t, isYamlTypeError, "Expected a YAML type error for an invalid yaml file but got %s", reflect.TypeOf(unwrapped))
+}
+
+// YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
+const configWithSkipFiles = `skip_files:
+  - path: "docs/README_ALWAYS_SKIP.md"
+  - path: "docs/README_MAYBE_SKIP.md"
+    if: "{{ .MaybeSkip }}"
+`
+
+func TestParseBoilerplateConfigWithSkipFiles(t *testing.T) {
+	t.Parallel()
+
+	actual, err := ParseBoilerplateConfig([]byte(configWithSkipFiles))
+	require.NoError(t, err)
+
+	expected := &BoilerplateConfig{
+		Variables:    []variables.Variable{},
+		Dependencies: []variables.Dependency{},
+		Hooks:        variables.Hooks{},
+		SkipFiles: []variables.SkipFile{
+			{Path: "docs/README_ALWAYS_SKIP.md", If: "true"},
+			{Path: "docs/README_MAYBE_SKIP.md", If: "{{ .MaybeSkip }}"},
+		},
+	}
+	assert.Equal(t, expected, actual)
 }

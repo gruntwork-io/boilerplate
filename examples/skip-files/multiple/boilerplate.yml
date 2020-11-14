@@ -1,0 +1,14 @@
+variables:
+  - name: ExcludeA
+    type: bool
+    default: true
+
+  - name: ExcludeB
+    type: bool
+    default: false
+
+skip_files:
+  - path: a.yml
+    if: "{{ .ExcludeA }}"
+  - path: b.yml
+    if: "{{ .ExcludeB }}"

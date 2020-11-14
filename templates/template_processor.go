@@ -73,7 +73,7 @@ func ProcessTemplate(options, rootOpts *options.BoilerplateOptions, thisDep vari
 		return err
 	}
 
-	err = processTemplateFolder(options, vars, partials)
+	err = processTemplateFolder(options, vars, partials, boilerplateConfig.SkipFiles)
 	if err != nil {
 		return err
 	}
@@ -219,6 +219,9 @@ func cloneOptionsForDependency(dependency variables.Dependency, originalOpts *op
 	}
 
 	templateUrl, templateFolder, err := options.DetermineTemplateConfig(renderedTemplateUrl)
+	if err != nil {
+		return nil, err
+	}
 	// If local, make sure to return relative path in context of original template folder
 	if templateFolder != "" {
 		templateFolder = render.PathRelativeToTemplate(originalOpts.TemplateFolder, renderedTemplateUrl)
@@ -295,13 +298,33 @@ func shouldSkipDependency(dependency variables.Dependency, opts *options.Boilerp
 	return rendered == "true", nil
 }
 
+// Return true if the if parameter of the given SkipFile evaluates to a "true" value
+func skipFileIfCondition(skipFile variables.SkipFile, opts *options.BoilerplateOptions, variables map[string]interface{}) (bool, error) {
+	if skipFile.If == "" {
+		return false, nil
+	}
+
+	rendered, err := render.RenderTemplateRecursively(opts.TemplateFolder, skipFile.If, variables, opts)
+	if err != nil {
+		return false, err
+	}
+
+	util.Logger.Printf("If attribute for SkipFile Path %s evaluated to '%s'", skipFile.Path, rendered)
+	return rendered == "true", nil
+}
+
 // Copy all the files and folders in templateFolder to outputFolder, passing text files through the Go template engine
 // with the given set of variables as the data.
-func processTemplateFolder(opts *options.BoilerplateOptions, variables map[string]interface{}, partials []string) error {
+func processTemplateFolder(opts *options.BoilerplateOptions, variables map[string]interface{}, partials []string, skipFiles []variables.SkipFile) error {
 	util.Logger.Printf("Processing templates in %s and outputting generated files to %s", opts.TemplateFolder, opts.OutputFolder)
 
 	return filepath.Walk(opts.TemplateFolder, func(path string, info os.FileInfo, err error) error {
-		if shouldSkipPath(path, opts) {
+		shouldSkip, err := shouldSkipPath(path, opts, skipFiles, variables)
+		if err != nil {
+			return err
+		}
+
+		if shouldSkip {
 			util.Logger.Printf("Skipping %s", path)
 			return nil
 		} else if util.IsDir(path) {
@@ -399,10 +422,27 @@ func processTemplate(templatePath string, opts *options.BoilerplateOptions, vari
 }
 
 // Return true if this is a path that should not be copied
-func shouldSkipPath(path string, opts *options.BoilerplateOptions) bool {
+func shouldSkipPath(path string, opts *options.BoilerplateOptions, skipFiles []variables.SkipFile, variables map[string]interface{}) (bool, error) {
 	// Canonicalize paths for os portability.
 	canonicalPath := filepath.ToSlash(path)
 	canonicalTemplateFolder := filepath.ToSlash(opts.TemplateFolder)
 	canonicalBoilerplateConfigPath := filepath.ToSlash(config.BoilerplateConfigPath(opts.TemplateFolder))
-	return canonicalPath == canonicalTemplateFolder || canonicalPath == canonicalBoilerplateConfigPath
+
+	// First check if the path is a part of the the skipFile list. If the path matches with any entry in the skip files
+	// list and the if condition evaluates to true, skip the file.
+	for _, skipFile := range skipFiles {
+		canonicalSkipFilePath := filepath.Join(canonicalTemplateFolder, skipFile.Path)
+		if canonicalSkipFilePath == canonicalPath {
+			shouldSkip, err := skipFileIfCondition(skipFile, opts, variables)
+			if err != nil {
+				return true, err
+			}
+			if shouldSkip {
+				return true, nil
+			}
+		}
+	}
+
+	// Then check if the path is the template folder root or the boilerplate config.
+	return canonicalPath == canonicalTemplateFolder || canonicalPath == canonicalBoilerplateConfigPath, nil
 }

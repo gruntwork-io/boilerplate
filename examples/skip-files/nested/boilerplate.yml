@@ -1,0 +1,8 @@
+variables:
+  - name: ExcludeD
+    type: bool
+    default: true
+
+skip_files:
+  - path: a/b/c/d.yml
+    if: "{{ .ExcludeD }}"
