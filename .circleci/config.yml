@@ -50,13 +50,6 @@ jobs:
               --ld-flags "-X main.VERSION=$CIRCLE_TAG"
 
             upload-github-release-assets bin/*
-      - run:
-          name: generate documentation
-          command: |
-            # Generate the latest README it in the root folder and commit it to master
-            git checkout master
-            bin/boilerplate_linux_amd64 --template-url _docs --output-folder . --non-interactive --var Version=$CIRCLE_TAG
-            git-add-commit-push --path README.md --message "Automatically regenerate README for version $CIRCLE_TAG" --branch-name master --git-push-behavior current
 
 workflows:
   version: 2
