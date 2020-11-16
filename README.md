@@ -150,6 +150,7 @@ Learn more about boilerplate in the following sections:
 1. [Dependencies](#dependencies)
 1. [Hooks](#hooks)
 1. [Partials](#partials)
+1. [Skip Files](#skip-files)
 1. [Templates](#templates)
 1. [Template helpers](#template-helpers)
 
@@ -291,6 +292,11 @@ dependencies:
       - name: Title
         description: Enter the title of the website
 
+skip_files:
+  - path: .ignore-me
+  - path: subfolder/README.md
+    if: {{ not .ShowLogo }}
+
 partials:
   - ../html/*.html
   - ../css/*.css
@@ -340,6 +346,14 @@ See the [Dependencies](#dependencies) section for more info.
 * In the event of a template name collision (e.g. multiple templates are defined with the same name), the last one wins.
 
 See the [Partials](#partials) section for more info.
+
+**Skip Files**: Use *skip_files* to specify files in the template folder that should not be rendered. The `path` field
+is the relative path from the template folder root (where the `boilerplate.yml` file is defined) of the file that should
+be excluded. You can conditionally skip the file using the `if` field, which should either be a YAML boolean value
+(`true` or `false`), or Go templating syntax (which can use the boilerplate variables) that evaluates to the string
+values `"true"` or `"false"`.
+
+See the [Skip Files](#skip-files) section for more info.
 
 **Hooks**: Boilerplate provides hooks to execute arbitrary shell commands. There are two types of hooks:
 
@@ -487,6 +501,59 @@ Note the following:
   boilerplate variables, evaluates to the string `true`. This is useful to conditionally enable or disable
   dependencies.
 * For an alternative way to execute commands, see the `shell` helper in [template helpers](#template-helpers).
+
+#### Skip Files
+
+You can specify files that should be excluded from the rendered output using the `skip_files` section in
+`boilerplate.yml`. This is most useful when you have templates that need to conditionally exclude files from the
+rendered folder list.
+
+The `skip_files` section is a list of objects with the fields `path` and `if`, where `path` is required. `if` can be
+used to conditionally skip a file from the template folder, and it defaults to `true`. That is, when `if` is omitted,
+the file at the path is always excluded from the output. Note that `path` is always the relative path from the template
+root. Both `path` and `if` support Go templating syntax with access to boilerplate [variables](#variables) and [template
+helpers](#template-helpers).
+
+Consider the following boilerplate template folder:
+
+```
+.
+├── boilerplate.yml
+├── BOILERPLATE_README.md
+└── docs
+    ├── README_WITH_ENCRYPTION.md
+    └── README_WITHOUT_ENCRYPTION.md
+```
+
+Suppose that you wanted to conditionally select which README to render based on some variable. You can use `skip_files`
+to implement this logic:
+
+```yaml
+variables:
+  - name: UseEncryption
+    type: bool
+
+skip_files:
+  - path: "BOILERPLATE_README.md"
+  - path: "docs/README_WITH_ENCRYPTION.md"
+    if: "{{ not .UseEncryption }}"
+  - path: "docs/README_WITHOUT_ENCRYPTION.md"
+    if: "{{ .UseEncryption }}"
+```
+
+This will:
+
+- Always skip rendering `BOILERPLATE_README.md`.
+- Skip rendering `docs/README_WITHOUT_ENCRYPTION.md` if `UseEncryption` is set to `true`.
+- Skip rendering `docs/README_WITH_ENCRYPTION.md` if `UseEncryption` is set to `false`.
+
+For a more concise specification, you can use glob syntax in the `path` to match multiple paths in one entry:
+
+```yaml
+skip_files:
+  - path: "docs/**/*"
+```
+
 
 #### Templates
 

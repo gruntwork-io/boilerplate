@@ -20,6 +20,7 @@ type BoilerplateConfig struct {
 	Dependencies []variables.Dependency
 	Hooks        variables.Hooks
 	Partials     []string
+	SkipFiles    []variables.SkipFile
 }
 
 // Implement the go-yaml unmarshal interface for BoilerplateConfig. We can't let go-yaml handle this itself because:
@@ -54,11 +55,17 @@ func (config *BoilerplateConfig) UnmarshalYAML(unmarshal func(interface{}) error
 		return err
 	}
 
+	skipFiles, err := variables.UnmarshalSkipFilesFromBoilerplateConfigYaml(fields)
+	if err != nil {
+		return err
+	}
+
 	*config = BoilerplateConfig{
 		Variables:    vars,
 		Dependencies: deps,
 		Hooks:        hooks,
 		Partials:     partials,
+		SkipFiles:    skipFiles,
 	}
 	return nil
 }
