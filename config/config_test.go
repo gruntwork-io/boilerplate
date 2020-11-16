@@ -693,7 +693,7 @@ func TestParseBoilerplateConfigWithSkipFiles(t *testing.T) {
 		Dependencies: []variables.Dependency{},
 		Hooks:        variables.Hooks{},
 		SkipFiles: []variables.SkipFile{
-			{Path: "docs/README_ALWAYS_SKIP.md", If: "true"},
+			{Path: "docs/README_ALWAYS_SKIP.md", If: ""},
 			{Path: "docs/README_MAYBE_SKIP.md", If: "{{ .MaybeSkip }}"},
 		},
 	}
