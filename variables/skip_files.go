@@ -54,8 +54,7 @@ func unmarshalSkipFileFromBoilerplateConfigYaml(fields map[string]interface{}) (
 	if err != nil {
 		return nil, err
 	}
-	// If the `if` attribute is omitted, we default it to true.
-	skipIf := "true"
+	skipIf := ""
 	if skipIfPtr != nil {
 		skipIf = *skipIfPtr
 	}

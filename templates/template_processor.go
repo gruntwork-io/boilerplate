@@ -300,8 +300,9 @@ func shouldSkipDependency(dependency variables.Dependency, opts *options.Boilerp
 
 // Return true if the if parameter of the given SkipFile evaluates to a "true" value
 func skipFileIfCondition(skipFile variables.SkipFile, opts *options.BoilerplateOptions, variables map[string]interface{}) (bool, error) {
+	// If the "if" attribute of skip_files was not specified, then default to true.
 	if skipFile.If == "" {
-		return false, nil
+		return true, nil
 	}
 
 	rendered, err := render.RenderTemplateRecursively(opts.TemplateFolder, skipFile.If, variables, opts)
