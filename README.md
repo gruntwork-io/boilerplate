@@ -547,6 +547,13 @@ This will:
 - Skip rendering `docs/README_WITHOUT_ENCRYPTION.md` if `UseEncryption` is set to `true`.
 - Skip rendering `docs/README_WITH_ENCRYPTION.md` if `UseEncryption` is set to `false`.
 
+For a more concise specification, you can use glob syntax in the `path` to match multiple paths in one entry:
+
+```yaml
+skip_files:
+  - path: "docs/**/*"
+```
+
 
 #### Templates
 
