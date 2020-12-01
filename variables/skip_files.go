@@ -13,8 +13,7 @@ type SkipFile struct {
 //     if: <SKIPIF>
 //   - path: <PATH>
 //
-// This method takes looks up the given hookName in the map and unmarshals the data inside of it it into a list of
-// Hook structs
+// convert to a list of SkipFile structs.
 func UnmarshalSkipFilesFromBoilerplateConfigYaml(fields map[string]interface{}) ([]SkipFile, error) {
 	rawSkipFiles, err := unmarshalListOfFields(fields, "skip_files")
 	if err != nil || rawSkipFiles == nil {

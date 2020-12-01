@@ -1,0 +1,12 @@
+{
+   "people": [
+      {
+         "age": 99,
+         "favoriteFoods": [
+            "Onigiri",
+            "Katsudon"
+         ],
+         "name": "Yori"
+      }
+   ]
+}

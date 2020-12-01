@@ -1,0 +1,16 @@
+variables:
+  - name: Name
+    type: string
+
+  - name: IncludeAge
+    type: bool
+
+  - name: AgeMap
+    type: map
+
+  - name: FavoriteFoods
+    type: list
+
+engines:
+  - path: "*.jsonnet"
+    template_engine: "jsonnet"

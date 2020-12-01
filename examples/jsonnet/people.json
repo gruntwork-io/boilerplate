@@ -1,0 +1,11 @@
+{
+    "people": [
+        {
+            "name": "{{ .Name }}",
+            {{- if .IncludeAge }}
+            "age": {{ index .AgeMap .Name }},
+            {{- end }}
+            "favoriteFoods": {{ .FavoriteFoods | toPrettyJson }}
+        }
+    ]
+}

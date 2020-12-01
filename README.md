@@ -152,6 +152,7 @@ Learn more about boilerplate in the following sections:
 1. [Partials](#partials)
 1. [Skip Files](#skip-files)
 1. [Templates](#templates)
+1. [Alternative Template Engines (EXPERIMENTAL)](#alternative-template-engines-experimental)
 1. [Template helpers](#template-helpers)
 
 #### Boilerplate command line options
@@ -297,6 +298,10 @@ skip_files:
   - path: subfolder/README.md
     if: {{ not .ShowLogo }}
 
+engines:
+  - path: subfolder/foo.json.jsonnet
+    template_engine: jsonnet
+
 partials:
   - ../html/*.html
   - ../css/*.css
@@ -354,6 +359,12 @@ be excluded. You can conditionally skip the file using the `if` field, which sho
 values `"true"` or `"false"`.
 
 See the [Skip Files](#skip-files) section for more info.
+
+**Engines**: Use *engines* to specify files in the template folder that should be rendered with an alternative
+templating engine. The `path` field is the relative path from the template folder root (where the `boilerplate.yml` file
+is defined) of the file that should use the alternative template engine.
+
+See the [Alternative Template Engines (EXPERIMENTAL)](#alternative-template-engines-experimental) section for more info.
 
 **Hooks**: Boilerplate provides hooks to execute arbitrary shell commands. There are two types of hooks:
 
@@ -559,8 +570,7 @@ skip_files:
 
 Boilerplate puts all the variables into a Go map where the key is the name of the variable and the value is what
 the user provided. It then starts copying files from the `--template-url` into the `--output-folder`, passing each
-non-binary file through the [Go Template](https://golang.org/pkg/text/template) engine, with the variable map as a
-data structure.
+non-binary file through the [Go Template](https://golang.org/pkg/text/template) engine, with the variable map as a data structure.
 
 For example, if you had a variable called `Title` in your `boilerplate.yml` file, then you could access that variable
 in any of your templates using the syntax `{{.Title}}`. You can also use Go template syntax to do
@@ -570,6 +580,79 @@ You can even use Go template syntax and boilerplate variables in the names of yo
 you were using `boilerplate` to generate a Java project, your template folder could contain the path
 `com/{{.PackageName}}/MyFactory.java`. If you run `boilerplate` against this template folder and enter
 "gruntwork" as the `PackageName`, you'd end up with the file `com/gruntwork/MyFactory.java`.
+
+#### Alternative Template Engines (EXPERIMENTAL)
+
+Boilerplate has experimental support for the following alternative template engines:
+
+- [jsonnet](#jsonnet)
+
+To specify an alternative template engine, you can use the `engines` directive to provide a path glob that matches the
+files that should be fed through the alternative engine. For example, the following boilerplate configuration makes it
+so that any file with the `.jsonnet` extension will be fed through the jsonnet template engine:
+
+```yaml
+engines
+  - path: "**/*.jsonnet"
+    template_engine: jsonnet
+```
+
+Note that currently alternative template engines are only supported for processing individual files, and can not be used
+for parsing boilerplate directives in the config file or directory names.
+
+See below for more information on each of the template engines supported:
+
+**IMPORTANT**: Support for template helpers are limited to the go templating engine at this time. Some limited functions
+may be available depending on the template engine. See the information for the templating engine to know which functions
+are supported.
+
+##### Jsonnet
+
+[Jsonnet](https://jsonnet.org/) is a data template engine optimized for generating json data. Unlike go templating,
+jsonnet has many features that make it more friendly to write such as:
+
+- [Imports](https://jsonnet.org/learning/tutorial.html#imports)
+- [Functions](https://jsonnet.org/learning/tutorial.html#functions)
+- [Better error handling](https://jsonnet.org/learning/tutorial.html#errors)
+- Editor support
+
+When boilerplate processes jsonnet templates, the variables are passed through as a [Top Level
+Argument](https://jsonnet.org/learning/tutorial.html#parameterize-entire-config) under the name `boilerplateVars`. This
+means that every jsonnet template must be defined in a way to handle the TLA argument. For example:
+
+```jsonnet
+function(boilerplateVars) {
+  person: {
+    name: boilerplateVars.Name,
+  },
+}
+```
+
+Boilerplate will also make available the following helpers as [external
+variables](https://jsonnet.org/learning/tutorial.html#parameterize-entire-config):
+
+- `templateFolder`: Set to the value of the template working dir. This is the same as what the `templateFolder`
+  boilerplate helper function returns.
+- `outputFolder`: Set to the value of the output folder where the templates are rendered. This is the same as what the
+  `outputFolder` boilerplate helper function returns.
+
+Note that to ensure you can have editor assistance while modifying jsonnet files, the jsonnet template engine in
+boilerplate will strip the extension suffix `.jsonnet` from the output file path. E.g., if your template folder
+contained:
+
+```
+.
+├── boilerplate.yml
+└── data.json.jsonnet
+```
+
+The output folder will be:
+
+```
+.
+└── data.json
+```
+
 
 #### Template helpers
 

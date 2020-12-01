@@ -27,16 +27,10 @@ type ProcessedSkipFile struct {
 func processSkipFiles(skipFiles []variables.SkipFile, opts *options.BoilerplateOptions, variables map[string]interface{}) ([]ProcessedSkipFile, error) {
 	output := []ProcessedSkipFile{}
 	for _, skipFile := range skipFiles {
-		rawMatchedPaths, err := zglob.Glob(filepath.Join(opts.TemplateFolder, skipFile.Path))
+		matchedPaths, err := renderGlobPath(opts, skipFile.Path, "SkipFile")
 		if err != nil {
 			return nil, errors.WithStackTrace(err)
 		}
-		// Canonicalize the matched paths prior to storage
-		matchedPaths := []string{}
-		for _, path := range rawMatchedPaths {
-			matchedPaths = append(matchedPaths, filepath.ToSlash(path))
-		}
-		debugLogForMatchedPaths(skipFile.Path, matchedPaths)
 
 		renderedSkipIf, err := skipFileIfCondition(skipFile, opts, variables)
 		if err != nil {
@@ -69,10 +63,26 @@ func skipFileIfCondition(skipFile variables.SkipFile, opts *options.BoilerplateO
 	return rendered == "true", nil
 }
 
-func debugLogForMatchedPaths(sourcePath string, paths []string) {
+func debugLogForMatchedPaths(sourcePath string, paths []string, directiveName string) {
 	// TODO: logger-debug - switch to debug
-	util.Logger.Printf("Following paths were picked up by Path attribute for SkipFile (%s):", sourcePath)
+	util.Logger.Printf("Following paths were picked up by Path attribute for %s (%s):", directiveName, sourcePath)
 	for _, path := range paths {
 		util.Logger.Printf("\t- %s", path)
 	}
+}
+
+// renderGlobPath will render the glob of the given path in the template folder and return the list of matched paths.
+// Note that the paths will be canonicalized to unix slashes regardless of OS.
+func renderGlobPath(opts *options.BoilerplateOptions, path string, directiveName string) ([]string, error) {
+	rawMatchedPaths, err := zglob.Glob(filepath.Join(opts.TemplateFolder, path))
+	if err != nil {
+		return nil, errors.WithStackTrace(err)
+	}
+	// Canonicalize the matched paths prior to storage
+	matchedPaths := []string{}
+	for _, path := range rawMatchedPaths {
+		matchedPaths = append(matchedPaths, filepath.ToSlash(path))
+	}
+	debugLogForMatchedPaths(path, matchedPaths, directiveName)
+	return matchedPaths, nil
 }
