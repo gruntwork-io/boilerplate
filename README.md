@@ -592,12 +592,12 @@ files that should be fed through the alternative engine. For example, the follow
 so that any file with the `.jsonnet` extension will be fed through the jsonnet template engine:
 
 ```yaml
-engines
+engines:
   - path: "**/*.jsonnet"
     template_engine: jsonnet
 ```
 
-Note that currently alternative template engines are only supported for processing individual files, and can not be used
+Note that alternative template engines are currently only supported for processing individual files, and can not be used
 for parsing boilerplate directives in the config file or directory names.
 
 See below for more information on each of the template engines supported:

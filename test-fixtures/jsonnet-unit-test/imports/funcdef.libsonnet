@@ -1,0 +1,5 @@
+{
+  newPerson(name):: {
+    name: name,
+  },
+}
