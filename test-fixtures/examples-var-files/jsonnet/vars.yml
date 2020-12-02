@@ -1,0 +1,8 @@
+Name: "Yori"
+IncludeAge: true
+AgeMap:
+  Yori: 99
+  Python: -1
+FavoriteFoods:
+  - "Onigiri"
+  - "Katsudon"
