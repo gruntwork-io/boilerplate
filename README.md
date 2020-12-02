@@ -636,6 +636,10 @@ variables](https://jsonnet.org/learning/tutorial.html#parameterize-entire-config
 - `outputFolder`: Set to the value of the output folder where the templates are rendered. This is the same as what the
   `outputFolder` boilerplate helper function returns.
 
+While the `jsonnet` template engine does not support the boilerplate helper functions, it does have access to the
+[Jsonnet standard library](https://jsonnet.org/ref/stdlib.html). You can also import any `libsonnet` library in your
+jsonnet template, including those installed with [jsonnet-bundlery](https://github.com/jsonnet-bundler/jsonnet-bundler).
+
 Note that to ensure you can have editor assistance while modifying jsonnet files, the jsonnet template engine in
 boilerplate will strip the extension suffix `.jsonnet` from the output file path. E.g., if your template folder
 contained:
