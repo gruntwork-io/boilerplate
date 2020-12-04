@@ -231,12 +231,26 @@ func cloneOptionsForDependency(dependency variables.Dependency, originalOpts *op
 	// Output folder should be local path relative to original output folder, or absolute path
 	outputFolder := render.PathRelativeToTemplate(originalOpts.OutputFolder, renderedOutputFolder)
 
+	renderedVarFiles := []string{}
+	for _, varFilePath := range dependency.VarFiles {
+		renderedVarFilePath, err := render.RenderTemplateFromString(originalOpts.TemplateFolder, varFilePath, variables, originalOpts)
+		if err != nil {
+			return nil, err
+		}
+		renderedVarFiles = append(renderedVarFiles, renderedVarFilePath)
+	}
+
+	vars, err := cloneVariablesForDependency(dependency, variables, renderedVarFiles)
+	if err != nil {
+		return nil, err
+	}
+
 	return &options.BoilerplateOptions{
 		TemplateUrl:     templateUrl,
 		TemplateFolder:  templateFolder,
 		OutputFolder:    outputFolder,
 		NonInteractive:  originalOpts.NonInteractive,
-		Vars:            cloneVariablesForDependency(dependency, variables),
+		Vars:            vars,
 		OnMissingKey:    originalOpts.OnMissingKey,
 		OnMissingConfig: originalOpts.OnMissingConfig,
 		DisableHooks:    originalOpts.DisableHooks,
@@ -246,12 +260,18 @@ func cloneOptionsForDependency(dependency variables.Dependency, originalOpts *op
 
 // Clone the given variables for use when rendering the given dependency.  The dependency will get the same variables
 // as the originals passed in, filtered to variable names that do not include a dependency or explicitly are for the
-// given dependency. If dependency.DontInheritVariables is set to true, an empty map is returned.
-func cloneVariablesForDependency(dependency variables.Dependency, originalVariables map[string]interface{}) map[string]interface{} {
-	newVariables := map[string]interface{}{}
+// given dependency.
+// If the dependency specifies VarFiles, set the initial variables based on each var file. Note that we prefer the
+// variables set on the CLI (originalVariables) over those set on the dependency (unless DontInheritVariables is set)
+// If dependency.DontInheritVariables is set to true, return just the variables set on the var files.
+func cloneVariablesForDependency(dependency variables.Dependency, originalVariables map[string]interface{}, renderedVarFiles []string) (map[string]interface{}, error) {
+	newVariables, err := variables.ParseVars(nil, renderedVarFiles)
+	if err != nil {
+		return nil, err
+	}
 
 	if dependency.DontInheritVariables {
-		return newVariables
+		return newVariables, nil
 	}
 
 	for variableName, variableValue := range originalVariables {
@@ -263,7 +283,7 @@ func cloneVariablesForDependency(dependency variables.Dependency, originalVariab
 		}
 	}
 
-	return newVariables
+	return newVariables, nil
 }
 
 // Prompt the user to verify if the given dependency should be executed and return true if they confirm. If
