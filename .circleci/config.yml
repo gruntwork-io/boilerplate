@@ -8,7 +8,7 @@ defaults: &defaults
     PACKER_VERSION: NONE
     GOLANG_VERSION: "1.14"
 
-version: 2
+version: 2.1
 jobs:
   test:
     <<: *defaults
@@ -26,10 +26,25 @@ jobs:
               --terragrunt-version ${TERRAGRUNT_VERSION} \
               --packer-version ${PACKER_VERSION} \
               --go-version ${GOLANG_VERSION}
+
+            go get -u github.com/jstemmer/go-junit-report
       - run:
           name: run tests
-          command: run-go-tests --path . --timeout 1h
+          command: |
+            mkdir -p /tmp/logs/results
+            run-go-tests --path . --timeout 1h | tee /tmp/logs/all.log
           no_output_timeout: 3600s
+
+
+      # Store junit test result so it shows up in the CircleCI ui
+      - run:
+          # Use go-junit-report to generate a junit report instead of terratest log parser, as the logs for boilerplate
+          # do not respect the logging mechanism that the log parser looks for.
+          name: parse logs
+          command: "cat /tmp/logs/all.log | go-junit-report > /tmp/logs/results/results.xml"
+          when: always
+      - store_test_results:
+          path: /tmp/logs
 
   deploy:
     <<: *defaults

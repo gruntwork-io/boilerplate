@@ -1,0 +1,33 @@
+variables:
+  - name: Description
+    description: Enter the description of this template
+
+  - name: Version
+    description: Enter the version number that will be used by the docs dependency
+
+  - name: Title
+    description: Enter the title for the dependencies example
+
+  - name: WelcomeText
+    description: Enter the welcome text used by the website dependency
+
+  - name: ShowLogo
+    description: Should the webiste show the logo (true or false)?
+    type: bool
+    default: true
+
+dependencies:
+  - name: docs
+    template-url: ../docs
+    output-folder: ./docs
+    var_files:
+      - "{{ templateFolder }}/docs_vars.yml"
+
+  - name: website
+    template-url: ../website
+    output-folder: ./website
+    var_files:
+      - "{{ templateFolder }}/website_vars.yml"
+
+skip_files:
+  - path: "*_vars.yml"

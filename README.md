@@ -342,6 +342,15 @@ executing the current one. Each dependency may contain the following keys:
   but you want the dependency to get a different value for the variable, you can specify overrides here. `boilerplate`
   will include a separate prompt for variables defined under a `dependency`. You can also override the dependency's
   description and default values here.
+* `var_files`: If you want to set the variables for the dependency based on a var file, you can provide a list of var
+  file paths to include. The path is assumed to be relative to the current boilerplate.yml, but it is recommended to use
+  the `templateFolder` helper function to be explicit. Note that the order of preference for variables are (top most
+  have highest precedence - aka override all):
+    - Top level variables set on the CLI.
+    - Var files set on the dependency.
+    - Defaults set on dependency variables (the `variables` field of the dependency).
+    - Defaults set on root variables.
+    - Defaults set within the dependency boilerplate config.
 
 See the [Dependencies](#dependencies) section for more info.
 

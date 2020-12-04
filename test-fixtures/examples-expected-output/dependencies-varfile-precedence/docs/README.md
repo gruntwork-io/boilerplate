@@ -1,4 +1,4 @@
-# {{ .Title }}
+# Docs example
 
 This shows an example of how to use boilerplate to fill in parts of your documentation.
 
@@ -6,7 +6,7 @@ This shows an example of how to use boilerplate to fill in parts of your documen
 
 Here is how you can use a variable:
 
-The latest version of my app is {{.Version}}.
+The latest version of my app is 0.0.3.
 
 You could create a CI job that, for each release, regenerates your docs with the latest value of the `Version` variable
 passed in using the `--var` option.
@@ -16,21 +16,27 @@ passed in using the `--var` option.
 Here is how to use the `snippet` helper to embed files or parts of files from source code:
 
 ```html
-{{snippet "../website/index.html" | trim}}
+<html>
+  <head>
+    <title>{{.Title}}</title>
+  </head>
+  <body>
+    <h1>{{.WelcomeText}}</h1>
+    {{if .ShowLogo}}<img src="logo.png">{{end}}
+  </body>
+</html>
 ```
 
 ## Arithmetic
 
 Here is how you can use the arithmetic helpers to create a numbered list:
 
-{{ with $index := "0" -}}
-{{plus $index 1}}. Item
-{{plus $index 2}}. Item
-{{plus $index 3}}. Item
-{{- end }}
+1. Item
+2. Item
+3. Item
 
 And here is another way to do it using the slice helper:
 
-{{ range $i := (slice 1 4 1) -}}
-{{$i}}. Item
-{{ end -}}
+1. Item
+2. Item
+3. Item

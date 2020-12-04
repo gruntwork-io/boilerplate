@@ -16,6 +16,7 @@ type Dependency struct {
 	Skip                 string
 	DontInheritVariables bool
 	Variables            []Variable
+	VarFiles             []string
 }
 
 // Get all the variables in this dependency, namespacing each variable with the name of this dependency
@@ -123,6 +124,11 @@ func UnmarshalDependencyFromBoilerplateConfigYaml(fields map[string]interface{})
 		return nil, err
 	}
 
+	varFiles, err := UnmarshalListOfStrings(fields, "var_files")
+	if err != nil {
+		return nil, err
+	}
+
 	return &Dependency{
 		Name:                 *name,
 		TemplateUrl:          *templateUrl,
@@ -130,6 +136,7 @@ func UnmarshalDependencyFromBoilerplateConfigYaml(fields map[string]interface{})
 		Skip:                 skip,
 		DontInheritVariables: dontInheritVariables,
 		Variables:            variables,
+		VarFiles:             varFiles,
 	}, nil
 }
 
