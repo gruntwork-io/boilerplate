@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/variables"
@@ -117,7 +118,8 @@ func TestCloneVariablesForDependency(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		actualVariables := cloneVariablesForDependency(testCase.dependency, testCase.variables)
+		actualVariables, err := cloneVariablesForDependency(testCase.dependency, testCase.variables, nil)
+		require.NoError(t, err)
 		assert.Equal(t, testCase.expectedVariables, actualVariables, "Dependency: %s", testCase.dependency)
 	}
 }
