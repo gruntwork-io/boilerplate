@@ -77,6 +77,79 @@ func (config *BoilerplateConfig) UnmarshalYAML(unmarshal func(interface{}) error
 	return nil
 }
 
+// Implement the go-yaml marshaler interface so that the config can be marshaled into yaml. We use a custom marshaler
+// instead of defining the fields as tags so that we skip the attributes that are empty.
+func (config *BoilerplateConfig) MarshalYAML() (interface{}, error) {
+	configYml := map[string]interface{}{}
+	if len(config.Variables) > 0 {
+		// Due to go type system, we can only pass through []interface{}, even though []Variable is technically
+		// polymorphic to that type. So we reconstruct the list using the right type before passing it in to the marshal
+		// function.
+		interfaceList := []interface{}{}
+		for _, variable := range config.Variables {
+			interfaceList = append(interfaceList, variable)
+		}
+		varsYml, err := util.MarshalListOfObjectsToYAML(interfaceList)
+		if err != nil {
+			return nil, err
+		}
+		configYml["variables"] = varsYml
+	}
+	if len(config.Dependencies) > 0 {
+		// Due to go type system, we can only pass through []interface{}, even though []Dependency is technically
+		// polymorphic to that type. So we reconstruct the list using the right type before passing it in to the marshal
+		// function.
+		interfaceList := []interface{}{}
+		for _, dep := range config.Dependencies {
+			interfaceList = append(interfaceList, dep)
+		}
+		depsYml, err := util.MarshalListOfObjectsToYAML(interfaceList)
+		if err != nil {
+			return nil, err
+		}
+		configYml["dependencies"] = depsYml
+	}
+	if len(config.Hooks.BeforeHooks) > 0 || len(config.Hooks.AfterHooks) > 0 {
+		hooksYml, err := config.Hooks.MarshalYAML()
+		if err != nil {
+			return nil, err
+		}
+		configYml["hooks"] = hooksYml
+	}
+	if len(config.Partials) > 0 {
+		configYml["partials"] = config.Partials
+	}
+	if len(config.SkipFiles) > 0 {
+		// Due to go type system, we can only pass through []interface{}, even though []SkipFile is technically
+		// polymorphic to that type. So we reconstruct the list using the right type before passing it in to the marshal
+		// function.
+		interfaceList := []interface{}{}
+		for _, skipFile := range config.SkipFiles {
+			interfaceList = append(interfaceList, skipFile)
+		}
+		skipFilesYml, err := util.MarshalListOfObjectsToYAML(interfaceList)
+		if err != nil {
+			return nil, err
+		}
+		configYml["skip_files"] = skipFilesYml
+	}
+	if len(config.Engines) > 0 {
+		// Due to go type system, we can only pass through []interface{}, even though []Engine is technically
+		// polymorphic to that type. So we reconstruct the list using the right type before passing it in to the marshal
+		// function.
+		interfaceList := []interface{}{}
+		for _, engine := range config.Engines {
+			interfaceList = append(interfaceList, engine)
+		}
+		enginesYml, err := util.MarshalListOfObjectsToYAML(interfaceList)
+		if err != nil {
+			return nil, err
+		}
+		configYml["engines"] = enginesYml
+	}
+	return configYml, nil
+}
+
 // Load the boilerplate.yml config contents for the folder specified in the given options
 func LoadBoilerplateConfig(opts *options.BoilerplateOptions) (*BoilerplateConfig, error) {
 	configPath := BoilerplateConfigPath(opts.TemplateFolder)
