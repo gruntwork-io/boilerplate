@@ -1,0 +1,100 @@
+dependencies:
+- name: variables
+  output-folder: .
+  template-url: ../variables
+variables:
+- name: Foo
+  type: string
+- default: '{{ .Foo }}-bar'
+  name: Bar
+  type: string
+- default: '{{ .Bar }}-baz'
+  name: Baz
+  type: string
+- default:
+  - foo
+  - bar
+  - baz
+  name: FooList
+  type: list
+- name: BarList
+  reference: FooList
+  type: list
+- default:
+    bar: 2
+    baz: 3
+    foo: 1
+  name: FooMap
+  type: map
+- name: BarMap
+  reference: FooMap
+  type: map
+- default:
+  - '{{ .Foo }}'
+  - '{{ .Bar }}'
+  - '{{ .Baz }}'
+  name: ListWithTemplates
+  type: list
+- default:
+    '{{ .Bar }}': '{{ .Bar }}'
+    '{{ .Baz }}': '{{ .Baz }}'
+    '{{ .Foo }}': '{{ .Foo }}'
+  name: MapWithTemplates
+  type: map
+- default:
+  - name: foo
+    value: foo
+  - name: bar
+    value: bar
+  name: ListWithNestedMap
+  type: list
+- default:
+    bar:
+    - 4
+    - 5
+    - 6
+    foo:
+    - 1
+    - 2
+    - 3
+  name: MapWithNestedList
+  type: map
+- default: 42
+  name: IntValue
+  type: int
+- default: '{{ .IntValue }}'
+  name: IntValueInterpolation
+  type: int
+- default: 3.14
+  name: FloatValue
+  type: float
+- default: '{{ .FloatValue }}'
+  name: FloatValueInterpolation
+  type: float
+- default: true
+  name: BoolValue
+  type: bool
+- default: '{{ .BoolValue }}'
+  name: BoolValueInterpolationSimple
+  type: bool
+- default: '{{ eq .IntValue 42 }}'
+  name: BoolValueInterpolationSimpleComplex
+  type: bool
+- default:
+  - 1
+  - 2
+  - 3
+  name: ListValue
+  type: list
+- default: '{{ .ListValue }}'
+  name: ListValueInterpolation
+  type: list
+- default:
+    bar: 2
+    baz: 3
+    foo: 1
+  name: MapValue
+  type: map
+- default: '{{ .MapValue }}'
+  name: MapValueInterpolation
+  type: map

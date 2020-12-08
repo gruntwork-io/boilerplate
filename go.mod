@@ -17,6 +17,7 @@ require (
 	github.com/mattn/go-zglob v0.0.2-0.20190814121620-e3c945676326
 	github.com/mitchellh/copystructure v1.0.0 // indirect
 	github.com/stretchr/testify v1.6.1
+	github.com/stuart-warren/yamlfmt v0.1.0
 	github.com/urfave/cli v1.22.4
 	golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a // indirect
 	gopkg.in/yaml.v2 v2.3.0

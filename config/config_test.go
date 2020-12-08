@@ -1,7 +1,10 @@
 package config
 
 import (
+	"bytes"
+	"io/ioutil"
 	"path"
+	"path/filepath"
 	"reflect"
 	"testing"
 
@@ -12,6 +15,11 @@ import (
 	"github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/variables"
+
+	// NOTE: we use this library to format the yaml to a standard format that lexicographically sorts the dictionary
+	// keys to make comparisons more robust. We should not however use it in the CLI itself because it does not make the
+	// YAML more readable (it culls all whitespace).
+	"github.com/stuart-warren/yamlfmt"
 )
 
 func TestParseBoilerplateConfigEmpty(t *testing.T) {
@@ -698,4 +706,43 @@ func TestParseBoilerplateConfigWithSkipFiles(t *testing.T) {
 		},
 	}
 	assert.Equal(t, expected, actual)
+}
+
+func TestMarshalBoilerplateConfig(t *testing.T) {
+	t.Parallel()
+
+	marshalYamlTestExpectedBase := filepath.Join("..", "test-fixtures", "marshal-yaml-test")
+	examplesBase := filepath.Join("..", "examples")
+
+	examplesToTest, err := ioutil.ReadDir(marshalYamlTestExpectedBase)
+	require.NoError(t, err)
+
+	for _, exampleFolder := range examplesToTest {
+		exampleFolderName := exampleFolder.Name()
+
+		t.Run(exampleFolderName, func(t *testing.T) {
+			t.Parallel()
+
+			configData, err := ioutil.ReadFile(filepath.Join(examplesBase, exampleFolderName, "boilerplate.yml"))
+			require.NoError(t, err)
+			config, err := ParseBoilerplateConfig(configData)
+			require.NoError(t, err)
+			actualYml, err := yaml.Marshal(config)
+			require.NoError(t, err)
+			expectedYml, err := ioutil.ReadFile(filepath.Join(marshalYamlTestExpectedBase, exampleFolderName, "expected.yml"))
+			require.NoError(t, err)
+
+			// Format the two yaml documents
+			expectedYmlFormatted := formatYAMLBytes(t, expectedYml)
+			actualYmlFormatted := formatYAMLBytes(t, actualYml)
+			assert.Equal(t, string(expectedYmlFormatted), string(actualYmlFormatted))
+		})
+	}
+}
+
+func formatYAMLBytes(t *testing.T, ymlData []byte) []byte {
+	ymlBuffer := bytes.NewBuffer(ymlData)
+	formattedYml, err := yamlfmt.Format(ymlBuffer)
+	require.NoError(t, err)
+	return formattedYml
 }

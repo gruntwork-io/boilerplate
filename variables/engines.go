@@ -14,8 +14,8 @@ import (
 // - Jsonnet
 //
 type Engine struct {
-	Path           string
-	TemplateEngine TemplateEngineType
+	Path           string             `yaml:"path"`
+	TemplateEngine TemplateEngineType `yaml:"template_engine"`
 }
 
 type TemplateEngineType string

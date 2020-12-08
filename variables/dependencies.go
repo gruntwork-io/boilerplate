@@ -19,6 +19,42 @@ type Dependency struct {
 	VarFiles             []string
 }
 
+// Implement the go-yaml marshaler interface so that the config can be marshaled into yaml. We use a custom marshaler
+// instead of defining the fields as tags so that we skip the attributes that are empty.
+func (dependency Dependency) MarshalYAML() (interface{}, error) {
+	depYml := map[string]interface{}{}
+	if dependency.Name != "" {
+		depYml["name"] = dependency.Name
+	}
+	if dependency.TemplateUrl != "" {
+		depYml["template-url"] = dependency.TemplateUrl
+	}
+	if dependency.OutputFolder != "" {
+		depYml["output-folder"] = dependency.OutputFolder
+	}
+	if dependency.Skip != "" {
+		depYml["skip"] = dependency.Skip
+	}
+	if len(dependency.Variables) > 0 {
+		// Due to go type system, we can only pass through []interface{}, even though []Variable is technically
+		// polymorphic to that type. So we reconstruct the list using the right type before passing it in to the marshal
+		// function.
+		interfaceList := []interface{}{}
+		for _, variable := range dependency.Variables {
+			interfaceList = append(interfaceList, variable)
+		}
+		varsYml, err := util.MarshalListOfObjectsToYAML(interfaceList)
+		if err != nil {
+			return nil, err
+		}
+		depYml["variables"] = varsYml
+	}
+	if len(dependency.VarFiles) > 0 {
+		depYml["var_files"] = dependency.VarFiles
+	}
+	return depYml, nil
+}
+
 // Get all the variables in this dependency, namespacing each variable with the name of this dependency
 func (dependency Dependency) GetNamespacedVariables() []Variable {
 	variables := []Variable{}

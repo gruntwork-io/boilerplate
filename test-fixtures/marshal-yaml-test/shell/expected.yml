@@ -1,0 +1,29 @@
+variables:
+- description: Enter the text to display
+  name: Text
+  type: string
+hooks:
+  after:
+  - command: echo
+    args:
+    - Running after hooks
+  - command: ./example-script-2.sh
+    args:
+    - '{{ outputFolder }}/after-hook-example.txt'
+    env:
+      TEXT: '{{ .Text }} - executed via an after hook'
+  before:
+  - command: echo
+    args:
+    - Running before hooks
+  - command: ./example-script-2.sh
+    args:
+    - '{{ outputFolder }}/before-hook-example.txt'
+    env:
+      TEXT: '{{ .Text }} - executed via a before hook'
+  - command: ./example-script-2.sh
+    args:
+    - '{{ outputFolder }}/before-hook-should-be-skipped.txt'
+    env:
+      TEXT: this hook should be skipped
+    skip: "true"

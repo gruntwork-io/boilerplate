@@ -49,6 +49,9 @@ type Variable interface {
 
 	// Show an example value that would be valid for this variable
 	ExampleValue() string
+
+	// A custom marshaling function to translate back to YAML, as expected by go-yaml.
+	MarshalYAML() (interface{}, error)
 }
 
 // A private implementation of the Variable interface that forces all users to use our public constructors
@@ -189,6 +192,31 @@ func (variable defaultVariable) ExampleValue() string {
 	default:
 		return ""
 	}
+}
+
+// Define a custom marshaler for YAML so that variables (and thus any struct using it) can be marshaled into YAML.
+func (variable defaultVariable) MarshalYAML() (interface{}, error) {
+	varYml := map[string]interface{}{}
+	// We avoid a straight assignment to ensure that only fields that are actually set are rendered out.
+	if variable.Name() != "" {
+		varYml["name"] = variable.Name()
+	}
+	if variable.Description() != "" {
+		varYml["description"] = variable.Description()
+	}
+	if variable.Type() != "" {
+		varYml["type"] = variable.Type()
+	}
+	if variable.Default() != nil {
+		varYml["default"] = variable.Default()
+	}
+	if variable.Reference() != "" {
+		varYml["reference"] = variable.Reference()
+	}
+	if len(variable.Options()) > 0 {
+		varYml["options"] = variable.Options()
+	}
+	return varYml, nil
 }
 
 // Check that the given value matches the type we're expecting in the given variable and return an error if it doesn't
