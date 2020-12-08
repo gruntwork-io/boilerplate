@@ -71,10 +71,14 @@ workflows:
   build-and-test:
     jobs:
       - test:
+          context:
+            - Gruntwork Admin
           filters:
             tags:
               only: /^v.*/
       - deploy:
+          context:
+            - Gruntwork Admin      
           requires:
             - test
           filters:
