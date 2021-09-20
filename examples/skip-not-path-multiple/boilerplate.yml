@@ -1,0 +1,3 @@
+skip_files:
+  - not_path: docs/bar.txt
+  - not_path: docs/foo.txt

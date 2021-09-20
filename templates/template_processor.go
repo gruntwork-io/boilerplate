@@ -510,11 +510,24 @@ func anyNotPathDefined(skipFileList []ProcessedSkipFile) bool {
 }
 
 // pathInAnySkipNotPath returns true if the given path matches any one of the not_path attributes in the skip file list.
+// Note that unlike pathInAnySkipPath, this also does a directory check, where the directory is considered in the
+// not_path list. This is because the `not_path` list is an include list as opposed to a skip list, so we must copy over
+// the directory to copy over the exact file.
 func pathInAnySkipNotPath(canonicalPath string, skipFileList []ProcessedSkipFile) bool {
 	for _, skipFile := range skipFileList {
+		if skipFile.RenderedSkipIf == false || len(skipFile.EvaluatedNotPaths) == 0 {
+			continue
+		}
+
 		inSkipNotPathList := util.ListContains(canonicalPath, skipFile.EvaluatedNotPaths)
-		if skipFile.RenderedSkipIf && inSkipNotPathList {
+		if inSkipNotPathList {
 			return true
+		}
+
+		for _, path := range skipFile.EvaluatedNotPaths {
+			if strings.HasPrefix(path, canonicalPath+"/") {
+				return true
+			}
 		}
 	}
 	return false
