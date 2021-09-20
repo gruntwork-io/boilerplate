@@ -83,6 +83,10 @@ func debugLogForMatchedPaths(sourcePath string, paths []string, directiveName st
 // renderGlobPath will render the glob of the given path in the template folder and return the list of matched paths.
 // Note that the paths will be canonicalized to unix slashes regardless of OS.
 func renderGlobPath(opts *options.BoilerplateOptions, path string, directiveName string) ([]string, error) {
+	if path == "" {
+		return []string{}, nil
+	}
+
 	rawMatchedPaths, err := zglob.Glob(filepath.Join(opts.TemplateFolder, path))
 	if err != nil {
 		return nil, errors.WithStackTrace(err)
