@@ -472,17 +472,50 @@ func shouldSkipPath(path string, opts *options.BoilerplateOptions, processedSkip
 	// - If the path matches with any entry in the skip files list and the if condition evaluates to true, skip the file.
 	// - If the path matches does NOT match with any entry in the not_path list, and the if condition evaluates to true,
 	//   skip the file.
-	for _, skipFile := range processedSkipFiles {
-		inSkipList := util.ListContains(canonicalPath, skipFile.EvaluatedPaths)
-		inNotSkipList := util.ListContains(canonicalPath, skipFile.EvaluatedNotPaths)
-		if skipFile.RenderedSkipIf && inSkipList {
-			return true
-		}
-		if skipFile.RenderedSkipIf && !inNotSkipList {
-			return true
-		}
+	// NOTE: the composition for these directives are different. For `path` attribute, the composition is an `any`
+	// operation. That is, if the path matches any one of the `path` attributes, then the file is skipped.
+	// OTOH, for `not_path` attribute, the composition is an `all` operation. The file must not match ALL of the
+	// `not_path` attributes to be skipped, but only if any one of the skip files has not_path attribute set.
+	if pathInAnySkipPath(canonicalPath, processedSkipFiles) {
+		return true
+	}
+	// not in any == not in all
+	if anyNotPathDefined(processedSkipFiles) && pathInAnySkipNotPath(canonicalPath, processedSkipFiles) == false {
+		return true
 	}
 
 	// Then check if the path is the template folder root or the boilerplate config.
 	return canonicalPath == canonicalTemplateFolder || canonicalPath == canonicalBoilerplateConfigPath
+}
+
+// pathInAnySkipPath returns true if the given path matches any one of the path attributes in the skip file list.
+func pathInAnySkipPath(canonicalPath string, skipFileList []ProcessedSkipFile) bool {
+	for _, skipFile := range skipFileList {
+		inSkipList := util.ListContains(canonicalPath, skipFile.EvaluatedPaths)
+		if skipFile.RenderedSkipIf && inSkipList {
+			return true
+		}
+	}
+	return false
+}
+
+// anyNotPathDefined returns true if any skip file has a NotPath attribute defined.
+func anyNotPathDefined(skipFileList []ProcessedSkipFile) bool {
+	for _, skipFile := range skipFileList {
+		if len(skipFile.EvaluatedNotPaths) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// pathInAnySkipNotPath returns true if the given path matches any one of the not_path attributes in the skip file list.
+func pathInAnySkipNotPath(canonicalPath string, skipFileList []ProcessedSkipFile) bool {
+	for _, skipFile := range skipFileList {
+		inSkipNotPathList := util.ListContains(canonicalPath, skipFile.EvaluatedNotPaths)
+		if skipFile.RenderedSkipIf && inSkipNotPathList {
+			return true
+		}
+	}
+	return false
 }
