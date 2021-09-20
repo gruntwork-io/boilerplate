@@ -468,10 +468,17 @@ func shouldSkipPath(path string, opts *options.BoilerplateOptions, processedSkip
 	canonicalTemplateFolder := filepath.ToSlash(opts.TemplateFolder)
 	canonicalBoilerplateConfigPath := filepath.ToSlash(config.BoilerplateConfigPath(opts.TemplateFolder))
 
-	// First check if the path is a part of the the skipFile list. If the path matches with any entry in the skip files
-	// list and the if condition evaluates to true, skip the file.
+	// First check if the path is a part of the the skipFile list. To handle skipping:
+	// - If the path matches with any entry in the skip files list and the if condition evaluates to true, skip the file.
+	// - If the path matches does NOT match with any entry in the not_path list, and the if condition evaluates to true,
+	//   skip the file.
 	for _, skipFile := range processedSkipFiles {
-		if skipFile.RenderedSkipIf && util.ListContains(canonicalPath, skipFile.EvaluatedPaths) {
+		inSkipList := util.ListContains(canonicalPath, skipFile.EvaluatedPaths)
+		inNotSkipList := util.ListContains(canonicalPath, skipFile.EvaluatedNotPaths)
+		if skipFile.RenderedSkipIf && inSkipList {
+			return true
+		}
+		if skipFile.RenderedSkipIf && !inNotSkipList {
 			return true
 		}
 	}

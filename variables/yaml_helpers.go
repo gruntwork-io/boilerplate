@@ -456,6 +456,14 @@ func (err RequiredFieldMissing) Error() string {
 	return fmt.Sprintf("Required field %s is missing", string(err))
 }
 
+type MutexRequiredFieldErr struct {
+	fields []string
+}
+
+func (err MutexRequiredFieldErr) Error() string {
+	return fmt.Sprintf("Exactly one of the following fields must be set: %s", strings.Join(err.fields, ","))
+}
+
 type UnrecognizedBoilerplateType BoilerplateType
 
 func (err UnrecognizedBoilerplateType) Error() string {

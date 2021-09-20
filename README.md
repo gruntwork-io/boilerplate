@@ -528,11 +528,17 @@ You can specify files that should be excluded from the rendered output using the
 `boilerplate.yml`. This is most useful when you have templates that need to conditionally exclude files from the
 rendered folder list.
 
-The `skip_files` section is a list of objects with the fields `path` and `if`, where `path` is required. `if` can be
-used to conditionally skip a file from the template folder, and it defaults to `true`. That is, when `if` is omitted,
-the file at the path is always excluded from the output. Note that `path` is always the relative path from the template
-root. Both `path` and `if` support Go templating syntax with access to boilerplate [variables](#variables) and [template
-helpers](#template-helpers).
+The `skip_files` section is a list of objects with the fields `path`, `not_path`, and `if`, where one of `path` or
+`not_path` is required. When `path` is set, all files that match the `path` attribute will be skipped, while when
+`not_path` is set, all files that DO NOT match the `not_path` attribute are skipped (in other words, only paths that
+match `not_path` is kept).
+
+`if` can be used to conditionally skip a file from the template folder, and it defaults to `true`. That is, when `if` is
+omitted, the file at the path is always excluded from the output. Note that `path` and `not_path` are always the
+relative path from the template root.
+
+All three attributes (`path`, `not_path`, and `if`) support Go templating syntax with access to boilerplate
+[variables](#variables) and [template helpers](#template-helpers).
 
 Consider the following boilerplate template folder:
 
@@ -559,6 +565,8 @@ skip_files:
     if: "{{ not .UseEncryption }}"
   - path: "docs/README_WITHOUT_ENCRYPTION.md"
     if: "{{ .UseEncryption }}"
+  - not_path: "docs/**/*"
+    if: "{{ .DocsOnly }}"
 ```
 
 This will:
@@ -566,6 +574,7 @@ This will:
 - Always skip rendering `BOILERPLATE_README.md`.
 - Skip rendering `docs/README_WITHOUT_ENCRYPTION.md` if `UseEncryption` is set to `true`.
 - Skip rendering `docs/README_WITH_ENCRYPTION.md` if `UseEncryption` is set to `false`.
+- If `DocsOnly` is set to `true`, only render the `docs` folder.
 
 For a more concise specification, you can use glob syntax in the `path` to match multiple paths in one entry:
 
