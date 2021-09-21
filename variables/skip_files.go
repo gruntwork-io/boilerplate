@@ -1,9 +1,12 @@
 package variables
 
+import "github.com/gruntwork-io/boilerplate/errors"
+
 // A single skip_file entry, which is a file that (conditionally) should be excluded from the rendered output.
 type SkipFile struct {
-	Path string
-	If   string
+	Path    string
+	NotPath string
+	If      string
 }
 
 // Implement the go-yaml marshaler interface so that the config can be marshaled into yaml. We use a custom marshaler
@@ -12,6 +15,9 @@ func (skipFile SkipFile) MarshalYAML() (interface{}, error) {
 	skipFileYml := map[string]interface{}{}
 	if skipFile.Path != "" {
 		skipFileYml["path"] = skipFile.Path
+	}
+	if skipFile.NotPath != "" {
+		skipFileYml["not_path"] = skipFile.Path
 	}
 	if skipFile.If != "" {
 		skipFileYml["if"] = skipFile.If
@@ -25,6 +31,7 @@ func (skipFile SkipFile) MarshalYAML() (interface{}, error) {
 //   - path: <PATH>
 //     if: <SKIPIF>
 //   - path: <PATH>
+//   - not_path: <PATH>
 //
 // convert to a list of SkipFile structs.
 func UnmarshalSkipFilesFromBoilerplateConfigYaml(fields map[string]interface{}) ([]SkipFile, error) {
@@ -50,17 +57,33 @@ func UnmarshalSkipFilesFromBoilerplateConfigYaml(fields map[string]interface{}) 
 // Given key:value pairs read from a Boilerplate YAML config file of the format:
 //
 // path: <PATH>
+// not_path: <PATH>
 // if: <SKIPIF>
 //
 // This method unmarshals the YAML data into a SkipFile struct
 func unmarshalSkipFileFromBoilerplateConfigYaml(fields map[string]interface{}) (*SkipFile, error) {
-	pathPtr, err := unmarshalStringField(fields, "path", true, "")
+	pathPtr, err := unmarshalStringField(fields, "path", false, "")
 	if err != nil {
 		return nil, err
 	}
+	path := ""
+	if pathPtr != nil {
+		path = *pathPtr
+	}
 
-	// unmarshalStringField only returns nil pointer if there is an error, so we can assume it is not nil here.
-	path := *pathPtr
+	notPathPtr, err := unmarshalStringField(fields, "not_path", false, "")
+	if err != nil {
+		return nil, err
+	}
+	notPath := ""
+	if notPathPtr != nil {
+		notPath = *notPathPtr
+	}
+
+	// One of not_path or path must be set, so we check that here.
+	if (notPath == "" && path == "") || (notPath != "" && path != "") {
+		return nil, errors.WithStackTrace(MutexRequiredFieldErr{fields: []string{"path", "not_path"}})
+	}
 
 	skipIfPtr, err := unmarshalStringField(fields, "if", false, path)
 	if err != nil {
@@ -71,5 +94,5 @@ func unmarshalSkipFileFromBoilerplateConfigYaml(fields map[string]interface{}) (
 		skipIf = *skipIfPtr
 	}
 
-	return &SkipFile{Path: path, If: skipIf}, nil
+	return &SkipFile{Path: path, NotPath: notPath, If: skipIf}, nil
 }

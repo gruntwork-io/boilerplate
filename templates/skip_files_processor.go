@@ -16,6 +16,9 @@ type ProcessedSkipFile struct {
 	// List of paths relative to template folder that should be skipped
 	EvaluatedPaths []string
 
+	// List of paths relative to template folder that should not be skipped
+	EvaluatedNotPaths []string
+
 	// Whether or not to skip the files if the paths match. This is the boilerplate rendered value of the if attribute
 	// of a given skip file.
 	RenderedSkipIf bool
@@ -32,14 +35,20 @@ func processSkipFiles(skipFiles []variables.SkipFile, opts *options.BoilerplateO
 			return nil, errors.WithStackTrace(err)
 		}
 
+		matchedNotPaths, err := renderGlobPath(opts, skipFile.NotPath, "SkipFile")
+		if err != nil {
+			return nil, errors.WithStackTrace(err)
+		}
+
 		renderedSkipIf, err := skipFileIfCondition(skipFile, opts, variables)
 		if err != nil {
 			return nil, err
 		}
 
 		processedSkipFile := ProcessedSkipFile{
-			EvaluatedPaths: matchedPaths,
-			RenderedSkipIf: renderedSkipIf,
+			EvaluatedPaths:    matchedPaths,
+			EvaluatedNotPaths: matchedNotPaths,
+			RenderedSkipIf:    renderedSkipIf,
 		}
 		output = append(output, processedSkipFile)
 	}
@@ -74,6 +83,10 @@ func debugLogForMatchedPaths(sourcePath string, paths []string, directiveName st
 // renderGlobPath will render the glob of the given path in the template folder and return the list of matched paths.
 // Note that the paths will be canonicalized to unix slashes regardless of OS.
 func renderGlobPath(opts *options.BoilerplateOptions, path string, directiveName string) ([]string, error) {
+	if path == "" {
+		return []string{}, nil
+	}
+
 	rawMatchedPaths, err := zglob.Glob(filepath.Join(opts.TemplateFolder, path))
 	if err != nil {
 		return nil, errors.WithStackTrace(err)
