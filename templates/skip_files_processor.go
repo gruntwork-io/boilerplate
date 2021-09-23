@@ -30,14 +30,20 @@ type ProcessedSkipFile struct {
 func processSkipFiles(skipFiles []variables.SkipFile, opts *options.BoilerplateOptions, variables map[string]interface{}) ([]ProcessedSkipFile, error) {
 	output := []ProcessedSkipFile{}
 	for _, skipFile := range skipFiles {
-		matchedPaths, err := renderGlobPath(opts, skipFile.Path, "SkipFile")
+		matchedPaths, err := renderGlobPath(opts, skipFile.Path)
 		if err != nil {
 			return nil, errors.WithStackTrace(err)
 		}
+		if skipFile.Path != "" {
+			debugLogForMatchedPaths(skipFile.Path, matchedPaths, "SkipFile", "Path")
+		}
 
-		matchedNotPaths, err := renderGlobPath(opts, skipFile.NotPath, "SkipFile")
+		matchedNotPaths, err := renderGlobPath(opts, skipFile.NotPath)
 		if err != nil {
 			return nil, errors.WithStackTrace(err)
+		}
+		if skipFile.NotPath != "" {
+			debugLogForMatchedPaths(skipFile.NotPath, matchedNotPaths, "SkipFile", "NotPath")
 		}
 
 		renderedSkipIf, err := skipFileIfCondition(skipFile, opts, variables)
@@ -68,13 +74,19 @@ func skipFileIfCondition(skipFile variables.SkipFile, opts *options.BoilerplateO
 	}
 
 	// TODO: logger-debug - switch to debug
-	util.Logger.Printf("If attribute for SkipFile Path %s evaluated to '%s'", skipFile.Path, rendered)
+	if skipFile.Path != "" {
+		util.Logger.Printf("If attribute for SkipFile Path %s evaluated to '%s'", skipFile.Path, rendered)
+	} else if skipFile.NotPath != "" {
+		util.Logger.Printf("If attribute for SkipFile NotPath %s evaluated to '%s'", skipFile.NotPath, rendered)
+	} else {
+		util.Logger.Printf("WARN: SkipFile has no path or not_path!")
+	}
 	return rendered == "true", nil
 }
 
-func debugLogForMatchedPaths(sourcePath string, paths []string, directiveName string) {
+func debugLogForMatchedPaths(sourcePath string, paths []string, directiveName string, directiveAttribute string) {
 	// TODO: logger-debug - switch to debug
-	util.Logger.Printf("Following paths were picked up by Path attribute for %s (%s):", directiveName, sourcePath)
+	util.Logger.Printf("Following paths were picked up by %s attribute for %s (%s):", directiveAttribute, directiveName, sourcePath)
 	for _, path := range paths {
 		util.Logger.Printf("\t- %s", path)
 	}
@@ -82,7 +94,7 @@ func debugLogForMatchedPaths(sourcePath string, paths []string, directiveName st
 
 // renderGlobPath will render the glob of the given path in the template folder and return the list of matched paths.
 // Note that the paths will be canonicalized to unix slashes regardless of OS.
-func renderGlobPath(opts *options.BoilerplateOptions, path string, directiveName string) ([]string, error) {
+func renderGlobPath(opts *options.BoilerplateOptions, path string) ([]string, error) {
 	if path == "" {
 		return []string{}, nil
 	}
@@ -96,6 +108,5 @@ func renderGlobPath(opts *options.BoilerplateOptions, path string, directiveName
 	for _, path := range rawMatchedPaths {
 		matchedPaths = append(matchedPaths, filepath.ToSlash(path))
 	}
-	debugLogForMatchedPaths(path, matchedPaths, directiveName)
 	return matchedPaths, nil
 }
