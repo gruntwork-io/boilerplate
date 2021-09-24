@@ -1,5 +1,4 @@
 variables:
-
   - name: SomeGlobalVar
     type: string
     default: Inazagi
@@ -18,3 +17,7 @@ dependencies:
     variables:
       - name: Title
         description: Enter the title of the website
+
+skip_files:
+  - path: skipped.txt
+    if: '{{ list templateFolder "skipped.txt" | join "/" | pathExists }}'

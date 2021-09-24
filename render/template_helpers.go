@@ -86,9 +86,10 @@ func CreateTemplateHelpers(templatePath string, opts *options.BoilerplateOptions
 		"numRange":   slice,
 		"keysSorted": keys,
 
-		"snippet": wrapWithTemplatePath(templatePath, opts, snippet),
-		"include": wrapIncludeWithTemplatePath(templatePath, opts),
-		"shell":   wrapWithTemplatePath(templatePath, opts, shell),
+		"snippet":    wrapWithTemplatePath(templatePath, opts, snippet),
+		"include":    wrapIncludeWithTemplatePath(templatePath, opts),
+		"shell":      wrapWithTemplatePath(templatePath, opts, shell),
+		"pathExists": util.PathExists,
 
 		"templateIsDefined": wrapIsDefinedWithTemplate(tmpl),
 
