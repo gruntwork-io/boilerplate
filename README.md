@@ -738,6 +738,7 @@ Boilerplate also includes several custom helpers that you can access that enhanc
 * `outputFolder`: Return the value of the `--output-folder` command-line option. Useful for building relative paths.
 * `envWithDefault NAME DEFAULT`: Render the value of environment variable `NAME`. If that environment variable is empty or not
   defined, render `DEFAULT` instead.
+* `pathExists PATH`: Returns true if the given path exists on the file system.
 * `templateIsDefined NAME`: Returns a boolean indicating if template called `NAME` is known. Use this to conditionally
   include one boilerplate template with another. Most often useful along with [partials](#partials).
 * `toYaml`: Encodes an input variable as a YAML string. Similar to the `toJson` function in sprig.
