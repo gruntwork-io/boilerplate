@@ -480,7 +480,7 @@ func shouldSkipPath(path string, opts *options.BoilerplateOptions, processedSkip
 		return true
 	}
 	// not in any == not in all
-	if anyNotPathDefined(processedSkipFiles) && pathInAnySkipNotPath(canonicalPath, processedSkipFiles) == false {
+	if anyNotPathEffective(processedSkipFiles) && pathInAnySkipNotPath(canonicalPath, processedSkipFiles) == false {
 		return true
 	}
 
@@ -499,10 +499,11 @@ func pathInAnySkipPath(canonicalPath string, skipFileList []ProcessedSkipFile) b
 	return false
 }
 
-// anyNotPathDefined returns true if any skip file has a NotPath attribute defined.
-func anyNotPathDefined(skipFileList []ProcessedSkipFile) bool {
+// anyNotPathEffective returns true if any skip file has a NotPath attribute defined and the rendered if condition is
+// true.
+func anyNotPathEffective(skipFileList []ProcessedSkipFile) bool {
 	for _, skipFile := range skipFileList {
-		if len(skipFile.EvaluatedNotPaths) > 0 {
+		if skipFile.RenderedSkipIf && len(skipFile.EvaluatedNotPaths) > 0 {
 			return true
 		}
 	}

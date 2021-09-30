@@ -1,0 +1,7 @@
+skip_files:
+  - path: docs
+    if: "{{ not .DocsOnly }}"
+  - path: docs/**/*
+    if: "{{ not .DocsOnly }}"
+  - not_path: docs/**/*
+    if: "{{ .DocsOnly }}"
