@@ -99,8 +99,11 @@ func renderGlobPath(opts *options.BoilerplateOptions, path string) ([]string, er
 		return []string{}, nil
 	}
 
-	rawMatchedPaths, err := zglob.Glob(filepath.Join(opts.TemplateFolder, path))
+	globPath := filepath.Join(opts.TemplateFolder, path)
+	rawMatchedPaths, err := zglob.Glob(globPath)
 	if err != nil {
+		// TODO: logger-debug - switch to debug
+		util.Logger.Printf("ERROR: could not glob %s", globPath)
 		return nil, errors.WithStackTrace(err)
 	}
 	// Canonicalize the matched paths prior to storage
