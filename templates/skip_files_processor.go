@@ -30,7 +30,7 @@ type ProcessedSkipFile struct {
 func processSkipFiles(skipFiles []variables.SkipFile, opts *options.BoilerplateOptions, variables map[string]interface{}) ([]ProcessedSkipFile, error) {
 	output := []ProcessedSkipFile{}
 	for _, skipFile := range skipFiles {
-		matchedPaths, err := renderGlobPath(opts, skipFile.Path)
+		matchedPaths, err := renderGlobPath(opts, skipFile.Path, variables)
 		if err != nil {
 			return nil, errors.WithStackTrace(err)
 		}
@@ -38,7 +38,7 @@ func processSkipFiles(skipFiles []variables.SkipFile, opts *options.BoilerplateO
 			debugLogForMatchedPaths(skipFile.Path, matchedPaths, "SkipFile", "Path")
 		}
 
-		matchedNotPaths, err := renderGlobPath(opts, skipFile.NotPath)
+		matchedNotPaths, err := renderGlobPath(opts, skipFile.NotPath, variables)
 		if err != nil {
 			return nil, errors.WithStackTrace(err)
 		}
@@ -94,12 +94,17 @@ func debugLogForMatchedPaths(sourcePath string, paths []string, directiveName st
 
 // renderGlobPath will render the glob of the given path in the template folder and return the list of matched paths.
 // Note that the paths will be canonicalized to unix slashes regardless of OS.
-func renderGlobPath(opts *options.BoilerplateOptions, path string) ([]string, error) {
+func renderGlobPath(opts *options.BoilerplateOptions, path string, variables map[string]interface{}) ([]string, error) {
 	if path == "" {
 		return []string{}, nil
 	}
 
-	globPath := filepath.Join(opts.TemplateFolder, path)
+	rendered, err := render.RenderTemplateRecursively(opts.TemplateFolder, path, variables, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	globPath := filepath.Join(opts.TemplateFolder, rendered)
 	rawMatchedPaths, err := zglob.Glob(globPath)
 	if err != nil {
 		// TODO: logger-debug - switch to debug

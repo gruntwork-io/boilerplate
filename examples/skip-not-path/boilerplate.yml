@@ -1,2 +1,6 @@
+variables:
+  - name: SkipNotPath
+    default: "docs"
+
 skip_files:
-  - not_path: docs/**
+  - not_path: "{{ .SkipNotPath }}/**"
