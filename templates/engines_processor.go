@@ -25,7 +25,7 @@ func processEngines(
 ) ([]ProcessedEngine, error) {
 	output := []ProcessedEngine{}
 	for _, engine := range engines {
-		matchedPaths, err := renderGlobPath(opts, engine.Path)
+		matchedPaths, err := renderGlobPath(opts, engine.Path, variables)
 		if err != nil {
 			return nil, err
 		}
