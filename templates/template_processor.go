@@ -470,8 +470,8 @@ func shouldSkipPath(path string, opts *options.BoilerplateOptions, processedSkip
 
 	// First check if the path is a part of the the skipFile list. To handle skipping:
 	// - If the path matches with any entry in the skip files list and the if condition evaluates to true, skip the file.
-	// - If the path matches does NOT match with any entry in the not_path list, and the if condition evaluates to true,
-	//   skip the file.
+	// - If the path does NOT match with any entry in the not_path list, and the if condition evaluates to true, skip
+	//   the file.
 	// NOTE: the composition for these directives are different. For `path` attribute, the composition is an `any`
 	// operation. That is, if the path matches any one of the `path` attributes, then the file is skipped.
 	// OTOH, for `not_path` attribute, the composition is an `all` operation. The file must not match ALL of the

@@ -531,7 +531,7 @@ rendered folder list.
 The `skip_files` section is a list of objects with the fields `path`, `not_path`, and `if`, where one of `path` or
 `not_path` is required. When `path` is set, all files that match the `path` attribute will be skipped, while when
 `not_path` is set, all files that DO NOT match the `not_path` attribute are skipped (in other words, only paths that
-match `not_path` is kept).
+match `not_path` are kept).
 
 `if` can be used to conditionally skip a file from the template folder, and it defaults to `true`. That is, when `if` is
 omitted, the file at the path is always excluded from the output. Note that `path` and `not_path` are always the
