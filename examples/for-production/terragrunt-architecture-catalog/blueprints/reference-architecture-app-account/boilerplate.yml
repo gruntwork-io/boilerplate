@@ -1,0 +1,38 @@
+# This blueprint creates an account tree in the infrastructure-live repo for a single app account that
+# has a single App VPC with an Elasticache Redis Cluster and an RDS Postgres Database.
+
+variables:
+  - name: AWSAccountName
+    description: The name of the AWS Account being deployed to.
+
+  - name: AWSAccountID
+    description: The ID of the AWS Account being deployed to.
+
+  - name: AWSRegion
+    description: The name of the AWS Region being deployed to.
+
+  # The following are convenience variables for DRY-ing up the dependencies. These are not intended to be
+  # updated/provided by users. We follow the Go convention of camelCase instead of TitleCase.
+  - name: accountOutputFolder
+    description: "The output folder that denotes the account in the infrastructure-live folder structure."
+    default: "{{ outputFolder }}/{{ .AWSAccountName }}/"
+  - name: accountRegionOutputFolder
+    description: "The output folder that denotes the region in the infrastructure-live folder structure."
+    default: "{{ .accountOutputFolder }}/{{ .AWSRegion }}/"
+
+dependencies:
+  - name: account-root
+    template-url: "{{ templateFolder }}/../../templates/_root/account"
+    output-folder: "{{ .accountOutputFolder }}"
+
+  - name: region-root
+    template-url: "{{ templateFolder }}/../../templates/_root/region"
+    output-folder: "{{ .accountRegionOutputFolder }}"
+
+  - name: redis-blueprint
+    template-url: "{{ templateFolder }}/../redis"
+    output-folder: "{{ outputFolder }}"
+
+  - name: postgres-blueprint
+    template-url: "{{ templateFolder }}/../postgres"
+    output-folder: "{{ outputFolder }}"

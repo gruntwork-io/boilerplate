@@ -1,0 +1,44 @@
+# This blueprint creates the terragrunt modules necessary to deploy an App VPC into a single region in a single account.
+
+variables:
+  - name: AWSAccountName
+    description: The name of the AWS account.
+
+  - name: AWSRegion
+    description: The name of the AWS region.
+
+  # The following are convenience variables for DRY-ing up the dependencies. These are not intended to be
+  # updated/provided by users. We follow the Go convention of camelCase instead of TitleCase.
+  - name: accountOutputFolder
+    description: "The output folder that denotes the account in the infrastructure-live folder structure."
+    default: "{{ outputFolder }}/{{ .AWSAccountName }}//"
+  - name: accountRegionOutputFolder
+    description: "The output folder that denotes the region in the infrastructure-live folder structure."
+    default: "{{ .accountOutputFolder }}/{{ .AWSRegion }}/"
+
+
+dependencies:
+  - name: vpc-app
+    template-url: "{{ templateFolder }}/../../templates/services/networking/vpc"
+    output-folder: "{{ .accountRegionOutputFolder }}/networking/vpc"
+    variables:
+      - name: IsEnvCommon
+        type: bool
+        default: false
+
+  - name: vpc-app-envcommon
+    template-url: "{{ templateFolder }}/../../templates/services/networking/vpc"
+    output-folder: "{{ outputFolder }}/_envcommon/networking"
+    variables:
+      - name: IsEnvCommon
+        type: bool
+        default: true
+
+hooks:
+  after:
+    # Format the rendered HCL files
+    - command: terragrunt
+      args:
+        - "hclfmt"
+        - "--terragrunt-working-dir"
+        - "{{ outputFolder }}"

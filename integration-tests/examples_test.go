@@ -136,5 +136,7 @@ func testExample(t *testing.T, templateFolder string, outputFolder string, varFi
 
 	err := app.Run(args)
 	assert.NoError(t, err, errors.PrintErrorWithStackTrace(err))
-	assertDirectoriesEqual(t, expectedOutputFolder, outputFolder)
+	if expectedOutputFolder != "" {
+		assertDirectoriesEqual(t, expectedOutputFolder, outputFolder)
+	}
 }

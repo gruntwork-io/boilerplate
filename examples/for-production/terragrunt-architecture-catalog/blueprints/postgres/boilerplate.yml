@@ -1,0 +1,87 @@
+# This blueprint creates the terragrunt modules necessary to deploy Postgres RDS Cluster into a single region in a
+# single account.
+
+variables:
+  # Required variables
+  - name: AWSAccountName
+    description: The name of the AWS account.
+
+  - name: AWSRegion
+    description: The name of the AWS region.
+
+  - name: DBSecretsManagerArn
+    description: "Enter the ID (name or ARN) of an AWS Secrets Manager secret containing the database configuration details."
+    # Example JSON value for the Secrets Manager secret:
+    # {
+    #   "engine": "postgres",
+    #   "username": "example-user",
+    #   "password": "example-password",
+    #   "dbname": "myDatabase",
+    #   "port": "3306"
+    # }
+
+  # Optional variables
+  - name: PostgresEngineVersion
+    type: string
+    description: "The version of Postgres to use. For allowed values, see the AWS documentation here: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/CHAP_PostgreSQL.html#PostgreSQL.Concepts.General.DBVersions"
+    default: "14.1"
+
+  - name: IncludeVPCApp
+    type: bool
+    description: Whether or not to render the vpc template as a dependency.
+    default: true
+
+  # The following are convenience variables for DRY-ing up the dependencies. These are not intended to be
+  # updated/provided by users. We follow the Go convention of camelCase instead of TitleCase.
+  - name: accountOutputFolder
+    description: "The output folder that denotes the account in the infrastructure-live folder structure."
+    default: "{{ outputFolder }}/{{ .AWSAccountName }}/"
+  - name: accountRegionOutputFolder
+    description: "The output folder that denotes the region in the infrastructure-live folder structure."
+    default: "{{ .accountOutputFolder }}/{{ .AWSRegion }}/"
+
+dependencies:
+  - name: rds
+    template-url: "{{ templateFolder }}/../../templates/services/data-stores/rds"
+    output-folder: "{{ .accountRegionOutputFolder }}/data-stores/postgres"
+    variables:
+      - name: IsEnvCommon
+        type: bool
+        default: false
+      - name: RDSEngine
+        type: string
+        default: "postgres"
+      - name: RDSEngineVersion
+        type: string
+        default: "{{ .PostgresEngineVersion }}"
+
+  - name: rds-envcommon
+    template-url: "{{ templateFolder }}/../../templates/services/data-stores/rds"
+    output-folder: "{{ outputFolder }}/_envcommon/data-stores"
+    variables:
+      - name: IsEnvCommon
+        type: bool
+        default: true
+      - name: RDSEngine
+        type: string
+        default: "postgres"
+      - name: RDSEngineVersion
+        type: string
+        default: "{{ .PostgresEngineVersion }}"
+
+  # The following are additional blueprints to include. We use blueprints instead of templates for these dependencies so
+  # that we can include everything necessary for each component.
+  - name: vpc-app
+    template-url: "{{ templateFolder }}/../vpc-app"
+    output-folder: "{{ outputFolder }}"
+    skip: "{{ not .IncludeVPCApp }}"
+
+
+hooks:
+  after:
+    # Format the rendered HCL files
+    - command: terragrunt
+      args:
+        - "hclfmt"
+        - "--terragrunt-working-dir"
+        - "{{ outputFolder }}"

@@ -1,0 +1,141 @@
+# This template creates the terragrunt.hcl configurations for deploying an RDS Database Cluster
+
+variables:
+  # Required variables
+  - name: DBSecretsManagerArn
+    description: "Enter the ID (name or ARN) of an AWS Secrets Manager secret containing the database configuration details."
+    # Example JSON value for the Secrets Manager secret:
+    # {
+    #   "engine": "aurora-mysql",
+    #   "username": "example-user",
+    #   "password": "example-password",
+    #   "dbname": "myDatabase",
+    #   "port": "3306"
+    # }
+
+  - name: RDSEngine
+    type: string
+    description: "The database engine to use (e.g., postgres, mysql, etc)."
+
+  - name: RDSEngineVersion
+    type: string
+    description: "The version of the associated database engine to use."
+
+  # Optional variables
+  - name: IsEnvCommon
+    type: bool
+    description: When true, render only the configuration file for envcommon.
+    default: false
+
+  - name: EnvCommonComponent
+    type: string
+    description: The service component that the envcommon configuration is for.
+    default: data-stores/rds
+
+  - name: EnvCommonMergeStrategy
+    type: string
+    description: The merge strategy for the envcommon config.
+    default: shallow
+
+  - name: IncludeCommonVars
+    type: bool
+    description: Whether or not to include the variables from common.hcl in this Terragrunt configuration.
+    default: true
+
+  - name: IncludeAccountVars
+    type: bool
+    description: Whether or not to include the variables from account.hcl in this Terragrunt configuration.
+    default: true
+
+  - name: IncludeRegionVars
+    type: bool
+    description: Whether or not to include the variables from region.hcl in this Terragrunt configuration.
+    default: true
+
+  - name: UsingCISCompliance
+    type: bool
+    description: If true, enable the use of the terraform-cis-aws-service-catalog repo.
+    default: false
+
+  - name: GruntworkGitBaseURLSSH
+    description: Enter the base SSH URL of the module's Git repo.
+    default: git@github.com:gruntwork-io
+
+  - name: RepoName
+    description: Enter the name of the repository where the Terraform module is located.
+    default: terraform-aws-service-catalog
+
+  - name: RepoRef
+    description: Enter the Git ref to use for the module.
+    default: v0.76.0
+
+  - name: ModulePath
+    description: Enter the path of the Terraform module in the repository.
+    default: modules/data-stores/rds
+
+  - name: Module
+    description: "Enter the path and version of the module to use within the desired repository. e.g. modules/data-stores/redis?ref=v0.0.1."
+    default: "{{ .ModulePath }}?ref={{ .RepoRef }}"
+
+  - name: RDSDatabaseName
+    description: "Enter the name to use for the RDS DB instance."
+    default: "rds-${local.name_prefix}-${local.account_name}"
+
+  - name: BaseRDSInstanceType
+    description: "Enter the RDS DB instance type (e.g db.r3.large)."
+    default: "db.t3.micro"
+
+  - name: RDSInstanceType
+    description: "Same as BaseRDSInstanceType, but used to override the value for the specific environment."
+    default: "db.t3.micro"
+
+  - name: BaseRDSAllocatedStorage
+    type: int
+    description: "Enter The amount of storage space the DB should use, in GB."
+    default: 20
+
+  - name: RDSAllocatedStorage
+    type: int
+    description: "Same as BaseRDSAllocatedStorage, but used to override the value for the specific environment."
+    default: 20
+
+  # Dependency paths
+  - name: AppVPCPath
+    description: The path to the vpc-app module.
+    default: "${get_terragrunt_dir()}/../../networking/vpc"
+
+  # Mock data for included dependencies
+  - name: MockVPCID
+    description: The VPC ID to use for mock outputs in the App VPC dependency block.
+    default: "vpc-abcd1234"
+
+  - name: MockVPCSubnets
+    type: list
+    description: The subnet IDs to use for mock outputs in the App VPC dependency block.
+    default:
+      - subnet-abcd1234
+      - subnet-bcd1234a
+
+  - name: MockVPCSubnetCIDRBlocks
+    type: list
+    description: The CIDR blocks to use for mock outputs in the App VPC dependency block.
+    default:
+      - "10.0.0.0/24"
+      - "10.0.1.0/24"
+
+  - name: AllowedMockCommands
+    type: list
+    description: The Terraform commands that the mocks are allowed to be used with.
+    default:
+      - validate
+
+partials:
+  - ../../../layouts/terragrunt.hcl
+  - ../../../layouts/envcommon.hcl
+
+# When rendering _envcommon, only render rds.hcl, while rendering everything else otherwise.
+skip_files:
+  - path: rds.hcl
+    if: "{{ not .IsEnvCommon }}"
+  - not_path: rds.hcl
+    if: "{{ .IsEnvCommon }}"
