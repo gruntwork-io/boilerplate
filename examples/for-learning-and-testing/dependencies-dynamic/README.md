@@ -1,6 +1,6 @@
-# Dynamic dependencies example
+# {{ .Title }}
 
-This is a boilerplate template that shows an example of using dependencies. It specifies both the
+{{ .Description }}. It specifies both the
 [docs](/examples/for-learning-and-testing/docs) and [website](/examples/for-learning-and-testing/website) examples as
 dependencies to show how one boilerplate template can pull in another, and that you can use interpolation in the
 `template-url` and `output-folder` parameters of dependencies to dynamically specify where to read the template and

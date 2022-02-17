@@ -16,16 +16,20 @@ variables:
     type: bool
     default: true
 
+  - name: RemoteBranch
+    description: The branch of boilerplate repo to use when pulling down remote dependencies.
+    default: "master"
+
 dependencies:
   - name: docs
-    template-url: "git@github.com:gruntwork-io/boilerplate.git//examples/docs?ref=master"
+    template-url: "git@github.com:gruntwork-io/boilerplate.git//examples/for-learning-and-testing/docs?ref={{ .RemoteBranch }}"
     output-folder: ./docs
     variables:
       - name: Title
         description: Enter the title of the docs page
 
   - name: website
-    template-url: "git@github.com:gruntwork-io/boilerplate.git//examples/website?ref=master"
+    template-url: "git@github.com:gruntwork-io/boilerplate.git//examples/for-learning-and-testing/website?ref={{ .RemoteBranch }}"
     output-folder: ./website
     variables:
       - name: Title
