@@ -16,11 +16,9 @@ const MaxReferenceDepth = 20
 // Get a value for each of the variables specified in boilerplateConfig, other than those already in existingVariables.
 // The value for a variable can come from the user (if the  non-interactive option isn't set), the default value in the
 // config, or a command line option.
+// TODO: update docs
 func GetVariables(opts *options.BoilerplateOptions, boilerplateConfig, rootBoilerplateConfig *BoilerplateConfig, thisDep variables.Dependency) (map[string]interface{}, error) {
-	vars := map[string]interface{}{}
-	for key, value := range opts.Vars {
-		vars[key] = value
-	}
+	renderedVariables := map[string]interface{}{}
 
 	// Add a variable for all variables contained in the root config file. This will allow Golang template users
 	// to directly access these with an expression like "{{ .BoilerplateConfigVars.foo.Default }}"
@@ -28,7 +26,7 @@ func GetVariables(opts *options.BoilerplateOptions, boilerplateConfig, rootBoile
 	for _, configVar := range rootBoilerplateConfig.Variables {
 		rootConfigVars[configVar.Name()] = configVar
 	}
-	vars["BoilerplateConfigVars"] = rootConfigVars
+	renderedVariables["BoilerplateConfigVars"] = rootConfigVars
 
 	// Add a variable for all dependencies contained in the root config file. This will allow Golang template users
 	// to directly access these with an expression like "{{ .BoilerplateConfigDeps.foo.OutputFolder }}"
@@ -36,34 +34,36 @@ func GetVariables(opts *options.BoilerplateOptions, boilerplateConfig, rootBoile
 	for _, dep := range rootBoilerplateConfig.Dependencies {
 		rootConfigDeps[dep.Name] = dep
 	}
-	vars["BoilerplateConfigDeps"] = rootConfigDeps
+	renderedVariables["BoilerplateConfigDeps"] = rootConfigDeps
 
-	// Add a variable for "the boilerplate template currently being processed.
+	// Add a variable for "the boilerplate template currently being processed".
 	thisTemplateProps := map[string]interface{}{}
 	thisTemplateProps["Config"] = boilerplateConfig
 	thisTemplateProps["Options"] = opts
 	thisTemplateProps["CurrentDep"] = thisDep
-	vars["This"] = thisTemplateProps
+	renderedVariables["This"] = thisTemplateProps
+
+	variablesToRender := map[string]interface{}{}
+	for key, value := range opts.Vars {
+		variablesToRender[key] = value
+	}
 
 	variablesInConfig := getAllVariablesInConfig(boilerplateConfig)
-
 	for _, variable := range variablesInConfig {
-		unmarshalled, err := getValueForVariable(variable, variablesInConfig, vars, opts, 0)
+		unmarshalled, err := getValueForVariable(variable, variablesInConfig, variablesToRender, opts, 0)
 		if err != nil {
 			return nil, err
 		}
-		vars[variable.Name()] = unmarshalled
+		variablesToRender[variable.Name()] = unmarshalled
 	}
 
-	// The reason we loop over variablesInConfig a second time is we want to load them all into our map so if they
-	// are referenced by another variable, we can find them, regardless of the order in which they were defined
-	renderedVariables, err := render.RenderVariables(opts, vars)
+	newlyRenderedVariables, err := render.RenderVariables(opts, variablesToRender, renderedVariables)
 	if err != nil {
 		return nil, err
 	}
 
 	for _, variable := range variablesInConfig {
-		renderedValue := renderedVariables[variable.Name()]
+		renderedValue := newlyRenderedVariables[variable.Name()]
 		renderedValueWithType, err := variables.ConvertType(renderedValue, variable)
 		if err != nil {
 			return nil, err

@@ -70,18 +70,22 @@ func executeTemplate(tmpl *template.Template, variables map[string]interface{}) 
 
 // Variable values are allowed to use Go templating syntax (e.g. to reference other variables), so this function loops
 // over each variable value, renders each one, and returns a new map of rendered variables.
-func RenderVariables(opts *options.BoilerplateOptions, variables map[string]interface{}) (map[string]interface{}, error) {
+func RenderVariables(
+	opts *options.BoilerplateOptions,
+	variablesToRender map[string]interface{},
+	alreadyRenderedVariables map[string]interface{},
+) (map[string]interface{}, error) {
 	// TODO: explain
 	optsForRender := *opts
 	optsForRender.OnMissingKey = options.ExitWithError
 
 	unrenderedVariables := []string{}
-	for variableName, _ := range variables {
+	for variableName := range variablesToRender {
 		unrenderedVariables = append(unrenderedVariables, variableName)
 	}
 
 	var renderErr error
-	renderedVariables := map[string]interface{}{}
+	renderedVariables := alreadyRenderedVariables
 	rendered := true
 	for iterations := 0; len(unrenderedVariables) > 0 && rendered; iterations++ {
 		if iterations > MaxRenderAttempts {
@@ -90,7 +94,7 @@ func RenderVariables(opts *options.BoilerplateOptions, variables map[string]inte
 			return nil, fmt.Errorf("TODO: concrete error")
 		}
 
-		unrenderedVariables, renderedVariables, rendered, renderErr = attemptRenderVariables(&optsForRender, unrenderedVariables, renderedVariables, variables)
+		unrenderedVariables, renderedVariables, rendered, renderErr = attemptRenderVariables(&optsForRender, unrenderedVariables, renderedVariables, variablesToRender)
 	}
 	if len(unrenderedVariables) > 0 {
 		return nil, renderErr
