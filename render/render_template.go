@@ -154,8 +154,10 @@ func attemptRenderVariables(
 	return out, allRenderErr
 }
 
-// Variable values are allowed to use Go templating syntax (e.g. to reference other variables), so here, we render
-// those templates and return a new map of variables that are fully resolved.
+// attemptRenderVariable renders a single variable, using the provided renderedVariables to resolve any variable
+// references.
+// NOTE: This function is not responsible for converting the output type to the expected type configured on the
+// boilerplate config, and will always use string as the primitive output.
 func attemptRenderVariable(opts *options.BoilerplateOptions, variable interface{}, renderedVariables map[string]interface{}) (interface{}, error) {
 	valueType := reflect.ValueOf(variable)
 
