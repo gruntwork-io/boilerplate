@@ -74,10 +74,10 @@ func executeTemplate(tmpl *template.Template, variables map[string]interface{}) 
 //
 // The main use case for this is to allow boilerplate variables to reference other boilerplate variables. This can
 // obviously lead to an infinite loop. The proper way to prevent that would be to parse Go template syntax and build a
-// dependency graph, but that is way too complicated. Therefore, we use hacky solution: render the template multiple
-// times. If it is the same as the last time you rendered it, that means no new interpolations were processed, so
-// we're done. If it changes, that means more interpolations are being processed, so keep going, up to a
-// maximum number of render attempts.
+// dependency graph, but that is way too complicated. Therefore, we use a hacky solution: render the template multiple
+// times. If it is the same as the last time you rendered it, that means no new interpolations were processed, so we're
+// done. If it changes, that means more interpolations are being processed, so keep going, up to a maximum number of
+// render attempts.
 func RenderTemplateRecursively(templatePath string, templateContents string, variables map[string]interface{}, opts *options.BoilerplateOptions) (string, error) {
 	lastOutput := templateContents
 	for i := 0; i < MaxRenderAttempts; i++ {

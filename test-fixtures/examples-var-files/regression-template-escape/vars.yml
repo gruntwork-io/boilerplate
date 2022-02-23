@@ -1,0 +1,1 @@
+SettingValue: "artifacts/{{ `{{workflow.name}}` }}"
