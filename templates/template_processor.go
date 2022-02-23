@@ -165,7 +165,7 @@ func shouldSkipHook(hook variables.Hook, opts *options.BoilerplateOptions, vars 
 		return false, nil
 	}
 
-	rendered, err := render.RenderTemplateRecursively(opts.TemplateFolder, hook.Skip, vars, opts)
+	rendered, err := render.RenderTemplateFromString(opts.TemplateFolder, hook.Skip, vars, opts)
 	if err != nil {
 		return false, err
 	}
@@ -310,7 +310,7 @@ func shouldSkipDependency(dependency variables.Dependency, opts *options.Boilerp
 		return false, nil
 	}
 
-	rendered, err := render.RenderTemplateRecursively(opts.TemplateFolder, dependency.Skip, variables, opts)
+	rendered, err := render.RenderTemplateFromString(opts.TemplateFolder, dependency.Skip, variables, opts)
 	if err != nil {
 		return false, err
 	}

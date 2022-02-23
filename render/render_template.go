@@ -68,62 +68,71 @@ func executeTemplate(tmpl *template.Template, variables map[string]interface{}) 
 	return output.String(), nil
 }
 
-// Render the template at templatePath, with contents templateContents, using the Go template engine, passing in the
-// given variables as data. If the rendered result contains more Go templating syntax, render it again, and repeat this
-// process recursively until there is no more rendering to be done.
-//
-// The main use case for this is to allow boilerplate variables to reference other boilerplate variables. This can
-// obviously lead to an infinite loop. The proper way to prevent that would be to parse Go template syntax and build a
-// dependency graph, but that is way too complicated. Therefore, we use a hacky solution: render the template multiple
-// times. If it is the same as the last time you rendered it, that means no new interpolations were processed, so we're
-// done. If it changes, that means more interpolations are being processed, so keep going, up to a maximum number of
-// render attempts.
-func RenderTemplateRecursively(templatePath string, templateContents string, variables map[string]interface{}, opts *options.BoilerplateOptions) (string, error) {
-	lastOutput := templateContents
-	for i := 0; i < MaxRenderAttempts; i++ {
-		output, err := RenderTemplateFromString(templatePath, lastOutput, variables, opts)
-		if err != nil {
-			return "", err
-		}
-
-		if output == lastOutput {
-			return output, nil
-		}
-
-		lastOutput = output
-	}
-
-	return "", errors.WithStackTrace(TemplateContainsInfiniteLoop{TemplatePath: templatePath, TemplateContents: templateContents, RenderAttempts: MaxRenderAttempts})
-}
-
 // Variable values are allowed to use Go templating syntax (e.g. to reference other variables), so this function loops
 // over each variable value, renders each one, and returns a new map of rendered variables.
-func RenderVariables(variables map[string]interface{}, opts *options.BoilerplateOptions) (map[string]interface{}, error) {
-	renderedVariables := map[string]interface{}{}
+func RenderVariables(opts *options.BoilerplateOptions, variables map[string]interface{}) (map[string]interface{}, error) {
+	// TODO: explain
+	optsForRender := *opts
+	optsForRender.OnMissingKey = options.ExitWithError
 
-	for variableName, variableValue := range variables {
-		rendered, err := RenderVariable(variableValue, variables, opts)
-		if err != nil {
-			return nil, err
+	unrenderedVariables := []string{}
+	for variableName, _ := range variables {
+		unrenderedVariables = append(unrenderedVariables, variableName)
+	}
+
+	var renderErr error
+	renderedVariables := map[string]interface{}{}
+	rendered := true
+	for iterations := 0; len(unrenderedVariables) > 0 && rendered; iterations++ {
+		if iterations > MaxRenderAttempts {
+			// Reached maximum supported iterations, which is most likely an infinite loop bug so cut the iteration
+			// short an return an error.
+			return nil, fmt.Errorf("TODO: concrete error")
 		}
-		renderedVariables[variableName] = rendered
+
+		unrenderedVariables, renderedVariables, rendered, renderErr = attemptRenderVariables(&optsForRender, unrenderedVariables, renderedVariables, variables)
+	}
+	if len(unrenderedVariables) > 0 {
+		return nil, renderErr
 	}
 
 	return renderedVariables, nil
 }
 
+func attemptRenderVariables(
+	opts *options.BoilerplateOptions,
+	unrenderedVariables []string,
+	renderedVariables map[string]interface{},
+	variables map[string]interface{},
+) ([]string, map[string]interface{}, bool, error) {
+	newUnrenderedVariables := []string{}
+	wasRendered := false
+
+	// TODO: collect render errs
+	for _, variableName := range unrenderedVariables {
+		rendered, err := attemptRenderVariable(opts, variables[variableName], renderedVariables)
+		if err != nil {
+			newUnrenderedVariables = append(newUnrenderedVariables, variableName)
+		} else {
+			renderedVariables[variableName] = rendered
+			wasRendered = true
+		}
+	}
+	return newUnrenderedVariables, renderedVariables, wasRendered, nil
+}
+
 // Variable values are allowed to use Go templating syntax (e.g. to reference other variables), so here, we render
 // those templates and return a new map of variables that are fully resolved.
-func RenderVariable(variable interface{}, variables map[string]interface{}, opts *options.BoilerplateOptions) (interface{}, error) {
+func attemptRenderVariable(opts *options.BoilerplateOptions, variable interface{}, renderedVariables map[string]interface{}) (interface{}, error) {
 	valueType := reflect.ValueOf(variable)
 
 	switch valueType.Kind() {
 	case reflect.String:
-		return RenderTemplateRecursively(opts.TemplateFolder, variable.(string), variables, opts)
+		return RenderTemplateFromString(opts.TemplateFolder, variable.(string), renderedVariables, opts)
 	case reflect.Slice:
 		values := []interface{}{}
 		for i := 0; i < valueType.Len(); i++ {
-			rendered, err := RenderVariable(valueType.Index(i).Interface(), variables, opts)
+			rendered, err := attemptRenderVariable(opts, valueType.Index(i).Interface(), renderedVariables)
 			if err != nil {
 				return nil, err
 			}
@@ -131,17 +140,17 @@ func RenderVariable(variable interface{}, variables map[string]interface{}, opts
 		}
 		return values, nil
 	case reflect.Map:
-		values := map[interface{}]interface{}{}
+		values := map[string]interface{}{}
 		for _, key := range valueType.MapKeys() {
-			renderedKey, err := RenderVariable(key.Interface(), variables, opts)
+			renderedKey, err := attemptRenderVariable(opts, key.Interface(), renderedVariables)
 			if err != nil {
 				return nil, err
 			}
-			renderedValue, err := RenderVariable(valueType.MapIndex(key).Interface(), variables, opts)
+			renderedValue, err := attemptRenderVariable(opts, valueType.MapIndex(key).Interface(), renderedVariables)
 			if err != nil {
 				return nil, err
 			}
-			values[renderedKey] = renderedValue
+			values[renderedKey.(string)] = renderedValue
 		}
 		return values, nil
 	default:

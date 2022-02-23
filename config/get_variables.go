@@ -57,23 +57,21 @@ func GetVariables(opts *options.BoilerplateOptions, boilerplateConfig, rootBoile
 
 	// The reason we loop over variablesInConfig a second time is we want to load them all into our map so if they
 	// are referenced by another variable, we can find them, regardless of the order in which they were defined
+	renderedVariables, err := render.RenderVariables(opts, vars)
+	if err != nil {
+		return nil, err
+	}
+
 	for _, variable := range variablesInConfig {
-		rawValue := vars[variable.Name()]
-
-		renderedValue, err := render.RenderVariable(rawValue, vars, opts)
-		if err != nil {
-			return nil, err
-		}
-
+		renderedValue := renderedVariables[variable.Name()]
 		renderedValueWithType, err := variables.ConvertType(renderedValue, variable)
 		if err != nil {
 			return nil, err
 		}
-
-		vars[variable.Name()] = renderedValueWithType
+		renderedVariables[variable.Name()] = renderedValueWithType
 	}
 
-	return vars, nil
+	return renderedVariables, nil
 }
 
 func getValueForVariable(variable variables.Variable, variablesInConfig map[string]variables.Variable, valuesForPreviousVariables map[string]interface{}, opts *options.BoilerplateOptions, referenceDepth int) (interface{}, error) {
