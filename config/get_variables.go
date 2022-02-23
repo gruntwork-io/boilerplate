@@ -16,7 +16,6 @@ const MaxReferenceDepth = 20
 // Get a value for each of the variables specified in boilerplateConfig, other than those already in existingVariables.
 // The value for a variable can come from the user (if the  non-interactive option isn't set), the default value in the
 // config, or a command line option.
-// TODO: update docs
 func GetVariables(opts *options.BoilerplateOptions, boilerplateConfig, rootBoilerplateConfig *BoilerplateConfig, thisDep variables.Dependency) (map[string]interface{}, error) {
 	renderedVariables := map[string]interface{}{}
 
@@ -43,11 +42,17 @@ func GetVariables(opts *options.BoilerplateOptions, boilerplateConfig, rootBoile
 	thisTemplateProps["CurrentDep"] = thisDep
 	renderedVariables["This"] = thisTemplateProps
 
+	// The variables up to this point don't need any additional processing as they are builtin. User defined variables
+	// can reference and use Go template syntax, so we pass them through a rendering pipeline to ensure they are
+	// evaluated to values that can be used in the rest of the templates.
 	variablesToRender := map[string]interface{}{}
+
+	// Collect the variable values that have been passed in from the command line.
 	for key, value := range opts.Vars {
 		variablesToRender[key] = value
 	}
 
+	// Collect the variable values that are defined in the config and get the value.
 	variablesInConfig := getAllVariablesInConfig(boilerplateConfig)
 	for _, variable := range variablesInConfig {
 		unmarshalled, err := getValueForVariable(variable, variablesInConfig, variablesToRender, opts, 0)
@@ -57,11 +62,14 @@ func GetVariables(opts *options.BoilerplateOptions, boilerplateConfig, rootBoile
 		variablesToRender[variable.Name()] = unmarshalled
 	}
 
+	// Pass all the user provided variables through a rendering pipeline to ensure they are evaluated down to
+	// primitives.
 	newlyRenderedVariables, err := render.RenderVariables(opts, variablesToRender, renderedVariables)
 	if err != nil {
 		return nil, err
 	}
 
+	// Convert all the rendered variables to match the type definition in the boilerplate config.
 	for _, variable := range variablesInConfig {
 		renderedValue := newlyRenderedVariables[variable.Name()]
 		renderedValueWithType, err := variables.ConvertType(renderedValue, variable)

@@ -9,6 +9,7 @@ import (
 
 	"github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/boilerplate/options"
+	"github.com/hashicorp/go-multierror"
 )
 
 const MaxRenderAttempts = 15
@@ -68,14 +69,26 @@ func executeTemplate(tmpl *template.Template, variables map[string]interface{}) 
 	return output.String(), nil
 }
 
-// Variable values are allowed to use Go templating syntax (e.g. to reference other variables), so this function loops
-// over each variable value, renders each one, and returns a new map of rendered variables.
+// RenderVariables will render each of the variables that need to be rendered by running it through the go templating
+// syntax. Variable values are allowed to use Go templating syntax (e.g. to reference other variables), so this function
+// loops over each variable value, renders each one, and returns a new map of rendered variables.
+//
+// This function supports nested variables references, but uses a heuristic based approach. Ideally, we can parse the Go
+// template and build up a graph of variable dependencies to assist with the rendering process, but this takes a lot of
+// effort to get right and maintain.
+//
+// Instead, we opt for a simpler approach of rendering with multiple trials. In this approach, we continuously attempt
+// to render the template on the variable until all of them render without errors, or we reach the maximum trials. To
+// support this, we ignore the missing key configuration during this evaluation pass and always rely on the template
+// erroring for missing variables. Otherwise, all the variables will render on the first pass.
+//
+// Note that this is NOT a multi pass algorithm - that is, we do NOT attempt to render the template multiple times.
+// Instead, we do a single template render on each run and reject any that return with an error.
 func RenderVariables(
 	opts *options.BoilerplateOptions,
 	variablesToRender map[string]interface{},
 	alreadyRenderedVariables map[string]interface{},
 ) (map[string]interface{}, error) {
-	// TODO: explain
 	optsForRender := *opts
 	optsForRender.OnMissingKey = options.ExitWithError
 
@@ -91,10 +104,14 @@ func RenderVariables(
 		if iterations > MaxRenderAttempts {
 			// Reached maximum supported iterations, which is most likely an infinite loop bug so cut the iteration
 			// short an return an error.
-			return nil, fmt.Errorf("TODO: concrete error")
+			return nil, errors.WithStackTrace(MaxRenderAttemptsErr{})
 		}
 
-		unrenderedVariables, renderedVariables, rendered, renderErr = attemptRenderVariables(&optsForRender, unrenderedVariables, renderedVariables, variablesToRender)
+		attemptRenderOutput, err := attemptRenderVariables(&optsForRender, unrenderedVariables, renderedVariables, variablesToRender)
+		unrenderedVariables = attemptRenderOutput.unrenderedVariables
+		renderedVariables = attemptRenderOutput.renderedVariables
+		rendered = attemptRenderOutput.variablesWereRendered
+		renderErr = err
 	}
 	if len(unrenderedVariables) > 0 {
 		return nil, renderErr
@@ -103,26 +120,38 @@ func RenderVariables(
 	return renderedVariables, nil
 }
 
+// attemptRenderVariables is a helper function that drives the multiple trial algorithm. This represents a single trial
+// of evaluating all the unrendered variables. This function goes through each unrendered variable and attempts to
+// render them using the currently rendered variables. This will return:
+// - all the variables that are still unrendered after this attempt
+// - the updated map of rendered variables
+// - a boolean indicating whether any new variables were rendered
 func attemptRenderVariables(
 	opts *options.BoilerplateOptions,
 	unrenderedVariables []string,
 	renderedVariables map[string]interface{},
 	variables map[string]interface{},
-) ([]string, map[string]interface{}, bool, error) {
+) (attemptRenderVariablesOutput, error) {
 	newUnrenderedVariables := []string{}
 	wasRendered := false
 
-	// TODO: collect render errs
+	var allRenderErr error
 	for _, variableName := range unrenderedVariables {
 		rendered, err := attemptRenderVariable(opts, variables[variableName], renderedVariables)
 		if err != nil {
 			newUnrenderedVariables = append(newUnrenderedVariables, variableName)
+			allRenderErr = multierror.Append(allRenderErr, err)
 		} else {
 			renderedVariables[variableName] = rendered
 			wasRendered = true
 		}
 	}
-	return newUnrenderedVariables, renderedVariables, wasRendered, nil
+	out := attemptRenderVariablesOutput{
+		unrenderedVariables:   newUnrenderedVariables,
+		renderedVariables:     renderedVariables,
+		variablesWereRendered: wasRendered,
+	}
+	return out, allRenderErr
 }
 
 // Variable values are allowed to use Go templating syntax (e.g. to reference other variables), so here, we render
@@ -162,14 +191,21 @@ func attemptRenderVariable(opts *options.BoilerplateOptions, variable interface{
 	}
 }
 
-// Custom error types
+// Return types
 
-type TemplateContainsInfiniteLoop struct {
-	TemplatePath     string
-	TemplateContents string
-	RenderAttempts   int
+type attemptRenderVariablesOutput struct {
+	unrenderedVariables   []string
+	renderedVariables     map[string]interface{}
+	variablesWereRendered bool
 }
 
-func (err TemplateContainsInfiniteLoop) Error() string {
-	return fmt.Sprintf("Template %s seems to contain infinite loop. After %d renderings, the contents continue to change. Template contents:\n%s", err.TemplatePath, err.RenderAttempts, err.TemplateContents)
+// Custom error types
+
+type MaxRenderAttemptsErr struct{}
+
+func (err MaxRenderAttemptsErr) Error() string {
+	return fmt.Sprintf(`Reached maximum supported iterations for rendering variables. This can happen if you have:
+- cyclic variable references
+- deeper than supported variable references (max depth: %d)
+`, MaxRenderAttempts)
 }
