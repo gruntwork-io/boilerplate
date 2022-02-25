@@ -93,8 +93,8 @@ func CreateTemplateHelpers(templatePath string, opts *options.BoilerplateOptions
 
 		"templateIsDefined": wrapIsDefinedWithTemplate(tmpl),
 
-		"templateFolder":        func() string { return opts.TemplateFolder },
-		"outputFolder":          func() string { return opts.OutputFolder },
+		"templateFolder":        func() (string, error) { return filepath.Abs(opts.TemplateFolder) },
+		"outputFolder":          func() (string, error) { return filepath.Abs(opts.OutputFolder) },
 		"relPath":               relPath,
 		"boilerplateConfigDeps": boilerplateConfigDeps(opts),
 		"boilerplateConfigVars": boilerplateConfigVars(opts),
