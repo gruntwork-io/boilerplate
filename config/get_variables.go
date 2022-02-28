@@ -137,6 +137,7 @@ func getVariable(variable variables.Variable, opts *options.BoilerplateOptions) 
 		util.Logger.Printf("Using default value for variable '%s': %v", variable.FullName(), variable.Default())
 		return variable.Default(), nil
 	} else if opts.NonInteractive {
+		// TODO: this function does not make sense: this should handle missing key
 		return nil, errors.WithStackTrace(MissingVariableWithNonInteractiveMode(variable.FullName()))
 	} else {
 		return getVariableFromUser(variable, opts)
