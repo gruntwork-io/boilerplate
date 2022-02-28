@@ -91,7 +91,7 @@ func RenderVariables(
 ) (map[string]interface{}, error) {
 	// Force to use ExitWithError for missing key, because by design this algorithm depends on boilerplate error-ing if
 	// a variable can't be rendered due to a reference that hasn't been rendered yet. If OnMissingKey was invalid or
-	// zero, then boilerplate will automatically render all references to `"not-valid"` or `""` in the first pass.
+	// zero, then boilerplate will automatically render all references to `"<no-value>"` or `""` in the first pass.
 	//
 	// We can do this because this option should only apply to the leaf variables (variables with no references), and
 	// the leaf variables are handled by the time it gets to this function in the `alreadyRenderedVariables` map that is
