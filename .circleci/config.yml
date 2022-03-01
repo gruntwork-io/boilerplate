@@ -2,7 +2,7 @@ defaults: &defaults
   machine: true
   environment:
     GRUNTWORK_INSTALLER_VERSION: v0.0.36
-    MODULE_CI_VERSION: v0.43.1
+    MODULE_CI_VERSION: v0.45.1
     TERRAFORM_VERSION: 1.0.11
     TERRAGRUNT_VERSION: v0.36.1
     PACKER_VERSION: NONE
@@ -23,6 +23,7 @@ jobs:
             gruntwork-install --module-name "gruntwork-module-circleci-helpers" --repo "https://github.com/gruntwork-io/terraform-aws-ci" --tag "${MODULE_CI_VERSION}"
             gruntwork-install --module-name "git-helpers" --repo "https://github.com/gruntwork-io/terraform-aws-ci" --tag "${MODULE_CI_VERSION}"
             configure-environment-for-gruntwork-module \
+              --tfenv-version ${TFENV_VERSION} \
               --terraform-version ${TERRAFORM_VERSION} \
               --terragrunt-version ${TERRAGRUNT_VERSION} \
               --packer-version ${PACKER_VERSION} \
