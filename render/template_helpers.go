@@ -16,7 +16,7 @@ import (
 	"text/template"
 	"unicode"
 
-	"github.com/Masterminds/sprig"
+	"github.com/Masterminds/sprig/v3"
 
 	"github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/boilerplate/options"

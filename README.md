@@ -681,10 +681,10 @@ The output folder will be:
 Your templates have access to all the standard functionality in [Go Template](https://golang.org/pkg/text/template/),
 including conditionals, loops, and functions.
 
-Additionally, boilerplate ships with [sprig](https://github.com/Masterminds/sprig), the standard library of template
-functions. You can view all the functions available in sprig [here](http://masterminds.github.io/sprig/). Note that
-there are some differences for some functions due to backwards compatibility. Take a look at [Deprecated
-helpers](#deprecated-helpers).
+Additionally, boilerplate ships with [sprig](https://github.com/Masterminds/sprig) (version `3.2.1`), the standard
+library of template functions. You can view all the functions available in sprig
+[here](http://masterminds.github.io/sprig/). Note that there are some differences for some functions due to backwards
+compatibility. Take a look at [Deprecated helpers](#deprecated-helpers).
 
 Boilerplate also includes several custom helpers that you can access that enhance the functionality of sprig:
 
