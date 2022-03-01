@@ -3,9 +3,7 @@ module github.com/gruntwork-io/boilerplate
 go 1.14
 
 require (
-	github.com/Masterminds/goutils v1.1.0 // indirect
-	github.com/Masterminds/semver v1.5.0 // indirect
-	github.com/Masterminds/sprig v2.22.0+incompatible
+	github.com/Masterminds/sprig/v3 v3.2.1
 	github.com/fatih/color v1.9.0
 	github.com/go-errors/errors v1.1.1
 	github.com/google/go-jsonnet v0.17.0
@@ -14,9 +12,7 @@ require (
 	github.com/hashicorp/go-getter v1.4.1
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/huandu/xstrings v1.3.2 // indirect
-	github.com/imdario/mergo v0.3.11 // indirect
 	github.com/mattn/go-zglob v0.0.2-0.20190814121620-e3c945676326
-	github.com/mitchellh/copystructure v1.0.0 // indirect
 	github.com/stretchr/testify v1.6.1
 	github.com/stuart-warren/yamlfmt v0.1.0
 	github.com/urfave/cli v1.22.4
