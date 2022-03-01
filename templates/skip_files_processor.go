@@ -68,7 +68,7 @@ func skipFileIfCondition(skipFile variables.SkipFile, opts *options.BoilerplateO
 		return true, nil
 	}
 
-	rendered, err := render.RenderTemplateRecursively(opts.TemplateFolder, skipFile.If, variables, opts)
+	rendered, err := render.RenderTemplateFromString(opts.TemplateFolder, skipFile.If, variables, opts)
 	if err != nil {
 		return false, err
 	}
@@ -99,7 +99,7 @@ func renderGlobPath(opts *options.BoilerplateOptions, path string, variables map
 		return []string{}, nil
 	}
 
-	rendered, err := render.RenderTemplateRecursively(opts.TemplateFolder, path, variables, opts)
+	rendered, err := render.RenderTemplateFromString(opts.TemplateFolder, path, variables, opts)
 	if err != nil {
 		return nil, err
 	}

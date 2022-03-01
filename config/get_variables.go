@@ -17,10 +17,7 @@ const MaxReferenceDepth = 20
 // The value for a variable can come from the user (if the  non-interactive option isn't set), the default value in the
 // config, or a command line option.
 func GetVariables(opts *options.BoilerplateOptions, boilerplateConfig, rootBoilerplateConfig *BoilerplateConfig, thisDep variables.Dependency) (map[string]interface{}, error) {
-	vars := map[string]interface{}{}
-	for key, value := range opts.Vars {
-		vars[key] = value
-	}
+	renderedVariables := map[string]interface{}{}
 
 	// Add a variable for all variables contained in the root config file. This will allow Golang template users
 	// to directly access these with an expression like "{{ .BoilerplateConfigVars.foo.Default }}"
@@ -28,7 +25,7 @@ func GetVariables(opts *options.BoilerplateOptions, boilerplateConfig, rootBoile
 	for _, configVar := range rootBoilerplateConfig.Variables {
 		rootConfigVars[configVar.Name()] = configVar
 	}
-	vars["BoilerplateConfigVars"] = rootConfigVars
+	renderedVariables["BoilerplateConfigVars"] = rootConfigVars
 
 	// Add a variable for all dependencies contained in the root config file. This will allow Golang template users
 	// to directly access these with an expression like "{{ .BoilerplateConfigDeps.foo.OutputFolder }}"
@@ -36,44 +33,53 @@ func GetVariables(opts *options.BoilerplateOptions, boilerplateConfig, rootBoile
 	for _, dep := range rootBoilerplateConfig.Dependencies {
 		rootConfigDeps[dep.Name] = dep
 	}
-	vars["BoilerplateConfigDeps"] = rootConfigDeps
+	renderedVariables["BoilerplateConfigDeps"] = rootConfigDeps
 
-	// Add a variable for "the boilerplate template currently being processed.
+	// Add a variable for "the boilerplate template currently being processed".
 	thisTemplateProps := map[string]interface{}{}
 	thisTemplateProps["Config"] = boilerplateConfig
 	thisTemplateProps["Options"] = opts
 	thisTemplateProps["CurrentDep"] = thisDep
-	vars["This"] = thisTemplateProps
+	renderedVariables["This"] = thisTemplateProps
 
-	variablesInConfig := getAllVariablesInConfig(boilerplateConfig)
+	// The variables up to this point don't need any additional processing as they are builtin. User defined variables
+	// can reference and use Go template syntax, so we pass them through a rendering pipeline to ensure they are
+	// evaluated to values that can be used in the rest of the templates.
+	variablesToRender := map[string]interface{}{}
 
-	for _, variable := range variablesInConfig {
-		unmarshalled, err := getValueForVariable(variable, variablesInConfig, vars, opts, 0)
-		if err != nil {
-			return nil, err
-		}
-		vars[variable.Name()] = unmarshalled
+	// Collect the variable values that have been passed in from the command line.
+	for key, value := range opts.Vars {
+		variablesToRender[key] = value
 	}
 
-	// The reason we loop over variablesInConfig a second time is we want to load them all into our map so if they
-	// are referenced by another variable, we can find them, regardless of the order in which they were defined
+	// Collect the variable values that are defined in the config and get the value.
+	variablesInConfig := getAllVariablesInConfig(boilerplateConfig)
 	for _, variable := range variablesInConfig {
-		rawValue := vars[variable.Name()]
-
-		renderedValue, err := render.RenderVariable(rawValue, vars, opts)
+		unmarshalled, err := getValueForVariable(variable, variablesInConfig, variablesToRender, opts, 0)
 		if err != nil {
 			return nil, err
 		}
+		variablesToRender[variable.Name()] = unmarshalled
+	}
 
+	// Pass all the user provided variables through a rendering pipeline to ensure they are evaluated down to
+	// primitives.
+	newlyRenderedVariables, err := render.RenderVariables(opts, variablesToRender, renderedVariables)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert all the rendered variables to match the type definition in the boilerplate config.
+	for _, variable := range variablesInConfig {
+		renderedValue := newlyRenderedVariables[variable.Name()]
 		renderedValueWithType, err := variables.ConvertType(renderedValue, variable)
 		if err != nil {
 			return nil, err
 		}
-
-		vars[variable.Name()] = renderedValueWithType
+		renderedVariables[variable.Name()] = renderedValueWithType
 	}
 
-	return vars, nil
+	return renderedVariables, nil
 }
 
 func getValueForVariable(variable variables.Variable, variablesInConfig map[string]variables.Variable, valuesForPreviousVariables map[string]interface{}, opts *options.BoilerplateOptions, referenceDepth int) (interface{}, error) {
