@@ -57,7 +57,7 @@ This example breaks down `boilerplate` templates into two categories:
   Instead, you need to combine the template with its dependencies, and invoke it for each account that needs the
   specific piece of infrastructure. For example, the infrastructure code for an EKS architecture is broken down into four
   templates: the VPC, the EKS control plane and worker nodes, the core Kubernetes administrative services, and the
-  Kubernetes applications. Unde the hood, each template uses a single service module from the [Gruntwork Service
+  Kubernetes applications. Under the hood, each template uses a single service module from the [Gruntwork Service
   Catalog](https://github.com/gruntwork-io/terraform-aws-service-catalog/). To get a full EKS architecture, you need to
   deploy all 4 templates in each environment where you wish to run EKS. E.g., You might need to deploy all 4 templates
   in dev, then use all 4 again in stage, and then use all 4 once more in prod. To make it easier to use multiple
