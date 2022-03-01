@@ -49,7 +49,7 @@ The code in this example is organized into two primary folders:
 
 ## Terminology
 
-This example is breaks down `boilerplate` templates into two categories:
+This example breaks down `boilerplate` templates into two categories:
 
 * **Template**: Reusable code to generate infrastructure code to deploy and manage one piece of infrastructure in a
   single account/deployment. Since Templates only focus on a single piece of infrastructure in a single
