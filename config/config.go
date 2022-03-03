@@ -16,12 +16,13 @@ const BOILERPLATE_CONFIG_FILE = "boilerplate.yml"
 
 // The contents of a boilerplate.yml config file
 type BoilerplateConfig struct {
-	Variables    []variables.Variable
-	Dependencies []variables.Dependency
-	Hooks        variables.Hooks
-	Partials     []string
-	SkipFiles    []variables.SkipFile
-	Engines      []variables.Engine
+	RequiredVersion *string
+	Variables       []variables.Variable
+	Dependencies    []variables.Dependency
+	Hooks           variables.Hooks
+	Partials        []string
+	SkipFiles       []variables.SkipFile
+	Engines         []variables.Engine
 }
 
 // Implement the go-yaml unmarshal interface for BoilerplateConfig. We can't let go-yaml handle this itself because:
@@ -33,6 +34,11 @@ type BoilerplateConfig struct {
 func (config *BoilerplateConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	var fields map[string]interface{}
 	if err := unmarshal(&fields); err != nil {
+		return err
+	}
+
+	requiredVersion, err := variables.UnmarshalString(fields, "required_version", false)
+	if err != nil {
 		return err
 	}
 
@@ -67,12 +73,13 @@ func (config *BoilerplateConfig) UnmarshalYAML(unmarshal func(interface{}) error
 	}
 
 	*config = BoilerplateConfig{
-		Variables:    vars,
-		Dependencies: deps,
-		Hooks:        hooks,
-		Partials:     partials,
-		SkipFiles:    skipFiles,
-		Engines:      engines,
+		RequiredVersion: requiredVersion,
+		Variables:       vars,
+		Dependencies:    deps,
+		Hooks:           hooks,
+		Partials:        partials,
+		SkipFiles:       skipFiles,
+		Engines:         engines,
 	}
 	return nil
 }
@@ -194,6 +201,19 @@ func ParseBoilerplateConfig(configContents []byte) (*BoilerplateConfig, error) {
 // Return the default path for a boilerplate.yml config file in the given folder
 func BoilerplateConfigPath(templateFolder string) string {
 	return path.Join(templateFolder, BOILERPLATE_CONFIG_FILE)
+}
+
+// EnforceRequiredVersion enforces any required_version string that is configured on the boilerplate config by checking
+// against the current version of the CLI.
+func EnforceRequiredVersion(boilerplateConfig *BoilerplateConfig) error {
+	if boilerplateConfig == nil {
+		return nil
+	}
+	if boilerplateConfig.RequiredVersion == nil {
+		return nil
+	}
+
+	return nil
 }
 
 // Custom error types

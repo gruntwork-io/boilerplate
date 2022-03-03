@@ -43,9 +43,15 @@ func ProcessTemplate(options, rootOpts *options.BoilerplateOptions, thisDep vari
 	if err != nil {
 		return err
 	}
+	if err := config.EnforceRequiredVersion(rootBoilerplateConfig); err != nil {
+		return err
+	}
 
 	boilerplateConfig, err := config.LoadBoilerplateConfig(options)
 	if err != nil {
+		return err
+	}
+	if err := config.EnforceRequiredVersion(boilerplateConfig); err != nil {
 		return err
 	}
 
