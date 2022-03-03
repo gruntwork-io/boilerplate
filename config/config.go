@@ -5,11 +5,14 @@ import (
 	"io/ioutil"
 	"path"
 
+	"github.com/gruntwork-io/go-commons/version"
+	goversion "github.com/hashicorp/go-version"
+	"gopkg.in/yaml.v2"
+
 	"github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/util"
 	"github.com/gruntwork-io/boilerplate/variables"
-	"gopkg.in/yaml.v2"
 )
 
 const BOILERPLATE_CONFIG_FILE = "boilerplate.yml"
@@ -206,13 +209,34 @@ func BoilerplateConfigPath(templateFolder string) string {
 // EnforceRequiredVersion enforces any required_version string that is configured on the boilerplate config by checking
 // against the current version of the CLI.
 func EnforceRequiredVersion(boilerplateConfig *BoilerplateConfig) error {
+	// Base case: if required_version is not set, then there is no version to enforce.
 	if boilerplateConfig == nil {
 		return nil
 	}
 	if boilerplateConfig.RequiredVersion == nil {
 		return nil
 	}
+	constraint := *boilerplateConfig.RequiredVersion
 
+	// Base case: if using a development version, then bypass required version check
+	currentVersion := version.GetVersion()
+	if currentVersion == "" {
+		return nil
+	}
+
+	// At this point there is a valid version that needs to be checked against the constraint
+	boilerplateVersion, err := goversion.NewVersion(currentVersion)
+	if err != nil {
+		return errors.WithStackTrace(err)
+	}
+	versionConstraint, err := goversion.NewConstraint(constraint)
+	if err != nil {
+		return errors.WithStackTrace(err)
+	}
+
+	if !versionConstraint.Check(boilerplateVersion) {
+		return errors.WithStackTrace(InvalidBoilerplateVersion{CurrentVersion: boilerplateVersion, VersionConstraints: versionConstraint})
+	}
 	return nil
 }
 
@@ -222,4 +246,13 @@ type BoilerplateConfigNotFound string
 
 func (err BoilerplateConfigNotFound) Error() string {
 	return fmt.Sprintf("Could not find %s in %s and the %s flag is set to %s", BOILERPLATE_CONFIG_FILE, string(err), options.OptMissingConfigAction, options.Exit)
+}
+
+type InvalidBoilerplateVersion struct {
+	CurrentVersion     *goversion.Version
+	VersionConstraints goversion.Constraints
+}
+
+func (err InvalidBoilerplateVersion) Error() string {
+	return fmt.Sprintf("The currently installed version of Boilerplate (%s) is not compatible with the version constraint requiring (%s).", err.CurrentVersion.String(), err.VersionConstraints.String())
 }
