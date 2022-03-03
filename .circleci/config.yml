@@ -63,7 +63,7 @@ jobs:
             build-go-binaries \
               --app-name boilerplate \
               --dest-path bin \
-              --ld-flags "-X main.VERSION=$CIRCLE_TAG"
+              --ld-flags "-X github.com/gruntwork-io/go-commons/version.Version=$CIRCLE_TAG"
 
             upload-github-release-assets bin/*
 

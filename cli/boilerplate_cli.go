@@ -3,7 +3,8 @@ package cli
 import (
 	"fmt"
 
-	"github.com/gruntwork-io/gruntwork-cli/entrypoint"
+	"github.com/gruntwork-io/go-commons/entrypoint"
+	"github.com/gruntwork-io/go-commons/version"
 	"github.com/urfave/cli"
 
 	"github.com/gruntwork-io/boilerplate/options"
@@ -37,7 +38,7 @@ Options:
    {{range .VisibleFlags}}{{.}}
    {{end}}`
 
-func CreateBoilerplateCli(version string) *cli.App {
+func CreateBoilerplateCli() *cli.App {
 	cli.HelpPrinter = entrypoint.WrappedHelpPrinter
 	cli.AppHelpTemplate = customHelpText
 	app := cli.NewApp()
@@ -46,7 +47,7 @@ func CreateBoilerplateCli(version string) *cli.App {
 	app.Name = "boilerplate"
 	app.Author = "Gruntwork <www.gruntwork.io>"
 	app.UsageText = "boilerplate [OPTIONS]"
-	app.Version = version
+	app.Version = version.GetVersion()
 	app.Action = runApp
 
 	app.Flags = []cli.Flag{
