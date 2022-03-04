@@ -210,10 +210,7 @@ func BoilerplateConfigPath(templateFolder string) string {
 // against the current version of the CLI.
 func EnforceRequiredVersion(boilerplateConfig *BoilerplateConfig) error {
 	// Base case: if required_version is not set, then there is no version to enforce.
-	if boilerplateConfig == nil {
-		return nil
-	}
-	if boilerplateConfig.RequiredVersion == nil {
+	if boilerplateConfig == nil || boilerplateConfig.RequiredVersion == nil {
 		return nil
 	}
 	constraint := *boilerplateConfig.RequiredVersion
