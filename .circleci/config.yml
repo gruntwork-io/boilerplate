@@ -60,13 +60,13 @@ jobs:
       - run:
           <<: *install_gruntwork_tooling
 
-      - run: go get github.com/mitchellh/gox
-
       - run:
           name: release assets
           command: |
+            go install github.com/mitchellh/gox@latest
+
             # If a new release is tagged in GitHub, build the binaries and upload them to GitHub.
-            build-go-binaries \
+            PATH="/home/circleci/go/bin:$PATH" build-go-binaries \
               --app-name boilerplate \
               --dest-path bin \
               --ld-flags "-X main.VERSION=$CIRCLE_TAG"
