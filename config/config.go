@@ -5,23 +5,27 @@ import (
 	"io/ioutil"
 	"path"
 
+	"github.com/gruntwork-io/go-commons/version"
+	goversion "github.com/hashicorp/go-version"
+	"gopkg.in/yaml.v2"
+
 	"github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/util"
 	"github.com/gruntwork-io/boilerplate/variables"
-	"gopkg.in/yaml.v2"
 )
 
 const BOILERPLATE_CONFIG_FILE = "boilerplate.yml"
 
 // The contents of a boilerplate.yml config file
 type BoilerplateConfig struct {
-	Variables    []variables.Variable
-	Dependencies []variables.Dependency
-	Hooks        variables.Hooks
-	Partials     []string
-	SkipFiles    []variables.SkipFile
-	Engines      []variables.Engine
+	RequiredVersion *string
+	Variables       []variables.Variable
+	Dependencies    []variables.Dependency
+	Hooks           variables.Hooks
+	Partials        []string
+	SkipFiles       []variables.SkipFile
+	Engines         []variables.Engine
 }
 
 // Implement the go-yaml unmarshal interface for BoilerplateConfig. We can't let go-yaml handle this itself because:
@@ -33,6 +37,11 @@ type BoilerplateConfig struct {
 func (config *BoilerplateConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	var fields map[string]interface{}
 	if err := unmarshal(&fields); err != nil {
+		return err
+	}
+
+	requiredVersion, err := variables.UnmarshalString(fields, "required_version", false)
+	if err != nil {
 		return err
 	}
 
@@ -67,12 +76,13 @@ func (config *BoilerplateConfig) UnmarshalYAML(unmarshal func(interface{}) error
 	}
 
 	*config = BoilerplateConfig{
-		Variables:    vars,
-		Dependencies: deps,
-		Hooks:        hooks,
-		Partials:     partials,
-		SkipFiles:    skipFiles,
-		Engines:      engines,
+		RequiredVersion: requiredVersion,
+		Variables:       vars,
+		Dependencies:    deps,
+		Hooks:           hooks,
+		Partials:        partials,
+		SkipFiles:       skipFiles,
+		Engines:         engines,
 	}
 	return nil
 }
@@ -196,10 +206,50 @@ func BoilerplateConfigPath(templateFolder string) string {
 	return path.Join(templateFolder, BOILERPLATE_CONFIG_FILE)
 }
 
+// EnforceRequiredVersion enforces any required_version string that is configured on the boilerplate config by checking
+// against the current version of the CLI.
+func EnforceRequiredVersion(boilerplateConfig *BoilerplateConfig) error {
+	// Base case: if required_version is not set, then there is no version to enforce.
+	if boilerplateConfig == nil || boilerplateConfig.RequiredVersion == nil {
+		return nil
+	}
+	constraint := *boilerplateConfig.RequiredVersion
+
+	// Base case: if using a development version, then bypass required version check
+	currentVersion := version.GetVersion()
+	if currentVersion == "" {
+		return nil
+	}
+
+	// At this point there is a valid version that needs to be checked against the constraint
+	boilerplateVersion, err := goversion.NewVersion(currentVersion)
+	if err != nil {
+		return errors.WithStackTrace(err)
+	}
+	versionConstraint, err := goversion.NewConstraint(constraint)
+	if err != nil {
+		return errors.WithStackTrace(err)
+	}
+
+	if !versionConstraint.Check(boilerplateVersion) {
+		return errors.WithStackTrace(InvalidBoilerplateVersion{CurrentVersion: boilerplateVersion, VersionConstraints: versionConstraint})
+	}
+	return nil
+}
+
 // Custom error types
 
 type BoilerplateConfigNotFound string
 
 func (err BoilerplateConfigNotFound) Error() string {
 	return fmt.Sprintf("Could not find %s in %s and the %s flag is set to %s", BOILERPLATE_CONFIG_FILE, string(err), options.OptMissingConfigAction, options.Exit)
+}
+
+type InvalidBoilerplateVersion struct {
+	CurrentVersion     *goversion.Version
+	VersionConstraints goversion.Constraints
+}
+
+func (err InvalidBoilerplateVersion) Error() string {
+	return fmt.Sprintf("The currently installed version of Boilerplate (%s) is not compatible with the version constraint requiring (%s).", err.CurrentVersion.String(), err.VersionConstraints.String())
 }

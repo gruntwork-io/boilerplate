@@ -214,6 +214,8 @@ variables or dependencies will be available.
 `boilerplate.yml` uses the following syntax:
 
 ```yaml
+required_version: <VERSION_CONSTRAINT>
+
 variables:
   - name: <NAME>
     description: <DESCRIPTION>
@@ -307,6 +309,10 @@ partials:
   - ../css/*.css
   - ../other/somefile.html
 ```
+
+**Required Version**: A version constraint string in the same format [as
+Terraform](https://www.terraform.io/language/expressions/version-constraints#version-constraint-syntax) that can be used
+to specify what versions of Boilerplate are supported by the config.
 
 **Variables**: A list of objects (i.e. dictionaries) that define variables. Each variable may contain the following
 keys:

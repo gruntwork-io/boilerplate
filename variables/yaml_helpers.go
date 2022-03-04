@@ -222,6 +222,11 @@ func unmarshalStringField(fields map[string]interface{}, fieldName string, requi
 	}
 }
 
+// UnmarshalString is the public convenience interface for unmarshalStringField.
+func UnmarshalString(fields map[string]interface{}, fieldName string, isRequiredField bool) (*string, error) {
+	return unmarshalStringField(fields, fieldName, isRequiredField, "")
+}
+
 // Given a map of key:value pairs read from a Boilerplate YAML config file of the format:
 //
 // fieldName: <VALUE>
