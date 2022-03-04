@@ -18,12 +18,12 @@ import (
 	"github.com/gruntwork-io/boilerplate/util"
 )
 
-// Our integration tests run through all the examples in the /examples folder, generate them, and check that they
-// produce the output in /test-fixtures/examples-expected-output
+// Our integration tests run through all the examples in the /examples/for-learning-and-testing folder, generate them,
+// and check that they produce the output in /test-fixtures/examples-expected-output
 func TestExamples(t *testing.T) {
 	t.Parallel()
 
-	examplesBasePath := "../examples"
+	examplesBasePath := "../examples/for-learning-and-testing"
 	examplesExpectedOutputBasePath := "../test-fixtures/examples-expected-output"
 	examplesVarFilesBasePath := "../test-fixtures/examples-var-files"
 
@@ -67,7 +67,7 @@ func TestExamplesAsRemoteTemplate(t *testing.T) {
 	t.Parallel()
 
 	branchName := git.GetCurrentBranchName(t)
-	examplesBasePath := "../examples"
+	examplesBasePath := "../examples/for-learning-and-testing"
 	examplesExpectedOutputBasePath := "../test-fixtures/examples-expected-output"
 	examplesVarFilesBasePath := "../test-fixtures/examples-var-files"
 
@@ -99,7 +99,7 @@ func TestExamplesAsRemoteTemplate(t *testing.T) {
 
 			t.Run(path.Base(example.Name()), func(t *testing.T) {
 				t.Parallel()
-				templateFolder := fmt.Sprintf("git@github.com:gruntwork-io/boilerplate.git//examples/%s?ref=%s", example.Name(), branchName)
+				templateFolder := fmt.Sprintf("git@github.com:gruntwork-io/boilerplate.git//examples/for-learning-and-testing/%s?ref=%s", example.Name(), branchName)
 				outputFolder := path.Join(outputBasePath, example.Name())
 				varFile := path.Join(examplesVarFilesBasePath, example.Name(), "vars.yml")
 				expectedOutputFolder := path.Join(examplesExpectedOutputBasePath, example.Name())
@@ -113,6 +113,7 @@ func TestExamplesAsRemoteTemplate(t *testing.T) {
 func testExample(t *testing.T, templateFolder string, outputFolder string, varFile string, expectedOutputFolder string, missingKeyAction string) {
 	app := cli.CreateBoilerplateCli("test")
 
+	ref := git.GetCurrentGitRef(t)
 	args := []string{
 		"boilerplate",
 		"--template-url",
@@ -121,6 +122,8 @@ func testExample(t *testing.T, templateFolder string, outputFolder string, varFi
 		outputFolder,
 		"--var-file",
 		varFile,
+		"--var",
+		fmt.Sprintf("RemoteBranch=%s", ref),
 		"--non-interactive",
 		"--missing-key-action",
 		missingKeyAction,
@@ -133,5 +136,7 @@ func testExample(t *testing.T, templateFolder string, outputFolder string, varFi
 
 	err := app.Run(args)
 	assert.NoError(t, err, errors.PrintErrorWithStackTrace(err))
-	assertDirectoriesEqual(t, expectedOutputFolder, outputFolder)
+	if expectedOutputFolder != "" {
+		assertDirectoriesEqual(t, expectedOutputFolder, outputFolder)
+	}
 }

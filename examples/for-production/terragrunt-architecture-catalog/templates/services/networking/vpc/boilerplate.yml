@@ -1,0 +1,81 @@
+# This template creates the terragrunt.hcl configurations for deploying an App VPC
+
+variables:
+  - name: IsEnvCommon
+    type: bool
+    description: When true, render only the configuration file for envcommon.
+    default: false
+
+  - name: EnvCommonComponent
+    type: string
+    description: The service component that the envcommon configuration is for.
+    default: networking/vpc-app
+
+  - name: EnvCommonMergeStrategy
+    type: string
+    description: The merge strategy for the envcommon config.
+    default: shallow
+
+  - name: IncludeCommonVars
+    type: bool
+    description: Whether or not to include the variables from common.hcl in this Terragrunt configuration.
+    default: true
+
+  - name: IncludeAccountVars
+    type: bool
+    description: Whether or not to include the variables from account.hcl in this Terragrunt configuration.
+    default: true
+
+  - name: IncludeRegionVars
+    type: bool
+    description: Whether or not to include the variables from region.hcl in this Terragrunt configuration.
+    default: true
+
+  - name: GruntworkGitBaseURLSSH
+    description: Enter the base SSH URL of the module's Git repo.
+    default: git@github.com:gruntwork-io
+
+  - name: RepoName
+    description: Enter the name of the repository where the Terraform module is located.
+    default: "terraform-aws-service-catalog"
+
+  - name: RepoRef
+    description: Enter the Git ref to use for the module.
+    default: v0.76.0
+
+  - name: ModulePath
+    description: Enter the path of the Terraform module in the repository.
+    default: modules/networking/vpc
+
+  - name: Module
+    description: "Enter the path and version of the module to use within the desired repository. e.g. modules/data-stores/elasticsearch?ref=v0.0.1"
+    default: "{{ .ModulePath }}?ref={{ .RepoRef }}"
+
+  - name: AppVPCName
+    description: Enter the name of the App VPC.
+    default: app
+
+  - name: AppVPCNumNATGateways
+    description: Enter the number of NAT Gateways that should we deploy in this VPC (e.g. typically 1 for mgmt).
+    type: int
+    default: 1
+
+  - name: AppVPCNumAvailabilityZones
+    description: Enter the number of availability zones to use. Set to 0 to use all the availability zones in the region.
+    type: int
+    default: 0
+
+  - name: AppVPCCIDRBlock
+    description: Enter the CIDR block should we use for this VPC (e.g. 172.31.80.0/20).
+    default: 10.0.0.0/16
+
+partials:
+  - ../../../layouts/terragrunt.hcl
+  - ../../../layouts/envcommon.hcl
+
+# When rendering _envcommon, only render vpc-app.hcl, while rendering everything else otherwise.
+skip_files:
+  - path: vpc-app.hcl
+    if: "{{ not .IsEnvCommon }}"
+  - not_path: vpc-app.hcl
+    if: "{{ .IsEnvCommon }}"

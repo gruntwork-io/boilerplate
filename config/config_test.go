@@ -715,7 +715,7 @@ func TestMarshalBoilerplateConfig(t *testing.T) {
 	t.Parallel()
 
 	marshalYamlTestExpectedBase := filepath.Join("..", "test-fixtures", "marshal-yaml-test")
-	examplesBase := filepath.Join("..", "examples")
+	examplesBase := filepath.Join("..", "examples", "for-learning-and-testing")
 
 	examplesToTest, err := ioutil.ReadDir(marshalYamlTestExpectedBase)
 	require.NoError(t, err)

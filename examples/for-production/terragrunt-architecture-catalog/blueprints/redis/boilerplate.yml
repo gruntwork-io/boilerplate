@@ -1,0 +1,62 @@
+# This blueprint creates the terragrunt modules necessary to deploy Redis into a single region in a single account.
+
+variables:
+  - name: AWSAccountName
+    description: The name of the AWS account.
+
+  - name: AWSRegion
+    description: The name of the AWS region.
+
+  # Optional variables
+  - name: IncludeVPCApp
+    type: bool
+    description: Whether or not to render the vpc template as a dependency.
+    default: true
+
+  # The following are convenience variables for DRY-ing up the dependencies. These are not intended to be
+  # updated/provided by users. We follow the Go convention of camelCase instead of TitleCase.
+  - name: accountOutputFolder
+    description: "The output folder that denotes the account in the infrastructure-live folder structure."
+    default: "{{ outputFolder }}/{{ .AWSAccountName }}/"
+  - name: accountRegionOutputFolder
+    description: "The output folder that denotes the region in the infrastructure-live folder structure."
+    default: "{{ .accountOutputFolder }}/{{ .AWSRegion }}/"
+
+dependencies:
+  - name: redis
+    template-url: "{{ templateFolder }}/../../templates/services/data-stores/redis"
+    output-folder: "{{ .accountRegionOutputFolder }}/data-stores/redis"
+    variables:
+      - name: IsEnvCommon
+        type: bool
+        default: false
+      # Use special override settings when deploying the cache in the prod account.
+      - name: RedisInstanceType
+        default: "{{ if eq .AWSAccountName \"prod\" }}cache.t3.medium{{ else }}cache.t3.micro{{ end }}"
+      - name: RedisReplicationGroupSize
+        default: "{{ if eq .AWSAccountName \"prod\" }}2{{ else }}1{{ end }}"
+
+  - name: redis-envcommon
+    template-url: "{{ templateFolder }}/../../templates/services/data-stores/redis"
+    output-folder: "{{ outputFolder }}/_envcommon/data-stores"
+    variables:
+      - name: IsEnvCommon
+        type: bool
+        default: true
+
+  # The following are additional blueprints to include. We use blueprints instead of templates for these dependencies so
+  # that we can include everything necessary for each component.
+  - name: vpc-app
+    template-url: "{{ templateFolder }}/../vpc-app"
+    output-folder: "{{ outputFolder }}"
+    skip: "{{ not .IncludeVPCApp }}"
+
+
+hooks:
+  after:
+    # Format the rendered HCL files
+    - command: terragrunt
+      args:
+        - "hclfmt"
+        - "--terragrunt-working-dir"
+        - "{{ outputFolder }}"

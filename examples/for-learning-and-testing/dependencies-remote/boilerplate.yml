@@ -1,0 +1,36 @@
+variables:
+  - name: Description
+    description: Enter the description of this template
+
+  - name: Version
+    description: Enter the version number that will be used by the docs dependency
+
+  - name: Title
+    description: Enter the title for the dependencies example
+
+  - name: WelcomeText
+    description: Enter the welcome text used by the website dependency
+
+  - name: ShowLogo
+    description: Should the webiste show the logo (true or false)?
+    type: bool
+    default: true
+
+  - name: RemoteBranch
+    description: The branch of boilerplate repo to use when pulling down remote dependencies.
+    default: "master"
+
+dependencies:
+  - name: docs
+    template-url: "git@github.com:gruntwork-io/boilerplate.git//examples/for-learning-and-testing/docs?ref={{ .RemoteBranch }}"
+    output-folder: ./docs
+    variables:
+      - name: Title
+        description: Enter the title of the docs page
+
+  - name: website
+    template-url: "git@github.com:gruntwork-io/boilerplate.git//examples/for-learning-and-testing/website?ref={{ .RemoteBranch }}"
+    output-folder: ./website
+    variables:
+      - name: Title
+        description: Enter the title of the website

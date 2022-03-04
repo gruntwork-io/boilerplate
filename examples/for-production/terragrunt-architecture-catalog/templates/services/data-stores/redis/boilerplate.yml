@@ -1,0 +1,124 @@
+# This template creates the terragrunt.hcl configurations for deploying an Elasticache Redis Cluster
+
+variables:
+  - name: IsEnvCommon
+    type: bool
+    description: When true, render only the configuration file for envcommon.
+    default: false
+
+  - name: EnvCommonComponent
+    type: string
+    description: The service component that the envcommon configuration is for.
+    default: data-stores/redis
+
+  - name: EnvCommonMergeStrategy
+    type: string
+    description: The merge strategy for the envcommon config.
+    default: shallow
+
+  - name: IncludeCommonVars
+    type: bool
+    description: Whether or not to include the variables from common.hcl in this Terragrunt configuration.
+    default: true
+
+  - name: IncludeAccountVars
+    type: bool
+    description: Whether or not to include the variables from account.hcl in this Terragrunt configuration.
+    default: true
+
+  - name: IncludeRegionVars
+    type: bool
+    description: Whether or not to include the variables from region.hcl in this Terragrunt configuration.
+    default: true
+
+  - name: UsingCISCompliance
+    type: bool
+    description: If true, enable the use of the terraform-cis-aws-service-catalog repo.
+    default: false
+
+  - name: GruntworkGitBaseURLSSH
+    description: Enter the base SSH URL of the module's Git repo.
+    default: git@github.com:gruntwork-io
+
+  - name: RepoName
+    description: Enter the name of the repository where the Terraform module is located.
+    default: terraform-aws-service-catalog
+
+  - name: RepoRef
+    description: Enter the Git ref to use for the module.
+    default: v0.76.0
+
+  - name: ModulePath
+    description: Enter the path of the Terraform module in the repository.
+    default: modules/data-stores/redis
+
+  - name: Module
+    description: "Enter the path and version of the module to use within the desired repository. e.g. modules/data-stores/redis?ref=v0.0.1."
+    default: "{{ .ModulePath }}?ref={{ .RepoRef }}"
+
+  - name: RedisClusterName
+    description: "Enter the name of the redis ElastiCache cluster."
+    default: "redis-${local.name_prefix}-${local.account_name}"
+
+  - name: BaseRedisInstanceType
+    description: "Enter the name of the redis ElastiCache cluster instance type (e.g cache.t3.micro)."
+    default: "cache.t3.micro"
+
+  - name: RedisInstanceType
+    description: "Same as BaseRedisInstanceType, but only used to override it for the specific environment."
+    default: "cache.t3.micro"
+
+  - name: RedisReplicationGroupSize
+    type: int
+    description: "Enter the number of Redis replication clusters."
+    default: 1
+
+  - name: RedisVersion
+    description: "Enter the version of Redis to deploy. Refer to https://docs.aws.amazon.com/AmazonElastiCache/latest/red-ug/supported-engine-versions.html for list of supported versions."
+    # Relevant thread on why we are not defaulting to version 6: https://github.com/gruntwork-io/terraform-aws-cache/issues/52
+    default: "5.0.6"
+
+  - name: RedisParameterGroupName
+    description: "Enter the name of the parameter group to associate with this cache cluster. This can be used to configure custom settings for the cluster."
+    default: "default.redis5.0"
+
+  # Dependency paths
+  - name: AppVPCPath
+    description: The path to the vpc-app module.
+    default: "${get_terragrunt_dir()}/../../networking/vpc"
+
+  # Mock data for included dependencies
+  - name: MockVPCID
+    description: The VPC ID to use for mock outputs in the App VPC dependency block.
+    default: "vpc-abcd1234"
+
+  - name: MockVPCSubnets
+    type: list
+    description: The subnet IDs to use for mock outputs in the App VPC dependency block.
+    default:
+      - subnet-abcd1234
+      - subnet-bcd1234a
+
+  - name: MockVPCSubnetCIDRBlocks
+    type: list
+    description: The CIDR blocks to use for mock outputs in the App VPC dependency block.
+    default:
+      - "10.0.0.0/24"
+      - "10.0.1.0/24"
+
+  - name: AllowedMockCommands
+    type: list
+    description: The Terraform commands that the mocks are allowed to be used with.
+    default:
+      - validate
+
+partials:
+  - ../../../layouts/terragrunt.hcl
+  - ../../../layouts/envcommon.hcl
+
+# When rendering _envcommon, only render redis.hcl, while rendering everything else otherwise.
+skip_files:
+  - path: redis.hcl
+    if: "{{ not .IsEnvCommon }}"
+  - not_path: redis.hcl
+    if: "{{ .IsEnvCommon }}"

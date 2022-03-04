@@ -1,0 +1,82 @@
+# This blueprint creates a sample infrastructure-live repo containing three accounts (dev, stage, and prod) that each
+# have a single App VPC with an Elasticache Redis Cluster and an RDS Postgres Database.
+
+variables:
+  - name: ResourceNamePrefix
+    description: A name to prefix to resources in this configuration
+
+  - name: DevAWSAccountID
+    description: The AWS Account ID of the dev account.
+
+  - name: StageAWSAccountID
+    description: The AWS Account ID of the stage account.
+
+  - name: ProdAWSAccountID
+    description: The AWS Account ID of the prod account.
+
+  # Optional variables
+  - name: AWSRegion
+    description: The name of the AWS Region to use for each of the accounts.
+    default: "us-east-2"
+
+  - name: DevAppVPCCIDRBlock
+    description: Enter the CIDR block should we use for the app VPC in the dev account (e.g. 172.31.80.0/20).
+    default: 10.0.0.0/16
+
+  - name: StageAppVPCCIDRBlock
+    description: Enter the CIDR block should we use for the app VPC in the stage account (e.g. 172.31.80.0/20).
+    default: 10.2.0.0/16
+
+  - name: ProdAppVPCCIDRBlock
+    description: Enter the CIDR block should we use for the app VPC in the prod account (e.g. 172.31.80.0/20).
+    default: 10.3.0.0/16
+
+
+dependencies:
+  - name: infrastructure-live-root
+    template-url: "{{ templateFolder }}/../../templates/_root/infrastructure-live"
+    output-folder: "{{ outputFolder }}"
+    variables:
+      - name: AWSAccounts
+        type: map
+        default:
+          dev: "{{ .DevAWSAccountID }}"
+          stage: "{{ .StageAWSAccountID }}"
+          prod: "{{ .ProdAWSAccountID }}"
+
+  - name: envcommon-root
+    template-url: "{{ templateFolder }}/../../templates/_root/_envcommon"
+    output-folder: "{{ outputFolder }}/_envcommon"
+
+  - name: dev-blueprint
+    template-url: "{{ templateFolder }}/../reference-architecture-app-account"
+    output-folder: "{{ outputFolder }}"
+    variables:
+      - name: AWSAccountName
+        default: "dev"
+      - name: AWSAccountID
+        default: "{{ .DevAWSAccountID }}"
+      - name: AppVPCCIDRBlock
+        default: "{{ .DevAppVPCCIDRBlock }}"
+
+  - name: stage-blueprint
+    template-url: "{{ templateFolder }}/../reference-architecture-app-account"
+    output-folder: "{{ outputFolder }}"
+    variables:
+      - name: AWSAccountName
+        default: "stage"
+      - name: AWSAccountID
+        default: "{{ .StageAWSAccountID }}"
+      - name: AppVPCCIDRBlock
+        default: "{{ .StageAppVPCCIDRBlock }}"
+
+  - name: prod-blueprint
+    template-url: "{{ templateFolder }}/../reference-architecture-app-account"
+    output-folder: "{{ outputFolder }}"
+    variables:
+      - name: AWSAccountName
+        default: "prod"
+      - name: AWSAccountID
+        default: "{{ .ProdAWSAccountID }}"
+      - name: AppVPCCIDRBlock
+        default: "{{ .ProdAppVPCCIDRBlock }}"

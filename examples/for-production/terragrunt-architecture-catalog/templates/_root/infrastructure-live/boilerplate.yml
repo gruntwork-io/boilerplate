@@ -1,0 +1,42 @@
+# This template sets up the root directory of an infrastructure-live repository.
+
+variables:
+  # Required variables
+  - name: ResourceNamePrefix
+    description: A name to prefix to resources in this configuration
+
+  - name: AWSAccounts
+    description: A map of AWS account names to the account ID.
+    type: map
+
+  # Optional variables
+  - name: SkipRemoteState
+    description: Whether or not to skip the remote_state block. Primarily used for testing purposes.
+    type: bool
+    default: false
+
+  - name: AccountsJSONFileName
+    description: Name of the json file that will contain the map of account names to IDs.
+    default: "accounts.json"
+
+  - name: AWSDefaultRegion
+    description: The default region to use when not operating on a specific region.
+    default: us-east-1
+
+  - name: TerraformVersion
+    description: Used by the tfenv tool to automatically select which version of Terraform to use.
+    default: 1.0.11
+
+  - name: TerragruntVersion
+    description: Used by the tgswitch tool to automatically select which version of Terragrunt to use.
+    default: v0.36.1
+
+
+hooks:
+  after:
+    # Format the rendered HCL files
+    - command: terragrunt
+      args:
+        - "hclfmt"
+        - "--terragrunt-working-dir"
+        - "{{ outputFolder }}"

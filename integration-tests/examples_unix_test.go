@@ -1,3 +1,4 @@
+//go:build aix || darwin || dragonfly || freebsd || (js && wasm) || linux || netbsd || openbsd || solaris
 // +build aix darwin dragonfly freebsd js,wasm linux netbsd openbsd solaris
 
 // The following tests should only be run on unix machines
@@ -20,7 +21,7 @@ func TestExamplesShell(t *testing.T) {
 	t.Parallel()
 
 	branchName := git.GetCurrentBranchName(t)
-	examplesBasePath := "../examples"
+	examplesBasePath := "../examples/for-learning-and-testing"
 	examplesExpectedOutputBasePath := "../test-fixtures/examples-expected-output"
 	examplesVarFilesBasePath := "../test-fixtures/examples-var-files"
 
@@ -51,7 +52,7 @@ func TestExamplesShell(t *testing.T) {
 
 			t.Run(fmt.Sprintf("%s-remote", example), func(t *testing.T) {
 				t.Parallel()
-				templateFolder := fmt.Sprintf("git@github.com:gruntwork-io/boilerplate.git//examples/%s?ref=%s", example, branchName)
+				templateFolder := fmt.Sprintf("git@github.com:gruntwork-io/boilerplate.git//examples/for-learning-and-testing/%s?ref=%s", example, branchName)
 				testExample(t, templateFolder, outputFolder, varFile, expectedOutputFolder, string(options.ExitWithError))
 			})
 		}

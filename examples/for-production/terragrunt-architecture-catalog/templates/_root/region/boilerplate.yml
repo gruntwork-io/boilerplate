@@ -1,0 +1,6 @@
+# This template sets up the root directory of a region.
+
+variables:
+  # Required variables
+  - name: AWSRegion
+    description: The name of the AWS Region being deployed to.

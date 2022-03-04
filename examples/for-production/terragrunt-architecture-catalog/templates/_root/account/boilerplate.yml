@@ -1,0 +1,9 @@
+# This template sets up the root directory of an account.
+
+variables:
+  # Required variables
+  - name: AWSAccountName
+    description: The name of the AWS Account being deployed to.
+
+  - name: AWSAccountID
+    description: The ID of the AWS Account being deployed to.

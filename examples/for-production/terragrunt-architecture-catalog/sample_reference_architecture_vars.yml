@@ -1,0 +1,5 @@
+ResourceNamePrefix: gruntwork
+DevAWSAccountID: "1111111111111"
+StageAWSAccountID: "2222222222222"
+ProdAWSAccountID: "3333333333333"
+DBSecretsManagerArn: SomeArn
