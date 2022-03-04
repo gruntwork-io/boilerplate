@@ -11,6 +11,8 @@ defaults: &defaults
     PACKER_VERSION: NONE
     GOLANG_VERSION: "1.17"
     GO111MODULE: auto
+    # Since we are running in docker, USER doesn't get set, so we need to set it explicitly
+    USER: circleci
 
 version: 2.1
 jobs:
