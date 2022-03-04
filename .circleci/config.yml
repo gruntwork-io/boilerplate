@@ -34,7 +34,7 @@ jobs:
               --packer-version ${PACKER_VERSION} \
               --go-version ${GOLANG_VERSION}
 
-            go get -u github.com/jstemmer/go-junit-report
+            go install github.com/jstemmer/go-junit-report@latest
       - run:
           name: run tests
           command: |
