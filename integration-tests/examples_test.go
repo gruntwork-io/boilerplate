@@ -111,7 +111,7 @@ func TestExamplesAsRemoteTemplate(t *testing.T) {
 }
 
 func testExample(t *testing.T, templateFolder string, outputFolder string, varFile string, expectedOutputFolder string, missingKeyAction string) {
-	app := cli.CreateBoilerplateCli("test")
+	app := cli.CreateBoilerplateCli()
 
 	ref := git.GetCurrentGitRef(t)
 	args := []string{

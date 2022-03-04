@@ -33,7 +33,10 @@ jobs:
           name: run tests
           command: |
             mkdir -p /tmp/logs/results
-            run-go-tests --path . --timeout 1h | tee /tmp/logs/all.log
+            # Some unit tests depend on a version being set, so here we pass in the ldflags to set the version to the
+            # expected test string.
+            run-go-tests --path . --timeout 1h --packages "-ldflags '-X github.com/gruntwork-io/go-commons/version.Version=v1.33.7' ./..." \
+                                                                                                                                          | tee /tmp/logs/all.log
           no_output_timeout: 3600s
 
 
