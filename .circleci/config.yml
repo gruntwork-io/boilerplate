@@ -1,7 +1,7 @@
 defaults: &defaults
   resource_class: medium
   docker:
-    - image: circleci/python:3.10.1
+    - image: cimg/python:3.10.2
   environment:
     GRUNTWORK_INSTALLER_VERSION: v0.0.36
     MODULE_CI_VERSION: v0.45.1
@@ -9,7 +9,7 @@ defaults: &defaults
     TERRAFORM_VERSION: 1.0.11
     TERRAGRUNT_VERSION: v0.36.1
     PACKER_VERSION: NONE
-    GOLANG_VERSION: "1.17"
+    GOLANG_VERSION: '1.17'
     GO111MODULE: auto
     # Since we are running in docker, USER doesn't get set, so we need to set it explicitly
     USER: circleci
@@ -51,7 +51,8 @@ jobs:
           # Use go-junit-report to generate a junit report instead of terratest log parser, as the logs for boilerplate
           # do not respect the logging mechanism that the log parser looks for.
           name: parse logs
-          command: "cat /tmp/logs/all.log | /home/circleci/go/bin/go-junit-report > /tmp/logs/results/results.xml"
+          command: |
+            cat /tmp/logs/all.log | /home/circleci/go/bin/go-junit-report > /tmp/logs/results/results.xml
           when: always
       - store_test_results:
           path: /tmp/logs
