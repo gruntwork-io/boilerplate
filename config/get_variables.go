@@ -3,7 +3,6 @@ package config
 import (
 	"fmt"
 	"log"
-	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/terminal"
@@ -210,123 +209,14 @@ func renderVariablePrompts(variable variables.Variable, invalidEntries InvalidEn
 	}
 }
 
-func mapKeysHaveValidations(variable variables.Variable) bool {
-	if variable.Type() != variables.Map {
-		return false
-	}
-
-	keys := variable.Keys()
-	if len(keys) < 1 {
-		return false
-	}
-
-	hasValidations := false
-	for _, key := range keys {
-		if len(key.GetValidations()) > 0 {
-			hasValidations = true
-		}
-	}
-
-	return hasValidations
-}
-
-func getMapVariableFromUser(variable variables.Variable, opts *options.BoilerplateOptions, partialVariables map[string]interface{}) (interface{}, error) {
-	fmt.Println("getMapVariableFromUser")
-
-	var queries []*survey.Question
-
-	for _, key := range variable.Keys() {
-		// Obtain the validations defined on the MapEntry
-		var validationsToRun []validation.Rule
-		var validationsDescriptions []string
-		for _, rule := range key.GetValidations() {
-			validationsToRun = append(validationsToRun, rule.Validator)
-			validationsDescriptions = append(validationsDescriptions, rule.Message)
-		}
-
-		renderMapVariablePrompts(variable, validationsDescriptions)
-
-		// Set up the user-facing prompts
-		query := &survey.Question{
-			Name: key.Name,
-			Prompt: &survey.Input{
-				Message: key.Description,
-			},
-			Validate: func(val interface{}) error {
-				return validation.Validate(val, validationsToRun...)
-			},
-		}
-		queries = append(queries, query)
-	}
-
-	var outerMap map[string]map[string]interface{}
-	var ansMap map[string]interface{}
-
-	// If partialVariables is empty, we don't have values from a previous pass to consider, so we create a new outer map
-	if len(partialVariables) == 0 {
-		outerMap = make(map[string]map[string]interface{})
-		ansMap = make(map[string]interface{})
-	} else {
-		// if partialVariables is defined, we take its values instead of an empty outermap
-		ansMap = partialVariables
-		outerMap[variable.Name()] = ansMap
-	}
-
-	fmt.Printf("ansMap before merging: %+v\n", ansMap)
-
-	fmt.Printf("outerMap after reconciling: %+v\n", outerMap)
-
-	err := survey.Ask(queries, &ansMap)
-	if err != nil {
-		if err == terminal.InterruptErr {
-			log.Fatal("quit")
-		}
-		return ansMap, err
-	}
-
-	// Begin the multiselect prompt
-	choice := ""
-	prompt := &survey.Select{
-		Message: fmt.Sprintf("Successfully added new %s. What now?", renderSingleItemName(variable)),
-		Options: []string{fmt.Sprintf("Add new %s", renderSingleItemName(variable)), fmt.Sprintf("Show defined %s", renderSingleItemName(variable)), fmt.Sprintf("Finished entering %s", renderSingleItemName(variable)), fmt.Sprintf("Edit %s", renderSingleItemName(variable))},
-	}
-	survey.AskOne(prompt, &choice)
-	fmt.Printf("User choice: %s\n", choice)
-	if strings.Contains(choice, "Add new") {
-		return getMapVariableFromUser(variable, opts, ansMap)
-	}
-
-	clearTerminal()
-
-	fmt.Printf("len(partialVariables):%d", len(partialVariables))
-	fmt.Printf("ansMap: %+v\n", ansMap)
-	fmt.Printf("partialVariables: %+v\n", partialVariables)
-
-	if len(partialVariables) > 0 {
-		finalMap := make(map[string]map[string]interface{})
-		finalMap[variable.Name()] = ansMap
-		for k, v := range partialVariables {
-			finalMap[variable.Name()][k] = v
-		}
-		fmt.Printf("finalMap: %+v\n", finalMap)
-		return finalMap, nil
-	}
-
-	return outerMap, nil
-}
-
-func renderSingleItemName(variable variables.Variable) string {
-	if variable.GetSingleItemName() != "" {
-		return variable.GetSingleItemName()
-	}
-	return "entry"
-}
-
 // Get the value for the given variable by prompting the user
 func getVariableFromUser(variable variables.Variable, opts *options.BoilerplateOptions, invalidEntries InvalidEntries) (interface{}, error) {
 
+	// Add a newline for legibility and padding
 	fmt.Println()
 
+	// Show the current variable's name, description, and also render any validation errors in real-time so the user knows what's wrong
+	// with their input
 	renderVariablePrompts(variable, invalidEntries)
 
 	value := ""
@@ -353,10 +243,7 @@ func getVariableFromUser(variable variables.Variable, opts *options.BoilerplateO
 			}
 			return value, err
 		}
-	} /*else if variable.Type() == variables.Map {
-		partialVariables := make(map[string]interface{})
-		return getMapVariableFromUser(variable, opts, partialVariables)
-	}*/
+	}
 
 	if len(variable.Validations()) > 0 {
 		m := make(map[string]bool)
