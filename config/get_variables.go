@@ -2,13 +2,18 @@ package config
 
 import (
 	"fmt"
+	"log"
 	"strings"
 
+	"github.com/AlecAivazis/survey/v2"
+	"github.com/AlecAivazis/survey/v2/terminal"
+	validation "github.com/go-ozzo/ozzo-validation"
 	"github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/render"
 	"github.com/gruntwork-io/boilerplate/util"
 	"github.com/gruntwork-io/boilerplate/variables"
+	"github.com/pterm/pterm"
 )
 
 const MaxReferenceDepth = 20
@@ -139,7 +144,7 @@ func getVariable(variable variables.Variable, opts *options.BoilerplateOptions) 
 	} else if opts.NonInteractive {
 		return nil, errors.WithStackTrace(MissingVariableWithNonInteractiveMode(variable.FullName()))
 	} else {
-		return getVariableFromUser(variable, opts)
+		return getVariableFromUser(variable, opts, InvalidEntries{})
 	}
 }
 
@@ -154,27 +159,227 @@ func getVariableFromVars(variable variables.Variable, opts *options.BoilerplateO
 	return nil, false
 }
 
-// Get the value for the given variable by prompting the user
-func getVariableFromUser(variable variables.Variable, opts *options.BoilerplateOptions) (interface{}, error) {
-	util.BRIGHT_GREEN.Printf("\n%s\n", variable.FullName())
+type InvalidEntries struct {
+	Issues []ValidationIssue
+}
+
+type ValidationIssue struct {
+	Value         interface{}
+	ValidationMap map[string]bool
+}
+
+func renderValidationErrors(val interface{}, m map[string]bool) {
+	clearTerminal()
+	pterm.Warning.WithPrefix(pterm.Prefix{Text: "Invalid entry"}).Println(val)
+	for k, v := range m {
+		if v == false {
+			pterm.Error.Println(k)
+		} else if v == true {
+			pterm.Success.Println(k)
+		}
+	}
+}
+
+func clearTerminal() {
+	print("\033[H\033[2J")
+}
+
+func renderMapVariablePrompts(variable variables.Variable, requirements []string) {
+	clearTerminal()
+
+	pterm.Println(pterm.Green(variable.FullName()))
+
 	if variable.Description() != "" {
-		fmt.Printf("  %s\n", variable.Description())
+		pterm.Println(pterm.LightGreen(variable.Description()))
+	}
+	pterm.Println(pterm.LightGreen("Validation Requirements:"))
+	for _, requirement := range requirements {
+		pterm.Println(pterm.LightGreen("- " + requirement))
+	}
+}
+
+func renderVariablePrompts(variable variables.Variable, invalidEntries InvalidEntries) {
+	pterm.Println(pterm.Green(variable.FullName()))
+
+	if variable.Description() != "" {
+		pterm.Println(pterm.Yellow(variable.Description()))
 	}
 
-	helpText := []string{
-		fmt.Sprintf("type: %s", variable.Type()),
-		fmt.Sprintf("example value: %s", variable.ExampleValue()),
+	if len(invalidEntries.Issues) > 0 {
+		renderValidationErrors(invalidEntries.Issues[0].Value, invalidEntries.Issues[0].ValidationMap)
 	}
-	if variable.Default() != nil {
-		helpText = append(helpText, fmt.Sprintf("default: %s", variable.Default()))
+}
+
+func mapKeysHaveValidations(variable variables.Variable) bool {
+	if variable.Type() != variables.Map {
+		return false
 	}
 
-	fmt.Printf("  (%s)\n", strings.Join(helpText, ", "))
+	keys := variable.Keys()
+	if len(keys) < 1 {
+		return false
+	}
+
+	hasValidations := false
+	for _, key := range keys {
+		if len(key.GetValidations()) > 0 {
+			hasValidations = true
+		}
+	}
+
+	return hasValidations
+}
+
+func getMapVariableFromUser(variable variables.Variable, opts *options.BoilerplateOptions, partialVariables map[string]interface{}) (interface{}, error) {
+	fmt.Println("getMapVariableFromUser")
+
+	var queries []*survey.Question
+
+	for _, key := range variable.Keys() {
+		// Obtain the validations defined on the MapEntry
+		var validationsToRun []validation.Rule
+		var validationsDescriptions []string
+		for _, rule := range key.GetValidations() {
+			validationsToRun = append(validationsToRun, rule.Validator)
+			validationsDescriptions = append(validationsDescriptions, rule.Message)
+		}
+
+		renderMapVariablePrompts(variable, validationsDescriptions)
+
+		// Set up the user-facing prompts
+		query := &survey.Question{
+			Name: key.Name,
+			Prompt: &survey.Input{
+				Message: key.Description,
+			},
+			Validate: func(val interface{}) error {
+				return validation.Validate(val, validationsToRun...)
+			},
+		}
+		queries = append(queries, query)
+	}
+
+	var outerMap map[string]map[string]interface{}
+	var ansMap map[string]interface{}
+
+	// If partialVariables is empty, we don't have values from a previous pass to consider, so we create a new outer map
+	if len(partialVariables) == 0 {
+		outerMap = make(map[string]map[string]interface{})
+		ansMap = make(map[string]interface{})
+	} else {
+		// if partialVariables is defined, we take its values instead of an empty outermap
+		ansMap = partialVariables
+		outerMap[variable.Name()] = ansMap
+	}
+
+	fmt.Printf("ansMap before merging: %+v\n", ansMap)
+
+	fmt.Printf("outerMap after reconciling: %+v\n", outerMap)
+
+	err := survey.Ask(queries, &ansMap)
+	if err != nil {
+		if err == terminal.InterruptErr {
+			log.Fatal("quit")
+		}
+		return ansMap, err
+	}
+
+	// Begin the multiselect prompt
+	choice := ""
+	prompt := &survey.Select{
+		Message: fmt.Sprintf("Successfully added new %s. What now?", renderSingleItemName(variable)),
+		Options: []string{fmt.Sprintf("Add new %s", renderSingleItemName(variable)), fmt.Sprintf("Show defined %s", renderSingleItemName(variable)), fmt.Sprintf("Finished entering %s", renderSingleItemName(variable)), fmt.Sprintf("Edit %s", renderSingleItemName(variable))},
+	}
+	survey.AskOne(prompt, &choice)
+	fmt.Printf("User choice: %s\n", choice)
+	if strings.Contains(choice, "Add new") {
+		return getMapVariableFromUser(variable, opts, ansMap)
+	}
+
+	clearTerminal()
+
+	fmt.Printf("len(partialVariables):%d", len(partialVariables))
+	fmt.Printf("ansMap: %+v\n", ansMap)
+	fmt.Printf("partialVariables: %+v\n", partialVariables)
+
+	if len(partialVariables) > 0 {
+		finalMap := make(map[string]map[string]interface{})
+		finalMap[variable.Name()] = ansMap
+		for k, v := range partialVariables {
+			finalMap[variable.Name()][k] = v
+		}
+		fmt.Printf("finalMap: %+v\n", finalMap)
+		return finalMap, nil
+	}
+
+	return outerMap, nil
+}
+
+func renderSingleItemName(variable variables.Variable) string {
+	if variable.GetSingleItemName() != "" {
+		return variable.GetSingleItemName()
+	}
+	return "entry"
+}
+
+// Get the value for the given variable by prompting the user
+func getVariableFromUser(variable variables.Variable, opts *options.BoilerplateOptions, invalidEntries InvalidEntries) (interface{}, error) {
+
 	fmt.Println()
 
-	value, err := util.PromptUserForInput("  Enter a value")
-	if err != nil {
-		return "", err
+	renderVariablePrompts(variable, invalidEntries)
+
+	value := ""
+	if variable.Type() == variables.String {
+		prompt := &survey.Input{
+			Message: fmt.Sprintf("Please enter your %s", variable.FullName()),
+		}
+		err := survey.AskOne(prompt, &value)
+		if err != nil {
+			if err == terminal.InterruptErr {
+				log.Fatal("quit")
+			}
+			return value, err
+		}
+	} else if variable.Type() == variables.Enum {
+		prompt := &survey.Select{
+			Message: fmt.Sprintf("Please select your %s", variable.FullName()),
+			Options: variable.Options(),
+		}
+		err := survey.AskOne(prompt, &value)
+		if err != nil {
+			if err == terminal.InterruptErr {
+				log.Fatal("quit")
+			}
+			return value, err
+		}
+	} /*else if variable.Type() == variables.Map {
+		partialVariables := make(map[string]interface{})
+		return getMapVariableFromUser(variable, opts, partialVariables)
+	}*/
+
+	if len(variable.Validations()) > 0 {
+		m := make(map[string]bool)
+		var hasValidationErrs = false
+		for _, customValidation := range variable.Validations() {
+			// Run the specific validation against the user-provided value and store it in the map
+			err := validation.Validate(value, customValidation.Validator)
+			val := true
+			if err != nil {
+				hasValidationErrs = true
+				val = false
+			}
+			m[customValidation.DescriptionText()] = val
+		}
+		if hasValidationErrs {
+			ie := InvalidEntries{
+				Issues: []ValidationIssue{
+					{Value: value,
+						ValidationMap: m},
+				},
+			}
+			return getVariableFromUser(variable, opts, ie)
+		}
 	}
 
 	if value == "" {
@@ -183,6 +388,7 @@ func getVariableFromUser(variable variables.Variable, opts *options.BoilerplateO
 		return variable.Default(), nil
 	}
 
+	clearTerminal()
 	return variables.ParseYamlString(value)
 }
 

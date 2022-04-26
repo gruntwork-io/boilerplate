@@ -4,8 +4,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"reflect"
+	"strconv"
 	"strings"
 
+	validation "github.com/go-ozzo/ozzo-validation"
+	"github.com/go-ozzo/ozzo-validation/is"
 	"github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/boilerplate/util"
 	"gopkg.in/yaml.v2"
@@ -173,6 +176,177 @@ func unmarshalOptionsField(fields map[string]interface{}, context string, variab
 	}
 
 	return util.ToStringList(optionsAsList), nil
+}
+
+func unmarshalKeysField(fields map[string]interface{}, context string, variableType BoilerplateType) ([]MapEntry, error) {
+
+	var entries []MapEntry
+	_, hasKeys := fields["keys"]
+
+	if !hasKeys {
+		if variableType == Map {
+			return nil, errors.WithStackTrace(KeysMissing(context))
+		} else {
+			return nil, nil
+		}
+	}
+
+	if variableType != Map {
+		return nil, errors.WithStackTrace(KeysCanOnlyBeUsedWithMap{Context: context, Type: variableType})
+	}
+
+	unmarshaledMap, unmarshalErr := unmarshalListOfFields(fields, "keys")
+	if unmarshalErr != nil {
+		return entries, unmarshalErr
+	}
+
+	// Convert each raw entry in the unmarshaledMap into a MapEntry
+	for _, rawEntryMap := range unmarshaledMap {
+
+		stringMap := map[string]string{}
+
+		for key, value := range rawEntryMap {
+			stringMap[key] = fmt.Sprintf("%v", value)
+		}
+
+		validationRules, convertErr := ConvertValidationStringtoRules(stringMap["validations"])
+		if convertErr != nil {
+			return entries, convertErr
+		}
+
+		entry := MapEntry{
+			Name:        stringMap["name"],
+			Description: stringMap["description"],
+			Type:        BoilerplateType(stringMap["type"]),
+			Validations: validationRules,
+		}
+
+		entries = append(entries, entry)
+
+	}
+
+	return entries, nil
+}
+
+func unmarshalSingleItemField(fields map[string]interface{}, context string, variableType BoilerplateType) (string, error) {
+	singleItemField, hasSingleItem := fields["single_item_name"]
+
+	if !hasSingleItem {
+		return "", nil
+	}
+
+	singleItem, isString := singleItemField.(string)
+	if !isString {
+		return "", errors.WithStackTrace(InvalidTypeForField{FieldName: "single_item_name", ExpectedType: "String", ActualType: reflect.TypeOf(singleItemField), Context: context})
+	}
+
+	return singleItem, nil
+}
+
+type CustomValidationRule struct {
+	Validator validation.Rule
+	Message   string
+}
+
+type CustomValidationRuleCollection []CustomValidationRule
+
+func (c CustomValidationRuleCollection) GetValidators() []validation.Rule {
+	var validatorsToReturn []validation.Rule
+	for _, rule := range c {
+		validatorsToReturn = append(validatorsToReturn, rule.Validator)
+	}
+	return validatorsToReturn
+}
+
+func (c CustomValidationRule) DescriptionText() string {
+	return c.Message
+}
+
+func ConvertValidationStringtoRules(ruleString string) ([]CustomValidationRule, error) {
+
+	var validationRules []CustomValidationRule
+
+	ruleString = strings.ReplaceAll(ruleString, "]", "")
+	ruleString = strings.ReplaceAll(ruleString, "[", "")
+	rules := strings.Split(ruleString, " ")
+
+	for _, rule := range rules {
+		switch {
+		case strings.HasPrefix(rule, "length-"):
+			valString := strings.TrimLeft(rule, "length-")
+			valSlice := strings.Split(valString, "-")
+			minStr := valSlice[0]
+			maxStr := valSlice[1]
+			min, minErr := strconv.Atoi(strings.TrimSpace(minStr))
+			if minErr != nil {
+				return validationRules, minErr
+			}
+			max, maxErr := strconv.Atoi(strings.TrimSpace(maxStr))
+			if maxErr != nil {
+				return validationRules, maxErr
+			}
+			cvr := CustomValidationRule{
+				Validator: validation.Length(min, max),
+				Message:   fmt.Sprintf("Must be between %d and %d characters long", min, max),
+			}
+			validationRules = append(validationRules, cvr)
+		case rule == "required":
+			cvr := CustomValidationRule{
+				Validator: validation.Required,
+				Message:   "Must not be empty",
+			}
+			validationRules = append(validationRules, cvr)
+		case rule == "url":
+			cvr := CustomValidationRule{
+				Validator: is.URL,
+				Message:   "Must be a valid URL",
+			}
+			validationRules = append(validationRules, cvr)
+		case rule == "email":
+			cvr := CustomValidationRule{
+				Validator: is.Email,
+				Message:   "Must be a valid email address",
+			}
+			validationRules = append(validationRules, cvr)
+		case rule == "alphanumeric":
+			cvr := CustomValidationRule{
+				Validator: is.Alphanumeric,
+				Message:   "Can contain English letters and digits only",
+			}
+			validationRules = append(validationRules, cvr)
+		case rule == "CountryCode2":
+			cvr := CustomValidationRule{
+				Validator: is.CountryCode2,
+				Message:   "Must be a valid ISO3166 Alpha 2 Country code",
+			}
+			validationRules = append(validationRules, cvr)
+		}
+
+	}
+
+	return validationRules, nil
+}
+
+// Given a map of key:value pairs read from a Boilerplate YAML config file of the format:
+//
+// validations:
+//   - foo
+//   - bar
+//   - baz
+//
+// This method takes looks up the options object in the map and unmarshals the data inside of it it into a list of
+// strings.
+func unmarshalValidationsField(fields map[string]interface{}, context string, variableType BoilerplateType) ([]CustomValidationRule, error) {
+	validations, _ := fields["validations"]
+
+	validationsAsString := fmt.Sprintf("%v", validations)
+
+	rules, err := ConvertValidationStringtoRules(validationsAsString)
+	if err != nil {
+		return []CustomValidationRule{}, err
+	}
+
+	return rules, nil
 }
 
 // Given a map of key:value pairs read from a Boilerplate YAML config file of the format:
@@ -403,10 +577,22 @@ func (err YAMLConversionErr) Error() string {
 	return fmt.Sprintf("YAML value has type %s and cannot be cast to to the correct type.", reflect.TypeOf(err.Key))
 }
 
+type ValidationsMissing string
+
+func (err ValidationsMissing) Error() string {
+	return fmt.Sprintf("%s does not specify any validations. You must specify at least one validation.", string(err))
+}
+
 type OptionsMissing string
 
 func (err OptionsMissing) Error() string {
 	return fmt.Sprintf("%s has type %s but does not specify any options. You must specify at least one option.", string(err), Enum)
+}
+
+type KeysMissing string
+
+func (err KeysMissing) Error() string {
+	return fmt.Sprintf("%s has type %s but does not specify any keys. You must specify at least one key.", string(err), Map)
 }
 
 type InvalidVariableValue struct {
@@ -429,6 +615,15 @@ type OptionsCanOnlyBeUsedWithEnum struct {
 
 func (err OptionsCanOnlyBeUsedWithEnum) Error() string {
 	return fmt.Sprintf("%s has type %s and tries to specify options. Options may only be specified for the %s type.", err.Context, err.Type.String(), Enum)
+}
+
+type KeysCanOnlyBeUsedWithMap struct {
+	Context string
+	Type    BoilerplateType
+}
+
+func (err KeysCanOnlyBeUsedWithMap) Error() string {
+	return fmt.Sprintf("%s has type %s and tries to specify keys. Keys may only be specified for the %s type.", err.Context, err.Type.String(), Map)
 }
 
 type InvalidTypeForField struct {

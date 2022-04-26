@@ -35,6 +35,9 @@ type Variable interface {
 	// The values this variable can take. Applies only if Type() is Enum.
 	Options() []string
 
+	// The values this variable accepts for its keys. Applies only if Type() is Map.
+	Keys() []MapEntry
+
 	// Return a copy of this variable but with the name set to the given name
 	WithName(string) Variable
 
@@ -52,16 +55,36 @@ type Variable interface {
 
 	// A custom marshaling function to translate back to YAML, as expected by go-yaml.
 	MarshalYAML() (interface{}, error)
+
+	// Validations that should be run on the variable
+	Validations() []CustomValidationRule
+
+	// GetSingleItem name is a convenience method that returns the singular form of the variable's name
+	GetSingleItemName() string
+}
+
+type MapEntry struct {
+	Name        string
+	Description string
+	Type        BoilerplateType
+	Validations []CustomValidationRule
+}
+
+func (m MapEntry) GetValidations() []CustomValidationRule {
+	return m.Validations
 }
 
 // A private implementation of the Variable interface that forces all users to use our public constructors
 type defaultVariable struct {
-	name         string
-	description  string
-	defaultValue interface{}
-	reference    string
-	variableType BoilerplateType
-	options      []string
+	name           string
+	description    string
+	defaultValue   interface{}
+	reference      string
+	variableType   BoilerplateType
+	options        []string
+	keys           []MapEntry
+	validations    []CustomValidationRule
+	singleItemName string
 }
 
 // Create a new variable that holds a string
@@ -138,6 +161,14 @@ func (variable defaultVariable) Description() string {
 	return variable.description
 }
 
+func (variable defaultVariable) Validations() []CustomValidationRule {
+	return variable.validations
+}
+
+func (variable defaultVariable) GetSingleItemName() string {
+	return variable.singleItemName
+}
+
 func (variable defaultVariable) Type() BoilerplateType {
 	return variable.variableType
 }
@@ -152,6 +183,10 @@ func (variable defaultVariable) Reference() string {
 
 func (variable defaultVariable) Options() []string {
 	return variable.options
+}
+
+func (variable defaultVariable) Keys() []MapEntry {
+	return variable.keys
 }
 
 func (variable defaultVariable) WithName(name string) Variable {
@@ -215,6 +250,12 @@ func (variable defaultVariable) MarshalYAML() (interface{}, error) {
 	}
 	if len(variable.Options()) > 0 {
 		varYml["options"] = variable.Options()
+	}
+	if len(variable.Keys()) > 0 {
+		varYml["keys"] = variable.Keys()
+	}
+	if len(variable.Validations()) > 0 {
+		varYml["validations"] = variable.Validations()
 	}
 	return varYml, nil
 }
@@ -473,6 +514,12 @@ func UnmarshalVariableFromBoilerplateConfigYaml(fields map[string]interface{}) (
 		variable.description = *description
 	}
 
+	validationRules, err := unmarshalValidationsField(fields, *name, variableType)
+	if err != nil {
+		return nil, err
+	}
+	variable.validations = validationRules
+
 	reference, err := unmarshalStringField(fields, "reference", false, *name)
 	if err != nil {
 		return nil, err
@@ -486,6 +533,18 @@ func UnmarshalVariableFromBoilerplateConfigYaml(fields map[string]interface{}) (
 		return nil, err
 	}
 	variable.options = options
+
+	/*keys, err := unmarshalKeysField(fields, *name, variableType)
+	if err != nil {
+		return nil, err
+	}
+	variable.keys = keys*/
+
+	singleItemName, err := unmarshalSingleItemField(fields, *name, variableType)
+	if err != nil {
+		return nil, err
+	}
+	variable.singleItemName = singleItemName
 
 	variable.defaultValue = fields["default"]
 
