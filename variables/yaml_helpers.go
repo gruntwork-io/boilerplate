@@ -256,21 +256,20 @@ func ConvertValidationStringtoRules(ruleString string) ([]CustomValidationRule, 
 			}
 			validationRules = append(validationRules, cvr)
 		}
-
 	}
 
 	return validationRules, nil
 }
 
-// Given a map of key:value pairs read from a Boilerplate YAML config file of the format:
+// Given a list of validations read from a Boilerplate YAML config file of the format:
 //
 // validations:
-//   - foo
-//   - bar
-//   - baz
+//   - url
+//   - email
+//   - length-5-20
 //
-// This method takes looks up the options object in the map and unmarshals the data inside of it it into a list of
-// strings.
+// This method looks up the validations specified in the map and applies them to the specified fields so that users prompted for input
+// get real-time feedback on the validity of their entries
 func unmarshalValidationsField(fields map[string]interface{}, context string, variableType BoilerplateType) ([]CustomValidationRule, error) {
 	validations, _ := fields["validations"]
 
@@ -524,12 +523,6 @@ func (err OptionsMissing) Error() string {
 	return fmt.Sprintf("%s has type %s but does not specify any options. You must specify at least one option.", string(err), Enum)
 }
 
-type KeysMissing string
-
-func (err KeysMissing) Error() string {
-	return fmt.Sprintf("%s has type %s but does not specify any keys. You must specify at least one key.", string(err), Map)
-}
-
 type InvalidVariableValue struct {
 	Value    interface{}
 	Variable Variable
@@ -550,15 +543,6 @@ type OptionsCanOnlyBeUsedWithEnum struct {
 
 func (err OptionsCanOnlyBeUsedWithEnum) Error() string {
 	return fmt.Sprintf("%s has type %s and tries to specify options. Options may only be specified for the %s type.", err.Context, err.Type.String(), Enum)
-}
-
-type KeysCanOnlyBeUsedWithMap struct {
-	Context string
-	Type    BoilerplateType
-}
-
-func (err KeysCanOnlyBeUsedWithMap) Error() string {
-	return fmt.Sprintf("%s has type %s and tries to specify keys. Keys may only be specified for the %s type.", err.Context, err.Type.String(), Map)
 }
 
 type InvalidTypeForField struct {

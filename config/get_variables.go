@@ -183,20 +183,6 @@ func clearTerminal() {
 	print("\033[H\033[2J")
 }
 
-func renderMapVariablePrompts(variable variables.Variable, requirements []string) {
-	clearTerminal()
-
-	pterm.Println(pterm.Green(variable.FullName()))
-
-	if variable.Description() != "" {
-		pterm.Println(pterm.LightGreen(variable.Description()))
-	}
-	pterm.Println(pterm.LightGreen("Validation Requirements:"))
-	for _, requirement := range requirements {
-		pterm.Println(pterm.LightGreen("- " + requirement))
-	}
-}
-
 func renderVariablePrompts(variable variables.Variable, invalidEntries InvalidEntries) {
 	pterm.Println(pterm.Green(variable.FullName()))
 
