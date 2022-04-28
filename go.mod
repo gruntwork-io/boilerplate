@@ -3,6 +3,7 @@ module github.com/gruntwork-io/boilerplate
 go 1.16
 
 require (
+	github.com/AlecAivazis/survey/v2 v2.3.4
 	github.com/Masterminds/sprig/v3 v3.2.1
 	github.com/fatih/color v1.9.0
 	github.com/go-errors/errors v1.1.1

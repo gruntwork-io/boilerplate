@@ -2,8 +2,11 @@ package config
 
 import (
 	"fmt"
+	"log"
 	"strings"
 
+	"github.com/AlecAivazis/survey/v2"
+	"github.com/AlecAivazis/survey/v2/terminal"
 	"github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/render"
@@ -163,8 +166,12 @@ func getVariableFromUser(variable variables.Variable, opts *options.BoilerplateO
 
 	helpText := []string{
 		fmt.Sprintf("type: %s", variable.Type()),
-		fmt.Sprintf("example value: %s", variable.ExampleValue()),
 	}
+
+	if variable.ExampleValue() != "" {
+		helpText = append(helpText, fmt.Sprintf("example value: %s", variable.ExampleValue()))
+	}
+
 	if variable.Default() != nil {
 		helpText = append(helpText, fmt.Sprintf("default: %s", variable.Default()))
 	}
@@ -172,9 +179,32 @@ func getVariableFromUser(variable variables.Variable, opts *options.BoilerplateO
 	fmt.Printf("  (%s)\n", strings.Join(helpText, ", "))
 	fmt.Println()
 
-	value, err := util.PromptUserForInput("  Enter a value")
-	if err != nil {
-		return "", err
+	value := ""
+	// Display rich prompts to the user, based on the type of variable we're asking for
+	switch variable.Type() {
+	case variables.String:
+		prompt := &survey.Input{
+			Message: fmt.Sprintf("Please enter %s", variable.FullName()),
+		}
+		err := survey.AskOne(prompt, &value)
+		if err != nil {
+			if err == terminal.InterruptErr {
+				log.Fatal("quit")
+			}
+			return value, err
+		}
+	case variables.Enum:
+		prompt := &survey.Select{
+			Message: fmt.Sprintf("Please select %s", variable.FullName()),
+			Options: variable.Options(),
+		}
+		err := survey.AskOne(prompt, &value)
+		if err != nil {
+			if err == terminal.InterruptErr {
+				log.Fatal("quit")
+			}
+			return value, err
+		}
 	}
 
 	if value == "" {
