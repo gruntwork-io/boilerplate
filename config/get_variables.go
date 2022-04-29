@@ -3,15 +3,16 @@ package config
 import (
 	"fmt"
 	"log"
-	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/terminal"
+	validation "github.com/go-ozzo/ozzo-validation"
 	"github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/render"
 	"github.com/gruntwork-io/boilerplate/util"
 	"github.com/gruntwork-io/boilerplate/variables"
+	"github.com/pterm/pterm"
 )
 
 const MaxReferenceDepth = 20
@@ -142,7 +143,7 @@ func getVariable(variable variables.Variable, opts *options.BoilerplateOptions) 
 	} else if opts.NonInteractive {
 		return nil, errors.WithStackTrace(MissingVariableWithNonInteractiveMode(variable.FullName()))
 	} else {
-		return getVariableFromUser(variable, opts)
+		return getVariableFromUser(variable, opts, variables.InvalidEntries{})
 	}
 }
 
@@ -158,26 +159,14 @@ func getVariableFromVars(variable variables.Variable, opts *options.BoilerplateO
 }
 
 // Get the value for the given variable by prompting the user
-func getVariableFromUser(variable variables.Variable, opts *options.BoilerplateOptions) (interface{}, error) {
-	util.BRIGHT_GREEN.Printf("\n%s\n", variable.FullName())
-	if variable.Description() != "" {
-		fmt.Printf("  %s\n", variable.Description())
-	}
+func getVariableFromUser(variable variables.Variable, opts *options.BoilerplateOptions, invalidEntries variables.InvalidEntries) (interface{}, error) {
 
-	helpText := []string{
-		fmt.Sprintf("type: %s", variable.Type()),
-	}
-
-	if variable.ExampleValue() != "" {
-		helpText = append(helpText, fmt.Sprintf("example value: %s", variable.ExampleValue()))
-	}
-
-	if variable.Default() != nil {
-		helpText = append(helpText, fmt.Sprintf("default: %s", variable.Default()))
-	}
-
-	fmt.Printf("  (%s)\n", strings.Join(helpText, ", "))
+	// Add a newline for legibility and padding
 	fmt.Println()
+
+	// Show the current variable's name, description, and also render any validation errors in real-time so the user knows what's wrong
+	// with their input
+	renderVariablePrompts(variable, invalidEntries)
 
 	value := ""
 	// Display rich prompts to the user, based on the type of variable we're asking for
@@ -207,13 +196,69 @@ func getVariableFromUser(variable variables.Variable, opts *options.BoilerplateO
 		}
 	}
 
+	// If any of the variable's validation rules are not satisfied by the user's submission,
+	// store the validation errors in a map. We'll then recursively call get_variable_from_user
+	// again, this time passing in the validation errors map, so that we can render to the terminal
+	// the exact issues with each submission
+	if len(variable.Validations()) > 0 {
+		m := make(map[string]bool)
+		var hasValidationErrs = false
+		for _, customValidation := range variable.Validations() {
+			// Run the specific validation against the user-provided value and store it in the map
+			err := validation.Validate(value, customValidation.Validator)
+			val := true
+			if err != nil {
+				hasValidationErrs = true
+				val = false
+			}
+			m[customValidation.DescriptionText()] = val
+		}
+		if hasValidationErrs {
+			ie := variables.InvalidEntries{
+				Issues: []variables.ValidationIssue{
+					{Value: value,
+						ValidationMap: m},
+				},
+			}
+			return getVariableFromUser(variable, opts, ie)
+		}
+	}
+
 	if value == "" {
 		// TODO: what if the user wanted an empty string instead of the default?
 		util.Logger.Printf("Using default value for variable '%s': %v", variable.FullName(), variable.Default())
 		return variable.Default(), nil
 	}
 
+	// Clear the terminal of all previous text for legibility
+	util.ClearTerminal()
 	return variables.ParseYamlString(value)
+}
+
+// RenderValidationErrors displays in user-legible format the exact validation errors
+// that the user's last submission generated
+func renderValidationErrors(val interface{}, m map[string]bool) {
+	util.ClearTerminal()
+	pterm.Warning.WithPrefix(pterm.Prefix{Text: "Invalid entry"}).Println(val)
+	for k, v := range m {
+		if v == false {
+			pterm.Error.Println(k)
+		} else if v == true {
+			pterm.Success.Println(k)
+		}
+	}
+}
+
+func renderVariablePrompts(variable variables.Variable, invalidEntries variables.InvalidEntries) {
+	pterm.Println(pterm.Green(variable.FullName()))
+
+	if variable.Description() != "" {
+		pterm.Println(pterm.Yellow(variable.Description()))
+	}
+
+	if len(invalidEntries.Issues) > 0 {
+		renderValidationErrors(invalidEntries.Issues[0].Value, invalidEntries.Issues[0].ValidationMap)
+	}
 }
 
 // Custom error types

@@ -41,3 +41,7 @@ func PromptUserForYesNo(prompt string) (bool, error) {
 		return false, nil
 	}
 }
+
+func ClearTerminal() {
+	print("\033[H\033[2J")
+}
