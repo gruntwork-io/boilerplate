@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/fatih/color"
+	"github.com/inancgumus/screen"
 
 	"github.com/gruntwork-io/boilerplate/errors"
 )
@@ -42,6 +43,7 @@ func PromptUserForYesNo(prompt string) (bool, error) {
 	}
 }
 
+// Clear the terminal screen in a cross-platform compatible manner
 func ClearTerminal() {
-	print("\033[H\033[2J")
+	screen.Clear()
 }
