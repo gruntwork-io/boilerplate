@@ -200,28 +200,26 @@ func getVariableFromUser(variable variables.Variable, opts *options.BoilerplateO
 	// store the validation errors in a map. We'll then recursively call get_variable_from_user
 	// again, this time passing in the validation errors map, so that we can render to the terminal
 	// the exact issues with each submission
-	if len(variable.Validations()) > 0 {
-		m := make(map[string]bool)
-		var hasValidationErrs = false
-		for _, customValidation := range variable.Validations() {
-			// Run the specific validation against the user-provided value and store it in the map
-			err := validation.Validate(value, customValidation.Validator)
-			val := true
-			if err != nil {
-				hasValidationErrs = true
-				val = false
-			}
-			m[customValidation.DescriptionText()] = val
+	m := make(map[string]bool)
+	var hasValidationErrs = false
+	for _, customValidation := range variable.Validations() {
+		// Run the specific validation against the user-provided value and store it in the map
+		err := validation.Validate(value, customValidation.Validator)
+		val := true
+		if err != nil {
+			hasValidationErrs = true
+			val = false
 		}
-		if hasValidationErrs {
-			ie := variables.InvalidEntries{
-				Issues: []variables.ValidationIssue{
-					{Value: value,
-						ValidationMap: m},
-				},
-			}
-			return getVariableFromUser(variable, opts, ie)
+		m[customValidation.DescriptionText()] = val
+	}
+	if hasValidationErrs {
+		ie := variables.InvalidEntries{
+			Issues: []variables.ValidationIssue{
+				{Value: value,
+					ValidationMap: m},
+			},
 		}
+		return getVariableFromUser(variable, opts, ie)
 	}
 
 	if value == "" {
