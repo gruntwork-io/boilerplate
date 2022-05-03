@@ -197,6 +197,23 @@ func (c CustomValidationRule) DescriptionText() string {
 	return c.Message
 }
 
+// This function is kind of gross, but we're using it to temporarily enhance boilerplate with the validations
+// we need in the updated Gruntwork CLI experience we shipped as part of the Spring 2022 Ref Arch Moratorium
+//
+// We are NOT planning to merge this into boilerplate as is. It's a short term solution for delivering
+// limited validation rules
+//
+// The validation library is https://github.com/go-ozzo/ozzo-validation. Note that this library bundles the
+// govalidator's is library - so you'll also see functions like is.URL intermixed below
+//
+// We're using the following functions in this temporary branch:
+// - validation.Required (field cannot be empty)
+// - validation.Length
+// - is.URL (field must validate as a URL)
+// - is.Email (field must validate as an email address)
+// - is.Alphanumeric (field can only contain letters and numbers)
+// - is.CountryCode2 (field must validate as an ISO3166 Alpha 2 Country code)
+//
 func ConvertValidationStringtoRules(ruleString string) ([]CustomValidationRule, error) {
 
 	var validationRules []CustomValidationRule
