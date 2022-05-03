@@ -197,7 +197,7 @@ func (c CustomValidationRule) DescriptionText() string {
 	return c.Message
 }
 
-func ConvertValidationStringToRules(ruleString string) ([]CustomValidationRule, error) {
+func ConvertValidationStringtoRules(ruleString string) ([]CustomValidationRule, error) {
 
 	var validationRules []CustomValidationRule
 

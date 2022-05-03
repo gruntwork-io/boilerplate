@@ -12,6 +12,7 @@ import (
 	"github.com/gruntwork-io/boilerplate/render"
 	"github.com/gruntwork-io/boilerplate/util"
 	"github.com/gruntwork-io/boilerplate/variables"
+	"github.com/hashicorp/go-multierror"
 	"github.com/pterm/pterm"
 )
 
@@ -109,7 +110,19 @@ func getValueForVariable(variable variables.Variable, variablesInConfig map[stri
 		return getValueForVariable(reference, variablesInConfig, valuesForPreviousVariables, opts, referenceDepth+1)
 	}
 
-	return getVariable(variable, opts)
+	// Run the value we receive from getVariable through validations, ensuring values provided by --var-files will also be checked
+	value, err := getVariable(variable, opts)
+	if err != nil {
+		return value, err
+	}
+	var result *multierror.Error
+	// Run the value through any defined validations for the variable
+	for _, customValidation := range variable.Validations() {
+		// Run the specific validation against the user-provided value and store it in the map
+		err := validation.Validate(value, customValidation.Validator)
+		result = multierror.Append(result, err)
+	}
+	return value, result.ErrorOrNil()
 }
 
 // Get all the variables defined in the given config and its dependencies
