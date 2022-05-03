@@ -241,10 +241,10 @@ func renderValidationErrors(val interface{}, m map[string]bool) {
 	util.ClearTerminal()
 	pterm.Warning.WithPrefix(pterm.Prefix{Text: "Invalid entry"}).Println(val)
 	for k, v := range m {
-		if v == false {
-			pterm.Error.Println(k)
-		} else if v == true {
+		if v {
 			pterm.Success.Println(k)
+		} else {
+			pterm.Error.Println(k)
 		}
 	}
 }
