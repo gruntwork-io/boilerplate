@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"log"
+	"strconv"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/terminal"
@@ -194,6 +195,12 @@ func getVariableFromUser(variable variables.Variable, opts *options.BoilerplateO
 				log.Fatal("quit")
 			}
 			return value, err
+		}
+		// If this is a string of integers, then we quote it to avoid go-yaml from blowing up
+		// because it attempts to cast all integer strings to integers
+		_, intErr := strconv.Atoi(value)
+		if intErr == nil {
+			value = fmt.Sprintf(`"%s"`, value)
 		}
 	case variables.Enum:
 		prompt := &survey.Select{
