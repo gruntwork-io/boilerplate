@@ -7,6 +7,7 @@ import (
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/terminal"
+	validation "github.com/go-ozzo/ozzo-validation"
 	"github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/render"
@@ -205,6 +206,43 @@ func getVariableFromUser(variable variables.Variable, opts *options.BoilerplateO
 			}
 			return value, err
 		}
+	}
+
+	// If the value fed to survey above is still empty at this point, that means
+	// our user pressed enter, likely hoping to use the "Default" value defined for the variable
+	// Therefore, we need a simple switch here to use either the value returned from survey, if available,
+	// and otherwise the variable's default value
+	var valueToValidate interface{}
+	if value == "" {
+		valueToValidate = variable.Default()
+	} else {
+		valueToValidate = value
+	}
+	// If any of the variable's validation rules are not satisfied by the user's submission,
+	// store the validation errors in a map. We'll then recursively call get_variable_from_user
+	// again, this time passing in the validation errors map, so that we can render to the terminal
+	// the exact issues with each submission
+	m := make(map[string]bool)
+	var hasValidationErrs = false
+	for _, customValidation := range variable.Validations() {
+		// Run the specific validation against either the user-provided value, or the variable.Default(), and store it in the map
+		err := validation.Validate(valueToValidate, customValidation.Validator)
+		// We use true or false to drive the SUCCESS and FAILURE displays when rendering validations in the terminal
+		val := true
+		if err != nil {
+			hasValidationErrs = true
+			val = false
+		}
+		m[customValidation.DescriptionText()] = val
+	}
+	if hasValidationErrs {
+		ie := variables.InvalidEntries{
+			Issues: []variables.ValidationIssue{
+				{Value: value,
+					ValidationMap: m},
+			},
+		}
+		return getVariableFromUser(variable, opts, ie)
 	}
 
 	if value == "" {
