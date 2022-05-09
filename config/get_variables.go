@@ -196,12 +196,6 @@ func getVariableFromUser(variable variables.Variable, opts *options.BoilerplateO
 			}
 			return value, err
 		}
-		// If this is a string of integers, then we quote it to avoid go-yaml from blowing up
-		// because it attempts to cast all integer strings to integers
-		_, intErr := strconv.Atoi(value)
-		if intErr == nil {
-			value = fmt.Sprintf(`"%s"`, value)
-		}
 	case variables.Enum:
 		prompt := &survey.Select{
 			Message: fmt.Sprintf("Please select %s", variable.FullName()),
@@ -250,6 +244,14 @@ func getVariableFromUser(variable variables.Variable, opts *options.BoilerplateO
 
 	// Clear the terminal of all previous text for legibility
 	util.ClearTerminal()
+
+	if variable.Type() == variables.String {
+		_, intErr := strconv.Atoi(value)
+		if intErr == nil {
+			value = fmt.Sprintf(`"%s"`, value)
+		}
+	}
+
 	return variables.ParseYamlString(value)
 }
 
