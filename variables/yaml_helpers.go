@@ -4,8 +4,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"reflect"
+	"strconv"
 	"strings"
 
+	validation "github.com/go-ozzo/ozzo-validation"
+	"github.com/go-ozzo/ozzo-validation/is"
 	"github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/boilerplate/util"
 	"gopkg.in/yaml.v2"
@@ -173,6 +176,128 @@ func unmarshalOptionsField(fields map[string]interface{}, context string, variab
 	}
 
 	return util.ToStringList(optionsAsList), nil
+}
+
+type CustomValidationRule struct {
+	Validator validation.Rule
+	Message   string
+}
+
+type CustomValidationRuleCollection []CustomValidationRule
+
+func (c CustomValidationRuleCollection) GetValidators() []validation.Rule {
+	var validatorsToReturn []validation.Rule
+	for _, rule := range c {
+		validatorsToReturn = append(validatorsToReturn, rule.Validator)
+	}
+	return validatorsToReturn
+}
+
+func (c CustomValidationRule) DescriptionText() string {
+	return c.Message
+}
+
+// This function is kind of gross, but we're using it to temporarily enhance boilerplate with the validations
+// we need in the updated Gruntwork CLI experience we shipped as part of the Spring 2022 Ref Arch Moratorium
+//
+// We are NOT planning to merge this into boilerplate as is. It's a short term solution for delivering
+// limited validation rules
+//
+// The validation library is https://github.com/go-ozzo/ozzo-validation. Note that this library bundles the
+// govalidator's is library - so you'll also see functions like is.URL intermixed below
+//
+// We're using the following functions in this temporary branch:
+// - validation.Required (field cannot be empty)
+// - validation.Length
+// - is.URL (field must validate as a URL)
+// - is.Email (field must validate as an email address)
+// - is.Alphanumeric (field can only contain letters and numbers)
+// - is.CountryCode2 (field must validate as an ISO3166 Alpha 2 Country code)
+//
+func ConvertValidationStringtoRules(ruleString string) ([]CustomValidationRule, error) {
+
+	var validationRules []CustomValidationRule
+
+	ruleString = strings.ReplaceAll(ruleString, "]", "")
+	ruleString = strings.ReplaceAll(ruleString, "[", "")
+	rules := strings.Split(ruleString, " ")
+
+	for _, rule := range rules {
+		switch {
+		case strings.HasPrefix(rule, "length-"):
+			valString := strings.TrimLeft(rule, "length-")
+			valSlice := strings.Split(valString, "-")
+			minStr := valSlice[0]
+			maxStr := valSlice[1]
+			min, minErr := strconv.Atoi(strings.TrimSpace(minStr))
+			if minErr != nil {
+				return validationRules, minErr
+			}
+			max, maxErr := strconv.Atoi(strings.TrimSpace(maxStr))
+			if maxErr != nil {
+				return validationRules, maxErr
+			}
+			cvr := CustomValidationRule{
+				Validator: validation.Length(min, max),
+				Message:   fmt.Sprintf("Must be between %d and %d characters long", min, max),
+			}
+			validationRules = append(validationRules, cvr)
+		case rule == "required":
+			cvr := CustomValidationRule{
+				Validator: validation.Required,
+				Message:   "Must not be empty",
+			}
+			validationRules = append(validationRules, cvr)
+		case rule == "url":
+			cvr := CustomValidationRule{
+				Validator: is.URL,
+				Message:   "Must be a valid URL",
+			}
+			validationRules = append(validationRules, cvr)
+		case rule == "email":
+			cvr := CustomValidationRule{
+				Validator: is.Email,
+				Message:   "Must be a valid email address",
+			}
+			validationRules = append(validationRules, cvr)
+		case rule == "alphanumeric":
+			cvr := CustomValidationRule{
+				Validator: is.Alphanumeric,
+				Message:   "Can contain English letters and digits only",
+			}
+			validationRules = append(validationRules, cvr)
+		case rule == "CountryCode2":
+			cvr := CustomValidationRule{
+				Validator: is.CountryCode2,
+				Message:   "Must be a valid ISO3166 Alpha 2 Country code",
+			}
+			validationRules = append(validationRules, cvr)
+		}
+	}
+
+	return validationRules, nil
+}
+
+// Given a list of validations read from a Boilerplate YAML config file of the format:
+//
+// validations:
+//   - url
+//   - email
+//   - length-5-20
+//
+// This method looks up the validations specified in the map and applies them to the specified fields so that users prompted for input
+// get real-time feedback on the validity of their entries
+func unmarshalValidationsField(fields map[string]interface{}, context string, variableType BoilerplateType) ([]CustomValidationRule, error) {
+	validations, _ := fields["validations"]
+
+	validationsAsString := fmt.Sprintf("%v", validations)
+
+	rules, err := ConvertValidationStringtoRules(validationsAsString)
+	if err != nil {
+		return []CustomValidationRule{}, err
+	}
+
+	return rules, nil
 }
 
 // Given a map of key:value pairs read from a Boilerplate YAML config file of the format:
@@ -401,6 +526,12 @@ type YAMLConversionErr struct {
 
 func (err YAMLConversionErr) Error() string {
 	return fmt.Sprintf("YAML value has type %s and cannot be cast to to the correct type.", reflect.TypeOf(err.Key))
+}
+
+type ValidationsMissing string
+
+func (err ValidationsMissing) Error() string {
+	return fmt.Sprintf("%s does not specify any validations. You must specify at least one validation.", string(err))
 }
 
 type OptionsMissing string

@@ -38,6 +38,15 @@ func (boilerplateType BoilerplateType) String() string {
 	return string(boilerplateType)
 }
 
+type InvalidEntries struct {
+	Issues []ValidationIssue
+}
+
+type ValidationIssue struct {
+	Value         interface{}
+	ValidationMap map[string]bool
+}
+
 // Custom error types
 
 type InvalidBoilerplateType string
