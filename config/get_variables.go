@@ -210,6 +210,12 @@ func getVariableFromUser(variable variables.Variable, opts *options.BoilerplateO
 		}
 	}
 
+	var valueToValidate interface{}
+	if value == "" {
+		valueToValidate = variable.Default()
+	} else {
+		valueToValidate = value
+	}
 	// If any of the variable's validation rules are not satisfied by the user's submission,
 	// store the validation errors in a map. We'll then recursively call get_variable_from_user
 	// again, this time passing in the validation errors map, so that we can render to the terminal
@@ -218,7 +224,7 @@ func getVariableFromUser(variable variables.Variable, opts *options.BoilerplateO
 	var hasValidationErrs = false
 	for _, customValidation := range variable.Validations() {
 		// Run the specific validation against the user-provided value and store it in the map
-		err := validation.Validate(value, customValidation.Validator)
+		err := validation.Validate(valueToValidate, customValidation.Validator)
 		val := true
 		if err != nil {
 			hasValidationErrs = true
