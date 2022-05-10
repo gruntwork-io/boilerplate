@@ -324,19 +324,19 @@ func unmarshalTypeField(fields map[string]interface{}, context string) (Boilerpl
 	return BOILERPLATE_TYPE_DEFAULT, nil
 }
 
-func unmarshalIntField(fields map[string]interface{}, fieldName string, requiredField bool) (int, error) {
+func unmarshalIntField(fields map[string]interface{}, fieldName string, requiredField bool) (*int, error) {
 	value, hasValue := fields[fieldName]
 	if !hasValue {
 		if requiredField {
-			return 0, errors.WithStackTrace(RequiredFieldMissing(fieldName))
+			return nil, errors.WithStackTrace(RequiredFieldMissing(fieldName))
 		}
 	}
 
 	valueAsInt, isInt := value.(int)
 	if !isInt {
-		return 0, nil
+		return nil, nil
 	}
-	return valueAsInt, nil
+	return &valueAsInt, nil
 }
 
 // Given a map of key:value pairs read from a Boilerplate YAML config file of the format:
