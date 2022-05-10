@@ -324,7 +324,7 @@ func unmarshalTypeField(fields map[string]interface{}, context string) (Boilerpl
 	return BOILERPLATE_TYPE_DEFAULT, nil
 }
 
-func unmarshalIntField(fields map[string]interface{}, fieldName string, requiredField bool) (*int, error) {
+func unmarshalIntField(fields map[string]interface{}, fieldName string, requiredField bool, context string) (*int, error) {
 	value, hasValue := fields[fieldName]
 	if !hasValue {
 		if requiredField {
@@ -334,11 +334,12 @@ func unmarshalIntField(fields map[string]interface{}, fieldName string, required
 		}
 	}
 
-	valueAsInt, isInt := value.(int)
-	if !isInt {
-		return nil, nil
+	if valueAsInt, isInt := value.(int); isInt {
+		return &valueAsInt, nil
+	} else {
+		return nil, errors.WithStackTrace(InvalidTypeForField{FieldName: fieldName, ExpectedType: "int", ActualType: reflect.TypeOf(value), Context: context})
 	}
-	return &valueAsInt, nil
+
 }
 
 // Given a map of key:value pairs read from a Boilerplate YAML config file of the format:
