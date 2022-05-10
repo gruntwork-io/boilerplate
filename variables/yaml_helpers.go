@@ -332,11 +332,8 @@ func unmarshalIntField(fields map[string]interface{}, fieldName string, required
 		}
 	}
 
-	if valueAsInt, isInt := value.(int); isInt {
-		return valueAsInt, nil
-	}
-
-	return 0, UndefinedOrderForFieldErr{fieldName: fieldName}
+	valueAsInt := value.(int)
+	return valueAsInt, nil
 }
 
 // Given a map of key:value pairs read from a Boilerplate YAML config file of the format:
