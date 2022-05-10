@@ -332,7 +332,10 @@ func unmarshalIntField(fields map[string]interface{}, fieldName string, required
 		}
 	}
 
-	valueAsInt := value.(int)
+	valueAsInt, isInt := value.(int)
+	if !isInt {
+		return 0, nil
+	}
 	return valueAsInt, nil
 }
 

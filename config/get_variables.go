@@ -15,6 +15,7 @@ import (
 	"github.com/gruntwork-io/boilerplate/util"
 	"github.com/gruntwork-io/boilerplate/variables"
 	"github.com/hashicorp/go-multierror"
+	"github.com/inancgumus/screen"
 	"github.com/pterm/pterm"
 )
 
@@ -215,8 +216,8 @@ func getVariableFromVars(variable variables.Variable, opts *options.BoilerplateO
 // Get the value for the given variable by prompting the user
 func getVariableFromUser(variable variables.Variable, opts *options.BoilerplateOptions, invalidEntries variables.InvalidEntries) (interface{}, error) {
 
-	// Add a newline for legibility and padding
-	fmt.Println()
+	// Start by clearing any previous contents
+	screen.Clear()
 
 	// Show the current variable's name, description, and also render any validation errors in real-time so the user knows what's wrong
 	// with their input
