@@ -329,6 +329,8 @@ func unmarshalIntField(fields map[string]interface{}, fieldName string, required
 	if !hasValue {
 		if requiredField {
 			return nil, errors.WithStackTrace(RequiredFieldMissing(fieldName))
+		} else {
+			return nil, nil
 		}
 	}
 
