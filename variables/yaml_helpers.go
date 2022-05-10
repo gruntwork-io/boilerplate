@@ -324,7 +324,7 @@ func unmarshalTypeField(fields map[string]interface{}, context string) (Boilerpl
 	return BOILERPLATE_TYPE_DEFAULT, nil
 }
 
-func unmarshalOrderField(fields map[string]interface{}, fieldName string, requiredField bool) (int, error) {
+func unmarshalIntField(fields map[string]interface{}, fieldName string, requiredField bool) (int, error) {
 	value, hasValue := fields[fieldName]
 	if !hasValue {
 		if requiredField {

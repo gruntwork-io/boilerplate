@@ -484,7 +484,7 @@ func UnmarshalVariableFromBoilerplateConfigYaml(fields map[string]interface{}) (
 	}
 	variable.variableType = variableType
 
-	order, err := unmarshalOrderField(fields, *name, false)
+	order, err := unmarshalIntField(fields, *name, false)
 	if err != nil {
 		return nil, err
 	}
