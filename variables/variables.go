@@ -488,7 +488,9 @@ func UnmarshalVariableFromBoilerplateConfigYaml(fields map[string]interface{}) (
 	if err != nil {
 		return nil, err
 	}
-	variable.order = *order
+	if order != nil {
+		variable.order = *order
+	}
 
 	description, err := unmarshalStringField(fields, "description", false, *name)
 	if err != nil {
