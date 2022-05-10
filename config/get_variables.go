@@ -79,7 +79,7 @@ func GetVariables(opts *options.BoilerplateOptions, boilerplateConfig, rootBoile
 	}
 
 	// Create a slice of KeyOrderPairs, which we'll be able to sort according to order value
-	keyAndOrderPairs := make([]KeyAndOrderPair, len(variablesInConfig))
+	keyAndOrderPairs := []KeyAndOrderPair{}
 
 	// Pair the keys for each variable to its user-defined presentation order
 	for key, variable := range variablesInConfig {
