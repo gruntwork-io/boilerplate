@@ -9,7 +9,7 @@ defaults: &defaults
     TERRAFORM_VERSION: 1.0.11
     TERRAGRUNT_VERSION: v0.36.1
     PACKER_VERSION: NONE
-    GOLANG_VERSION: '1.17'
+    GOLANG_VERSION: "1.18"
     GO111MODULE: auto
     # Since we are running in docker, USER doesn't get set, so we need to set it explicitly
     USER: circleci
@@ -44,7 +44,6 @@ jobs:
             run-go-tests --path . --timeout 1h --packages "-ldflags '-X github.com/gruntwork-io/go-commons/version.Version=v1.33.7' ./..." \
                                                                                                                                           | tee /tmp/logs/all.log
           no_output_timeout: 3600s
-
 
       # Store junit test result so it shows up in the CircleCI ui
       - run:
