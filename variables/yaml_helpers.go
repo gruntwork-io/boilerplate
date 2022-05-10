@@ -324,6 +324,21 @@ func unmarshalTypeField(fields map[string]interface{}, context string) (Boilerpl
 	return BOILERPLATE_TYPE_DEFAULT, nil
 }
 
+func unmarshalOrderField(fields map[string]interface{}, fieldName string, requiredField bool) (int, error) {
+	value, hasValue := fields[fieldName]
+	if !hasValue {
+		if requiredField {
+			return 0, errors.WithStackTrace(RequiredFieldMissing(fieldName))
+		}
+	}
+
+	if valueAsInt, isInt := value.(int); isInt {
+		return valueAsInt, nil
+	}
+
+	return 0, UndefinedOrderForFieldErr{fieldName: fieldName}
+}
+
 // Given a map of key:value pairs read from a Boilerplate YAML config file of the format:
 //
 // fieldName: <VALUE>
@@ -604,4 +619,12 @@ type UnrecognizedBoilerplateType BoilerplateType
 
 func (err UnrecognizedBoilerplateType) Error() string {
 	return fmt.Sprintf("Unrecognized type: %s", BoilerplateType(err).String())
+}
+
+type UndefinedOrderForFieldErr struct {
+	fieldName string
+}
+
+func (err UndefinedOrderForFieldErr) Error() string {
+	return fmt.Sprintf("No order value defined for field: %s", err.fieldName)
 }

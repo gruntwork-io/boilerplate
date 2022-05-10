@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"log"
+	"sort"
 	"strconv"
 
 	"github.com/AlecAivazis/survey/v2"
@@ -60,7 +61,46 @@ func GetVariables(opts *options.BoilerplateOptions, boilerplateConfig, rootBoile
 
 	// Collect the variable values that are defined in the config and get the value.
 	variablesInConfig := getAllVariablesInConfig(boilerplateConfig)
-	for _, variable := range variablesInConfig {
+
+	// Prior to prompting the user for the defined variable values, we sort the variables
+	// by user-defined presentation order. Users may specify the order: value when defining
+	// their variables in boilerplate.yml. This order value is an int, and it is used to
+	// determine the relative ordering of the variables by key name
+	// In essence, since Go maps do not preserve order for performance reasons, we need to
+	// work around that and introduce a concept of use-defined ordering when prompting for
+	// variables. We do this to provide a more coherent and easy to work with form filling
+	// process for our Ref Arch customers
+
+	// A KeyAndOrderPair is a composite of the user-defined order and the user's variable name
+	type KeyAndOrderPair struct {
+		Key   string
+		Order int
+	}
+
+	// Create a slice of KeyOrderPairs, which we'll be able to sort according to order value
+	keyAndOrderPairs := make([]KeyAndOrderPair, len(variablesInConfig))
+
+	// Pair the keys for each variable to its user-defined presentation order
+	for key, variable := range variablesInConfig {
+		kop := KeyAndOrderPair{
+			Key:   key,
+			Order: variable.Order(),
+		}
+		keyAndOrderPairs = append(keyAndOrderPairs, kop)
+	}
+
+	// Sort the KeyAndOrderPairs by their order value
+	// N.B. this syntax of sort.Slice requires Go 1.18 or above!
+	sort.Slice(keyAndOrderPairs[:], func(i, j int) bool {
+		return keyAndOrderPairs[i].Order < keyAndOrderPairs[j].Order
+	})
+
+	// Now, instead of just iterating through the map keys naively,
+	// iterate through the slice of KeyOrderPairs, which are sorted by order
+	// which means that in each iteration of the loop, we can fetch the next variable
+	// by looking up its key in the original config-provided variables map
+	for _, keyOrderPair := range keyAndOrderPairs {
+		variable := variablesInConfig[keyOrderPair.Key]
 		unmarshalled, err := getValueForVariable(variable, variablesInConfig, variablesToRender, opts, 0)
 		if err != nil {
 			return nil, err

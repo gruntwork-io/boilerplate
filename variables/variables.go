@@ -26,6 +26,9 @@ type Variable interface {
 	// The type of the variable
 	Type() BoilerplateType
 
+	// The user-defined sorting position of the variable
+	Order() int
+
 	// The default value for the variable, if any
 	Default() interface{}
 
@@ -64,6 +67,7 @@ type defaultVariable struct {
 	defaultValue interface{}
 	reference    string
 	variableType BoilerplateType
+	order        int
 	options      []string
 	validations  []CustomValidationRule
 }
@@ -144,6 +148,10 @@ func (variable defaultVariable) Description() string {
 
 func (variable defaultVariable) Type() BoilerplateType {
 	return variable.variableType
+}
+
+func (variable defaultVariable) Order() int {
+	return variable.order
 }
 
 func (variable defaultVariable) Default() interface{} {
@@ -475,6 +483,12 @@ func UnmarshalVariableFromBoilerplateConfigYaml(fields map[string]interface{}) (
 		return nil, err
 	}
 	variable.variableType = variableType
+
+	order, err := unmarshalOrderField(fields, *name, false)
+	if err != nil {
+		return nil, err
+	}
+	variable.order = order
 
 	description, err := unmarshalStringField(fields, "description", false, *name)
 	if err != nil {
