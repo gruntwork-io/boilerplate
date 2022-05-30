@@ -1,0 +1,15 @@
+variables:
+  - name: VpcName
+    description: What should the VPC be called?
+    type: string
+    default: my-vpc
+
+  - name: CidrBlock
+    description: What should the CIDR block be for the VPC?
+    type: string
+    default: 10.0.0.0/16
+
+  - name: NumNatGateways
+    description: How many NAT Gateways should be deployed in the VPC?
+    type: int
+    default: 1

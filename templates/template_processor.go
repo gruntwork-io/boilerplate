@@ -6,6 +6,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/gruntwork-io/boilerplate/config"
@@ -22,7 +23,7 @@ import (
 // function will load any missing variables (either from command line options or by prompting the user), execute all the
 // dependent boilerplate templates, and then execute this template. Note that we pass in rootOptions so that template
 // dependencies can inspect properties of the root template.
-func ProcessTemplate(options, rootOpts *options.BoilerplateOptions, thisDep variables.Dependency) error {
+func ProcessTemplate(options, rootOpts *options.BoilerplateOptions, thisDep variables.Dependency, variables map[string]interface{}) error {
 	// If TemplateFolder is already set, use that directly as it is a local template. Otherwise, download to a temporary
 	// working directory.
 	if options.TemplateFolder == "" {
@@ -55,9 +56,12 @@ func ProcessTemplate(options, rootOpts *options.BoilerplateOptions, thisDep vari
 		return err
 	}
 
-	vars, err := config.GetVariables(options, boilerplateConfig, rootBoilerplateConfig, thisDep)
-	if err != nil {
-		return err
+	if variables == nil {
+		vars, err := config.GetVariables(options, boilerplateConfig, rootBoilerplateConfig, thisDep)
+		if err != nil {
+			return err
+		}
+		variables = vars
 	}
 
 	err = os.MkdirAll(options.OutputFolder, 0777)
@@ -65,32 +69,124 @@ func ProcessTemplate(options, rootOpts *options.BoilerplateOptions, thisDep vari
 		return errors.WithStackTrace(err)
 	}
 
-	err = processHooks(boilerplateConfig.Hooks.BeforeHooks, options, vars)
+	err = processHooks(boilerplateConfig.Hooks.BeforeHooks, options, variables)
 	if err != nil {
 		return err
 	}
 
-	err = processDependencies(boilerplateConfig.Dependencies, options, vars)
+	err = processDependencies(boilerplateConfig.Dependencies, options, variables)
 	if err != nil {
 		return err
 	}
 
-	partials, err := processPartials(boilerplateConfig.Partials, options, vars)
+	partials, err := processPartials(boilerplateConfig.Partials, options, variables)
 	if err != nil {
 		return err
 	}
 
-	err = processTemplateFolder(boilerplateConfig, options, vars, partials)
+	err = processTemplateFolder(boilerplateConfig, options, variables, partials)
 	if err != nil {
 		return err
 	}
 
-	err = processHooks(boilerplateConfig.Hooks.AfterHooks, options, vars)
+	err = processHooks(boilerplateConfig.Hooks.AfterHooks, options, variables)
 	if err != nil {
 		return err
 	}
 
 	return nil
+}
+
+func GetJsonSchema(options *options.BoilerplateOptions) (map[string]interface{}, error) {
+	// If TemplateFolder is already set, use that directly as it is a local template. Otherwise, download to a temporary
+	// working directory.
+	if options.TemplateFolder == "" {
+		workingDir, templateFolder, err := getter_helper.DownloadTemplatesToTemporaryFolder(options.TemplateUrl)
+		defer func() {
+			util.Logger.Printf("Cleaning up working directory.")
+			os.RemoveAll(workingDir)
+		}()
+		if err != nil {
+			return nil, err
+		}
+
+		// Set the TemplateFolder of the options to the download dir
+		options.TemplateFolder = templateFolder
+	}
+
+	boilerplateConfig, err := config.LoadBoilerplateConfig(options)
+	if err != nil {
+		return nil, err
+	}
+	if err := config.EnforceRequiredVersion(boilerplateConfig); err != nil {
+		return nil, err
+	}
+
+	rootSchema, err := ConvertBoilerplateTemplateToJsonSchemaProps(boilerplateConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	depSchemas := []map[string]interface{}{rootSchema}
+	for _, dep := range boilerplateConfig.Dependencies {
+		depOptions, err := cloneOptionsForDependency(dep, options, nil)
+		if err != nil {
+			return nil, err
+		}
+		depSchema, err := GetJsonSchema(depOptions)
+		depSchemas = append(depSchemas, depSchema)
+	}
+
+	props := util.MergeMaps(depSchemas...)
+
+	return map[string]interface{}{
+		"title":    "Inputs",
+		"type":     "object",
+		//"required": []string{"title"}, TODO: all these props should be required? Or all have defaults?
+		"properties": props,
+	}, nil
+}
+
+func ConvertBoilerplateTemplateToJsonSchemaProps(cfg *config.BoilerplateConfig) (map[string]interface{}, error){
+	schema := map[string]interface{}{}
+
+	for _, variable := range cfg.Variables {
+		varType := variable.Type().JsonSchemaType()
+
+		props := map[string]interface{}{
+			"title": titleize(variable.Name()),
+			"description": variable.Description(),
+			"type": varType,
+			"default": variable.Default(),
+		}
+
+		if varType == "array" {
+			props["items"] = map[string]interface{}{
+				"type": "string",
+			}
+		}
+
+		if variable.Type() == variables.Enum {
+			props["enum"] = variable.Options()
+		}
+
+		schema[variable.Name()] = props
+	}
+
+	return schema, nil
+}
+
+var capitalLetters = regexp.MustCompile(`([A-Z])`)
+
+// Based on the Rails humanize function: https://apidock.com/rails/v5.2.3/String/titleize
+// Capitalizes all the words and replaces some characters in the string to create a nicer looking title. titleize is
+// meant for creating pretty output.
+func titleize(str string) string {
+	noUnderscores := strings.ReplaceAll(str, "_", " ")
+	noDashes := strings.ReplaceAll(noUnderscores, "-", " ")
+	// TODO: this is a hacky implementation that doesn't convert CamelCase properly. E.g., FooBAR will become Foo B A R.
+	camelCaseToStartCase := capitalLetters.ReplaceAllString(noDashes, " $1")
+	return strings.Title(camelCaseToStartCase)
 }
 
 func processPartials(partials []string, opts *options.BoilerplateOptions, vars map[string]interface{}) ([]string, error) {
@@ -206,7 +302,7 @@ func processDependency(dependency variables.Dependency, opts *options.Boilerplat
 		}
 
 		util.Logger.Printf("Processing dependency %s, with template folder %s and output folder %s", dependency.Name, dependencyOptions.TemplateFolder, dependencyOptions.OutputFolder)
-		return ProcessTemplate(dependencyOptions, opts, dependency)
+		return ProcessTemplate(dependencyOptions, opts, dependency, variables)
 	} else {
 		util.Logger.Printf("Skipping dependency %s", dependency.Name)
 		return nil

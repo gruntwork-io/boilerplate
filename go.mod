@@ -6,6 +6,8 @@ require (
 	github.com/AlecAivazis/survey/v2 v2.3.4
 	github.com/Masterminds/sprig/v3 v3.2.1
 	github.com/fatih/color v1.9.0
+	github.com/gin-contrib/cors v1.3.1
+	github.com/gin-gonic/gin v1.7.7
 	github.com/go-errors/errors v1.1.1
 	github.com/go-ozzo/ozzo-validation v3.6.0+incompatible
 	github.com/google/go-jsonnet v0.17.0
@@ -17,6 +19,7 @@ require (
 	github.com/huandu/xstrings v1.3.2 // indirect
 	github.com/inancgumus/screen v0.0.0-20190314163918-06e984b86ed3
 	github.com/mattn/go-zglob v0.0.2-0.20190814121620-e3c945676326
+	github.com/pkg/browser v0.0.0-20210911075715-681adbf594b8
 	github.com/pterm/pterm v0.12.41
 	github.com/stretchr/testify v1.7.0
 	github.com/stuart-warren/yamlfmt v0.1.0

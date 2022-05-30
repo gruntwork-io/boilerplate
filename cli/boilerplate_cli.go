@@ -2,14 +2,21 @@ package cli
 
 import (
 	"fmt"
-
-	"github.com/gruntwork-io/go-commons/entrypoint"
-	"github.com/gruntwork-io/go-commons/version"
-	"github.com/urfave/cli"
-
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/templates"
 	"github.com/gruntwork-io/boilerplate/variables"
+	"github.com/gruntwork-io/go-commons/entrypoint"
+	"github.com/gruntwork-io/go-commons/version"
+	"github.com/pkg/browser"
+	"github.com/urfave/cli"
+	"io/fs"
+	"io/ioutil"
+	"net/http"
+	"path/filepath"
+	"strings"
+	"sync"
 )
 
 const customHelpText = `Usage: {{.UsageText}}
@@ -93,6 +100,16 @@ func CreateBoilerplateCli() *cli.App {
 
 }
 
+type FileData struct {
+	Name     string
+	Size     int64
+	IsDir    bool
+	Url      string
+	Language string
+}
+
+const RenderedContentDir = "/tmp/rendered"
+
 // When you run the CLI, this is the action function that gets called
 func runApp(cliContext *cli.Context) error {
 	if !cliContext.Args().Present() && cliContext.NumFlags() == 0 {
@@ -104,8 +121,115 @@ func runApp(cliContext *cli.Context) error {
 		return err
 	}
 
-	// The root boilerplate.yml is not itself a dependency, so we pass an empty Dependency.
-	emptyDep := variables.Dependency{}
+	schema, err := templates.GetJsonSchema(opts)
+	if err != nil {
+		return err
+	}
 
-	return templates.ProcessTemplate(opts, opts, emptyDep)
+	router := gin.Default()
+
+	// create-react-app runs on a different port, so to allow it to make AJAX calls here, add CORS rules
+	corsConfig := cors.DefaultConfig()
+	corsConfig.AllowOrigins = []string{"http://localhost:3000"}
+	router.Use(cors.New(corsConfig))
+
+	router.Static("/rendered", RenderedContentDir)
+
+	router.GET("/form", func(ctx *gin.Context) {
+		ctx.JSON(http.StatusOK, schema)
+	})
+
+	router.POST("/render", func(ctx *gin.Context) {
+		var vars map[string]interface{}
+		if err := ctx.ShouldBindJSON(&vars); err != nil {
+			ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
+		// The root boilerplate.yml is not itself a dependency, so we pass an empty Dependency.
+		emptyDep := variables.Dependency{}
+
+		// Render
+		err := templates.ProcessTemplate(opts, opts, emptyDep, vars)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		dirContents, err := GetDirContents(opts.OutputFolder)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		ctx.JSON(http.StatusOK, gin.H{"files": dirContents})
+	})
+
+	var wg sync.WaitGroup
+
+	go func() {
+		wg.Add(1)
+		router.Run()
+		wg.Done()
+	}()
+
+	browser.OpenURL("http://localhost:3000")
+
+	wg.Wait()
+
+	return nil
+
+	//return templates.ProcessTemplate(opts, opts, emptyDep)
+}
+
+// TODO: this function only returns the top-level files/folders, but not the ones nested within, which is what we'd
+// really need to render a full file selector in the browser
+func GetDirContents(path string) ([]FileData, error) {
+	absPath, err := filepath.Abs(filepath.Clean(path))
+	if err != nil {
+		return nil, err
+	}
+
+	if !strings.HasPrefix(absPath, RenderedContentDir) {
+		return nil, fmt.Errorf("Cannot display contents outside of %s", RenderedContentDir)
+	}
+
+	files, err := ioutil.ReadDir(path)
+	if err != nil {
+		return nil, err
+	}
+
+	out := []FileData{}
+	for _, file := range files {
+		out = append(out, fileInfoToFileData(file))
+	}
+
+	return out, nil
+}
+
+func fileInfoToFileData(file fs.FileInfo) FileData {
+	return FileData{
+		Name:     file.Name(),
+		IsDir:    file.IsDir(),
+		Size:     file.Size(),
+		Url:      fmt.Sprintf("http://localhost:8080/rendered/%s", file.Name()),
+		Language: languageForFile(file),
+	}
+}
+
+// https://prismjs.com/#supported-languages
+func languageForFile(file fs.FileInfo) string {
+	ext := strings.TrimPrefix(filepath.Ext(file.Name()), ".")
+	switch ext {
+	case "tf", "hcl":
+		return "hcl"
+	case "sh", "bash":
+		return "bash"
+	case "go":
+		return "go"
+	case "md":
+		return "markdown"
+	default:
+		return ext // Hope for the best
+	}
 }

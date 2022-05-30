@@ -38,6 +38,28 @@ func (boilerplateType BoilerplateType) String() string {
 	return string(boilerplateType)
 }
 
+func (boilerplateType BoilerplateType) JsonSchemaType() string {
+	switch boilerplateType {
+	case String:
+		return "string"
+	case Int:
+		return "integer"
+	case Float:
+		return "number"
+	case Bool:
+		return "boolean"
+	case List:
+		return "array"
+	case Map:
+		return "object"
+	case Enum:
+		return "string"
+	// TODO: this should probably be an error instead
+	default:
+		return "string"
+	}
+}
+
 type InvalidEntries struct {
 	Issues []ValidationIssue
 }
