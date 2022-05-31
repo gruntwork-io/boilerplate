@@ -180,6 +180,10 @@ func LoadBoilerplateConfig(opts *options.BoilerplateOptions) (*BoilerplateConfig
 	}
 }
 
+func ParseBoilerplateConfigFromString(configContents string) (*BoilerplateConfig, error) {
+	return ParseBoilerplateConfig([]byte(configContents))
+}
+
 // Parse the given configContents as a boilerplate.yml config file
 func ParseBoilerplateConfig(configContents []byte) (*BoilerplateConfig, error) {
 	boilerplateConfig := &BoilerplateConfig{}

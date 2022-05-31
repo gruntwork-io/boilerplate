@@ -122,6 +122,10 @@ func GetJsonSchema(options *options.BoilerplateOptions) (map[string]interface{},
 		return nil, err
 	}
 
+	return BoilerplateConfigToJsonSchema(boilerplateConfig, options)
+}
+
+func BoilerplateConfigToJsonSchema(boilerplateConfig *config.BoilerplateConfig, options *options.BoilerplateOptions) (map[string]interface{}, error) {
 	rootSchema, err := ConvertBoilerplateTemplateToJsonSchemaProps(boilerplateConfig)
 	if err != nil {
 		return nil, err
