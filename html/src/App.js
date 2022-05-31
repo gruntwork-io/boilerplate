@@ -3,7 +3,7 @@ import './Prism.css';
 import React, { useEffect, useState } from "react";
 import Form from "@rjsf/bootstrap-4";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faFolder, faFile, faCircleInfo, faChevronRight } from '@fortawesome/free-solid-svg-icons'
+import { faFolder, faFile, faCircleInfo, faCirclePlay, faClipboard } from '@fortawesome/free-solid-svg-icons'
 import ReactMarkdown from 'react-markdown'
 
 function App() {
@@ -106,7 +106,7 @@ function App() {
           }
           const url = new window.URL(part.BoilerplateTemplatePath, 'http://localhost:8080/rendered').href
           return (
-              <div className="alert alert-primary d-flex align-items-center" role="alert">
+              <div className="alert alert-success d-flex align-items-center" role="alert">
                 <FontAwesomeIcon icon={faCircleInfo} className="me-2"/>
                 <div>
                   View
@@ -129,11 +129,21 @@ function App() {
       case 3: // ExecutableSnippet
         // TODO: in the future, we could execute the code here by having the user press "play", but for now, we just render-as Markdown
         return (
-            <ReactMarkdown>
-              ```{part.ExecutableSnippetLang}
-              {part.ExecutableSnippet}
-              ```
-            </ReactMarkdown>
+            <div className="row gx-1 align-items-center">
+              <div className="col-9">
+                <pre><code className={`language-${part.ExecutableSnippetLang}`}>{part.ExecutableSnippet}</code></pre>
+              </div>
+              <div className="col-3">
+                <button type="button" className="btn">
+                  <FontAwesomeIcon icon={faCirclePlay} className="me-1"/>
+                  <span style={{fontSize: "12px"}}>Run</span>
+                </button>
+                <button type="button" className="btn">
+                  <FontAwesomeIcon icon={faClipboard} className="me-1"/>
+                  <span style={{fontSize: "12px"}}>Copy</span>
+                </button>
+              </div>
+            </div>
         )
       default:
         throw new Error(`Unrecognized part type '${part.Type}' in part: ${JSON.stringify(part)}`);

@@ -312,9 +312,9 @@ type ResponsePart struct {
 	ExecutableSnippetLang     *string
 }
 
-var executableSnippetRegex = regexp.MustCompile("```(.+?\\s+)?boilerplate::executable.*")
-var inputRegex = regexp.MustCompile("```.*boilerplate::input.*")
-var templateRegex = regexp.MustCompile("```.*boilerplate::template:\\s*\"(.+?)\".*")
+var executableSnippetRegex = regexp.MustCompile("```(.+?\\s+)?\\(boilerplate::executable\\).*")
+var inputRegex = regexp.MustCompile("```.*\\(boilerplate::input\\).*")
+var templateRegex = regexp.MustCompile("```.*\\(boilerplate::template:\\s*\"(.+?)\"\\).*")
 
 func processMarkdown(mdContents string) ([]MarkdownPart, error) {
 	lines := strings.Split(mdContents, "\n")
