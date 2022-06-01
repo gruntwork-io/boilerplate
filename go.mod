@@ -10,7 +10,7 @@ require (
 	github.com/google/go-jsonnet v0.17.0
 	github.com/gruntwork-io/go-commons v0.10.2
 	github.com/gruntwork-io/terratest v0.40.2
-	github.com/hashicorp/go-getter v1.5.9
+	github.com/hashicorp/go-getter v1.6.1
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-version v1.3.0
 	github.com/huandu/xstrings v1.3.2 // indirect
