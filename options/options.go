@@ -3,7 +3,7 @@ package options
 import (
 	"fmt"
 
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 
 	"github.com/gruntwork-io/boilerplate/errors"
 	getter_helper "github.com/gruntwork-io/boilerplate/getter-helper"
