@@ -8,9 +8,6 @@ variables:
   - name: Title
     description: Enter the title for the dependencies example
 
-  - name: WelcomeText
-    description: Enter the welcome text used by the website dependency
-
   - name: ShowLogo
     description: Should the webiste show the logo (true or false)?
     type: bool
@@ -28,6 +25,9 @@ dependencies:
     output-folder: ./website
     var_files:
       - "{{ templateFolder }}/website_vars.yml"
+    variables:
+      - name: WelcomeText
+        default: "Title from variable default"
 
 skip_files:
   - path: "*_vars.yml"
