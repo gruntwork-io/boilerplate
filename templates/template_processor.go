@@ -267,14 +267,22 @@ func cloneOptionsForDependency(dependency variables.Dependency, originalOpts *op
 // Clone the given variables for use when rendering the given dependency.  The dependency will get the same variables
 // as the originals passed in, filtered to variable names that do not include a dependency or explicitly are for the
 // given dependency.
-// If the dependency specifies VarFiles, set the initial variables based on each var file. Note that we prefer the
-// variables set on the CLI (originalVariables) over those set on the dependency (unless DontInheritVariables is set)
-// If dependency.DontInheritVariables is set to true, return just the variables set on the var files.
+// This function implements the following order of preference for rendering variables:
+// - Variables set on the CLI (originalVariables) directly for the dependency (DEPENDENCY.VARNAME), unless
+//   DontInheritVariables is set.
+// - Variables defined from VarFiles set on the dependency.
+// - Variables defaults set on the dependency.
 func cloneVariablesForDependency(dependency variables.Dependency, originalVariables map[string]interface{}, renderedVarFiles []string) (map[string]interface{}, error) {
-	newVariables, err := variables.ParseVars(nil, renderedVarFiles)
+	newVariables := map[string]interface{}{}
+	for _, variable := range dependency.Variables {
+		newVariables[variable.Name()] = variable.Default()
+	}
+
+	varFileVars, err := variables.ParseVars(nil, renderedVarFiles)
 	if err != nil {
 		return nil, err
 	}
+	newVariables = util.MergeMaps(newVariables, varFileVars)
 
 	if dependency.DontInheritVariables {
 		return newVariables, nil

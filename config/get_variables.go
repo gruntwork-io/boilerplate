@@ -119,12 +119,6 @@ func getAllVariablesInConfig(boilerplateConfig *BoilerplateConfig) map[string]va
 		allVariables[variable.Name()] = variable
 	}
 
-	for _, dependency := range boilerplateConfig.Dependencies {
-		for _, variable := range dependency.GetNamespacedVariables() {
-			allVariables[variable.Name()] = variable
-		}
-	}
-
 	return allVariables
 }
 
