@@ -18,7 +18,8 @@ dependencies:
     template-url: ../docs
     output-folder: ./docs
     var_files:
-      - "{{ templateFolder }}/docs_vars.yml"
+      - "{{ templateFolder }}/docs_vars_default_vars.yml"
+      - "{{ templateFolder }}/docs_vars_override_vars.yml"
 
   - name: website
     template-url: ../website

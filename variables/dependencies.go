@@ -55,18 +55,6 @@ func (dependency Dependency) MarshalYAML() (interface{}, error) {
 	return depYml, nil
 }
 
-// Get all the variables in this dependency, namespacing each variable with the name of this dependency
-func (dependency Dependency) GetNamespacedVariables() []Variable {
-	variables := []Variable{}
-
-	for _, variable := range dependency.Variables {
-		variableNameForDependency := fmt.Sprintf("%s.%s", dependency.Name, variable.Name())
-		variables = append(variables, variable.WithName(variableNameForDependency))
-	}
-
-	return variables
-}
-
 // Given a unique variable name, return a tuple that contains the dependency name (if any) and the variable name.
 // Variable and dependency names are split by a dot, so for "foo.bar", this will return ("foo", "bar"). For just "foo",
 // it will return ("", "foo").
