@@ -355,10 +355,11 @@ func cloneVariablesForDependency(
 
 	// Now handle the CLI passed variables. Note that we handle dependency namespaced values separately, as they have
 	// the highest precedence.
-	// First loop handling all variables that are not dependency namespaced.
+	// First loop handling all variables that are not dependency namespaced, or that are dependency namespaced but are
+	// not targeting this dependency.
 	for key, value := range opts.Vars {
 		dependencyName, _ := variables.SplitIntoDependencyNameAndVariableName(key)
-		if dependencyName == "" {
+		if dependencyName != dependency.Name {
 			newVariables[key] = value
 		}
 	}

@@ -65,7 +65,7 @@ func TestCloneOptionsForDependency(t *testing.T) {
 			variables.Dependency{Name: "dep1", TemplateUrl: "../dep1", OutputFolder: "../out1"},
 			options.BoilerplateOptions{TemplateFolder: "/template/path/", OutputFolder: "/output/path/", NonInteractive: false, Vars: map[string]interface{}{"foo": "bar"}, OnMissingKey: options.Invalid},
 			map[string]interface{}{"baz": "blah"},
-			options.BoilerplateOptions{TemplateUrl: "../dep1", TemplateFolder: "/template/dep1", OutputFolder: "/output/out1", NonInteractive: false, Vars: map[string]interface{}{"baz": "blah"}, OnMissingKey: options.Invalid},
+			options.BoilerplateOptions{TemplateUrl: "../dep1", TemplateFolder: "/template/dep1", OutputFolder: "/output/out1", NonInteractive: false, Vars: map[string]interface{}{"foo": "bar", "baz": "blah"}, OnMissingKey: options.Invalid},
 		},
 		{
 			variables.Dependency{Name: "dep1", TemplateUrl: "{{ .foo }}", OutputFolder: "{{ .baz }}"},
@@ -88,42 +88,48 @@ func TestCloneVariablesForDependency(t *testing.T) {
 	testCases := []struct {
 		dependency        variables.Dependency
 		variables         map[string]interface{}
+		optsVars          map[string]interface{}
 		expectedVariables map[string]interface{}
 	}{
 		{
 			variables.Dependency{Name: "dep1", TemplateUrl: "../dep1", OutputFolder: "../out1"},
 			map[string]interface{}{},
 			map[string]interface{}{},
+			map[string]interface{}{},
 		},
 		{
 			variables.Dependency{Name: "dep1", TemplateUrl: "../dep1", OutputFolder: "../out1"},
 			map[string]interface{}{"foo": "bar", "baz": "blah"},
+			map[string]interface{}{},
 			map[string]interface{}{"foo": "bar", "baz": "blah"},
 		},
 		{
 			variables.Dependency{Name: "dep1", TemplateUrl: "../dep1", OutputFolder: "../out1"},
-			map[string]interface{}{"foo": "bar", "baz": "blah", "dep1.abc": "should-modify-name", "dep2.def": "should-copy-unmodified"},
+			map[string]interface{}{"foo": "bar", "baz": "blah"},
+			map[string]interface{}{"dep1.abc": "should-modify-name", "dep2.def": "should-copy-unmodified"},
 			map[string]interface{}{"foo": "bar", "baz": "blah", "abc": "should-modify-name", "dep2.def": "should-copy-unmodified"},
 		},
 		{
 			variables.Dependency{Name: "dep1", TemplateUrl: "../dep1", OutputFolder: "../out1"},
-			map[string]interface{}{"foo": "bar", "baz": "blah", "dep1.abc": "should-modify-name", "dep2.def": "should-copy-unmodified", "abc": "should-be-overwritten-by-dep1.abc"},
+			map[string]interface{}{"foo": "bar", "baz": "blah"},
+			map[string]interface{}{"dep1.abc": "should-modify-name", "dep2.def": "should-copy-unmodified", "abc": "should-be-overwritten-by-dep1.abc"},
 			map[string]interface{}{"foo": "bar", "baz": "blah", "abc": "should-modify-name", "dep2.def": "should-copy-unmodified"},
 		},
 		{
 			variables.Dependency{Name: "dep1", TemplateUrl: "../dep1", OutputFolder: "../out1", DontInheritVariables: true},
-			map[string]interface{}{"foo": "bar", "baz": "blah", "dep1.abc": "should-modify-name", "dep2.def": "should-copy-unmodified"},
+			map[string]interface{}{"foo": "bar", "baz": "blah"},
+			map[string]interface{}{"dep1.abc": "should-modify-name", "dep2.def": "should-copy-unmodified"},
 			map[string]interface{}{},
 		},
 	}
 
-	opts := &options.BoilerplateOptions{
-		TemplateFolder: "/template/path/",
-		OutputFolder:   "/output/path/",
-		NonInteractive: true,
-		Vars:           map[string]interface{}{},
-	}
 	for _, testCase := range testCases {
+		opts := &options.BoilerplateOptions{
+			TemplateFolder: "/template/path/",
+			OutputFolder:   "/output/path/",
+			NonInteractive: true,
+			Vars:           testCase.optsVars,
+		}
 		actualVariables, err := cloneVariablesForDependency(opts, testCase.dependency, nil, testCase.variables, nil)
 		require.NoError(t, err)
 		assert.Equal(t, testCase.expectedVariables, actualVariables, "Dependency: %s", testCase.dependency)
