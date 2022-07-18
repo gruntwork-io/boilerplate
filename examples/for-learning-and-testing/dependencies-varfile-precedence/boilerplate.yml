@@ -8,6 +8,10 @@ variables:
   - name: Title
     description: Enter the title for the dependencies example
 
+  - name: FileNameReference
+    description: This variable will be used to create the name of a file dynamically
+    default: reference name
+
   - name: ShowLogo
     description: Should the webiste show the logo (true or false)?
     type: bool
@@ -20,6 +24,9 @@ dependencies:
     var_files:
       - "{{ templateFolder }}/docs_vars_default_vars.yml"
       - "{{ templateFolder }}/docs_vars_override_vars.yml"
+    variables:
+      - name: FileName
+        reference: FileNameReference
 
   - name: website
     template-url: ../website

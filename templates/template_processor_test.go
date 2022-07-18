@@ -76,7 +76,7 @@ func TestCloneOptionsForDependency(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		actualOptions, err := cloneOptionsForDependency(testCase.dependency, &testCase.opts, testCase.variables)
+		actualOptions, err := cloneOptionsForDependency(testCase.dependency, &testCase.opts, nil, testCase.variables)
 		assert.NoError(t, err, "Dependency: %s", testCase.dependency)
 		assert.Equal(t, testCase.expectedOpts, *actualOptions, "Dependency: %s", testCase.dependency)
 	}
@@ -117,8 +117,14 @@ func TestCloneVariablesForDependency(t *testing.T) {
 		},
 	}
 
+	opts := &options.BoilerplateOptions{
+		TemplateFolder: "/template/path/",
+		OutputFolder:   "/output/path/",
+		NonInteractive: true,
+		Vars:           map[string]interface{}{},
+	}
 	for _, testCase := range testCases {
-		actualVariables, err := cloneVariablesForDependency(testCase.dependency, testCase.variables, nil)
+		actualVariables, err := cloneVariablesForDependency(opts, testCase.dependency, nil, testCase.variables, nil)
 		require.NoError(t, err)
 		assert.Equal(t, testCase.expectedVariables, actualVariables, "Dependency: %s", testCase.dependency)
 	}

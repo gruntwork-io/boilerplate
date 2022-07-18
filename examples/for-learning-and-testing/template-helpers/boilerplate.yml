@@ -7,16 +7,10 @@ dependencies:
   - name: docs
     template-url: ../docs
     output-folder: ./docs
-    variables:
-      - name: Title
-        description: Enter the title of the docs page
 
   - name: website
     template-url: ../website
     output-folder: ./website
-    variables:
-      - name: Title
-        description: Enter the title of the website
 
 skip_files:
   - path: skipped.txt
