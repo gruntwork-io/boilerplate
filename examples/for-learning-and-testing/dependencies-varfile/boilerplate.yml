@@ -7,6 +7,7 @@ variables:
 
   - name: Title
     description: Enter the title for the dependencies example
+    default: Dependencies example
 
   - name: WelcomeText
     description: Enter the welcome text used by the website dependency
