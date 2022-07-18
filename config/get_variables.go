@@ -24,10 +24,7 @@ func GetVariables(opts *options.BoilerplateOptions, boilerplateConfig, rootBoile
 
 	// Add a variable for all variables contained in the root config file. This will allow Golang template users
 	// to directly access these with an expression like "{{ .BoilerplateConfigVars.foo.Default }}"
-	rootConfigVars := map[string]variables.Variable{}
-	for _, configVar := range rootBoilerplateConfig.Variables {
-		rootConfigVars[configVar.Name()] = configVar
-	}
+	rootConfigVars := rootBoilerplateConfig.GetVariablesMap()
 	renderedVariables["BoilerplateConfigVars"] = rootConfigVars
 
 	// Add a variable for all dependencies contained in the root config file. This will allow Golang template users
@@ -56,9 +53,9 @@ func GetVariables(opts *options.BoilerplateOptions, boilerplateConfig, rootBoile
 	}
 
 	// Collect the variable values that are defined in the config and get the value.
-	variablesInConfig := getAllVariablesInConfig(boilerplateConfig)
+	variablesInConfig := boilerplateConfig.GetVariablesMap()
 	for _, variable := range variablesInConfig {
-		unmarshalled, err := getValueForVariable(variable, variablesInConfig, variablesToRender, opts, 0)
+		unmarshalled, err := GetValueForVariable(variable, variablesInConfig, variablesToRender, opts, 0)
 		if err != nil {
 			return nil, err
 		}
@@ -85,7 +82,13 @@ func GetVariables(opts *options.BoilerplateOptions, boilerplateConfig, rootBoile
 	return renderedVariables, nil
 }
 
-func getValueForVariable(variable variables.Variable, variablesInConfig map[string]variables.Variable, valuesForPreviousVariables map[string]interface{}, opts *options.BoilerplateOptions, referenceDepth int) (interface{}, error) {
+func GetValueForVariable(
+	variable variables.Variable,
+	variablesInConfig map[string]variables.Variable,
+	valuesForPreviousVariables map[string]interface{},
+	opts *options.BoilerplateOptions,
+	referenceDepth int,
+) (interface{}, error) {
 	if referenceDepth > MaxReferenceDepth {
 		return nil, errors.WithStackTrace(CyclicalReference{VariableName: variable.Name(), ReferenceName: variable.Reference()})
 	}
@@ -105,21 +108,10 @@ func getValueForVariable(variable variables.Variable, variablesInConfig map[stri
 		if !containsReference {
 			return nil, errors.WithStackTrace(MissingReference{VariableName: variable.Name(), ReferenceName: variable.Reference()})
 		}
-		return getValueForVariable(reference, variablesInConfig, valuesForPreviousVariables, opts, referenceDepth+1)
+		return GetValueForVariable(reference, variablesInConfig, valuesForPreviousVariables, opts, referenceDepth+1)
 	}
 
 	return getVariable(variable, opts)
-}
-
-// Get all the variables defined in the given config and its dependencies
-func getAllVariablesInConfig(boilerplateConfig *BoilerplateConfig) map[string]variables.Variable {
-	allVariables := map[string]variables.Variable{}
-
-	for _, variable := range boilerplateConfig.Variables {
-		allVariables[variable.Name()] = variable
-	}
-
-	return allVariables
 }
 
 // Get a value for the given variable. The value can come from the user (if the non-interactive option isn't set), the

@@ -70,7 +70,7 @@ func ProcessTemplate(options, rootOpts *options.BoilerplateOptions, thisDep vari
 		return err
 	}
 
-	err = processDependencies(boilerplateConfig.Dependencies, options, vars)
+	err = processDependencies(boilerplateConfig.Dependencies, options, boilerplateConfig.GetVariablesMap(), vars)
 	if err != nil {
 		return err
 	}
@@ -181,9 +181,14 @@ func shouldSkipHook(hook variables.Hook, opts *options.BoilerplateOptions, vars 
 }
 
 // Execute the boilerplate templates in the given list of dependencies
-func processDependencies(dependencies []variables.Dependency, opts *options.BoilerplateOptions, variables map[string]interface{}) error {
+func processDependencies(
+	dependencies []variables.Dependency,
+	opts *options.BoilerplateOptions,
+	variablesInConfig map[string]variables.Variable,
+	variables map[string]interface{},
+) error {
 	for _, dependency := range dependencies {
-		err := processDependency(dependency, opts, variables)
+		err := processDependency(dependency, opts, variablesInConfig, variables)
 		if err != nil {
 			return err
 		}
@@ -193,14 +198,19 @@ func processDependencies(dependencies []variables.Dependency, opts *options.Boil
 }
 
 // Execute the boilerplate template in the given dependency
-func processDependency(dependency variables.Dependency, opts *options.BoilerplateOptions, variables map[string]interface{}) error {
+func processDependency(
+	dependency variables.Dependency,
+	opts *options.BoilerplateOptions,
+	variablesInConfig map[string]variables.Variable,
+	variables map[string]interface{},
+) error {
 	shouldProcess, err := shouldProcessDependency(dependency, opts, variables)
 	if err != nil {
 		return err
 	}
 
 	if shouldProcess {
-		dependencyOptions, err := cloneOptionsForDependency(dependency, opts, variables)
+		dependencyOptions, err := cloneOptionsForDependency(dependency, opts, variablesInConfig, variables)
 		if err != nil {
 			return err
 		}
@@ -215,7 +225,12 @@ func processDependency(dependency variables.Dependency, opts *options.Boilerplat
 
 // Clone the given options for use when rendering the given dependency. The dependency will get the same options as
 // the original passed in, except for the template folder, output folder, and command-line vars.
-func cloneOptionsForDependency(dependency variables.Dependency, originalOpts *options.BoilerplateOptions, variables map[string]interface{}) (*options.BoilerplateOptions, error) {
+func cloneOptionsForDependency(
+	dependency variables.Dependency,
+	originalOpts *options.BoilerplateOptions,
+	variablesInConfig map[string]variables.Variable,
+	variables map[string]interface{},
+) (*options.BoilerplateOptions, error) {
 	renderedTemplateUrl, err := render.RenderTemplateFromString(originalOpts.TemplateFolder, dependency.TemplateUrl, variables, originalOpts)
 	if err != nil {
 		return nil, err
@@ -246,7 +261,7 @@ func cloneOptionsForDependency(dependency variables.Dependency, originalOpts *op
 		renderedVarFiles = append(renderedVarFiles, renderedVarFilePath)
 	}
 
-	vars, err := cloneVariablesForDependency(dependency, variables, renderedVarFiles)
+	vars, err := cloneVariablesForDependency(originalOpts, dependency, variablesInConfig, variables, renderedVarFiles)
 	if err != nil {
 		return nil, err
 	}
@@ -272,16 +287,50 @@ func cloneOptionsForDependency(dependency variables.Dependency, originalOpts *op
 //   DontInheritVariables is set.
 // - Variables defined from VarFiles set on the dependency.
 // - Variables defaults set on the dependency.
-func cloneVariablesForDependency(dependency variables.Dependency, originalVariables map[string]interface{}, renderedVarFiles []string) (map[string]interface{}, error) {
-	newVariables := map[string]interface{}{}
-	for _, variable := range dependency.Variables {
-		newVariables[variable.Name()] = variable.Default()
+func cloneVariablesForDependency(
+	opts *options.BoilerplateOptions,
+	dependency variables.Dependency,
+	variablesInConfig map[string]variables.Variable,
+	originalVariables map[string]interface{},
+	renderedVarFiles []string,
+) (map[string]interface{}, error) {
+	// Clone the opts so that we attempt to get the value for the variable, and we can error on any variable that is set
+	// on a dependency and the value can't be computed.
+	dependencyOpts := &options.BoilerplateOptions{
+		NonInteractive: true,
+		OnMissingKey:   options.ExitWithError,
+
+		TemplateUrl:     opts.TemplateUrl,
+		TemplateFolder:  opts.TemplateFolder,
+		OutputFolder:    opts.OutputFolder,
+		Vars:            opts.Vars,
+		OnMissingConfig: opts.OnMissingConfig,
+		DisableHooks:    opts.DisableHooks,
+		DisableShell:    opts.DisableShell,
 	}
+
+	newVariables := map[string]interface{}{}
 
 	varFileVars, err := variables.ParseVars(nil, renderedVarFiles)
 	if err != nil {
 		return nil, err
 	}
+
+	currentVariables := util.MergeMaps(originalVariables, varFileVars)
+	for _, variable := range dependency.Variables {
+		varValue, err := config.GetValueForVariable(
+			variable,
+			variablesInConfig,
+			currentVariables,
+			dependencyOpts,
+			0,
+		)
+		if err != nil {
+			return nil, err
+		}
+		newVariables[variable.Name()] = varValue
+	}
+
 	newVariables = util.MergeMaps(newVariables, varFileVars)
 
 	if dependency.DontInheritVariables {

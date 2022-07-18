@@ -28,6 +28,15 @@ type BoilerplateConfig struct {
 	Engines         []variables.Engine
 }
 
+// GetVariablesMap returns a map that maps variable names to the variable config.
+func (config *BoilerplateConfig) GetVariablesMap() map[string]variables.Variable {
+	out := make(map[string]variables.Variable)
+	for _, variable := range config.Variables {
+		out[variable.Name()] = variable
+	}
+	return out
+}
+
 // Implement the go-yaml unmarshal interface for BoilerplateConfig. We can't let go-yaml handle this itself because:
 //
 // 1. Variable is an interface
