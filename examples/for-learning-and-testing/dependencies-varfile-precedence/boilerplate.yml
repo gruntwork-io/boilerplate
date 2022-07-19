@@ -23,7 +23,6 @@ dependencies:
     output-folder: ./docs
     var_files:
       - "{{ templateFolder }}/docs_vars_default_vars.yml"
-      - "{{ templateFolder }}/docs_vars_override_vars.yml"
     variables:
       - name: FileName
         reference: FileNameReference
@@ -33,6 +32,7 @@ dependencies:
     output-folder: ./website
     var_files:
       - "{{ templateFolder }}/website_vars.yml"
+      - "{{ templateFolder }}/website_vars_override_vars.yml"
     variables:
       - name: WelcomeText
         default: "Title from variable default"

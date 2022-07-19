@@ -309,7 +309,23 @@ func cloneVariablesForDependency(
 		DisableShell:    opts.DisableShell,
 	}
 
+	// Start with the original variables. Note that it doesn't matter that originalVariables contains both CLI and
+	// non-CLI passed variables, as the CLI passed variables will be handled at the end to re-override back, ensuring
+	// they have the highest precedence. Ideally we can handle non-CLI and CLI passed variables separately, but that
+	// requires a larger refactoring at the top level so for now, we do this hacky approach allowing the dependency
+	// defined variables to override both CLI and non-CLI passed variables, and then add back in the CLI passed
+	// variables.
+	// We also filter out any dependency namespaced variables, as those are only passed in from the CLI and will be
+	// handled later.
 	newVariables := map[string]interface{}{}
+	if !dependency.DontInheritVariables {
+		for key, value := range originalVariables {
+			dependencyName, _ := variables.SplitIntoDependencyNameAndVariableName(key)
+			if dependencyName == "" {
+				newVariables[key] = value
+			}
+		}
+	}
 
 	varFileVars, err := variables.ParseVars(nil, renderedVarFiles)
 	if err != nil {
@@ -337,12 +353,22 @@ func cloneVariablesForDependency(
 		return newVariables, nil
 	}
 
-	for variableName, variableValue := range originalVariables {
-		dependencyName, variableOriginalName := variables.SplitIntoDependencyNameAndVariableName(variableName)
+	// Now handle the CLI passed variables. Note that we handle dependency namespaced values separately, as they have
+	// the highest precedence.
+	// First loop handling all variables that are not dependency namespaced, or that are dependency namespaced but are
+	// not targeting this dependency.
+	for key, value := range opts.Vars {
+		dependencyName, _ := variables.SplitIntoDependencyNameAndVariableName(key)
+		if dependencyName != dependency.Name {
+			newVariables[key] = value
+		}
+	}
+	// Second loop handling all variables that are dependency namespaced, overriding those that are not dependency
+	// namespaced.
+	for key, value := range opts.Vars {
+		dependencyName, originalName := variables.SplitIntoDependencyNameAndVariableName(key)
 		if dependencyName == dependency.Name {
-			newVariables[variableOriginalName] = variableValue
-		} else if _, alreadyExists := newVariables[variableName]; !alreadyExists {
-			newVariables[variableName] = variableValue
+			newVariables[originalName] = value
 		}
 	}
 

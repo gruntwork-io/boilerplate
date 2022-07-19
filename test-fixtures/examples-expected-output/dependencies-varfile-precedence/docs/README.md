@@ -1,4 +1,4 @@
-# Docs example
+# Dependencies example
 
 This shows an example of how to use boilerplate to fill in parts of your documentation.
 
