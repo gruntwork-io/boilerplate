@@ -1,0 +1,4 @@
+dependencies:
+  - name: guestbook
+    output-folder: './guestbook'
+    template-url: git@github.com/JDoe/guestbook.git//nginx?ref=v0.1.0

@@ -3,7 +3,9 @@ package config
 import (
 	"fmt"
 	"io/ioutil"
+	"net/url"
 	"path"
+	"strings"
 
 	"github.com/gruntwork-io/go-commons/version"
 	goversion "github.com/hashicorp/go-version"
@@ -185,6 +187,7 @@ func LoadBoilerplateConfig(opts *options.BoilerplateOptions) (*BoilerplateConfig
 		util.Logger.Printf("Warning: boilerplate config file not found at %s. The %s flag is set, so ignoring. Note that no variables will be available while generating.", configPath, options.OptMissingConfigAction)
 		return &BoilerplateConfig{}, nil
 	} else {
+		// If the template URL is similar to a git URL, surface in error message that there may be a misspelling/typo.
 		return nil, errors.WithStackTrace(BoilerplateConfigNotFound(configPath))
 	}
 }
@@ -246,12 +249,40 @@ func EnforceRequiredVersion(boilerplateConfig *BoilerplateConfig) error {
 	return nil
 }
 
+// maybeGitURL uses heuristics to attempt to decide if the URL may be a github URL that is encoded incorrectly.
+func maybeGitURL(templateURL string) bool {
+	potentialGitURLs := []string{
+		"github.com",
+		"gitlab.com",
+		"bitbucket.org",
+	}
+	for _, url := range potentialGitURLs {
+		if strings.Contains(templateURL, url) {
+			return true
+		}
+	}
+
+	// If the URL can be parsed and any non-file URL part is parsed out, return that this may be a git URL.
+	parsed, err := url.Parse(templateURL)
+	if err != nil {
+		return false
+	}
+	return parsed.Scheme != "" || parsed.Hostname() != "" || parsed.RawQuery != ""
+}
+
 // Custom error types
 
 type BoilerplateConfigNotFound string
 
 func (err BoilerplateConfigNotFound) Error() string {
-	return fmt.Sprintf("Could not find %s in %s and the %s flag is set to %s", BOILERPLATE_CONFIG_FILE, string(err), options.OptMissingConfigAction, options.Exit)
+	errMsg := fmt.Sprintf("Could not find %s in %s and the %s flag is set to %s", BOILERPLATE_CONFIG_FILE, string(err), options.OptMissingConfigAction, options.Exit)
+
+	configPath := string(err)
+	if maybeGitURL(configPath) {
+		errMsg += ". Template URL looks like a git repo. Did you misspell the URL? Should be encoded as one of the following: `git::ssh://git@github.com/ORG/REPO`, `github.com/ORG/REPO`, `https://github.com/ORG/REPO`, or `git@github.com:ORG/REPO`."
+	}
+
+	return errMsg
 }
 
 type InvalidBoilerplateVersion struct {
