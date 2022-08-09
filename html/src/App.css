@@ -65,3 +65,11 @@ h2, h3 {
   -moz-appearance: none;
   appearance: none;
 }
+
+/* More spacing of generated forms */
+.form-group {
+  margin-top: 15px;
+}
+button[type=submit] {
+  margin-top: 15px;
+}
