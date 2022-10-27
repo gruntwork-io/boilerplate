@@ -3,15 +3,20 @@ package config
 import (
 	"fmt"
 	"log"
-	"strings"
+	"sort"
+	"strconv"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/terminal"
+	validation "github.com/go-ozzo/ozzo-validation"
 	"github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/render"
 	"github.com/gruntwork-io/boilerplate/util"
 	"github.com/gruntwork-io/boilerplate/variables"
+	"github.com/hashicorp/go-multierror"
+	"github.com/inancgumus/screen"
+	"github.com/pterm/pterm"
 )
 
 const MaxReferenceDepth = 20
@@ -54,7 +59,40 @@ func GetVariables(opts *options.BoilerplateOptions, boilerplateConfig, rootBoile
 
 	// Collect the variable values that are defined in the config and get the value.
 	variablesInConfig := boilerplateConfig.GetVariablesMap()
-	for _, variable := range variablesInConfig {
+
+	// Prior to prompting the user for the defined variable values, we sort the variables
+	// by user-defined presentation order. Users may specify the order: value when defining
+	// their variables in boilerplate.yml. This order value is an int, and it is used to
+	// determine the relative ordering of the variables by key name
+	// In essence, since Go maps do not preserve order for performance reasons, we need to
+	// work around that and introduce a concept of use-defined ordering when prompting for
+	// variables. We do this to provide a more coherent and easy to work with form filling
+	// process for our Ref Arch customers
+
+	// Create a slice of KeyOrderPairs, which we'll be able to sort according to order value
+	keyAndOrderPairs := []KeyAndOrderPair{}
+
+	// Pair the keys for each variable to its user-defined presentation order
+	for key, variable := range variablesInConfig {
+		kop := KeyAndOrderPair{
+			Key:   key,
+			Order: variable.Order(),
+		}
+		keyAndOrderPairs = append(keyAndOrderPairs, kop)
+	}
+
+	// Sort the KeyAndOrderPairs by their order value
+	// N.B. this syntax of sort.Slice requires Go 1.18 or above!
+	sort.Slice(keyAndOrderPairs[:], func(i, j int) bool {
+		return keyAndOrderPairs[i].Order < keyAndOrderPairs[j].Order
+	})
+
+	// Now, instead of just iterating through the map keys naively,
+	// iterate through the slice of KeyOrderPairs, which are sorted by order
+	// which means that in each iteration of the loop, we can fetch the next variable
+	// by looking up its key in the original config-provided variables map
+	for _, keyOrderPair := range keyAndOrderPairs {
+		variable := variablesInConfig[keyOrderPair.Key]
 		unmarshalled, err := GetValueForVariable(variable, variablesInConfig, variablesToRender, opts, 0)
 		if err != nil {
 			return nil, err
@@ -111,7 +149,19 @@ func GetValueForVariable(
 		return GetValueForVariable(reference, variablesInConfig, valuesForPreviousVariables, opts, referenceDepth+1)
 	}
 
-	return getVariable(variable, opts)
+	// Run the value we receive from getVariable through validations, ensuring values provided by --var-files will also be checked
+	value, err := getVariable(variable, opts)
+	if err != nil {
+		return value, err
+	}
+	var result *multierror.Error
+	// Run the value through any defined validations for the variable
+	for _, customValidation := range variable.Validations() {
+		// Run the specific validation against the user-provided value and store it in the map
+		err := validation.Validate(value, customValidation.Validator)
+		result = multierror.Append(result, err)
+	}
+	return value, result.ErrorOrNil()
 }
 
 // Get a value for the given variable. The value can come from the user (if the non-interactive option isn't set), the
@@ -128,7 +178,7 @@ func getVariable(variable variables.Variable, opts *options.BoilerplateOptions) 
 	} else if opts.NonInteractive {
 		return nil, errors.WithStackTrace(MissingVariableWithNonInteractiveMode(variable.FullName()))
 	} else {
-		return getVariableFromUser(variable, opts)
+		return getVariableFromUser(variable, opts, variables.InvalidEntries{})
 	}
 }
 
@@ -144,26 +194,16 @@ func getVariableFromVars(variable variables.Variable, opts *options.BoilerplateO
 }
 
 // Get the value for the given variable by prompting the user
-func getVariableFromUser(variable variables.Variable, opts *options.BoilerplateOptions) (interface{}, error) {
-	util.BRIGHT_GREEN.Printf("\n%s\n", variable.FullName())
-	if variable.Description() != "" {
-		fmt.Printf("  %s\n", variable.Description())
-	}
+func getVariableFromUser(variable variables.Variable, opts *options.BoilerplateOptions, invalidEntries variables.InvalidEntries) (interface{}, error) {
+	// Start by clearing any previous contents
+	screen.Clear()
 
-	helpText := []string{
-		fmt.Sprintf("type: %s", variable.Type()),
-	}
-
-	if variable.ExampleValue() != "" {
-		helpText = append(helpText, fmt.Sprintf("example value: %s", variable.ExampleValue()))
-	}
-
-	if variable.Default() != nil {
-		helpText = append(helpText, fmt.Sprintf("default: %s", variable.Default()))
-	}
-
-	fmt.Printf("  (%s)\n", strings.Join(helpText, ", "))
+	// Add a newline for legibility and padding
 	fmt.Println()
+
+	// Show the current variable's name, description, and also render any validation errors in real-time so the user knows what's wrong
+	// with their input
+	renderVariablePrompts(variable, invalidEntries)
 
 	value := ""
 	// Display rich prompts to the user, based on the type of variable we're asking for
@@ -193,13 +233,90 @@ func getVariableFromUser(variable variables.Variable, opts *options.BoilerplateO
 		}
 	}
 
+	var valueToValidate interface{}
+	if value == "" {
+		valueToValidate = variable.Default()
+	} else {
+		valueToValidate = value
+	}
+	// If any of the variable's validation rules are not satisfied by the user's submission,
+	// store the validation errors in a map. We'll then recursively call get_variable_from_user
+	// again, this time passing in the validation errors map, so that we can render to the terminal
+	// the exact issues with each submission
+	m := make(map[string]bool)
+	hasValidationErrs := false
+	for _, customValidation := range variable.Validations() {
+		// Run the specific validation against the user-provided value and store it in the map
+		err := validation.Validate(valueToValidate, customValidation.Validator)
+		val := true
+		if err != nil {
+			hasValidationErrs = true
+			val = false
+		}
+		m[customValidation.DescriptionText()] = val
+	}
+	if hasValidationErrs {
+		ie := variables.InvalidEntries{
+			Issues: []variables.ValidationIssue{
+				{
+					Value:         value,
+					ValidationMap: m,
+				},
+			},
+		}
+		return getVariableFromUser(variable, opts, ie)
+	}
+
 	if value == "" {
 		// TODO: what if the user wanted an empty string instead of the default?
 		util.Logger.Printf("Using default value for variable '%s': %v", variable.FullName(), variable.Default())
 		return variable.Default(), nil
 	}
 
+	// Clear the terminal of all previous text for legibility
+	util.ClearTerminal()
+
+	if variable.Type() == variables.String {
+		_, intErr := strconv.Atoi(value)
+		if intErr == nil {
+			value = fmt.Sprintf(`"%s"`, value)
+		}
+	}
+
 	return variables.ParseYamlString(value)
+}
+
+// RenderValidationErrors displays in user-legible format the exact validation errors
+// that the user's last submission generated
+func renderValidationErrors(val interface{}, m map[string]bool) {
+	util.ClearTerminal()
+	pterm.Warning.WithPrefix(pterm.Prefix{Text: "Invalid entry"}).Println(val)
+	for k, v := range m {
+		if v {
+			pterm.Success.Println(k)
+		} else {
+			pterm.Error.Println(k)
+		}
+	}
+}
+
+func renderVariablePrompts(variable variables.Variable, invalidEntries variables.InvalidEntries) {
+	pterm.Println(pterm.Green(variable.FullName()))
+
+	if variable.Description() != "" {
+		pterm.Println(pterm.Yellow(variable.Description()))
+	}
+
+	if len(invalidEntries.Issues) > 0 {
+		renderValidationErrors(invalidEntries.Issues[0].Value, invalidEntries.Issues[0].ValidationMap)
+	}
+}
+
+// Custom types
+// A KeyAndOrderPair is a composite of the user-defined order and the user's variable name
+type KeyAndOrderPair struct {
+	Key   string
+	Order int
 }
 
 // Custom error types

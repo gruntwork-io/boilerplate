@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/fatih/color"
+	"github.com/inancgumus/screen"
 
 	"github.com/gruntwork-io/boilerplate/errors"
 )
@@ -40,4 +41,9 @@ func PromptUserForYesNo(prompt string) (bool, error) {
 	default:
 		return false, nil
 	}
+}
+
+// Clear the terminal screen in a cross-platform compatible manner
+func ClearTerminal() {
+	screen.Clear()
 }

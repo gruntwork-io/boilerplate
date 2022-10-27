@@ -125,6 +125,8 @@ You can find older versions on the [Releases Page](https://github.com/gruntwork-
    which gives you the ability to do formatting, conditionals, loops, and call out to Go functions. It also includes
    helpers for common tasks such as loading the contents of another file.
 1. **Variable types**: Boilerplate variables support types, so you have first-class support for strings, ints, bools,
+1. **Validations**: Boilerplate provides a set of validations for a given variable that user input must satisfy.
+1. **Variable presentation order**: Boilerplate allows you to define the relative presentation order of a set of variables.
    lists, maps, and enums.
 1. **Scripting**: Need more power than static templates and variables? Boilerplate includes several hooks that allow
    you to run arbitrary scripts.
@@ -152,6 +154,8 @@ Learn more about boilerplate in the following sections:
 1. [Partials](#partials)
 1. [Skip Files](#skip-files)
 1. [Templates](#templates)
+1. [Validations](#validations)
+1. [Variable order](#variable-ordering)
 1. [Alternative Template Engines (EXPERIMENTAL)](#alternative-template-engines-experimental)
 1. [Template helpers](#template-helpers)
 
@@ -603,6 +607,69 @@ You can even use Go template syntax and boilerplate variables in the names of yo
 you were using `boilerplate` to generate a Java project, your template folder could contain the path
 `com/{{.PackageName}}/MyFactory.java`. If you run `boilerplate` against this template folder and enter
 "gruntwork" as the `PackageName`, you'd end up with the file `com/gruntwork/MyFactory.java`.
+
+#### Validations
+
+Boilerplate allows you to specify a set of validations when defining a variable. When a user is prompted for a variable that has 
+validations defined, their input must pass all defined validations. If the user's input does not pass all validations, they'll be 
+presented with real-time feedback on exactly which rules their submission is failing. Once a user's submission passes all defined
+validations, Boilerplate will accept their submitted value.
+
+Here's an example prompt for a variable with validations that shows how invalid submissions are handled: 
+
+![Example Boilerplate real-time validation](./docs/bp-validation.png)
+
+Here's an example demonstating how to specify validations when defining your variables: 
+
+```yaml
+variables:
+  - name: CompanyName
+    description: Enter the name of your organization. 
+    default: ""
+    type: string
+    validations:
+      - required
+      - length-5-22
+      - alphanumeric
+```
+This `boilerplate.yml` snippet defines a variable, `CompanyName` which: 
+* Must be supplied by the user. No empty or nil values will be accepted.
+* Must have a length between 5 and 22 characters
+* Must contain only alphanumeric characters (no special characters)
+
+**Currently supported validations**
+
+Boilerplate uses the [`go-ozzo/ozzo-validation` library](https://github.com/go-ozzo/ozzo-validation). The following validations are currently supported: 
+
+ - "required" - field cannot be empty
+ - "length-{min-int}-{max-int}" - field must be between ${min-int} and ${max-int} characters in length
+ - "url" - field must be a valid URL
+ - "email" - field must be a valid email address
+ - "alpha" - field must contain English letters only
+ - "digit" - field must contain digits only
+ - "countrycode2" - field must be an ISO3166 Alpha 2 Country code
+ - "semver" - field must be a valid semantic version
+
+#### Variable Ordering
+
+Boilerplate allows you to define the relative order in which a set of variables should be presented to the user when prompting
+for human input. 
+
+Here's an example demonstrating how to define the relative order of a set of variables: 
+
+```yaml
+variables: 
+  - name: WebsiteURL
+    order: 0
+    description: Enter the URL to your homepage
+ - name: ImagePath: 
+   order: 1
+   description: Enter the full filepath to your logo image 
+ - name: ProfileName
+   order: 2
+   description: Enter the display name for your user
+
+```
 
 #### Alternative Template Engines (EXPERIMENTAL)
 
