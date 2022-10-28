@@ -1,0 +1,12 @@
+variables: 
+  - name: CompanyName
+    description: The name of your company
+    order: 0
+  - name: CountryCode
+    order: 1
+    description: The ISO3166 Alpha 2 code for the country you operate in 
+  - name: URL
+    order: 2
+    description: The URL to your website
+
+

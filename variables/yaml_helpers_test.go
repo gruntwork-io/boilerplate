@@ -6,6 +6,7 @@ import (
 
 	"gopkg.in/yaml.v2"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/gruntwork-io/boilerplate/errors"
 	"github.com/stretchr/testify/assert"
 )
@@ -125,5 +126,45 @@ func TestConvert(t *testing.T) {
 		actual, err := ConvertYAMLToStringMap(testCase.input)
 		assert.NoError(t, err)
 		assert.IsType(t, testCase.expectedType, actual)
+	}
+}
+
+func TestParserulestring(t *testing.T) {
+	t.Parallel()
+
+	type TestCase struct {
+		Input string
+		Want  []string
+	}
+
+	testCases := []TestCase{
+		{
+			Input: "[required length-5-22 alphanumeric]",
+			Want:  []string{"required", "length-5-22", "alphanumeric"},
+		},
+		{
+			Input: "[required]",
+			Want:  []string{"required"},
+		},
+		{
+			Input: "[alphanumeric length-10-30]",
+			Want:  []string{"alphanumeric", "length-10-30"},
+		},
+		{
+			Input: "[length-1-3 required url email alpha digit alphanumeric CountryCode2]",
+			Want:  []string{"length-1-3", "required", "url", "email", "alpha", "digit", "alphanumeric", "countrycode2"},
+		},
+		{
+			Input: "[LENGTH-1-3 REQUIRED URL EMAIL ALPHA DIGIT ALPHANUMERIC COUNTRYCODE2]",
+			Want:  []string{"length-1-3", "required", "url", "email", "alpha", "digit", "alphanumeric", "countrycode2"},
+		},
+	}
+
+	for _, tc := range testCases {
+		got := parseRuleString(tc.Input)
+		if !cmp.Equal(got, tc.Want) {
+			t.Logf("Got %v for input %s but wanted %v\n", got, tc.Input, tc.Want)
+			t.Fail()
+		}
 	}
 }

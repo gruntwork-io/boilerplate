@@ -4,8 +4,11 @@ import (
 	"fmt"
 	"io/ioutil"
 	"reflect"
+	"strconv"
 	"strings"
 
+	validation "github.com/go-ozzo/ozzo-validation"
+	"github.com/go-ozzo/ozzo-validation/is"
 	"github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/boilerplate/util"
 	"gopkg.in/yaml.v2"
@@ -175,6 +178,130 @@ func unmarshalOptionsField(fields map[string]interface{}, context string, variab
 	return util.ToStringList(optionsAsList), nil
 }
 
+type CustomValidationRule struct {
+	Validator validation.Rule
+	Message   string
+}
+
+type CustomValidationRuleCollection []CustomValidationRule
+
+func (c CustomValidationRuleCollection) GetValidators() []validation.Rule {
+	var validatorsToReturn []validation.Rule
+	for _, rule := range c {
+		validatorsToReturn = append(validatorsToReturn, rule.Validator)
+	}
+	return validatorsToReturn
+}
+
+func (c CustomValidationRule) DescriptionText() string {
+	return c.Message
+}
+
+// parseRuleString converts the string representation of the validations field, as parsed from YAML,
+// into a slice of strings that ConvertValidationStringtoRules can easily iterate over
+func parseRuleString(ruleString string) []string {
+	ruleString = strings.ReplaceAll(ruleString, "]", "")
+	ruleString = strings.ReplaceAll(ruleString, "[", "")
+	ruleString = strings.ToLower(ruleString)
+	return strings.Split(ruleString, " ")
+}
+
+// ConvertValidationStringtoRules takes the string representation of the variable's validations and parses it
+// into CustomValidationRules that should be run on the variable's value when submitted by a user
+func ConvertValidationStringtoRules(ruleString string) ([]CustomValidationRule, error) {
+	var validationRules []CustomValidationRule
+
+	rules := parseRuleString(ruleString)
+
+	for _, rule := range rules {
+
+		var cvr CustomValidationRule
+
+		switch {
+		case strings.HasPrefix(rule, "length-"):
+			valString := strings.TrimLeft(rule, "length-")
+			valSlice := strings.Split(valString, "-")
+			minStr := valSlice[0]
+			maxStr := valSlice[1]
+			min, minErr := strconv.Atoi(strings.TrimSpace(minStr))
+			if minErr != nil {
+				return validationRules, minErr
+			}
+			max, maxErr := strconv.Atoi(strings.TrimSpace(maxStr))
+			if maxErr != nil {
+				return validationRules, maxErr
+			}
+			cvr = CustomValidationRule{
+				Validator: validation.Length(min, max),
+				Message:   fmt.Sprintf("Must be between %d and %d characters long", min, max),
+			}
+		case rule == "required":
+			cvr = CustomValidationRule{
+				Validator: validation.Required,
+				Message:   "Must not be empty",
+			}
+		case rule == "url":
+			cvr = CustomValidationRule{
+				Validator: is.URL,
+				Message:   "Must be a valid URL",
+			}
+		case rule == "email":
+			cvr = CustomValidationRule{
+				Validator: is.Email,
+				Message:   "Must be a valid email address",
+			}
+		case rule == "alpha":
+			cvr = CustomValidationRule{
+				Validator: is.Alpha,
+				Message:   "Must contain English letters only",
+			}
+		case rule == "digit":
+			cvr = CustomValidationRule{
+				Validator: is.Digit,
+				Message:   "Must contain digits only",
+			}
+		case rule == "alphanumeric":
+			cvr = CustomValidationRule{
+				Validator: is.Alphanumeric,
+				Message:   "Can contain English letters and digits only",
+			}
+		case rule == "countrycode2":
+			cvr = CustomValidationRule{
+				Validator: is.CountryCode2,
+				Message:   "Must be a valid ISO3166 Alpha 2 Country code",
+			}
+		case rule == "semver":
+			cvr = CustomValidationRule{
+				Validator: is.Semver,
+				Message:   "Must be a valid semantic version",
+			}
+		}
+
+		if cvr != (CustomValidationRule{}) {
+			validationRules = append(validationRules, cvr)
+		}
+	}
+
+	return validationRules, nil
+}
+
+// Given a list of validations read from a Boilerplate YAML config file of the format:
+//
+// This method looks up the validations specified in the map and applies them to the specified fields so that users prompted for input
+// get real-time feedback on the validity of their entries
+func unmarshalValidationsField(fields map[string]interface{}, context string, variableType BoilerplateType) ([]CustomValidationRule, error) {
+	validations, _ := fields["validations"]
+
+	validationsAsString := fmt.Sprintf("%v", validations)
+
+	rules, err := ConvertValidationStringtoRules(validationsAsString)
+	if err != nil {
+		return []CustomValidationRule{}, err
+	}
+
+	return rules, nil
+}
+
 // Given a map of key:value pairs read from a Boilerplate YAML config file of the format:
 //
 // type: <TYPE>
@@ -197,6 +324,23 @@ func unmarshalTypeField(fields map[string]interface{}, context string) (Boilerpl
 	}
 
 	return BOILERPLATE_TYPE_DEFAULT, nil
+}
+
+func unmarshalIntField(fields map[string]interface{}, fieldName string, requiredField bool, context string) (*int, error) {
+	value, hasValue := fields[fieldName]
+	if !hasValue {
+		if requiredField {
+			return nil, errors.WithStackTrace(RequiredFieldMissing(fieldName))
+		} else {
+			return nil, nil
+		}
+	}
+
+	if valueAsInt, isInt := value.(int); isInt {
+		return &valueAsInt, nil
+	} else {
+		return nil, errors.WithStackTrace(InvalidTypeForField{FieldName: fieldName, ExpectedType: "int", ActualType: reflect.TypeOf(value), Context: context})
+	}
 }
 
 // Given a map of key:value pairs read from a Boilerplate YAML config file of the format:
@@ -403,6 +547,12 @@ func (err YAMLConversionErr) Error() string {
 	return fmt.Sprintf("YAML value has type %s and cannot be cast to to the correct type.", reflect.TypeOf(err.Key))
 }
 
+type ValidationsMissing string
+
+func (err ValidationsMissing) Error() string {
+	return fmt.Sprintf("%s does not specify any validations. You must specify at least one validation.", string(err))
+}
+
 type OptionsMissing string
 
 func (err OptionsMissing) Error() string {
@@ -473,4 +623,12 @@ type UnrecognizedBoilerplateType BoilerplateType
 
 func (err UnrecognizedBoilerplateType) Error() string {
 	return fmt.Sprintf("Unrecognized type: %s", BoilerplateType(err).String())
+}
+
+type UndefinedOrderForFieldErr struct {
+	fieldName string
+}
+
+func (err UndefinedOrderForFieldErr) Error() string {
+	return fmt.Sprintf("No order value defined for field: %s", err.fieldName)
 }

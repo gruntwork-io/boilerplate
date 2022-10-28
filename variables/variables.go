@@ -26,6 +26,9 @@ type Variable interface {
 	// The type of the variable
 	Type() BoilerplateType
 
+	// The user-defined sorting position of the variable
+	Order() int
+
 	// The default value for the variable, if any
 	Default() interface{}
 
@@ -52,6 +55,9 @@ type Variable interface {
 
 	// A custom marshaling function to translate back to YAML, as expected by go-yaml.
 	MarshalYAML() (interface{}, error)
+
+	// Validations that should be run on the variable
+	Validations() []CustomValidationRule
 }
 
 // A private implementation of the Variable interface that forces all users to use our public constructors
@@ -61,7 +67,9 @@ type defaultVariable struct {
 	defaultValue interface{}
 	reference    string
 	variableType BoilerplateType
+	order        int
 	options      []string
+	validations  []CustomValidationRule
 }
 
 // Create a new variable that holds a string
@@ -142,6 +150,10 @@ func (variable defaultVariable) Type() BoilerplateType {
 	return variable.variableType
 }
 
+func (variable defaultVariable) Order() int {
+	return variable.order
+}
+
 func (variable defaultVariable) Default() interface{} {
 	return variable.defaultValue
 }
@@ -152,6 +164,10 @@ func (variable defaultVariable) Reference() string {
 
 func (variable defaultVariable) Options() []string {
 	return variable.options
+}
+
+func (variable defaultVariable) Validations() []CustomValidationRule {
+	return variable.validations
 }
 
 func (variable defaultVariable) WithName(name string) Variable {
@@ -215,6 +231,9 @@ func (variable defaultVariable) MarshalYAML() (interface{}, error) {
 	}
 	if len(variable.Options()) > 0 {
 		varYml["options"] = variable.Options()
+	}
+	if len(variable.Validations()) > 0 {
+		varYml["validations"] = variable.Validations()
 	}
 	return varYml, nil
 }
@@ -465,6 +484,14 @@ func UnmarshalVariableFromBoilerplateConfigYaml(fields map[string]interface{}) (
 	}
 	variable.variableType = variableType
 
+	order, err := unmarshalIntField(fields, "order", false, *name)
+	if err != nil {
+		return nil, err
+	}
+	if order != nil {
+		variable.order = *order
+	}
+
 	description, err := unmarshalStringField(fields, "description", false, *name)
 	if err != nil {
 		return nil, err
@@ -486,6 +513,12 @@ func UnmarshalVariableFromBoilerplateConfigYaml(fields map[string]interface{}) (
 		return nil, err
 	}
 	variable.options = options
+
+	validationRules, err := unmarshalValidationsField(fields, *name, variableType)
+	if err != nil {
+		return nil, err
+	}
+	variable.validations = validationRules
 
 	variable.defaultValue = fields["default"]
 

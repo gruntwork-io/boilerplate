@@ -1,0 +1,16 @@
+variables: 
+  - name: CompanyName
+    description: The name of your company
+    validations: 
+      - required
+      - alphanumeric
+      - length-5-20
+    default: Gruntwork
+  - name: CountryCode
+    description: The ISO3166 Alpha 2 code for the country you operate in 
+    validations: 
+      - required
+      - CountryCode2
+    default: US
+
+
