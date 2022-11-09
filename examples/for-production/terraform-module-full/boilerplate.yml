@@ -1,0 +1,37 @@
+variables:
+  - name: ModuleName
+    description: The name of the module
+    type: string
+
+  - name: TerraformVersionConstraint
+    description: The version constraint to use in the Terraform required_version param
+    type: string
+    default: "~> 1.0"
+
+  - name: RandomProviderVersionConstraint
+    description: The version constraint to use for the hashicorp/random provider
+    type: string
+    default: "~> 3.0"
+
+dependencies:
+  - name: module
+    template-url: ../terraform-module
+    output-folder: "modules/{{ .ModuleName | kebabcase }}"
+
+  - name: example
+    template-url: ../terraform-module-wrapper
+    output-folder: "examples/{{ .ModuleName | kebabcase }}"
+    variables:
+      - name: WrapperModuleName
+        description: The name of the wrapper module
+        type: string
+        reference: ModuleName
+
+      - name: UnderlyingModuleSourceUrl
+        description: The source URL of the underlying module that will be wrapped
+        type: string
+        default: "../../modules/{{ .ModuleName | kebabcase }}"
+
+  - name: test
+    template-url: ../terraform-module-test
+    output-folder: "test"

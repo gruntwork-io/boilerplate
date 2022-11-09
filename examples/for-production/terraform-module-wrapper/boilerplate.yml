@@ -1,0 +1,36 @@
+variables:
+  - name: WrapperModuleName
+    description: The name of the wrapper module
+    type: string
+
+  - name: UnderlyingModuleSourceUrl
+    description: The source URL of the underlying module that will be wrapped
+    type: string
+
+  - name: ExcludeInputVars
+    description: The names of input variables from the underlying module that should be excluded from the wrapper module. These are input variables the wrapper module intentionall does NOT expose.
+    type: list
+    default: []
+
+  - name: ExcludeOutputVars
+    description: The names of output variables from the underlying module that should be excluded from the wrapper module. These are output variables the wrapper module intentionall does NOT expose.
+    type: list
+    default: []
+
+  - name: UnderlyingModuleInspectJsonOutput
+    description: "The JSON output of downloading and inspecting the underlying module. This JSON will have two keys: 'underlying-module-path' will contain the path the module was downloaded to and 'inspect-output' will contain the JSON output of running terraform-config-inspect on that downloaded module."
+    type: string
+    default: '{{ shell (printf "%s/%s" templateFolder "scripts/inspect-module.sh") .UnderlyingModuleSourceUrl outputFolder }}'
+
+hooks:
+  after:
+    # Format the Terraform code
+    - command: terraform
+      args:
+        - fmt
+      dir: "{{ outputFolder }}"
+
+skip_files:
+  # Don't copy scripts used in code generation
+  - path: "scripts"
+  - path: "scripts/*"

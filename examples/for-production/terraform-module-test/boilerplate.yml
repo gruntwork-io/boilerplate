@@ -1,0 +1,46 @@
+variables:
+  - name: ModuleName
+    description: The name of the module to test
+    type: string
+
+  - name: RelativePathToRoot
+    description: The relative path from the test folder (where the generated .go test file will live) to the root of the repo
+    type: string
+    default: ..
+
+  - name: RelativePathFromRootToModule
+    description: The relative path from the root of the repo (as set in RelativePathToRoot) to the module to test
+    type: string
+    default: "examples/{{ .ModuleName | kebabcase }}"
+
+  - name: InputVarToSet
+    description: An input variable in the module to set to a random value in the test, as an example
+    type: string
+    default: example_required_input_var
+
+  - name: OutputVarToCheck
+    description: An output variable in the module to read and ensure it contains the input variable value
+    type: string
+    default: example_output
+
+hooks:
+  after:
+    # Initialize a Go module (if it's not initialized already)
+    - command: bash
+      args:
+        - "-c"
+        - "if [[ ! -f go.mod ]]; then go mod init test; fi"
+      dir: "{{ outputFolder }}"
+
+    # Download Go deps and create go.sum (if it doesn't already exist)
+    - command: bash
+      args:
+        - "-c"
+        - "if [[ ! -f go.sum ]]; then go mod tidy; fi"
+      dir: "{{ outputFolder }}"
+
+    # Format Go code in the test folder
+    - command: go
+      args:
+        - fmt
+      dir: "{{ outputFolder }}"

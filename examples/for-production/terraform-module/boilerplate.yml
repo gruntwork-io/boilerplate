@@ -1,0 +1,22 @@
+variables:
+  - name: ModuleName
+    description: The name of the module
+    type: string
+
+  - name: TerraformVersionConstraint
+    description: The version constraint to use in the Terraform required_version param
+    type: string
+    default: "~> 1.0"
+
+  - name: RandomProviderVersionConstraint
+    description: The version constraint to use for the hashicorp/random provider
+    type: string
+    default: "~> 3.0"
+
+hooks:
+  after:
+    # Format the Terraform code
+    - command: terraform
+      args:
+        - fmt
+      dir: "{{ outputFolder }}"
