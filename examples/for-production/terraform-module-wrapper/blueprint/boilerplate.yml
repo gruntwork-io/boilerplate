@@ -18,9 +18,9 @@ variables:
     default: []
 
   - name: UnderlyingModuleInspectJsonOutput
-    description: "The JSON output of downloading and inspecting the underlying module. This JSON will have two keys: 'underlying-module-path' will contain the path the module was downloaded to and 'inspect-output' will contain the JSON output of running terraform-config-inspect on that downloaded module."
+    description: "The JSON output of downloading and inspecting the underlying module. This JSON will have two keys: 'underlying-module-path' will contain the path the module was downloaded to and 'inspect-output' will contain the JSON output of running terraform-config-inspect on that downloaded module. This variable is used internally in this module and should typically NOT be overwritten."
     type: string
-    default: '{{ shell (printf "%s/%s" templateFolder "scripts/inspect-module.sh") .UnderlyingModuleSourceUrl outputFolder }}'
+    default: '{{ shell (printf "%s/%s" templateFolder "../scripts/inspect-module.sh") .UnderlyingModuleSourceUrl outputFolder }}'
 
 hooks:
   after:
@@ -29,8 +29,3 @@ hooks:
       args:
         - fmt
       dir: "{{ outputFolder }}"
-
-skip_files:
-  # Don't copy scripts used in code generation
-  - path: "scripts"
-  - path: "scripts/*"

@@ -1,0 +1,57 @@
+variables:
+  - name: ModuleName
+    description: The name of the module
+    type: string
+
+  - name: TerraformVersionConstraint
+    description: The version constraint to use in the Terraform required_version param
+    type: string
+    default: "~> 1.0"
+
+  - name: RandomProviderVersionConstraint
+    description: The version constraint to use for the hashicorp/random provider
+    type: string
+    default: "~> 3.0"
+
+  - name: ExcludeInputVarsInExample
+    description: The names of input variables from the module that should NOT be set in the example (by default, the example sets all input vars from the module).
+    type: list
+    default: []
+
+  - name: ExcludeOutputVarsInExample
+    description: The names of ouput variables from the module that should NOT be proxied through in the example (by default, the example proxies all ouput vars from the module).
+    type: list
+    default: []
+
+dependencies:
+  - name: module
+    template-url: ../../terraform-module/blueprint
+    output-folder: "modules/{{ .ModuleName | kebabcase }}"
+
+  - name: example
+    template-url: ../../terraform-module-wrapper/blueprint
+    output-folder: "examples/{{ .ModuleName | kebabcase }}"
+    variables:
+      - name: WrapperModuleName
+        description: The name of the wrapper module
+        type: string
+        reference: ModuleName
+
+      - name: UnderlyingModuleSourceUrl
+        description: The source URL of the underlying module that will be wrapped
+        type: string
+        default: "../../modules/{{ .ModuleName | kebabcase }}"
+
+      - name: ExcludeInputVars
+        description: The names of input variables from the module that should NOT be set in the example (by default, the example sets all input vars from the module).
+        type: list
+        reference: ExcludeInputVarsInExample
+
+      - name: ExcludeOutputVars
+        description: The names of ouput variables from the module that should NOT be proxied through in the example (by default, the example proxies all ouput vars from the module).
+        type: list
+        reference: ExcludeOutputVarsInExample
+
+  - name: test
+    template-url: ../../terraform-module-test/blueprint
+    output-folder: "test"
