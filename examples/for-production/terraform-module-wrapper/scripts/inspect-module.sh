@@ -4,7 +4,7 @@ set -e
 
 # Parse CLI args
 if [[ "$#" -ne 2 ]]; then
-  echo "Usage: inspect-module.sh UNDERLYING_MODULE_SOURCE_url OUTPUT_FOLDER"
+  >&2 echo "Usage: inspect-module.sh UNDERLYING_MODULE_SOURCE_url OUTPUT_FOLDER"
   exit 1
 fi
 
@@ -15,7 +15,7 @@ output_folder="$2"
 required_binaries=("terraform" "terraform-config-inspect" "readlink" "hcledit")
 for binary in "${required_binaries[@]}"; do
   if ! command -v "$binary" &> /dev/null; then
-    echo "Required binary '$binary' not found. Is it installed and in PATH?"
+    >&2 echo "Required binary '$binary' not found. Is it installed and in PATH?"
     exit 1
   fi
 done
