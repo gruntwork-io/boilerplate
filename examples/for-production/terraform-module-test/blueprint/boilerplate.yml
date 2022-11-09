@@ -44,3 +44,8 @@ hooks:
       args:
         - fmt
       dir: "{{ outputFolder }}"
+
+skip_files:
+  # Only write the README.md file to the test folder if there isn't one there already
+  - path: README.md
+    if: '{{ shell "bash" "-c" (printf "if [[ -f \"%s/README.md\" ]]; then echo -n true; else echo -n false; fi" outputFolder) }}'
