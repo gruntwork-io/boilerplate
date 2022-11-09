@@ -157,7 +157,15 @@ func processHook(hook variables.Hook, opts *options.BoilerplateOptions, vars map
 		envVars = append(envVars, fmt.Sprintf("%s=%s", renderedKey, renderedValue))
 	}
 
-	return util.RunShellCommand(opts.TemplateFolder, envVars, cmd, args...)
+	workingDir := opts.TemplateFolder
+	if hook.WorkingDir != nil {
+		workingDir, err = render.RenderTemplateFromString(config.BoilerplateConfigPath(opts.TemplateFolder), *hook.WorkingDir, vars, opts)
+		if err != nil {
+			return err
+		}
+	}
+
+	return util.RunShellCommand(workingDir, envVars, cmd, args...)
 }
 
 // Return true if the "skip" condition of this hook evaluates to true
@@ -283,10 +291,10 @@ func cloneOptionsForDependency(
 // as the originals passed in, filtered to variable names that do not include a dependency or explicitly are for the
 // given dependency.
 // This function implements the following order of preference for rendering variables:
-// - Variables set on the CLI (originalVariables) directly for the dependency (DEPENDENCY.VARNAME), unless
-//   DontInheritVariables is set.
-// - Variables defined from VarFiles set on the dependency.
-// - Variables defaults set on the dependency.
+//   - Variables set on the CLI (originalVariables) directly for the dependency (DEPENDENCY.VARNAME), unless
+//     DontInheritVariables is set.
+//   - Variables defined from VarFiles set on the dependency.
+//   - Variables defaults set on the dependency.
 func cloneVariablesForDependency(
 	opts *options.BoilerplateOptions,
 	dependency variables.Dependency,
