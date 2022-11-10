@@ -1,1 +1,3 @@
-# TODO
+# {{ .ModuleName }}
+
+TODO: fill in README
