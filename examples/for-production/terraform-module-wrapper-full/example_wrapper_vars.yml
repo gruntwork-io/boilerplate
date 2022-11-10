@@ -1,0 +1,10 @@
+ModuleName: vpc-app
+SourceUrl: "git@github.com:gruntwork-io/terraform-aws-vpc.git//modules/vpc-app?ref=v0.22.3"
+ExcludeModuleInputVars:
+  - default_security_group_ingress_rules
+  - default_security_group_egress_rules
+  - default_nacl_ingress_rules
+  - default_nacl_egress_rules
+ExcludeExampleInputVars:
+  - vpc_name
+  - cidr_block

@@ -1,0 +1,75 @@
+variables:
+  - name: ModuleName
+    description: The name of the wrapper module
+    type: string
+
+  - name: SourceUrl
+    description: The source URL of the underlying module that will be wrapped
+    type: string
+
+  - name: ExcludeModuleInputVars
+    description: The names of input variables from the underlying module that should be excluded from the wrapper module. These are input variables the wrapper module intentionally does NOT expose.
+    type: list
+    default: []
+
+  - name: ExcludeModuleOutputVars
+    description: The names of output variables from the underlying module that should be excluded from the wrapper module. These are output variables the wrapper module intentionally does NOT expose.
+    type: list
+    default: []
+
+  - name: ExcludeExampleInputVars
+    description: The names of input variables from the wrapper module that should be excluded from the example. These are input variables the example intentionally does NOT expose.
+    type: list
+    default: []
+
+  - name: ExcludeExampleOutputVars
+    description: The names of output variables from the wrapper module that should be excluded from the example. These are output variables the example intentionally does NOT expose.
+    type: list
+    default: []
+
+dependencies:
+  - name: module
+    template-url: ../../terraform-module-wrapper/blueprint
+    output-folder: "modules/{{ .ModuleName | kebabcase }}"
+    variables:
+      - name: WrapperModuleName
+        description: The name of the wrapper module
+        type: string
+        reference: ModuleName
+      - name: UnderlyingModuleSourceUrl
+        description: The source URL of the underlying module that will be wrapped
+        type: string
+        reference: SourceUrl
+      - name: ExcludeInputVars
+        description: The names of input variables from the underlying module that should be excluded from the wrapper module. These are input variables the wrapper module intentionally does NOT expose.
+        type: list
+        reference: ExcludeModuleInputVars
+      - name: ExcludeOutputVars
+        description: The names of output variables from the underlying module that should be excluded from the wrapper module. These are output variables the wrapper module intentionally does NOT expose.
+        type: list
+        reference: ExcludeModuleOutputVars
+
+  - name: example
+    template-url: ../../terraform-module-wrapper/blueprint
+    output-folder: "examples/{{ .ModuleName | kebabcase }}"
+    variables:
+      - name: WrapperModuleName
+        description: The name of the wrapper module
+        type: string
+        reference: ModuleName
+      - name: UnderlyingModuleSourceUrl
+        description: The source URL of the underlying module that will be wrapped
+        type: string
+        default: "../../modules/{{ .ModuleName | kebabcase }}"
+      - name: ExcludeInputVars
+        description: The names of input variables from the underlying module that should be excluded from the wrapper module. These are input variables the wrapper module intentionally does NOT expose.
+        type: list
+        reference: ExcludeExampleInputVars
+      - name: ExcludeOutputVars
+        description: The names of output variables from the underlying module that should be excluded from the wrapper module. These are output variables the wrapper module intentionally does NOT expose.
+        type: list
+        reference: ExcludeExampleOutputVars
+
+  - name: test
+    template-url: ../../terraform-module-test/blueprint
+    output-folder: "test"
