@@ -58,7 +58,7 @@ variables:
   - name: AppVPCNumNATGateways
     description: Enter the number of NAT Gateways that should we deploy in this VPC (e.g. typically 1 for mgmt).
     type: int
-    default: 1
+    default: 3
 
   - name: AppVPCNumAvailabilityZones
     description: Enter the number of availability zones to use. Set to 0 to use all the availability zones in the region.
