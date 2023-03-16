@@ -488,7 +488,7 @@ func TestToYaml(t *testing.T) {
 		{nil, "null\n"},
 		{"", "\"\"\n"},
 		{map[string]interface{}{"key": "val"}, "key: val\n"},
-		{map[string][]interface{}{"Key": []interface{}{1, 2, 3}}, "Key:\n  - 1\n  - 2\n  - 3\n"},
+		{map[string][]interface{}{"Key": []interface{}{1, 2, 3}}, "Key:\n    - 1\n    - 2\n    - 3\n"},
 	}
 	for _, testCase := range testCases {
 		actual, err := toYaml(testCase.input)
