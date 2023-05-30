@@ -73,3 +73,8 @@ h2, h3 {
 button[type=submit] {
   margin-top: 15px;
 }
+
+/* Markdown rendering */
+.markdown-container img {
+  max-width: 500px;
+}

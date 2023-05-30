@@ -153,7 +153,7 @@ function App() {
   return (
     <div className="container">
       <div className="row">
-        <div className="col-5 py-4">
+        <div className="col-5 py-4 markdown-container">
           {error && (
               <div className="alert alert-danger" role="alert">
                 <strong>Error</strong>: {error}
