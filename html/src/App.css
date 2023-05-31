@@ -78,3 +78,13 @@ button[type=submit] {
 .markdown-container img {
   max-width: 500px;
 }
+
+/* Map styling */
+.form-group h5 {
+  font-size: 1.0rem;
+  font-weight: normal;
+}
+.form-group div.mb-3 {
+  font-size: 0.875rem;
+  color: rgba(var(--bs-body-color-rgb),.75)!important;
+}

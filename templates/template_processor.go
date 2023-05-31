@@ -122,10 +122,10 @@ func GetJsonSchema(options *options.BoilerplateOptions) (map[string]interface{},
 		return nil, err
 	}
 
-	return BoilerplateConfigToJsonSchema(boilerplateConfig, options)
+	return BoilerplateConfigToJsonSchema(boilerplateConfig, options, "Inputs")
 }
 
-func BoilerplateConfigToJsonSchema(boilerplateConfig *config.BoilerplateConfig, options *options.BoilerplateOptions) (map[string]interface{}, error) {
+func BoilerplateConfigToJsonSchema(boilerplateConfig *config.BoilerplateConfig, options *options.BoilerplateOptions, title string) (map[string]interface{}, error) {
 	rootSchema, err := ConvertBoilerplateTemplateToJsonSchemaProps(boilerplateConfig)
 	if err != nil {
 		return nil, err
@@ -144,7 +144,7 @@ func BoilerplateConfigToJsonSchema(boilerplateConfig *config.BoilerplateConfig, 
 	props := util.MergeMaps(depSchemas...)
 
 	return map[string]interface{}{
-		"title":    "Inputs",
+		"title":    title,
 		"type":     "object",
 		//"required": []string{"title"}, TODO: all these props should be required? Or all have defaults?
 		"properties": props,

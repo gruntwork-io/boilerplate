@@ -89,11 +89,13 @@ function App() {
             <ReactMarkdown>{part.RawMarkdown}</ReactMarkdown>
         )
       case 1: // BoilerplateYaml
+        // Ensure vars show up in proper order
+        const uiSchemaForForm = Object.assign({}, uiSchema, {"ui:order": part.BoilerplateFormOrder});
         // TODO: we render a separate form for each part now... That works for examples with just one form, but
         // perhaps in the future we should support more types.
         return (
             <Form schema={part.BoilerplateYamlFormSchema}
-                  uiSchema={uiSchema}
+                  uiSchema={uiSchemaForForm}
                   formData={formValues}
                   onSubmit={renderFiles}
                   onError={log("errors")} />
