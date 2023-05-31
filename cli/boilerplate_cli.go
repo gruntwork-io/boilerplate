@@ -12,6 +12,7 @@ import (
 	"github.com/gruntwork-io/boilerplate/variables"
 	"github.com/gruntwork-io/go-commons/entrypoint"
 	"github.com/gruntwork-io/go-commons/version"
+	"github.com/gruntwork-io/terratest/modules/files"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclwrite"
 	"github.com/hashicorp/terraform-config-inspect/tfconfig"
@@ -261,7 +262,16 @@ func handleTerraformBoilerplate(opts *options.BoilerplateOptions) error {
 		return err
 	}
 
-	parts := append([]ResponsePart{
+	moduleReadmeParts, err := getModuleReadmePart(opts)
+	if err != nil {
+		return err
+	}
+
+	parts := append(append([]ResponsePart{
+		{
+			Type:        RawMarkdown,
+			RawMarkdown: strPtr(fmt.Sprintf("# Module %s usage\n", cleanModuleName(tfConfigModule.Path))),
+		},
 		{
 			Type:                      BoilerplateYaml,
 			BoilerplateYamlFormSchema: schemaRequiredVars,
@@ -277,9 +287,30 @@ func handleTerraformBoilerplate(opts *options.BoilerplateOptions) error {
 			BoilerplateYamlFormSchema: schemaOptionalVars,
 			BoilerplateFormOrder:      varOrderForForm(boilerplateConfigOptionalVars),
 		},
-	}, usageTemplateParts...)
+	}, usageTemplateParts...), moduleReadmeParts...)
 
 	return runServer(parts, opts)
+}
+
+func getModuleReadmePart(opts *options.BoilerplateOptions) ([]ResponsePart, error) {
+	readmeParts := []ResponsePart{}
+
+	readmePath := filepath.Join(opts.TemplateUrl, "README.md")
+	if !files.FileExists(readmePath) {
+		return readmeParts, nil
+	}
+
+	contents, err := ioutil.ReadFile(readmePath)
+	if err != nil {
+		return readmeParts, errors.WithStackTrace(err)
+	}
+
+	return []ResponsePart{
+		{
+			Type:        RawMarkdown,
+			RawMarkdown: strPtr(string(contents)),
+		},
+	}, nil
 }
 
 func varOrderForForm(cfg *config.BoilerplateConfig) []string {
