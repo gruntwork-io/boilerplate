@@ -244,9 +244,6 @@ func runServer(responseParts []ResponsePart, opts *options.BoilerplateOptions) e
 	router.GET("/auto-scaffold/*modulePath", func(ctx *gin.Context) {
 		modulePath := ctx.Param("modulePath")
 
-		util.Logger.Printf("Requested module path = %s", modulePath)
-		util.Logger.Printf("[BEFORE] opts TemplateUrl = %s, TemplateFolder = %s", opts.TemplateUrl, opts.TemplateFolder)
-
 		// TODO: we should guard against someone looking up paths outside PWD with ../
 		rawTemplateUrl := filepath.Join(originalTemplateUrl, modulePath)
 		templateUrl, templateFolder, err := options.DetermineTemplateConfig(rawTemplateUrl)
@@ -258,8 +255,6 @@ func runServer(responseParts []ResponsePart, opts *options.BoilerplateOptions) e
 
 		opts.TemplateUrl = templateUrl
 		opts.TemplateFolder = templateFolder
-
-		util.Logger.Printf("[AFTER] opts TemplateUrl = %s, TemplateFolder = %s", opts.TemplateUrl, opts.TemplateFolder)
 
 		parts, err := doHandleTerraformBoilerplate(opts)
 		if err != nil {
@@ -732,7 +727,7 @@ func convertTerraformVarToBoilerplateVarType(tfVar TfVariable) (variables.Variab
 	}
 
 	// TODO: boilerplate only supports lists of strings for now, and we shove both lists and tuples into it...
-	if strings.HasPrefix(*tfVar.Type, "list") || strings.HasPrefix(*tfVar.Type, "tuple") {
+	if strings.HasPrefix(*tfVar.Type, "list") || strings.HasPrefix(*tfVar.Type, "tuple")  || strings.HasPrefix(*tfVar.Type, "set") {
 		return variables.NewListVariable(tfVar.Name), nil
 	}
 
