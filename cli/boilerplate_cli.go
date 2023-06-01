@@ -158,7 +158,11 @@ func handleTerraformCatalog(opts *options.BoilerplateOptions) error {
 		return err
 	}
 
-	content := fmt.Sprintf("# Catalog\n\n%s", formatModuleTable(modulePaths))
+	table, err := formatModuleTable(modulePaths, opts)
+	if err != nil {
+		return err
+	}
+	content := fmt.Sprintf("# Catalog\n\n%s", table)
 
 	responseParts := []ResponsePart{
 		{
@@ -175,17 +179,56 @@ const tableTemplate = `
 %s
 `
 
-func formatModuleTable(modulePaths []string) string {
+func formatModuleTable(modulePaths []string, opts *options.BoilerplateOptions) (string, error) {
 	tableRows := []string{}
 
 	for _, modulePath := range modulePaths {
-		row := fmt.Sprintf("| [%s](/auto-scaffold/%s) | %s | %s |", modulePath, modulePath, "terraform", "todo")
+		description, err := extractDescription(modulePath, opts)
+		if err != nil {
+			return "", err
+		}
+		row := fmt.Sprintf("| [%s](/auto-scaffold/%s) | %s | %s |", modulePath, modulePath, "terraform", description)
 		tableRows = append(tableRows, row)
 	}
 
 	rows := strings.Join(tableRows, "\n")
 
-	return fmt.Sprintf(tableTemplate, rows)
+	return fmt.Sprintf(tableTemplate, rows), nil
+}
+
+// Super hacky method to loop over the README of the given module (if one exists) and extract the first line from that
+// README that looks like a description (i.e., isn't frontmatter, a header, a badge, an image, etc).
+func extractDescription(modulePath string, opts *options.BoilerplateOptions) (string, error) {
+	readmePath := filepath.Join(opts.TemplateUrl, modulePath, "README.md")
+	if files.FileExists(readmePath) {
+		readmeContentsBytes, err := ioutil.ReadFile(readmePath)
+		if err != nil {
+			return "", errors.WithStackTrace(err)
+		}
+
+		lines := strings.Split(string(readmeContentsBytes), "\n")
+
+		inCommentBlock := false
+		for _, line := range lines {
+			cleanLine := strings.TrimSpace(line)
+			util.Logger.Printf("Looking at line (comment block = %v): %s", inCommentBlock, cleanLine)
+			if strings.HasPrefix(cleanLine, "<!--") {
+				util.Logger.Printf("Now in comment block")
+				inCommentBlock = true
+			} else if strings.Contains(cleanLine, "-->") {
+				util.Logger.Printf("Now not in comment block")
+				inCommentBlock = false
+			} else if !inCommentBlock && markdownLineLooksLikeDescription(cleanLine) {
+				return fmt.Sprintf("%s...", cleanLine), nil
+			}
+		}
+	}
+
+	return fmt.Sprintf("(couldn't extract description for module %s)", cleanModuleName(modulePath)), nil
+}
+
+func markdownLineLooksLikeDescription(line string) bool {
+	return len(line) > 0 && !strings.HasPrefix(line, "#") && !strings.HasPrefix(line, "[") && !strings.HasPrefix(line, "!") && !strings.HasPrefix(line, "-")
 }
 
 func getTerraformModulePaths(opts *options.BoilerplateOptions) ([]string, error) {
@@ -727,7 +770,7 @@ func convertTerraformVarToBoilerplateVarType(tfVar TfVariable) (variables.Variab
 	}
 
 	// TODO: boilerplate only supports lists of strings for now, and we shove both lists and tuples into it...
-	if strings.HasPrefix(*tfVar.Type, "list") || strings.HasPrefix(*tfVar.Type, "tuple")  || strings.HasPrefix(*tfVar.Type, "set") {
+	if strings.HasPrefix(*tfVar.Type, "list") || strings.HasPrefix(*tfVar.Type, "tuple") || strings.HasPrefix(*tfVar.Type, "set") {
 		return variables.NewListVariable(tfVar.Name), nil
 	}
 

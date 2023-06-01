@@ -80,16 +80,31 @@ button[type=submit] {
 }
 
 .markdown-container table {
-  width: 900px;
+  width: 1000px;
 }
 
 .markdown-container table td {
-  padding: 0 40px 20px 0;
+  padding: 10px 10px 10px 10px;
+  border-bottom: 1px solid #ccc;
+  border-right: 1px solid #ccc;
+}
+
+.markdown-container table tr td:nth-child(1) {
+  white-space: nowrap;
+}
+
+.markdown-container table tr > td:last-of-type {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 800px;
 }
 
 .markdown-container table th {
   font-size: 1.1rem;
-  padding: 0 40px 10px 0;
+  padding: 0 40px 10px 10px;
+  border-bottom: 1px solid #ccc;
+  border-right: 1px solid #ccc;
 }
 
 /* Map styling */
