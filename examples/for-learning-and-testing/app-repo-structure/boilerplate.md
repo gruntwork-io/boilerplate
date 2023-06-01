@@ -5,7 +5,7 @@
 This [boilerplate](https://github.com/gruntwork-io/boilerplate) template will configure a sample app and CI / CD 
 pipeline:
 
-![Sample app](https://raw.githubusercontent.com/gruntwork-io/team-product/master/assets/img/sample-app-frontend.png?token=GHSAT0AAAAAABL7OVOJSOUBAMXAC7FBPWVWZDU47EQ)
+![Sample app](https://raw.githubusercontent.com/gruntwork-io/aws-sample-app/main/_docs/sample-app-frontend-screenshot.png?token=GHSAT0AAAAAABL7OVOJSYUDXACVNSV5LJU2ZDYYX5Q)
 
 ## Features
 
