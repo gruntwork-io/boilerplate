@@ -5,6 +5,7 @@ import Form from "@rjsf/bootstrap-4";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faFolder, faFile, faCircleInfo, faCirclePlay, faClipboard } from '@fortawesome/free-solid-svg-icons'
 import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 function App() {
   const [formParts, setFormParts] = useState([]);
@@ -55,13 +56,29 @@ function App() {
     });
   };
 
+  const fetchForm = async() => {
+    const response = await fetch(`http://localhost:8080/form`);
+    const parts = await response.json();
+    setFormParts(parts);
+  };
+
+  const autoScaffold = async(modulePath) => {
+    const response = await fetch(`http://localhost:8080/auto-scaffold/${modulePath}`);
+    const parts = await response.json();
+    setFormParts(parts);
+  };
+
   useEffect(() => {
     async function init() {
-      await doAsyncAction(async () => {
-        const response = await fetch(`http://localhost:8080/form`);
-        const parts = await response.json();
-        setFormParts(parts);
-      });
+      const autoScaffoldPath = "/auto-scaffold/"
+
+      // There is a bug where this code seems to be called twice...
+      if (window.location.pathname.startsWith(autoScaffoldPath)) {
+        const modulePath = window.location.pathname.slice(autoScaffoldPath.length);
+        await doAsyncAction(() => autoScaffold(modulePath));
+      } else {
+        await doAsyncAction(fetchForm);
+      }
     }
     init();
   }, []);
@@ -86,7 +103,7 @@ function App() {
     switch (part.Type) {
       case 0: // RawMarkdown
         return (
-            <ReactMarkdown>{part.RawMarkdown}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{part.RawMarkdown}</ReactMarkdown>
         )
       case 1: // BoilerplateYaml
         // Ensure vars show up in proper order

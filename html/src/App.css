@@ -79,6 +79,19 @@ button[type=submit] {
   max-width: 500px;
 }
 
+.markdown-container table {
+  width: 900px;
+}
+
+.markdown-container table td {
+  padding: 0 40px 20px 0;
+}
+
+.markdown-container table th {
+  font-size: 1.1rem;
+  padding: 0 40px 10px 0;
+}
+
 /* Map styling */
 .form-group h5 {
   font-size: 1.0rem;
@@ -88,3 +101,4 @@ button[type=submit] {
   font-size: 0.875rem;
   color: rgba(var(--bs-body-color-rgb),.75)!important;
 }
+

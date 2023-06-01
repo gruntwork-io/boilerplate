@@ -11,8 +11,9 @@ import (
 	"github.com/gruntwork-io/boilerplate/util"
 	"github.com/gruntwork-io/boilerplate/variables"
 	"github.com/gruntwork-io/go-commons/entrypoint"
+	"github.com/gruntwork-io/go-commons/files"
 	"github.com/gruntwork-io/go-commons/version"
-	"github.com/gruntwork-io/terratest/modules/files"
+	"github.com/gruntwork-io/terratest/modules/collections"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclwrite"
 	"github.com/hashicorp/terraform-config-inspect/tfconfig"
@@ -27,6 +28,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"sync"
 )
@@ -141,11 +143,76 @@ func runApp(cliContext *cli.Context) error {
 		return handleYamlBoilerplate(opts)
 	case Markdown:
 		return handleMarkdownBoilerplate(opts)
-	case Terraform:
+	case TerraformModule:
 		return handleTerraformBoilerplate(opts)
+	case TerraformCatalog:
+		return handleTerraformCatalog(opts)
 	default:
 		return fmt.Errorf("Uh oh, how did I get here?")
 	}
+}
+
+func handleTerraformCatalog(opts *options.BoilerplateOptions) error {
+	modulePaths, err := getTerraformModulePaths(opts)
+	if err != nil {
+		return err
+	}
+
+	content := fmt.Sprintf("# Catalog\n\n%s", formatModuleTable(modulePaths))
+
+	responseParts := []ResponsePart{
+		{
+			Type:        RawMarkdown,
+			RawMarkdown: strPtr(content),
+		},
+	}
+	return runServer(responseParts, opts)
+}
+
+const tableTemplate = `
+| Module | Type | Description |
+| ------ | ---- | ----------- |
+%s
+`
+
+func formatModuleTable(modulePaths []string) string {
+	tableRows := []string{}
+
+	for _, modulePath := range modulePaths {
+		row := fmt.Sprintf("| [%s](/auto-scaffold/%s) | %s | %s |", modulePath, modulePath, "terraform", "todo")
+		tableRows = append(tableRows, row)
+	}
+
+	rows := strings.Join(tableRows, "\n")
+
+	return fmt.Sprintf(tableTemplate, rows)
+}
+
+func getTerraformModulePaths(opts *options.BoilerplateOptions) ([]string, error) {
+	terraformFiles, err := zglob.Glob(filepath.Join(opts.TemplateFolder, "**/*.tf"))
+	if err != nil {
+		return nil, errors.WithStackTrace(err)
+	}
+
+	sort.Strings(terraformFiles)
+
+	modulePaths := []string{}
+
+	for _, tfFile := range terraformFiles {
+		relPath, err := files.GetPathRelativeTo(tfFile, opts.TemplateFolder)
+		if err != nil {
+			return nil, errors.WithStackTrace(err)
+		}
+
+		if !strings.HasPrefix(relPath, ".") && strings.ContainsRune(relPath, filepath.Separator) {
+			modulePath := filepath.Dir(relPath)
+			if !collections.ListContains(modulePaths, modulePath) {
+				modulePaths = append(modulePaths, modulePath)
+			}
+		}
+	}
+
+	return modulePaths, nil
 }
 
 func handleYamlBoilerplate(opts *options.BoilerplateOptions) error {
@@ -161,6 +228,8 @@ func handleYamlBoilerplate(opts *options.BoilerplateOptions) error {
 func runServer(responseParts []ResponsePart, opts *options.BoilerplateOptions) error {
 	router := gin.Default()
 
+	originalTemplateUrl := opts.TemplateUrl
+
 	// create-react-app runs on a different port, so to allow it to make AJAX calls here, add CORS rules
 	corsConfig := cors.DefaultConfig()
 	corsConfig.AllowOrigins = []string{"http://localhost:3000"}
@@ -170,6 +239,36 @@ func runServer(responseParts []ResponsePart, opts *options.BoilerplateOptions) e
 
 	router.GET("/form", func(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, responseParts)
+	})
+
+	router.GET("/auto-scaffold/*modulePath", func(ctx *gin.Context) {
+		modulePath := ctx.Param("modulePath")
+
+		util.Logger.Printf("Requested module path = %s", modulePath)
+		util.Logger.Printf("[BEFORE] opts TemplateUrl = %s, TemplateFolder = %s", opts.TemplateUrl, opts.TemplateFolder)
+
+		// TODO: we should guard against someone looking up paths outside PWD with ../
+		rawTemplateUrl := filepath.Join(originalTemplateUrl, modulePath)
+		templateUrl, templateFolder, err := options.DetermineTemplateConfig(rawTemplateUrl)
+		if err != nil {
+			util.Logger.Printf("[ERROR] %v", err)
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		opts.TemplateUrl = templateUrl
+		opts.TemplateFolder = templateFolder
+
+		util.Logger.Printf("[AFTER] opts TemplateUrl = %s, TemplateFolder = %s", opts.TemplateUrl, opts.TemplateFolder)
+
+		parts, err := doHandleTerraformBoilerplate(opts)
+		if err != nil {
+			util.Logger.Printf("[ERROR] %v", err)
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		ctx.JSON(http.StatusOK, parts)
 	})
 
 	router.POST("/render", func(ctx *gin.Context) {
@@ -219,10 +318,18 @@ func runServer(responseParts []ResponsePart, opts *options.BoilerplateOptions) e
 }
 
 func handleTerraformBoilerplate(opts *options.BoilerplateOptions) error {
+	parts, err := doHandleTerraformBoilerplate(opts)
+	if err != nil {
+		return err
+	}
+	return runServer(parts, opts)
+}
+
+func doHandleTerraformBoilerplate(opts *options.BoilerplateOptions) ([]ResponsePart, error) {
 	// We use terraform-config-inspect to get the basic info.
 	tfConfigModule, diags := tfconfig.LoadModule(opts.TemplateFolder)
 	if diags.HasErrors() {
-		return errors.WithStackTrace(diags)
+		return nil, errors.WithStackTrace(diags)
 	}
 
 	// Unfortunately, terraform-config-inspect stores parsed variables in a map, so they are not in the order we find
@@ -230,41 +337,41 @@ func handleTerraformBoilerplate(opts *options.BoilerplateOptions) error {
 	// in the proper order
 	tfVarsRequired, err := parseTerraformVariables(opts, tfConfigModule, Required)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	tfVarsOptional, err := parseTerraformVariables(opts, tfConfigModule, Optional)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	boilerplateConfigRequiredVars, err := terraformModuleToBoilerplateConfig(tfVarsRequired)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	schemaRequiredVars, err := templates.BoilerplateConfigToJsonSchema(boilerplateConfigRequiredVars, opts, "Required variables")
 	if err != nil {
-		return errors.WithStackTrace(err)
+		return nil, errors.WithStackTrace(err)
 	}
 
 	boilerplateConfigOptionalVars, err := terraformModuleToBoilerplateConfig(tfVarsOptional)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	schemaOptionalVars, err := templates.BoilerplateConfigToJsonSchema(boilerplateConfigOptionalVars, opts, "Optional variables")
 	if err != nil {
-		return errors.WithStackTrace(err)
+		return nil, errors.WithStackTrace(err)
 	}
 
 	usageTemplateParts, err := createUsageTemplate(opts, tfConfigModule, tfVarsRequired, tfVarsOptional)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	moduleReadmeParts, err := getModuleReadmePart(opts)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// TODO: this is an ugly hack to force some spacing between sections
@@ -296,7 +403,7 @@ func handleTerraformBoilerplate(opts *options.BoilerplateOptions) error {
 		},
 	}, usageTemplateParts...), moduleReadmeParts...)
 
-	return runServer(parts, opts)
+	return parts, nil
 }
 
 func getModuleReadmePart(opts *options.BoilerplateOptions) ([]ResponsePart, error) {
@@ -836,7 +943,8 @@ type BoilerplateType int
 const (
 	Yaml BoilerplateType = iota
 	Markdown
-	Terraform
+	TerraformModule
+	TerraformCatalog
 )
 
 func boilerplateType(opts *options.BoilerplateOptions) (BoilerplateType, error) {
@@ -850,15 +958,30 @@ func boilerplateType(opts *options.BoilerplateOptions) (BoilerplateType, error) 
 		return Markdown, nil
 	}
 
-	terraformFiles, err := zglob.Glob(filepath.Join(opts.TemplateFolder, "*.tf"))
+	terraformFiles, err := zglob.Glob(filepath.Join(opts.TemplateFolder, "**/*.tf"))
 	if err != nil {
 		return Yaml, errors.WithStackTrace(err)
 	}
 	if len(terraformFiles) > 0 {
-		return Terraform, nil
+		return terraformType(terraformFiles, opts)
 	}
 
 	return Yaml, fmt.Errorf("%s doesn't seem to be a valid boilerplate folder", opts.TemplateFolder)
+}
+
+func terraformType(terraformFiles []string, opts *options.BoilerplateOptions) (BoilerplateType, error) {
+	for _, tfFile := range terraformFiles {
+		relPath, err := files.GetPathRelativeTo(tfFile, opts.TemplateFolder)
+		if err != nil {
+			return Yaml, errors.WithStackTrace(err)
+		}
+		// If we find a Terraform file in a subfolder (but not a hidden folder), then we assume this is a catalog of
+		// TF modules
+		if !strings.HasPrefix(relPath, ".") && strings.ContainsRune(relPath, filepath.Separator) {
+			return TerraformCatalog, nil
+		}
+	}
+	return TerraformModule, nil
 }
 
 func GetDirContents(opts *options.BoilerplateOptions) ([]FileData, error) {
