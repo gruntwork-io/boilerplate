@@ -267,6 +267,12 @@ func handleTerraformBoilerplate(opts *options.BoilerplateOptions) error {
 		return err
 	}
 
+	// TODO: this is an ugly hack to force some spacing between sections
+	extraSpacing := ResponsePart{
+		Type:        RawMarkdown,
+		RawMarkdown: strPtr("# &nbsp;\n"),
+	}
+
 	parts := append(append([]ResponsePart{
 		{
 			Type:        RawMarkdown,
@@ -277,11 +283,12 @@ func handleTerraformBoilerplate(opts *options.BoilerplateOptions) error {
 			BoilerplateYamlFormSchema: schemaRequiredVars,
 			BoilerplateFormOrder:      varOrderForForm(boilerplateConfigRequiredVars),
 		},
-		// TODO: this is an ugly hack to force some spacing between sections
+		extraSpacing,
 		{
-			Type:        RawMarkdown,
-			RawMarkdown: strPtr("# &nbsp;\n"),
+			Type:              ExecutableSnippet,
+			ExecutableSnippet: strPtr("terraform init\nterraform apply"),
 		},
+		extraSpacing,
 		{
 			Type:                      BoilerplateYaml,
 			BoilerplateYamlFormSchema: schemaOptionalVars,
