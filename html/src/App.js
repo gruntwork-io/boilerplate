@@ -6,6 +6,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faFolder, faFile, faCircleInfo, faCirclePlay, faClipboard } from '@fortawesome/free-solid-svg-icons'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import rehypeRaw from 'rehype-raw'
 
 function App() {
   const [formParts, setFormParts] = useState([]);
@@ -68,14 +69,24 @@ function App() {
     setFormParts(parts);
   };
 
+  const scaffold = async(scaffoldPath) => {
+    const response = await fetch(`http://localhost:8080/scaffold/${scaffoldPath}`);
+    const parts = await response.json();
+    setFormParts(parts);
+  };
+
   useEffect(() => {
     async function init() {
-      const autoScaffoldPath = "/auto-scaffold/"
+      const autoScaffoldUrlPath = "/auto-scaffold/"
+      const scaffoldUrlPath = "/scaffold/"
 
       // There is a bug where this code seems to be called twice...
-      if (window.location.pathname.startsWith(autoScaffoldPath)) {
-        const modulePath = window.location.pathname.slice(autoScaffoldPath.length);
+      if (window.location.pathname.startsWith(autoScaffoldUrlPath)) {
+        const modulePath = window.location.pathname.slice(autoScaffoldUrlPath.length);
         await doAsyncAction(() => autoScaffold(modulePath));
+      } else if (window.location.pathname.startsWith(scaffoldUrlPath)) {
+        const scaffoldPath = window.location.pathname.slice(scaffoldUrlPath.length);
+        await doAsyncAction(() => scaffold(scaffoldPath));
       } else {
         await doAsyncAction(fetchForm);
       }
@@ -103,7 +114,7 @@ function App() {
     switch (part.Type) {
       case 0: // RawMarkdown
         return (
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{part.RawMarkdown}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>{part.RawMarkdown}</ReactMarkdown>
         )
       case 1: // BoilerplateYaml
         // Ensure vars show up in proper order

@@ -147,18 +147,141 @@ func runApp(cliContext *cli.Context) error {
 		return handleTerraformBoilerplate(opts)
 	case TerraformCatalog:
 		return handleTerraformCatalog(opts)
+	case Live:
+		return handleLive(opts)
+	case AppDemo:
+		return handleAppDemo(opts)
 	default:
 		return fmt.Errorf("Uh oh, how did I get here?")
 	}
 }
 
-func handleTerraformCatalog(opts *options.BoilerplateOptions) error {
-	modulePaths, err := getTerraformModulePaths(opts)
+func handleAppDemo(opts *options.BoilerplateOptions) error {
+	livePath := filepath.Join(opts.TemplateFolder, "live")
+	modulesPath := filepath.Join(opts.TemplateFolder, "modules")
+	scaffoldsPath := filepath.Join(opts.TemplateFolder, "scaffolds")
+
+	tgModulePaths, err := getTgModulePaths(livePath)
 	if err != nil {
 		return err
 	}
 
-	table, err := formatModuleTable(modulePaths, opts)
+	liveView, err := formatLiveView(tgModulePaths, livePath)
+	if err != nil {
+		return err
+	}
+	liveContent := fmt.Sprintf("# Live\n\n%s", liveView)
+
+	scaffoldPaths, err := getScaffoldPaths(scaffoldsPath)
+	if err != nil {
+		return err
+	}
+
+	for i, scaffoldPath := range scaffoldPaths {
+		scaffoldPaths[i] = filepath.Join("scaffolds", scaffoldPath)
+	}
+
+	scaffoldsView, err := formatScaffoldsView(scaffoldPaths, opts.TemplateUrl)
+	if err != nil {
+		return err
+	}
+	scaffoldsContent := fmt.Sprintf("# Scaffolds\n\n%s", scaffoldsView)
+
+	tfModulePaths, err := getTerraformModulePaths(modulesPath)
+	if err != nil {
+		return err
+	}
+
+	for i, tfModulePath := range tfModulePaths {
+		tfModulePaths[i] = filepath.Join("modules", tfModulePath)
+	}
+
+	table, err := formatModuleTable(tfModulePaths, opts.TemplateUrl)
+	if err != nil {
+		return err
+	}
+	catalogContent := fmt.Sprintf("# Catalog\n\n%s", table)
+
+
+	responseParts := []ResponsePart{
+		{
+			Type:        RawMarkdown,
+			RawMarkdown: strPtr(liveContent),
+		},
+		{
+			Type:        RawMarkdown,
+			RawMarkdown: strPtr(scaffoldsContent),
+		},
+		{
+			Type:        RawMarkdown,
+			RawMarkdown: strPtr(catalogContent),
+		},
+	}
+	return runServer(responseParts, opts)
+}
+
+func getScaffoldPaths(templateFolder string) ([]string, error) {
+	mdFiles, err := zglob.Glob(filepath.Join(templateFolder, "**/boilerplate.md"))
+	if err != nil {
+		return nil, errors.WithStackTrace(err)
+	}
+
+	yamlFiles, err := zglob.Glob(filepath.Join(templateFolder, "**/boilerplate.yml"))
+	if err != nil {
+		return nil, errors.WithStackTrace(err)
+	}
+
+	allFiles := append(mdFiles, yamlFiles...)
+
+	sort.Strings(allFiles)
+
+	scaffoldPaths := []string{}
+
+	for _, scaffoldFile := range allFiles {
+		relPath, err := files.GetPathRelativeTo(scaffoldFile, templateFolder)
+		if err != nil {
+			return nil, errors.WithStackTrace(err)
+		}
+
+		if !strings.HasPrefix(relPath, ".") && strings.ContainsRune(relPath, filepath.Separator) {
+			scaffoldPath := filepath.Dir(relPath)
+			if !collections.ListContains(scaffoldPaths, scaffoldPath) {
+				scaffoldPaths = append(scaffoldPaths, scaffoldPath)
+			}
+		}
+	}
+
+	return scaffoldPaths, nil
+}
+
+func handleLive(opts *options.BoilerplateOptions) error {
+	modulePaths, err := getTgModulePaths(opts.TemplateFolder)
+	if err != nil {
+		return err
+	}
+
+	liveView, err := formatLiveView(modulePaths, opts.TemplateUrl)
+	if err != nil {
+		return err
+	}
+	content := fmt.Sprintf("# Live\n\n%s", liveView)
+
+	responseParts := []ResponsePart{
+		{
+			Type:        RawMarkdown,
+			RawMarkdown: strPtr(content),
+		},
+	}
+	return runServer(responseParts, opts)
+}
+
+func handleTerraformCatalog(opts *options.BoilerplateOptions) error {
+	modulePaths, err := getTerraformModulePaths(opts.TemplateFolder)
+	if err != nil {
+		return err
+	}
+
+	table, err := formatModuleTable(modulePaths, opts.TemplateUrl)
 	if err != nil {
 		return err
 	}
@@ -173,17 +296,191 @@ func handleTerraformCatalog(opts *options.BoilerplateOptions) error {
 	return runServer(responseParts, opts)
 }
 
-const tableTemplate = `
+const scaffoldsTableTemplate = `
+| Scaffold | Type |
+| -------- | ---- |
+%s
+`
+
+func formatScaffoldsView(scaffoldPaths []string, templateBasePath string) (string, error) {
+	tableRows := []string{}
+
+	for _, scaffoldPath := range scaffoldPaths {
+		scaffoldType := "yml"
+		if files.FileExists(filepath.Join(templateBasePath, scaffoldPath, "boilerplate.md")) {
+			scaffoldType = "markdown"
+		}
+
+		scaffoldLink := fmt.Sprintf("[%s](/scaffold/%s)", scaffoldPath, scaffoldPath)
+		tableRow := formatAsTableRow([]string{scaffoldLink, scaffoldType})
+		tableRows = append(tableRows, tableRow)
+	}
+
+	return fmt.Sprintf(scaffoldsTableTemplate, strings.Join(tableRows, "\n")), nil
+}
+
+const moduleTableTemplate = `
 | Module | Type | Description |
 | ------ | ---- | ----------- |
 %s
 `
 
-func formatModuleTable(modulePaths []string, opts *options.BoilerplateOptions) (string, error) {
+func formatLiveView(modulePaths []string, templateBasePath string) (string, error) {
+	tgModules := []TgModule{}
+	moduleUsageMappings := map[string][]TgModule{}
+	envs := []string{}
+	regions := []string{}
+
+	for _, modulePath := range modulePaths {
+		tgModule, err := parseTgModule(modulePath, templateBasePath)
+		if err != nil {
+			return "", err
+		}
+
+		tgModules = append(tgModules, tgModule)
+
+		moduleUsageMapping, ok := moduleUsageMappings[tgModule.Usage]
+		if !ok {
+			moduleUsageMapping = []TgModule{}
+		}
+		moduleUsageMapping = append(moduleUsageMapping, tgModule)
+		moduleUsageMappings[tgModule.Usage] = moduleUsageMapping
+
+		if !collections.ListContains(envs, tgModule.Env) {
+			envs = append(envs, tgModule.Env)
+		}
+		if !collections.ListContains(regions, tgModule.Region) {
+			regions = append(regions, tgModule.Region)
+		}
+	}
+
+	sort.Strings(envs)
+
+	firstRow := formatAsTableHeaderRow(append([]string{"Module"}, envs...))
+	tableRows := []string{firstRow}
+
+	for usagePath, usages := range moduleUsageMappings {
+		sort.SliceStable(usages, func(i, j int) bool {
+			return usages[i].Env < usages[j].Env
+		})
+
+		cols := []string{fmt.Sprintf("[%s](#todo)", usagePath)}
+		for _, usage := range usages {
+			cols = append(cols, fmt.Sprintf("[%s](#todo)", usage.Version))
+		}
+		tableRows = append(tableRows, formatAsTableRow(cols))
+	}
+
+	return strings.Join(tableRows, "\n"), nil
+}
+
+func formatAsTableRow(vals []string) string {
+	return fmt.Sprintf("| %s |", strings.Join(vals, " | "))
+}
+
+func formatAsTableHeaderRow(vals []string) string {
+	placeHolders := []string{}
+	for _, val := range vals {
+		placeHolder := strings.Repeat("-", len(val))
+		placeHolders = append(placeHolders, placeHolder)
+	}
+
+	row := formatAsTableRow(vals)
+	headerRow := formatAsTableRow(placeHolders)
+	return fmt.Sprintf("%s\n%s", row, headerRow)
+}
+
+type TgModule struct {
+	Path     string
+	Env      string
+	Region   string
+	Usage    string
+	Repo     string
+	Module   string
+	Version  string
+	UpToDate bool
+}
+
+// Very hacky regex to parse the source URL in a TG module
+var sourceRegex = regexp.MustCompile(`github.com/gruntwork-io/(.+?).git//(.+?)\?ref=(.+)"`)
+
+// Very hacky regex to parse infra-live path of format ENV/REGION/MODULE
+var tgEnvRegionRegex = regexp.MustCompile(`^(.+?)/(.+?)/(.+?)$`)
+
+func parseTgModule(modulePath string, templateBasePath string) (TgModule, error) {
+	tgModule := TgModule{
+		Path:     modulePath,
+		Env:      "(unknown)",
+		Region:   "(unknown)",
+		Usage:    "(unknown)",
+		Repo:     "(unknown)",
+		Module:   "(unknown)",
+		Version:  "(unknown)",
+		UpToDate: false,
+	}
+
+	moduleParts := tgEnvRegionRegex.FindStringSubmatch(modulePath)
+	if len(moduleParts) != 4 {
+		util.Logger.Printf("[WARN] Couldn't parse module path %s into account, region, module parts", modulePath)
+		return tgModule, nil
+	}
+
+	tgModule.Env = moduleParts[1]
+	tgModule.Region = moduleParts[2]
+	tgModule.Usage = moduleParts[3]
+
+	tgConfigPath := filepath.Join(templateBasePath, modulePath, "terragrunt.hcl")
+	if !files.FileExists(tgConfigPath) {
+		util.Logger.Printf("[WARN] Found TG module at %s, but %s does not exist", modulePath, tgConfigPath)
+		return tgModule, nil
+	}
+
+	tgBytes, err := ioutil.ReadFile(tgConfigPath)
+	if err != nil {
+		return tgModule, errors.WithStackTrace(err)
+	}
+
+	// TODO: we should be using the 'terragrunt render-json' command here, as we do with Patcher, but in this hackday
+	// project, I'm trying to save time, and parsing HCL directly. This won't work with some TG configs that construct
+	// source URLs dynamically.
+	hclFile, diag := hclwrite.ParseConfig(tgBytes, tgConfigPath, hcl.InitialPos)
+	if diag.HasErrors() {
+		return tgModule, errors.WithStackTrace(diag)
+	}
+
+	tfBlock := hclFile.Body().FirstMatchingBlock("terraform", nil)
+	if tfBlock == nil {
+		util.Logger.Printf("[WARN] Could not find terraform block in %s", tgConfigPath)
+		return tgModule, nil
+	}
+
+	source := tfBlock.Body().GetAttribute("source")
+	if source == nil {
+		util.Logger.Printf("[WARN] Could not find source URL in terraform block in %s", tgConfigPath)
+		return tgModule, nil
+	}
+
+	sourceUrl := string(source.Expr().BuildTokens(nil).Bytes())
+
+	matches := sourceRegex.FindStringSubmatch(sourceUrl)
+	if len(matches) != 4 {
+		util.Logger.Printf("[WARN] Could not parse source URL in terraform block in %s: %s", tgConfigPath, sourceUrl)
+		return tgModule, nil
+	}
+
+	tgModule.Repo = matches[1]
+	tgModule.Module = matches[2]
+	tgModule.Version = matches[3]
+	tgModule.UpToDate = true
+
+	return tgModule, nil
+}
+
+func formatModuleTable(modulePaths []string, templateBasePath string) (string, error) {
 	tableRows := []string{}
 
 	for _, modulePath := range modulePaths {
-		description, err := extractDescription(modulePath, opts)
+		description, err := extractDescription(modulePath, templateBasePath)
 		if err != nil {
 			return "", err
 		}
@@ -193,13 +490,13 @@ func formatModuleTable(modulePaths []string, opts *options.BoilerplateOptions) (
 
 	rows := strings.Join(tableRows, "\n")
 
-	return fmt.Sprintf(tableTemplate, rows), nil
+	return fmt.Sprintf(moduleTableTemplate, rows), nil
 }
 
 // Super hacky method to loop over the README of the given module (if one exists) and extract the first line from that
 // README that looks like a description (i.e., isn't frontmatter, a header, a badge, an image, etc).
-func extractDescription(modulePath string, opts *options.BoilerplateOptions) (string, error) {
-	readmePath := filepath.Join(opts.TemplateUrl, modulePath, "README.md")
+func extractDescription(modulePath string, templateBasePath string) (string, error) {
+	readmePath := filepath.Join(templateBasePath, modulePath, "README.md")
 	if files.FileExists(readmePath) {
 		readmeContentsBytes, err := ioutil.ReadFile(readmePath)
 		if err != nil {
@@ -211,12 +508,9 @@ func extractDescription(modulePath string, opts *options.BoilerplateOptions) (st
 		inCommentBlock := false
 		for _, line := range lines {
 			cleanLine := strings.TrimSpace(line)
-			util.Logger.Printf("Looking at line (comment block = %v): %s", inCommentBlock, cleanLine)
 			if strings.HasPrefix(cleanLine, "<!--") {
-				util.Logger.Printf("Now in comment block")
 				inCommentBlock = true
 			} else if strings.Contains(cleanLine, "-->") {
-				util.Logger.Printf("Now not in comment block")
 				inCommentBlock = false
 			} else if !inCommentBlock && markdownLineLooksLikeDescription(cleanLine) {
 				return fmt.Sprintf("%s...", cleanLine), nil
@@ -231,18 +525,18 @@ func markdownLineLooksLikeDescription(line string) bool {
 	return len(line) > 0 && !strings.HasPrefix(line, "#") && !strings.HasPrefix(line, "[") && !strings.HasPrefix(line, "!") && !strings.HasPrefix(line, "-")
 }
 
-func getTerraformModulePaths(opts *options.BoilerplateOptions) ([]string, error) {
-	terraformFiles, err := zglob.Glob(filepath.Join(opts.TemplateFolder, "**/*.tf"))
+func getTgModulePaths(templateFolder string) ([]string, error) {
+	tgFiles, err := zglob.Glob(filepath.Join(templateFolder, "**/terragrunt.hcl"))
 	if err != nil {
 		return nil, errors.WithStackTrace(err)
 	}
 
-	sort.Strings(terraformFiles)
+	sort.Strings(tgFiles)
 
 	modulePaths := []string{}
 
-	for _, tfFile := range terraformFiles {
-		relPath, err := files.GetPathRelativeTo(tfFile, opts.TemplateFolder)
+	for _, tfFile := range tgFiles {
+		relPath, err := files.GetPathRelativeTo(tfFile, templateFolder)
 		if err != nil {
 			return nil, errors.WithStackTrace(err)
 		}
@@ -258,13 +552,140 @@ func getTerraformModulePaths(opts *options.BoilerplateOptions) ([]string, error)
 	return modulePaths, nil
 }
 
-func handleYamlBoilerplate(opts *options.BoilerplateOptions) error {
+func getTerraformModulePaths(templateFolder string) ([]string, error) {
+	terraformFiles, err := zglob.Glob(filepath.Join(templateFolder, "**/*.tf"))
+	if err != nil {
+		return nil, errors.WithStackTrace(err)
+	}
+
+	sort.Strings(terraformFiles)
+
+	modulePaths := []string{}
+
+	for _, tfFile := range terraformFiles {
+		relPath, err := files.GetPathRelativeTo(tfFile, templateFolder)
+		if err != nil {
+			return nil, errors.WithStackTrace(err)
+		}
+
+		if !strings.HasPrefix(relPath, ".") && strings.ContainsRune(relPath, filepath.Separator) {
+			modulePath := filepath.Dir(relPath)
+			if !collections.ListContains(modulePaths, modulePath) {
+				modulePaths = append(modulePaths, modulePath)
+			}
+		}
+	}
+
+	return modulePaths, nil
+}
+
+func doHandleBoilerplateScaffold(opts *options.BoilerplateOptions) ([]ResponsePart, error) {
+	yamlPath := filepath.Join(opts.TemplateFolder, "boilerplate.yml")
+	if util.PathExists(yamlPath) {
+		return doHandleBoilerplateYamlScaffold(opts)
+	}
+
+	mdPath := filepath.Join(opts.TemplateFolder, "boilerplate.md")
+	if util.PathExists(mdPath) {
+		return doHandleBoilerplateMdScaffold(opts)
+	}
+
+	return nil, fmt.Errorf("Couldn't find boilerplate.yml or boilerplate.md in %s", opts.TemplateFolder)
+}
+
+func doHandleBoilerplateYamlScaffold(opts *options.BoilerplateOptions) ([]ResponsePart, error) {
 	schema, err := templates.GetJsonSchema(opts)
+	if err != nil {
+		return nil, err
+	}
+
+	return []ResponsePart{{Type: BoilerplateYaml, BoilerplateYamlFormSchema: schema}}, nil
+}
+
+func doHandleBoilerplateMdScaffold(opts *options.BoilerplateOptions) ([]ResponsePart, error) {
+	mdPath := filepath.Join(opts.TemplateFolder, "boilerplate.md")
+	mdContents, err := ioutil.ReadFile(mdPath)
+	if err != nil {
+		return nil, errors.WithStackTrace(err)
+	}
+
+	parts, err := processMarkdown(string(mdContents))
+	if err != nil {
+		return nil, errors.WithStackTrace(err)
+	}
+
+	// New template dir where we will write all the template files
+	tmpTemplateFolder, err := ioutil.TempDir("", "boilerplate-temp-template")
+	if err != nil {
+		return nil, errors.WithStackTrace(err)
+	}
+	opts.TemplateFolder = tmpTemplateFolder
+
+	// Put dummy boilerplate.yml in that folder
+	if err := ioutil.WriteFile(filepath.Join(opts.TemplateFolder, "boilerplate.yml"), []byte("# Auto-generated"), 0644); err != nil {
+		return nil, errors.WithStackTrace(err)
+	}
+
+	util.Logger.Printf("Using temporary temp folder: %s", opts.TemplateFolder)
+
+	responseParts := []ResponsePart{}
+	for _, part := range parts {
+		responsePart := ResponsePart{}
+		switch part.Type {
+		case BoilerplateYaml:
+			configStr := strings.Join(part.BoilerplateYaml, "\n")
+			boilerplateConfig, err := config.ParseBoilerplateConfigFromString(configStr)
+			if err != nil {
+				return nil, errors.WithStackTrace(err)
+			}
+
+			schema, err := templates.BoilerplateConfigToJsonSchema(boilerplateConfig, opts, "Inputs")
+			if err != nil {
+				return nil, errors.WithStackTrace(err)
+			}
+
+			responsePart.Type = BoilerplateYaml
+			responsePart.BoilerplateYamlFormSchema = schema
+			responsePart.BoilerplateFormOrder = varOrderForForm(boilerplateConfig)
+		case RawMarkdown:
+			responsePart.Type = RawMarkdown
+			markdown := strings.Join(part.RawMarkdown, "\n")
+			responsePart.RawMarkdown = &markdown
+		case BoilerplateTemplate:
+			// TODO: it's a bit weird to have this side effect here, and this needs some security analysis, but good enough for this hacky code for now
+			template := strings.Join(part.BoilerplateTemplate, "\n")
+			templatePath := filepath.Join(opts.TemplateFolder, *part.BoilerplateTemplatePath)
+
+			parentDir := filepath.Dir(templatePath)
+			if err := os.MkdirAll(parentDir, 0777); err != nil {
+				return nil, errors.WithStackTrace(err)
+			}
+
+			if err := ioutil.WriteFile(templatePath, []byte(template), 0644); err != nil {
+				return nil, errors.WithStackTrace(err)
+			}
+			responsePart.Type = BoilerplateTemplate
+			responsePart.BoilerplateTemplatePath = part.BoilerplateTemplatePath
+		case ExecutableSnippet:
+			snippet := strings.Join(part.ExecutableSnippet, "\n")
+			responsePart.Type = ExecutableSnippet
+			responsePart.ExecutableSnippet = &snippet
+			responsePart.ExecutableSnippetLang = part.ExecutableSnippetLang
+		default:
+			return nil, errors.WithStackTrace(fmt.Errorf("Another impossible result"))
+		}
+
+		responseParts = append(responseParts, responsePart)
+	}
+
+	return responseParts, nil
+}
+
+func handleYamlBoilerplate(opts *options.BoilerplateOptions) error {
+	responseParts, err := doHandleBoilerplateYamlScaffold(opts)
 	if err != nil {
 		return err
 	}
-
-	responseParts := []ResponsePart{{Type: BoilerplateYaml, BoilerplateYamlFormSchema: schema}}
 	return runServer(responseParts, opts)
 }
 
@@ -272,16 +693,58 @@ func runServer(responseParts []ResponsePart, opts *options.BoilerplateOptions) e
 	router := gin.Default()
 
 	originalTemplateUrl := opts.TemplateUrl
+	originalOutputFolder := opts.OutputFolder
 
 	// create-react-app runs on a different port, so to allow it to make AJAX calls here, add CORS rules
 	corsConfig := cors.DefaultConfig()
 	corsConfig.AllowOrigins = []string{"http://localhost:3000"}
 	router.Use(cors.New(corsConfig))
 
-	router.Static("/rendered", opts.OutputFolder)
+	// The OutputFolder may change, so we don't use a static server, but create a more dynamic one ourselves
+	//router.Static("/rendered", opts.OutputFolder)
+	router.GET("/rendered/*filePath", func(ctx *gin.Context) {
+		filePath := ctx.Param("filePath")
+
+		// TODO: we should guard against someone looking up paths outside PWD with ../
+		fullPath := filepath.Join(opts.OutputFolder, filePath)
+		if !files.FileExists(fullPath) {
+			util.Logger.Printf("[ERROR] Requested file %s does not exist")
+			ctx.Writer.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		ctx.File(fullPath)
+	})
 
 	router.GET("/form", func(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, responseParts)
+	})
+
+	router.GET("/scaffold/*scaffoldPath", func(ctx *gin.Context) {
+		scaffoldPath := ctx.Param("scaffoldPath")
+
+		// TODO: we should guard against someone looking up paths outside PWD with ../
+		rawTemplateUrl := filepath.Join(originalTemplateUrl, scaffoldPath)
+		templateUrl, templateFolder, err := options.DetermineTemplateConfig(rawTemplateUrl)
+		if err != nil {
+			util.Logger.Printf("[ERROR] %v", err)
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		opts.TemplateUrl = templateUrl
+		opts.TemplateFolder = templateFolder
+		opts.OutputFolder = filepath.Join(originalOutputFolder, scaffoldPath)
+
+		parts, err := doHandleBoilerplateScaffold(opts)
+
+		if err != nil {
+			util.Logger.Printf("[ERROR] %v", err)
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		ctx.JSON(http.StatusOK, parts)
 	})
 
 	router.GET("/auto-scaffold/*modulePath", func(ctx *gin.Context) {
@@ -298,6 +761,7 @@ func runServer(responseParts []ResponsePart, opts *options.BoilerplateOptions) e
 
 		opts.TemplateUrl = templateUrl
 		opts.TemplateFolder = templateFolder
+		opts.OutputFolder = filepath.Join(originalOutputFolder, modulePath)
 
 		parts, err := doHandleTerraformBoilerplate(opts)
 		if err != nil {
@@ -316,8 +780,6 @@ func runServer(responseParts []ResponsePart, opts *options.BoilerplateOptions) e
 			ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
-
-		util.Logger.Printf("Got vars: %v", vars)
 
 		// The root boilerplate.yml is not itself a dependency, so we pass an empty Dependency.
 		emptyDep := variables.Dependency{}
@@ -783,79 +1245,9 @@ func convertTerraformVarToBoilerplateVarType(tfVar TfVariable) (variables.Variab
 }
 
 func handleMarkdownBoilerplate(opts *options.BoilerplateOptions) error {
-	mdPath := filepath.Join(opts.TemplateFolder, "boilerplate.md")
-	mdContents, err := ioutil.ReadFile(mdPath)
+	responseParts, err := doHandleBoilerplateMdScaffold(opts)
 	if err != nil {
-		return errors.WithStackTrace(err)
-	}
-
-	parts, err := processMarkdown(string(mdContents))
-	if err != nil {
-		return errors.WithStackTrace(err)
-	}
-
-	// New template dir where we will write all the template files
-	tmpTemplateFolder, err := ioutil.TempDir("", "boilerplate-temp-template")
-	if err != nil {
-		return errors.WithStackTrace(err)
-	}
-	opts.TemplateFolder = tmpTemplateFolder
-
-	// Put dummy boilerplate.yml in that folder
-	if err := ioutil.WriteFile(filepath.Join(opts.TemplateFolder, "boilerplate.yml"), []byte("# Auto-generated"), 0644); err != nil {
-		return errors.WithStackTrace(err)
-	}
-
-	util.Logger.Printf("Using temporary temp folder: %s", opts.TemplateFolder)
-
-	responseParts := []ResponsePart{}
-	for _, part := range parts {
-		responsePart := ResponsePart{}
-		switch part.Type {
-		case BoilerplateYaml:
-			configStr := strings.Join(part.BoilerplateYaml, "\n")
-			boilerplateConfig, err := config.ParseBoilerplateConfigFromString(configStr)
-			if err != nil {
-				return errors.WithStackTrace(err)
-			}
-
-			schema, err := templates.BoilerplateConfigToJsonSchema(boilerplateConfig, opts, "Inputs")
-			if err != nil {
-				return errors.WithStackTrace(err)
-			}
-
-			responsePart.Type = BoilerplateYaml
-			responsePart.BoilerplateYamlFormSchema = schema
-			responsePart.BoilerplateFormOrder = varOrderForForm(boilerplateConfig)
-		case RawMarkdown:
-			responsePart.Type = RawMarkdown
-			markdown := strings.Join(part.RawMarkdown, "\n")
-			responsePart.RawMarkdown = &markdown
-		case BoilerplateTemplate:
-			// TODO: it's a bit weird to have this side effect here, and this needs some security analysis, but good enough for this hacky code for now
-			template := strings.Join(part.BoilerplateTemplate, "\n")
-			templatePath := filepath.Join(opts.TemplateFolder, *part.BoilerplateTemplatePath)
-
-			parentDir := filepath.Dir(templatePath)
-			if err := os.MkdirAll(parentDir, 0777); err != nil {
-				return errors.WithStackTrace(err)
-			}
-
-			if err := ioutil.WriteFile(templatePath, []byte(template), 0644); err != nil {
-				return errors.WithStackTrace(err)
-			}
-			responsePart.Type = BoilerplateTemplate
-			responsePart.BoilerplateTemplatePath = part.BoilerplateTemplatePath
-		case ExecutableSnippet:
-			snippet := strings.Join(part.ExecutableSnippet, "\n")
-			responsePart.Type = ExecutableSnippet
-			responsePart.ExecutableSnippet = &snippet
-			responsePart.ExecutableSnippetLang = part.ExecutableSnippetLang
-		default:
-			return errors.WithStackTrace(fmt.Errorf("Another impossible result"))
-		}
-
-		responseParts = append(responseParts, responsePart)
+		return err
 	}
 
 	return runServer(responseParts, opts)
@@ -983,9 +1375,15 @@ const (
 	Markdown
 	TerraformModule
 	TerraformCatalog
+	Live
+	AppDemo
 )
 
 func boilerplateType(opts *options.BoilerplateOptions) (BoilerplateType, error) {
+	if isAppDemo(opts) {
+		return AppDemo, nil
+	}
+
 	yamlPath := filepath.Join(opts.TemplateFolder, "boilerplate.yml")
 	if util.PathExists(yamlPath) {
 		return Yaml, nil
@@ -1004,7 +1402,23 @@ func boilerplateType(opts *options.BoilerplateOptions) (BoilerplateType, error) 
 		return terraformType(terraformFiles, opts)
 	}
 
+	tgFiles, err := zglob.Glob(filepath.Join(opts.TemplateFolder, "**/terragrunt.hcl"))
+	if err != nil {
+		return Yaml, errors.WithStackTrace(err)
+	}
+	if len(tgFiles) > 0 {
+		return Live, nil
+	}
+
 	return Yaml, fmt.Errorf("%s doesn't seem to be a valid boilerplate folder", opts.TemplateFolder)
+}
+
+func isAppDemo(opts *options.BoilerplateOptions) bool {
+	livePath := filepath.Join(opts.TemplateFolder, "live")
+	modulesPath := filepath.Join(opts.TemplateFolder, "modules")
+	scaffoldsPath := filepath.Join(opts.TemplateFolder, "scaffolds")
+
+	return files.IsDir(livePath) && files.IsDir(modulesPath) && files.IsDir(scaffoldsPath)
 }
 
 func terraformType(terraformFiles []string, opts *options.BoilerplateOptions) (BoilerplateType, error) {
@@ -1068,8 +1482,6 @@ func dirEntryToFileData(filePath string, entry fs.DirEntry, opts *options.Boiler
 	if err != nil {
 		return nil, errors.WithStackTrace(err)
 	}
-
-	util.Logger.Printf("Subtracting absBasePath '%s' from absPath '%s'", absBasePath, absPath)
 
 	relPath := strings.TrimPrefix(strings.TrimPrefix(absPath, absBasePath), string(os.PathSeparator))
 

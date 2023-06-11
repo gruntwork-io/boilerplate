@@ -38,7 +38,7 @@
 }
 
 /* Space out headings from Markdown more */
-h2, h3 {
+h1, h2, h3 {
   margin-top: 40px;
 }
 
@@ -100,6 +100,14 @@ button[type=submit] {
   max-width: 800px;
 }
 
+.markdown-container table tr > td:last-of-type, .markdown-container table tr > th:last-of-type {
+  border-right: none;
+}
+
+.markdown-container table tr:last-child > td {
+  border-bottom: none;
+}
+
 .markdown-container table th {
   font-size: 1.1rem;
   padding: 0 40px 10px 10px;
@@ -116,4 +124,5 @@ button[type=submit] {
   font-size: 0.875rem;
   color: rgba(var(--bs-body-color-rgb),.75)!important;
 }
+
 

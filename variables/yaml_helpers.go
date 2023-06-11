@@ -326,8 +326,6 @@ func unmarshalTypeField(fields map[string]interface{}, context string) (Boilerpl
 
 func unmarshalIntField(fields map[string]interface{}, fieldName string, requiredField bool, context string) (*int, error) {
 	value, hasValue := fields[fieldName]
-	fmt.Println(value)
-	fmt.Println(hasValue)
 	if !hasValue {
 		if requiredField {
 			return nil, errors.WithStackTrace(RequiredFieldMissing(fieldName))
@@ -337,8 +335,6 @@ func unmarshalIntField(fields map[string]interface{}, fieldName string, required
 	}
 
 	if valueAsInt, isInt := value.(int); isInt {
-		fmt.Println("valueAsInt ", valueAsInt)
-		fmt.Println("isInt ", isInt)
 		return &valueAsInt, nil
 	} else {
 		return nil, errors.WithStackTrace(InvalidTypeForField{FieldName: fieldName, ExpectedType: "int", ActualType: reflect.TypeOf(value), Context: context})
