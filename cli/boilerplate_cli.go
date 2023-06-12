@@ -203,17 +203,10 @@ func formatAppView(tgModulePaths []string, tfModulePaths []string, scaffoldPaths
 		return "", errors.WithStackTrace(err)
 	}
 
-	numEnvs := 0
-	for _, dirEntry := range dirContents {
-		if dirEntry.IsDir() {
-			numEnvs++
-		}
-	}
-
 	liveRow := []string{
 		"[Live](/live)",
 		"Manage your deployed, live infrastructure",
-		fmt.Sprintf("Found **%d** modules deployed across **%d** environments", len(tgModulePaths), numEnvs),
+		fmt.Sprintf("Found **%d** modules deployed across **%d** environments", len(tgModulePaths), len(dirContents)),
 	}
 
 	scaffoldRow := []string{
