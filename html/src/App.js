@@ -57,38 +57,28 @@ function App() {
     });
   };
 
-  const fetchForm = async() => {
-    const response = await fetch(`http://localhost:8080/form`);
-    const parts = await response.json();
-    setFormParts(parts);
-  };
-
-  const autoScaffold = async(modulePath) => {
-    const response = await fetch(`http://localhost:8080/auto-scaffold/${modulePath}`);
-    const parts = await response.json();
-    setFormParts(parts);
-  };
-
-  const scaffold = async(scaffoldPath) => {
-    const response = await fetch(`http://localhost:8080/scaffold/${scaffoldPath}`);
+  const fetchForm = async(urlPath) => {
+    const response = await fetch(`http://localhost:8080/${urlPath}`);
     const parts = await response.json();
     setFormParts(parts);
   };
 
   useEffect(() => {
     async function init() {
-      const autoScaffoldUrlPath = "/auto-scaffold/"
-      const scaffoldUrlPath = "/scaffold/"
+      const supportedUrlPaths = [
+        "/auto-scaffold/",
+        "/scaffold/",
+        "/scaffolds",
+        "/live",
+        "/catalog",
+      ];
 
-      // There is a bug where this code seems to be called twice...
-      if (window.location.pathname.startsWith(autoScaffoldUrlPath)) {
-        const modulePath = window.location.pathname.slice(autoScaffoldUrlPath.length);
-        await doAsyncAction(() => autoScaffold(modulePath));
-      } else if (window.location.pathname.startsWith(scaffoldUrlPath)) {
-        const scaffoldPath = window.location.pathname.slice(scaffoldUrlPath.length);
-        await doAsyncAction(() => scaffold(scaffoldPath));
+      const matchedUrl = supportedUrlPaths.find(urlPath => window.location.pathname.startsWith(urlPath));
+      if (matchedUrl) {
+        // Do slice(1) to strip leading slash
+        await doAsyncAction(() => fetchForm(window.location.pathname.slice(1)))
       } else {
-        await doAsyncAction(fetchForm);
+        await doAsyncAction(() => fetchForm("form"))
       }
     }
     init();
@@ -192,7 +182,7 @@ function App() {
           {formParts.map(renderFormPart)}
         </div>
       {renderedFiles && renderedFiles.length > 0 && (
-        <div className="col-6 py-4 fixed-top" style={{left: "46%"}}>
+        <div className="col-6 py-4 fixed-top" style={{left: "46%", top: "100px"}}>
           {/* TODO: this table only renders one level of files and doesn't yet support nested files */}
           <table className="table table-hover">
             <thead>

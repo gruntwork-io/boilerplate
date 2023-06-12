@@ -166,58 +166,76 @@ func handleAppDemo(opts *options.BoilerplateOptions) error {
 		return err
 	}
 
-	liveView, err := formatLiveView(tgModulePaths, livePath)
-	if err != nil {
-		return err
-	}
-	liveContent := fmt.Sprintf("# Live\n\n%s", liveView)
-
 	scaffoldPaths, err := getScaffoldPaths(scaffoldsPath)
 	if err != nil {
 		return err
 	}
-
-	for i, scaffoldPath := range scaffoldPaths {
-		scaffoldPaths[i] = filepath.Join("scaffolds", scaffoldPath)
-	}
-
-	scaffoldsView, err := formatScaffoldsView(scaffoldPaths, opts.TemplateUrl)
-	if err != nil {
-		return err
-	}
-	scaffoldsContent := fmt.Sprintf("# Scaffolds\n\n%s", scaffoldsView)
 
 	tfModulePaths, err := getTerraformModulePaths(modulesPath)
 	if err != nil {
 		return err
 	}
 
-	for i, tfModulePath := range tfModulePaths {
-		tfModulePaths[i] = filepath.Join("modules", tfModulePath)
-	}
-
-	table, err := formatModuleTable(tfModulePaths, opts.TemplateUrl)
+	appView, err := formatAppView(tgModulePaths, tfModulePaths, scaffoldPaths, opts)
 	if err != nil {
 		return err
 	}
-	catalogContent := fmt.Sprintf("# Catalog\n\n%s", table)
-
 
 	responseParts := []ResponsePart{
 		{
 			Type:        RawMarkdown,
-			RawMarkdown: strPtr(liveContent),
-		},
-		{
-			Type:        RawMarkdown,
-			RawMarkdown: strPtr(scaffoldsContent),
-		},
-		{
-			Type:        RawMarkdown,
-			RawMarkdown: strPtr(catalogContent),
+			RawMarkdown: strPtr(appView),
 		},
 	}
+
 	return runServer(responseParts, opts)
+}
+
+const appTableTemplate = `
+| Option | Description | Details |
+| ------ | ----------- | ------- |
+%s
+`
+
+func formatAppView(tgModulePaths []string, tfModulePaths []string, scaffoldPaths []string, opts *options.BoilerplateOptions) (string, error) {
+	dirContents, err := os.ReadDir(opts.TemplateFolder)
+	if err != nil {
+		return "", errors.WithStackTrace(err)
+	}
+
+	numEnvs := 0
+	for _, dirEntry := range dirContents {
+		if dirEntry.IsDir() {
+			numEnvs++
+		}
+	}
+
+	liveRow := []string{
+		"[Live](/live)",
+		"Manage your deployed, live infrastructure",
+		fmt.Sprintf("Found **%d** modules deployed across **%d** environments", len(tgModulePaths), numEnvs),
+	}
+
+	scaffoldRow := []string{
+		"[Scaffold](/scaffolds)",
+		"Use scaffolds to create new infrastructure code",
+		fmt.Sprintf("Found **%d** scaffolds", len(scaffoldPaths)),
+	}
+
+	catalogRow := []string{
+		"[Catalog](/catalog)",
+		"Deploy infrastructure directly from your catalog modules",
+		fmt.Sprintf("Found **%d** modules", len(tfModulePaths)),
+	}
+
+	rows := []string{
+		formatAsTableRow(liveRow),
+		formatAsTableRow(scaffoldRow),
+		formatAsTableRow(catalogRow),
+	}
+	table := fmt.Sprintf(appTableTemplate, strings.Join(rows, "\n"))
+
+	return table, nil
 }
 
 func getScaffoldPaths(templateFolder string) ([]string, error) {
@@ -693,15 +711,22 @@ func runServer(responseParts []ResponsePart, opts *options.BoilerplateOptions) e
 	router := gin.Default()
 
 	originalTemplateUrl := opts.TemplateUrl
+	originalTemplateFolder := opts.TemplateFolder
 	originalOutputFolder := opts.OutputFolder
+
+	resetOpts := func() {
+		opts.TemplateUrl = originalTemplateUrl
+		opts.TemplateFolder = originalTemplateFolder
+		opts.OutputFolder = originalOutputFolder
+	}
 
 	// create-react-app runs on a different port, so to allow it to make AJAX calls here, add CORS rules
 	corsConfig := cors.DefaultConfig()
 	corsConfig.AllowOrigins = []string{"http://localhost:3000"}
 	router.Use(cors.New(corsConfig))
 
-	// The OutputFolder may change, so we don't use a static server, but create a more dynamic one ourselves
-	//router.Static("/rendered", opts.OutputFolder)
+	// opts.OutputFolder may change, so we can't use router.Static, but create a more dynamic one ourselves
+	// router.Static("/rendered", opts.OutputFolder)
 	router.GET("/rendered/*filePath", func(ctx *gin.Context) {
 		filePath := ctx.Param("filePath")
 
@@ -718,6 +743,101 @@ func runServer(responseParts []ResponsePart, opts *options.BoilerplateOptions) e
 
 	router.GET("/form", func(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, responseParts)
+	})
+
+	router.GET("/live", func(ctx *gin.Context) {
+		resetOpts()
+
+		livePath := filepath.Join(opts.TemplateFolder, "live")
+
+		tgModulePaths, err := getTgModulePaths(livePath)
+		if err != nil {
+			util.Logger.Printf("[ERROR] %v", err)
+			ctx.Writer.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		liveView, err := formatLiveView(tgModulePaths, livePath)
+		if err != nil {
+			util.Logger.Printf("[ERROR] %v", err)
+			ctx.Writer.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		parts := []ResponsePart{
+			{
+				Type:        RawMarkdown,
+				RawMarkdown: strPtr(liveView),
+			},
+		}
+
+		ctx.JSON(http.StatusOK, parts)
+	})
+
+	router.GET("/scaffolds", func(ctx *gin.Context) {
+		resetOpts()
+
+		scaffoldsPath := filepath.Join(opts.TemplateFolder, "scaffolds")
+
+		scaffoldPaths, err := getScaffoldPaths(scaffoldsPath)
+		if err != nil {
+			util.Logger.Printf("[ERROR] %v", err)
+			ctx.Writer.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		for i, scaffoldPath := range scaffoldPaths {
+			scaffoldPaths[i] = filepath.Join("scaffolds", scaffoldPath)
+		}
+
+		scaffoldsView, err := formatScaffoldsView(scaffoldPaths, opts.TemplateUrl)
+		if err != nil {
+			util.Logger.Printf("[ERROR] %v", err)
+			ctx.Writer.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		parts := []ResponsePart{
+			{
+				Type:        RawMarkdown,
+				RawMarkdown: strPtr(scaffoldsView),
+			},
+		}
+
+		ctx.JSON(http.StatusOK, parts)
+	})
+
+	router.GET("/catalog", func(ctx *gin.Context) {
+		resetOpts()
+
+		modulesPath := filepath.Join(opts.TemplateFolder, "modules")
+
+		tfModulePaths, err := getTerraformModulePaths(modulesPath)
+		if err != nil {
+			util.Logger.Printf("[ERROR] %v", err)
+			ctx.Writer.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		for i, tfModulePath := range tfModulePaths {
+			tfModulePaths[i] = filepath.Join("modules", tfModulePath)
+		}
+
+		modulesView, err := formatModuleTable(tfModulePaths, opts.TemplateUrl)
+		if err != nil {
+			util.Logger.Printf("[ERROR] %v", err)
+			ctx.Writer.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		parts := []ResponsePart{
+			{
+				Type:        RawMarkdown,
+				RawMarkdown: strPtr(modulesView),
+			},
+		}
+
+		ctx.JSON(http.StatusOK, parts)
 	})
 
 	router.GET("/scaffold/*scaffoldPath", func(ctx *gin.Context) {
