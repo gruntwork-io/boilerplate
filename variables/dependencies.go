@@ -17,6 +17,8 @@ type Dependency struct {
 	DontInheritVariables bool
 	Variables            []Variable
 	VarFiles             []string
+	ForEach              []string
+	ForEachReference     string
 }
 
 // Implement the go-yaml marshaler interface so that the config can be marshaled into yaml. We use a custom marshaler
@@ -52,6 +54,12 @@ func (dependency Dependency) MarshalYAML() (interface{}, error) {
 	if len(dependency.VarFiles) > 0 {
 		depYml["var_files"] = dependency.VarFiles
 	}
+	if len(dependency.ForEach) > 0 {
+		depYml["for_each"] = dependency.ForEach
+	}
+	if len(dependency.ForEachReference) > 0 {
+		depYml["for_each_reference"] = dependency.ForEachReference
+	}
 	return depYml, nil
 }
 
@@ -71,6 +79,7 @@ func SplitIntoDependencyNameAndVariableName(uniqueVariableName string) (string, 
 // Given a map of key:value pairs read from a Boilerplate YAML config file of the format:
 //
 // dependencies:
+//
 //   - name: <NAME>
 //     template-url: <TEMPLATE_URL>
 //     output-folder: <OUTPUT_FOLDER>
@@ -153,6 +162,20 @@ func UnmarshalDependencyFromBoilerplateConfigYaml(fields map[string]interface{})
 		return nil, err
 	}
 
+	forEach, err := UnmarshalListOfStrings(fields, "for_each")
+	if err != nil {
+		return nil, err
+	}
+
+	forEachReferencePtr, err := UnmarshalString(fields, "for_each_reference", false)
+	if err != nil {
+		return nil, err
+	}
+	forEachReference := ""
+	if forEachReferencePtr != nil {
+		forEachReference = *forEachReferencePtr
+	}
+
 	return &Dependency{
 		Name:                 *name,
 		TemplateUrl:          *templateUrl,
@@ -161,6 +184,8 @@ func UnmarshalDependencyFromBoilerplateConfigYaml(fields map[string]interface{})
 		DontInheritVariables: dontInheritVariables,
 		Variables:            variables,
 		VarFiles:             varFiles,
+		ForEach:              forEach,
+		ForEachReference:     forEachReference,
 	}, nil
 }
 
