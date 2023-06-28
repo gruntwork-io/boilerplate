@@ -504,22 +504,30 @@ Note the following:
     ```
 * Looping over dependencies: You can render a dependency multiple times, dynamically, based on user input, via the 
   `for_each` or `for_each_reference` parameter. Example:
+
     ```yaml
     variables:
       - name: environments
+        description: The environments to deploy into (e.g., dev, stage, prod)
         type: list
         default:
           - dev
           - stage
           - prod
-
+    
     dependencies:
       - name: loop-dependency-example
-        template-url: ../environment
-        # Render this dependency once for each environment the user specifies 
+        template-url: ../terraform
+        # Render this dependency once for each environment the user specifies
         for_each_reference: environments
-        # Render the dependency to an output folder that includes the environment name 
-        output-folder: "live/{{ __each__ }}"
+        # Render the dependency to an output folder that includes the environment name
+        output-folder: "live/{{ .__each__ }}"
+        variables:
+          - name: ServerName
+            description: The name to use for the EC2 instance (for its Name tag)
+            type: string
+            # Use the environment name in the server name
+            default: "example-{{ .__each__ }}"
     ```
 
 #### Hooks
