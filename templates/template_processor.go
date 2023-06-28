@@ -218,7 +218,6 @@ func processDependency(
 			}
 
 			util.Logger.Printf("Processing dependency %s, with template folder %s and output folder %s", dependency.Name, dependencyOptions.TemplateFolder, dependencyOptions.OutputFolder)
-			util.Logger.Printf("Vars = %v", updatedVars)
 			return ProcessTemplate(dependencyOptions, opts, dependency)
 		}
 
