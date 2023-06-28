@@ -18,6 +18,9 @@ import (
 	"github.com/gruntwork-io/boilerplate/variables"
 )
 
+// The name of the variable that contains the current value of the loop in each iteration of for_each
+const eachVarName = "__each__"
+
 // Process the boilerplate template specified in the given options and use the existing variables. This function will
 // download remote templates to a temporary working directory, which is cleaned up at the end of the function. This
 // function will load any missing variables (either from command line options or by prompting the user), execute all the
@@ -233,7 +236,7 @@ func processDependency(
 
 		if len(forEach) > 0 {
 			for _, item := range forEach {
-				updatedVars := collections.MergeMaps(originalVars, map[string]interface{}{"__each__": item})
+				updatedVars := collections.MergeMaps(originalVars, map[string]interface{}{eachVarName: item})
 				if err := doProcess(updatedVars); err != nil {
 					return err
 				}
