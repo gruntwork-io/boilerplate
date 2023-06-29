@@ -365,7 +365,7 @@ executing the current one. Each dependency may contain the following keys:
 * `for_each`: If you set this to a list of values, `boilerplate` will loop over each value, and render this dependency
   once for each value. This allows you to dynamically render a dependency multiple times based on user input. The 
   current value in the loop will be available as the variable `__each__`, available to both your Go templating and
-  in other `dependencies` params: e.g., you could reference `{{ __each__ }}` in `output-folder` to render to each 
+  in other `dependencies` params: e.g., you could reference `{{ .__each__ }}` in `output-folder` to render to each 
   iteration to a different folder.
 * `for_each_reference`: The name of another variable whose value should be used as the `for_each` value.  
 
