@@ -1,0 +1,4 @@
+variables:
+  - name: ServerName
+    description: The name to use for the EC2 instance (for its Name tag)
+    type: string

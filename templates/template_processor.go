@@ -2,6 +2,7 @@ package templates
 
 import (
 	"fmt"
+	"github.com/gruntwork-io/go-commons/collections"
 	"net/url"
 	"os"
 	"path"
@@ -16,6 +17,9 @@ import (
 	"github.com/gruntwork-io/boilerplate/util"
 	"github.com/gruntwork-io/boilerplate/variables"
 )
+
+// The name of the variable that contains the current value of the loop in each iteration of for_each
+const eachVarName = "__each__"
 
 // Process the boilerplate template specified in the given options and use the existing variables. This function will
 // download remote templates to a temporary working directory, which is cleaned up at the end of the function. This
@@ -202,21 +206,46 @@ func processDependency(
 	dependency variables.Dependency,
 	opts *options.BoilerplateOptions,
 	variablesInConfig map[string]variables.Variable,
-	variables map[string]interface{},
+	originalVars map[string]interface{},
 ) error {
-	shouldProcess, err := shouldProcessDependency(dependency, opts, variables)
+	shouldProcess, err := shouldProcessDependency(dependency, opts, originalVars)
 	if err != nil {
 		return err
 	}
 
 	if shouldProcess {
-		dependencyOptions, err := cloneOptionsForDependency(dependency, opts, variablesInConfig, variables)
-		if err != nil {
-			return err
+		doProcess := func(updatedVars map[string]interface{}) error {
+			dependencyOptions, err := cloneOptionsForDependency(dependency, opts, variablesInConfig, updatedVars)
+			if err != nil {
+				return err
+			}
+
+			util.Logger.Printf("Processing dependency %s, with template folder %s and output folder %s", dependency.Name, dependencyOptions.TemplateFolder, dependencyOptions.OutputFolder)
+			return ProcessTemplate(dependencyOptions, opts, dependency)
 		}
 
-		util.Logger.Printf("Processing dependency %s, with template folder %s and output folder %s", dependency.Name, dependencyOptions.TemplateFolder, dependencyOptions.OutputFolder)
-		return ProcessTemplate(dependencyOptions, opts, dependency)
+		forEach := dependency.ForEach
+		if len(dependency.ForEachReference) > 0 {
+			value, err := variables.UnmarshalListOfStrings(originalVars, dependency.ForEachReference)
+			if err != nil {
+				return err
+			}
+
+			forEach = value
+		}
+
+		if len(forEach) > 0 {
+			for _, item := range forEach {
+				updatedVars := collections.MergeMaps(originalVars, map[string]interface{}{eachVarName: item})
+				if err := doProcess(updatedVars); err != nil {
+					return err
+				}
+			}
+
+			return nil
+		} else {
+			return doProcess(originalVars)
+		}
 	} else {
 		util.Logger.Printf("Skipping dependency %s", dependency.Name)
 		return nil
@@ -283,10 +312,10 @@ func cloneOptionsForDependency(
 // as the originals passed in, filtered to variable names that do not include a dependency or explicitly are for the
 // given dependency.
 // This function implements the following order of preference for rendering variables:
-// - Variables set on the CLI (originalVariables) directly for the dependency (DEPENDENCY.VARNAME), unless
-//   DontInheritVariables is set.
-// - Variables defined from VarFiles set on the dependency.
-// - Variables defaults set on the dependency.
+//   - Variables set on the CLI (originalVariables) directly for the dependency (DEPENDENCY.VARNAME), unless
+//     DontInheritVariables is set.
+//   - Variables defined from VarFiles set on the dependency.
+//   - Variables defaults set on the dependency.
 func cloneVariablesForDependency(
 	opts *options.BoilerplateOptions,
 	dependency variables.Dependency,

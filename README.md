@@ -236,6 +236,8 @@ dependencies:
     output-folder: <FOLDER>
     skip: <CONDITION>
     dont-inherit-variables: <BOOLEAN>
+    for_each: <LIST>
+    for_each_reference: <NAME>
     variables:
       - name: <NAME>
         description: <DESCRIPTION>
@@ -360,6 +362,12 @@ executing the current one. Each dependency may contain the following keys:
     - Defaults set on dependency variables (the `variables` field of the dependency).
     - Defaults set on root variables.
     - Defaults set within the dependency boilerplate config.
+* `for_each`: If you set this to a list of values, `boilerplate` will loop over each value, and render this dependency
+  once for each value. This allows you to dynamically render a dependency multiple times based on user input. The 
+  current value in the loop will be available as the variable `__each__`, available to both your Go templating and
+  in other `dependencies` params: e.g., you could reference `{{ .__each__ }}` in `output-folder` to render to each 
+  iteration to a different folder.
+* `for_each_reference`: The name of another variable whose value should be used as the `for_each` value.  
 
 See the [Dependencies](#dependencies) section for more info.
 
@@ -493,6 +501,33 @@ Note the following:
         output-folder: foo
         # Skip this dependency if both .Foo and .Bar are set to true
         skip: "{{ and .Foo .Bar }}"
+    ```
+* Looping over dependencies: You can render a dependency multiple times, dynamically, based on user input, via the 
+  `for_each` or `for_each_reference` parameter. Example:
+
+    ```yaml
+    variables:
+      - name: environments
+        description: The environments to deploy into (e.g., dev, stage, prod)
+        type: list
+        default:
+          - dev
+          - stage
+          - prod
+    
+    dependencies:
+      - name: loop-dependency-example
+        template-url: ../terraform
+        # Render this dependency once for each environment the user specifies
+        for_each_reference: environments
+        # Render the dependency to an output folder that includes the environment name
+        output-folder: "live/{{ .__each__ }}"
+        variables:
+          - name: ServerName
+            description: The name to use for the EC2 instance (for its Name tag)
+            type: string
+            # Use the environment name in the server name
+            default: "example-{{ .__each__ }}"
     ```
 
 #### Hooks
