@@ -105,6 +105,7 @@ workflows:
           context:
             - AWS__PHXDEVOPS__circle-ci-test
             - GITHUB__PAT__gruntwork-ci
+            - APPLE__OSX__code-signing
           requires:
             - test
           filters:
