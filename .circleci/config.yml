@@ -14,7 +14,7 @@ defaults: &defaults
   resource_class: medium
   docker:
     - image: cimg/python:3.10.2
-  <<: *env
+  <<: *environment
 
 version: 2.1
 jobs:
