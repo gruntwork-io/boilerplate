@@ -39,7 +39,10 @@ jobs:
       - checkout
       - run:
           <<: *install_gruntwork_utils
-      - run: build-go-binaries --app-name boilerplate --dest-path bin --ld-flags "-X github.com/gruntwork-io/go-commons/version.Version=$CIRCLE_TAG"
+      - run: PATH="/home/circleci/go/bin:$PATH" build-go-binaries \
+              --app-name boilerplate \
+              --dest-path bin \
+              --ld-flags "-X github.com/gruntwork-io/go-commons/version.Version=$CIRCLE_TAG"
       - run: echo "Done building assets"
       - persist_to_workspace:
           root: .
@@ -125,8 +128,6 @@ workflows:
           filters:
             tags:
               only: /^v.*/
-            branches:
-              ignore: /.*/
           context:
             - GITHUB__PAT__gruntwork-ci
       - test:
