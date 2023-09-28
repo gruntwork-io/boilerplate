@@ -1,10 +1,6 @@
-defaults: &defaults
-  resource_class: medium
-  docker:
-    - image: cimg/python:3.10.2
-  environment:
+environment: &environment
     GRUNTWORK_INSTALLER_VERSION: v0.0.36
-    MODULE_CI_VERSION: v0.45.1
+    MODULE_CI_VERSION: v0.52.15
     TFENV_VERSION: v2.2.2
     TERRAFORM_VERSION: 1.0.11
     TERRAGRUNT_VERSION: v0.36.1
@@ -13,6 +9,12 @@ defaults: &defaults
     GO111MODULE: auto
     # Since we are running in docker, USER doesn't get set, so we need to set it explicitly
     USER: circleci
+
+defaults: &defaults
+  resource_class: medium
+  docker:
+    - image: cimg/python:3.10.2
+  <<: *environment
 
 version: 2.1
 jobs:
@@ -57,24 +59,36 @@ jobs:
           path: /tmp/logs
 
   deploy:
-    <<: *defaults
+    <<: *environment
+    macos:
+      xcode: 14.2.0
+    resource_class: macos.x86.medium.gen2
     steps:
       - checkout
+      - attach_workspace:
+          at: .
+      - go/install:
+          version: 1.18
       - run:
-          <<: *install_gruntwork_tooling
-
-      - run:
-          name: release assets
+          name: Install sign-binary-helpers
           command: |
-            go install github.com/mitchellh/gox@latest
+            curl -Ls https://raw.githubusercontent.com/gruntwork-io/gruntwork-installer/master/bootstrap-gruntwork-installer.sh | bash /dev/stdin --version "${GRUNTWORK_INSTALLER_VERSION}"
+            gruntwork-install --module-name "gruntwork-module-circleci-helpers" --repo "https://github.com/gruntwork-io/terraform-aws-ci" --tag "${MODULE_CI_VERSION}"
+            gruntwork-install --module-name "sign-binary-helpers" --repo "https://github.com/gruntwork-io/terraform-aws-ci" --tag "${MODULE_CI_VERSION}"
+      - run:
+          name: Compile and sign the binaries
+          command: |
+            sign-binary --install-macos-sign-dependencies --os mac .gon_amd64.hcl
+            sign-binary --os mac .gon_arm64.hcl
+            echo "Done signing the binary"
 
-            # If a new release is tagged in GitHub, build the binaries and upload them to GitHub.
-            PATH="/home/circleci/go/bin:$PATH" build-go-binaries \
-              --app-name boilerplate \
-              --dest-path bin \
-              --ld-flags "-X github.com/gruntwork-io/go-commons/version.Version=$CIRCLE_TAG"
+            # Replace the files in bin. These are the same file names generated from .gon_amd64.hcl and .gon_arm64.hcl
+            unzip pipelines_darwin_amd64.zip
+            mv pipelines_darwin_amd64 bin/
 
-            upload-github-release-assets bin/*
+            unzip pipelines_darwin_arm64.zip
+            mv pipelines_darwin_arm64 bin/
+      - run: upload-github-release-assets bin/*
 
 workflows:
   version: 2
@@ -91,6 +105,7 @@ workflows:
           context:
             - AWS__PHXDEVOPS__circle-ci-test
             - GITHUB__PAT__gruntwork-ci
+            - APPLE__OSX__code-signing
           requires:
             - test
           filters:
