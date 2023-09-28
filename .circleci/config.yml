@@ -39,10 +39,7 @@ jobs:
       - checkout
       - run:
           <<: *install_gruntwork_utils
-      - run: PATH="/home/circleci/go/bin:$PATH" build-go-binaries \
-              --app-name boilerplate \
-              --dest-path bin \
-              --ld-flags "-X github.com/gruntwork-io/go-commons/version.Version=$CIRCLE_TAG"
+      - run: PATH="/home/circleci/go/bin:$PATH" build-go-binaries --app-name boilerplate --dest-path bin --ld-flags "-X github.com/gruntwork-io/go-commons/version.Version=$CIRCLE_TAG"
       - run: echo "Done building assets"
       - persist_to_workspace:
           root: .
@@ -118,7 +115,7 @@ jobs:
 
             unzip pipelines_darwin_arm64.zip
             mv pipelines_darwin_arm64 bin/
-      - run: upload-github-release-assets bin/*
+      # - run: upload-github-release-assets bin/*
 
 workflows:
   version: 2
@@ -148,5 +145,5 @@ workflows:
           filters:
             tags:
               only: /^v.*/
-            branches:
-              ignore: /.*/
+            # branches:
+            #   ignore: /.*/
