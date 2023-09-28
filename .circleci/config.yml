@@ -1,4 +1,5 @@
-environment: &environment
+env: &env
+  environment:
     GRUNTWORK_INSTALLER_VERSION: v0.0.36
     MODULE_CI_VERSION: v0.52.15
     TFENV_VERSION: v2.2.2
@@ -14,7 +15,10 @@ defaults: &defaults
   resource_class: medium
   docker:
     - image: cimg/python:3.10.2
-  <<: *environment
+  <<: *env
+
+orbs:
+  go: circleci/go@1.7.3
 
 version: 2.1
 jobs:
@@ -59,7 +63,7 @@ jobs:
           path: /tmp/logs
 
   deploy:
-    <<: *environment
+    <<: *env
     macos:
       xcode: 14.2.0
     resource_class: macos.x86.medium.gen2
@@ -68,7 +72,7 @@ jobs:
       - attach_workspace:
           at: .
       - go/install:
-          version: 1.18
+          version: "1.18.10"
       - run:
           name: Install sign-binary-helpers
           command: |
