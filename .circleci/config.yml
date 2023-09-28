@@ -138,13 +138,12 @@ workflows:
               only: /^v.*/
       - deploy:
           requires:
+            - test
             - build
           context:
             - AWS__PHXDEVOPS__circle-ci-test
             - GITHUB__PAT__gruntwork-ci
             - APPLE__OSX__code-signing
-          requires:
-            - test
           filters:
             tags:
               only: /^v.*/
