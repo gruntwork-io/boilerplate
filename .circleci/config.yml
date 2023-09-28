@@ -39,7 +39,7 @@ jobs:
       - checkout
       - run:
           <<: *install_gruntwork_utils
-      - run: build-go-binaries --app-name boilerplate --dest-path bin --ld-flags "-X github.com/gruntwork-io/go-commons/version.Version=$CIRCLE_TAG"
+      - run: PATH="/home/circleci/go/bin:$PATH" build-go-binaries --app-name boilerplate --dest-path bin --ld-flags "-X github.com/gruntwork-io/go-commons/version.Version=$CIRCLE_TAG"
       - run: echo "Done building assets"
       - persist_to_workspace:
           root: .
@@ -110,11 +110,11 @@ jobs:
             echo "Done signing the binary"
 
             # Replace the files in bin. These are the same file names generated from .gon_amd64.hcl and .gon_arm64.hcl
-            unzip pipelines_darwin_amd64.zip
-            mv pipelines_darwin_amd64 bin/
+            unzip boilerplate_darwin_amd64.zip
+            mv boilerplate_darwin_amd64 bin/
 
-            unzip pipelines_darwin_arm64.zip
-            mv pipelines_darwin_arm64 bin/
+            unzip boilerplate_darwin_arm64.zip
+            mv boilerplate_darwin_arm64 bin/
       - run: upload-github-release-assets bin/*
 
 workflows:
@@ -125,8 +125,6 @@ workflows:
           filters:
             tags:
               only: /^v.*/
-            branches:
-              ignore: /.*/
           context:
             - GITHUB__PAT__gruntwork-ci
       - test:
