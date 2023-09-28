@@ -115,7 +115,7 @@ jobs:
 
             unzip boilerplate_darwin_arm64.zip
             mv boilerplate_darwin_arm64 bin/
-      # - run: upload-github-release-assets bin/*
+      - run: upload-github-release-assets bin/*
 
 workflows:
   version: 2
@@ -145,5 +145,5 @@ workflows:
           filters:
             tags:
               only: /^v.*/
-            # branches:
-            #   ignore: /.*/
+            branches:
+              ignore: /.*/
