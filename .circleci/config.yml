@@ -110,12 +110,12 @@ jobs:
             echo "Done signing the binary"
 
             # Replace the files in bin. These are the same file names generated from .gon_amd64.hcl and .gon_arm64.hcl
-            unzip pipelines_darwin_amd64.zip
-            mv pipelines_darwin_amd64 bin/
+            unzip boilerplate_darwin_amd64.zip
+            mv boilerplate_darwin_amd64 bin/
 
-            unzip pipelines_darwin_arm64.zip
-            mv pipelines_darwin_arm64 bin/
-      - run: upload-github-release-assets bin/*
+            unzip boilerplate_darwin_arm64.zip
+            mv boilerplate_darwin_arm64 bin/
+      # - run: upload-github-release-assets bin/*
 
 workflows:
   version: 2
@@ -145,5 +145,5 @@ workflows:
           filters:
             tags:
               only: /^v.*/
-            branches:
-              ignore: /.*/
+            # branches:
+            #   ignore: /.*/
