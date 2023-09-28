@@ -17,6 +17,9 @@ defaults: &defaults
     - image: cimg/python:3.10.2
   <<: *env
 
+orbs:
+  go: circleci/go@1.7.3
+
 version: 2.1
 jobs:
   test:
