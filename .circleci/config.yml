@@ -72,7 +72,7 @@ jobs:
       - attach_workspace:
           at: .
       - go/install:
-          version: "1.18"
+          version: "1.18.10"
       - run:
           name: Install sign-binary-helpers
           command: |
