@@ -20,8 +20,31 @@ defaults: &defaults
 orbs:
   go: circleci/go@1.7.3
 
+install_gruntwork_utils: &install_gruntwork_utils
+  name: install gruntwork utils
+  command: |
+    curl -Ls https://raw.githubusercontent.com/gruntwork-io/gruntwork-installer/"${GRUNTWORK_INSTALLER_VERSION}"/bootstrap-gruntwork-installer.sh | bash /dev/stdin --version "${GRUNTWORK_INSTALLER_VERSION}"
+    gruntwork-install --module-name "gruntwork-module-circleci-helpers" --repo "https://github.com/gruntwork-io/terraform-aws-ci" --tag "${MODULE_CI_VERSION}"
+
+    configure-environment-for-gruntwork-module \
+      --terraform-version ${TERRAFORM_VERSION} \
+      --terragrunt-version ${TERRAGRUNT_VERSION} \
+      --go-version ${GOLANG_VERSION}
+
 version: 2.1
 jobs:
+  build:
+    <<: *defaults
+    steps:
+      - checkout
+      - run:
+          <<: *install_gruntwork_utils
+      - run: build-go-binaries --app-name boilerplate --dest-path bin --ld-flags "-X github.com/gruntwork-io/go-commons/version.Version=$CIRCLE_TAG"
+      - run: echo "Done building assets"
+      - persist_to_workspace:
+          root: .
+          paths: bin
+
   test:
     <<: *defaults
     steps:
@@ -98,6 +121,14 @@ workflows:
   version: 2
   build-and-test:
     jobs:
+      - build:
+          filters:
+            tags:
+              only: /^v.*/
+            branches:
+              ignore: /.*/
+          context:
+            - GITHUB__PAT__gruntwork-ci
       - test:
           context:
             - AWS__PHXDEVOPS__circle-ci-test
@@ -106,12 +137,13 @@ workflows:
             tags:
               only: /^v.*/
       - deploy:
+          requires:
+            - test
+            - build
           context:
             - AWS__PHXDEVOPS__circle-ci-test
             - GITHUB__PAT__gruntwork-ci
             - APPLE__OSX__code-signing
-          requires:
-            - test
           filters:
             tags:
               only: /^v.*/
