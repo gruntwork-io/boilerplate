@@ -4,7 +4,7 @@ Boilerplate is a tool for generating files and folders ("boilerplate") from a se
 
 Example use cases:
 
-1. Create the scaffolding for a new project (e.g. like [html5boilerplate](https://html5boilerplate.com/))
+1. Scaffold out a new repo, folder, or file.
 1. Fill in boilerplate sections in your code files, such as including a legal disclaimer or license at the top of each
    source file, or updating a version number in a file after each build.
 1. Embed code snippets from actual source files in documentation. Most READMEs have code copy/pasted into them and that
@@ -1112,3 +1112,9 @@ inspiring many of the ideas in Boilerplate and so you can try out other projects
 * [play-doc](https://github.com/playframework/play-doc): Documentation generator used by the Play Framework that allows
   code snippets to be loaded from external files. Great for ensuring the code snippets in your docs are from files that
   are compiled and tested, but does not work as a general-purpose project generator.
+
+## License
+
+This code is released under the Mozilla Public License Version 2.0. Please see [LICENSE](LICENSE) and [NOTICE](NOTICE) for more details.
+
+Copyright &copy; 2016 Gruntwork, Inc.
