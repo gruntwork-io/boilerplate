@@ -88,22 +88,24 @@ func UnmarshalListOfStrings(fields map[string]interface{}, fieldName string) ([]
 		return nil, nil
 	}
 
-	asYamlList, isYamlList := fieldAsYaml.([]interface{})
-	if !isYamlList {
-		return nil, errors.WithStackTrace(InvalidTypeForField{FieldName: fieldName, ExpectedType: "[]interface{}", ActualType: reflect.TypeOf(fieldAsYaml)})
-	}
+	switch asList := fieldAsYaml.(type) {
+	case []interface{}:
+		listOfStrings := []string{}
 
-	listOfStrings := []string{}
-
-	for _, asYaml := range asYamlList {
-		if valueAsString, isString := asYaml.(string); isString {
-			listOfStrings = append(listOfStrings, valueAsString)
-		} else {
-			return nil, errors.WithStackTrace(InvalidTypeForField{FieldName: fieldName, ExpectedType: "string", ActualType: reflect.TypeOf(asYamlList)})
+		for _, asYaml := range asList {
+			if valueAsString, isString := asYaml.(string); isString {
+				listOfStrings = append(listOfStrings, valueAsString)
+			} else {
+				return nil, errors.WithStackTrace(InvalidTypeForField{FieldName: fieldName, ExpectedType: "string", ActualType: reflect.TypeOf(asList)})
+			}
 		}
-	}
 
-	return listOfStrings, nil
+		return listOfStrings, nil
+	case []string:
+		return asList, nil
+	default:
+		return nil, errors.WithStackTrace(InvalidTypeForField{FieldName: fieldName, ExpectedType: "[]interface{} or []string", ActualType: reflect.TypeOf(fieldAsYaml)})
+	}
 }
 
 // Given a map of key:value pairs read from a Boilerplate YAML config file of the format:
