@@ -1115,6 +1115,6 @@ inspiring many of the ideas in Boilerplate and so you can try out other projects
 
 ## License
 
-This code is released under the Apache 2.0 License. Please see [LICENSE](LICENSE) and [NOTICE](NOTICE) for more details.
+This code is released under the Mozilla Public License Version 2.0. Please see [LICENSE](LICENSE) and [NOTICE](NOTICE) for more details.
 
 Copyright &copy; 2016 Gruntwork, Inc.
