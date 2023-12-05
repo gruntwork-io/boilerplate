@@ -1,0 +1,32 @@
+variables:
+  - name: accounts
+    description: The AWS accounts
+    type: map
+    default:
+      dev:
+        email: dev@example.com
+        id: 1111
+      stage:
+        email: stage@example.com
+        id: 2222
+      prod:
+        email: prod@example.com
+        id: 3333
+  - name: accountNames
+    description: The names of the accounts in the accounts variable
+    type: list
+    default: "{{ keysSorted .accounts }}"
+
+dependencies:
+  - name: loop-dependency-example
+    template-url: ../terraform
+    # Render this dependency once for each environment the user specifies
+    for_each_reference: accountNames
+    # Render the dependency to an output folder that includes the environment name
+    output-folder: "live/{{ .__each__ }}"
+    variables:
+      - name: ServerName
+        description: The name to use for the EC2 instance (for its Name tag)
+        type: string
+        # Use the environment name in the server name
+        default: "example-{{ .__each__ }}"
