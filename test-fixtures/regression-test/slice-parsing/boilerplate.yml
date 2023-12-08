@@ -1,0 +1,4 @@
+variables:
+  - name: MapValue
+    description: A map value that will be passed in via a --var flag
+    type: map

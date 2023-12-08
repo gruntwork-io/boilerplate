@@ -94,6 +94,13 @@ func CreateBoilerplateCli() *cli.App {
 		},
 	}
 
+	// We pass JSON/YAML content to various CLI flags, such as --var, and this JSON/YAML content may contain commas or
+	// other separators urfave/cli would treat as a slice separator, and would therefore break the value into multiple
+	// parts in the middle of the JSON/YAML, which is not what we want. So here, we disable the slice separator to
+	// avoid that issue. This means you have to pass --var multiple times to get multiple values, which is what we
+	// want anyway. See https://github.com/urfave/cli/issues/1134 for more details.
+	app.DisableSliceFlagSeparator = true
+
 	return app
 
 }
