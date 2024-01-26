@@ -61,6 +61,7 @@ func TestParseVariablesFromKeyValuePairs(t *testing.T) {
 		{[]string{"key=value"}, nil, map[string]interface{}{"key": "value"}},
 		{[]string{"key="}, nil, map[string]interface{}{"key": nil}},
 		{[]string{"key1=value1", "key2=value2", "key3=value3"}, nil, map[string]interface{}{"key1": "value1", "key2": "value2", "key3": "value3"}},
+		{[]string{"key1=left=right"}, nil, map[string]interface{}{"key1": "left=right"}},
 		{[]string{"invalidsyntax"}, InvalidVarSyntax("invalidsyntax"), map[string]interface{}{}},
 		{[]string{"="}, VariableNameCannotBeEmpty("="), map[string]interface{}{}},
 		{[]string{"=foo"}, VariableNameCannotBeEmpty("=foo"), map[string]interface{}{}},

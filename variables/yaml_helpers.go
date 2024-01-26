@@ -17,9 +17,10 @@ import (
 // Given a map of key:value pairs read from a Boilerplate YAML config file of the format:
 //
 // fieldName:
-//   key1: value1
-//   key2: value2
-//   key3: value3
+//
+//	key1: value1
+//	key2: value2
+//	key3: value3
 //
 // This method looks up the given fieldName in the map and unmarshals the data inside of it it into a map of the
 // key:value pairs.
@@ -49,9 +50,10 @@ func unmarshalMapOfFields(fields map[string]interface{}, fieldName string) (map[
 // Given a map of key:value pairs read from a Boilerplate YAML config file of the format:
 //
 // fieldName:
-//   key1: value1
-//   key2: value2
-//   key3: value3
+//
+//	key1: value1
+//	key2: value2
+//	key3: value3
 //
 // This method looks up the given fieldName in the map and unmarshals the data inside of it it into a map of the
 // key:value pairs, where both the keys and values are strings.
@@ -111,6 +113,7 @@ func UnmarshalListOfStrings(fields map[string]interface{}, fieldName string) ([]
 // Given a map of key:value pairs read from a Boilerplate YAML config file of the format:
 //
 // fieldName:
+//
 //   - key1: value1
 //     key2: value2
 //     key3: value3
@@ -402,13 +405,11 @@ func parseVariablesFromKeyValuePairs(varsList []string) (map[string]interface{},
 	vars := map[string]interface{}{}
 
 	for _, variable := range varsList {
-		variableParts := strings.Split(variable, "=")
-		if len(variableParts) != 2 {
+		key, value, found := strings.Cut(variable, "=")
+		if !found {
 			return vars, errors.WithStackTrace(InvalidVarSyntax(variable))
 		}
 
-		key := variableParts[0]
-		value := variableParts[1]
 		if key == "" {
 			return vars, errors.WithStackTrace(VariableNameCannotBeEmpty(variable))
 		}

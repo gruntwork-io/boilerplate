@@ -538,8 +538,9 @@ Note the following:
 
 * The `before` hook allows you to run scripts before Boilerplate has started rendering.
 * The `after` hook allows you to run scripts after Boilerplate has finished rendering.
-* Each hook consists of a `command` to execute (required), a list of `args` to pass to that command (optional), and
-  a map of environment variables in `env` to set for the command (optional). Example:
+* Each hook consists of a `command` to execute (required), a list of `args` to pass to that command (optional),
+  a map of environment variables in `env` to set for the command (optional), and the working directory `dir` in which
+  to run the command (optional). Example:
 
     ```yaml
     before:
@@ -549,8 +550,9 @@ Note the following:
           - World
         env:
           FOO: BAR
+        dir: "/foo/bar"
     ```
-* You can use Go templating syntax in both `command`, `args`, and `env`. For example, you can pass Boilerplate
+* You can use Go templating syntax in `command`, `args`, `env`, and `dir`. For example, you can pass Boilerplate
   variables to your scripts as follows:
 
     ```yaml
@@ -560,7 +562,14 @@ Note the following:
           - {{ .SomeVariable }}
           - {{ .AnotherVariable }}
     ```
-* Boilerplate runs your `command` with the working directory set to the `--template-url` option.
+* By default, Boilerplate runs your `command` with the working directory set to the `--template-url` option. You can
+  override this with the `dir` parameter. For example, here is how you can set it to a sub-folder of the output folder:
+
+    ```yaml
+    after:
+      - command: some-command
+        dir: "{{ outputFolder }}/foo/bar"  
+    ```
 * `skip` (Optional): Skip this hook if this condition, which can use Go templating syntax and
   boilerplate variables, evaluates to the string `true`. This is useful to conditionally enable or disable
   dependencies.

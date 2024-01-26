@@ -161,7 +161,15 @@ func processHook(hook variables.Hook, opts *options.BoilerplateOptions, vars map
 		envVars = append(envVars, fmt.Sprintf("%s=%s", renderedKey, renderedValue))
 	}
 
-	return util.RunShellCommand(opts.TemplateFolder, envVars, cmd, args...)
+	workingDir := opts.TemplateFolder
+	if hook.WorkingDir != "" {
+		workingDir, err = render.RenderTemplateFromString(config.BoilerplateConfigPath(opts.TemplateFolder), hook.WorkingDir, vars, opts)
+		if err != nil {
+			return err
+		}
+	}
+
+	return util.RunShellCommand(workingDir, envVars, cmd, args...)
 }
 
 // Return true if the "skip" condition of this hook evaluates to true
