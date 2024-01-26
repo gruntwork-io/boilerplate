@@ -1,0 +1,8 @@
+hooks:
+  after:
+    # Replace the contents of test.txt as a check this hook ran in the proper working dir
+    - command: bash
+      args:
+        - "-c"
+        - "echo hook > test.txt"
+      dir: "{{ outputFolder }}/subdir"
