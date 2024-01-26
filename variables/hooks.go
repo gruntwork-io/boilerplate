@@ -10,7 +10,7 @@ type Hook struct {
 	Args       []string
 	Env        map[string]string
 	Skip       string
-	WorkingDir *string
+	WorkingDir string
 }
 
 // All the scripts to execute as boilerplate hooks
@@ -35,8 +35,8 @@ func (hook Hook) MarshalYAML() (interface{}, error) {
 	if len(hook.Env) > 0 {
 		hookYml["env"] = hook.Env
 	}
-	if hook.WorkingDir != nil {
-		hookYml["dir"] = *hook.WorkingDir
+	if len(hook.WorkingDir) > 0 {
+		hookYml["dir"] = hook.WorkingDir
 	}
 	return hookYml, nil
 }
@@ -176,9 +176,13 @@ func unmarshalHookFromBoilerplateConfigYaml(fields map[string]interface{}, hookN
 		return nil, err
 	}
 
-	workingDir, err := unmarshalStringField(fields, "dir", true, hookName)
+	var workingDir string
+	dir, err := unmarshalStringField(fields, "dir", false, hookName)
 	if err != nil {
 		return nil, err
+	}
+	if dir != nil {
+		workingDir = *dir
 	}
 
 	skipPtr, err := unmarshalStringField(fields, "skip", false, hookName)

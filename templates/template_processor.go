@@ -162,8 +162,8 @@ func processHook(hook variables.Hook, opts *options.BoilerplateOptions, vars map
 	}
 
 	workingDir := opts.TemplateFolder
-	if hook.WorkingDir != nil {
-		workingDir, err = render.RenderTemplateFromString(config.BoilerplateConfigPath(opts.TemplateFolder), *hook.WorkingDir, vars, opts)
+	if hook.WorkingDir != "" {
+		workingDir, err = render.RenderTemplateFromString(config.BoilerplateConfigPath(opts.TemplateFolder), hook.WorkingDir, vars, opts)
 		if err != nil {
 			return err
 		}
