@@ -1,0 +1,4 @@
+variables:
+  - name: Name
+    type: string
+    default: 'test-2-a'
