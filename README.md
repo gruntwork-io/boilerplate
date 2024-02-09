@@ -146,27 +146,19 @@ When you run Boilerplate, it performs the following steps:
 
 Learn more about boilerplate in the following sections:
 
-- [Boilerplate](#boilerplate)
-  - [Example: creating a new template](#example-creating-a-new-template)
-  - [Install](#install)
-  - [Features](#features)
-  - [Working with boilerplate](#working-with-boilerplate)
-      - [Boilerplate command line options](#boilerplate-command-line-options)
-      - [The boilerplate.yml file](#the-boilerplateyml-file)
-      - [Variables](#variables)
-      - [Dependencies](#dependencies)
-      - [Hooks](#hooks)
-      - [Skip Files](#skip-files)
-      - [Templates](#templates)
-      - [Validations](#validations)
-      - [Variable Ordering](#variable-ordering)
-      - [Alternative Template Engines (EXPERIMENTAL)](#alternative-template-engines-experimental)
-        - [Jsonnet](#jsonnet)
-      - [Template helpers](#template-helpers)
-      - [Deprecated helpers](#deprecated-helpers)
-      - [Partials](#partials)
-  - [Alternative project generators](#alternative-project-generators)
-  - [License](#license)
+<!-- no toc -->
+1. [Boilerplate command line options](#boilerplate-command-line-options)
+1. [The boilerplate.yml file](#the-boilerplate.yml-file)
+1. [Variables](#variables)
+1. [Dependencies](#dependencies)
+1. [Hooks](#hooks)
+1. [Partials](#partials)
+1. [Skip Files](#skip-files)
+1. [Templates](#templates)
+1. [Validations](#validations)
+1. [Variable order](#variable-ordering)
+1. [Alternative Template Engines (EXPERIMENTAL)](#alternative-template-engines-experimental)
+1. [Template helpers](#template-helpers)
 
 #### Boilerplate command line options
 
