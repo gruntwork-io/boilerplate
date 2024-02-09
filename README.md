@@ -148,17 +148,18 @@ Learn more about boilerplate in the following sections:
 
 <!-- no toc -->
 1. [Boilerplate command line options](#boilerplate-command-line-options)
-1. [The boilerplate.yml file](#the-boilerplate.yml-file)
+1. [The boilerplate.yml file](#the-boilerplateyml-file)
 1. [Variables](#variables)
 1. [Dependencies](#dependencies)
 1. [Hooks](#hooks)
-1. [Partials](#partials)
 1. [Skip Files](#skip-files)
 1. [Templates](#templates)
 1. [Validations](#validations)
-1. [Variable order](#variable-ordering)
+1. [Variable Ordering](#variable-ordering)
 1. [Alternative Template Engines (EXPERIMENTAL)](#alternative-template-engines-experimental)
 1. [Template helpers](#template-helpers)
+1. [Deprecated helpers](#deprecated-helpers)
+1. [Partials](#partials)
 
 #### Boilerplate command line options
 
