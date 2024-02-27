@@ -9,22 +9,9 @@ variables:
 
 hooks:
   after:
-    # Initialize a Go module (if it's not initialized already)
-    - command: bash
+    # Format the Go code
+    - command: goimports
       args:
-        - "-c"
-        - "if [[ ! -f go.mod ]]; then go mod init test; fi"
-      dir: "{{ outputFolder }}"
-
-    # Download Go deps and create go.sum (if it doesn't already exist)
-    - command: bash
-      args:
-        - "-c"
-        - "if [[ ! -f go.sum ]]; then go mod tidy; fi"
-      dir: "{{ outputFolder }}"
-
-    # Format Go code in the test folder
-    - command: go
-      args:
-        - fmt
+        - "-w"
+        - "."
       dir: "{{ outputFolder }}"
