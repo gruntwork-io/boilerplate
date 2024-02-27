@@ -1,0 +1,25 @@
+variables:
+  - name: ModuleName
+    description: The name of the Terraform module
+    type: string
+
+  - name: CopyrightHolder
+    description: The name of the copyright holder for the module
+    type: string
+
+  - name: CopyrightYear
+    description: The year of the copyright
+    type: string
+
+  - name: TerraformVersion
+    description: The version of Terraform to use
+    type: string
+    default: 1.5.7
+
+  - name: License
+    description: The license to use for this module
+    type: enum
+    default: apache
+    options:
+      - mit
+      - apache
