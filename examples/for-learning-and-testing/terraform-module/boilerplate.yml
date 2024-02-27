@@ -3,12 +3,16 @@ variables:
     description: The name of the Terraform module
     type: string
 
+  - name: IncludeCopyright
+    description: If set to true, include copyright info in the README
+    type: bool
+
   - name: CopyrightHolder
-    description: The name of the copyright holder for the module
+    description: The name of the copyright holder for the module. Only used if IncludeCopyright is true.
     type: string
 
   - name: CopyrightYear
-    description: The year of the copyright
+    description: The year of the copyright. Only used if IncludeCopyright is true.
     type: string
 
   - name: TerraformVersion
@@ -16,7 +20,10 @@ variables:
     type: string
     default: 1.5.7
 
-  - name: Providers
-    description: The providers to configure. The keys are the provider source URLs and the values are the versions.
-    type: map
-    default: {}
+hooks:
+  after:
+    # Format the Terraform code
+    - command: terraform
+      args:
+        - fmt
+      dir: "{{ outputFolder }}"

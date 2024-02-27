@@ -1,0 +1,30 @@
+variables:
+  - name: ModuleName
+    description: The name of the Terraform module
+    type: string
+
+  - name: ExamplePath
+    description: The folder path to to the example usage of the module to test
+    type: string
+
+hooks:
+  after:
+    # Initialize a Go module (if it's not initialized already)
+    - command: bash
+      args:
+        - "-c"
+        - "if [[ ! -f go.mod ]]; then go mod init test; fi"
+      dir: "{{ outputFolder }}"
+
+    # Download Go deps and create go.sum (if it doesn't already exist)
+    - command: bash
+      args:
+        - "-c"
+        - "if [[ ! -f go.sum ]]; then go mod tidy; fi"
+      dir: "{{ outputFolder }}"
+
+    # Format Go code in the test folder
+    - command: go
+      args:
+        - fmt
+      dir: "{{ outputFolder }}"

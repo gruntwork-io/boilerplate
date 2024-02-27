@@ -1,0 +1,45 @@
+variables:
+  - name: ModuleName
+    description: The name of the Terraform module
+    type: string
+
+  - name: CopyrightHolder
+    description: The name of the copyright holder for the module
+    type: string
+
+  - name: CopyrightYear
+    description: The year of the copyright
+    type: string
+
+  - name: TerraformVersion
+    description: The version of Terraform to use
+    type: string
+    default: 1.5.7
+
+  - name: Providers
+    description: The providers to configure. The keys are the provider source URLs and the values are the versions.
+    type: map
+    default: {}
+
+dependencies:
+  - name: module
+    template-url: ../terraform-module
+    output-folder: "modules/{{ .ModuleName | kebabcase }}"
+
+  - name: example
+    template-url: ../terraform-example
+    output-folder: "examples/{{ .ModuleName | kebabcase }}"
+    variables:
+      - name: ModuleSource
+        description: The source URL (or file path) to use for the Terraform module
+        type: string
+        default: "../../modules/{{ .ModuleName | kebabcase }}"
+
+  - name: test
+    template-url: ../terraform-test
+    output-folder: "test"
+    variables:
+      - name: ExamplePath
+        description: The source URL (or file path) to use for the Terraform module
+        type: string
+        default: "../examples/{{ .ModuleName | kebabcase }}"

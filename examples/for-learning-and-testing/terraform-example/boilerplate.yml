@@ -1,0 +1,21 @@
+variables:
+  - name: ModuleName
+    description: The name of the Terraform module
+    type: string
+
+  - name: ModuleSource
+    description: The source URL (or file path) to use for the Terraform module
+    type: string
+
+  - name: TerraformVersion
+    description: The version of Terraform to use
+    type: string
+    default: 1.5.7
+
+hooks:
+  after:
+    # Format the Terraform code
+    - command: terraform
+      args:
+        - fmt
+      dir: "{{ outputFolder }}"
