@@ -3,23 +3,15 @@ variables:
     description: The name of the Terraform module
     type: string
 
-  - name: CopyrightHolder
-    description: The name of the copyright holder for the module
+  - name: CopyrightInfo
+    description: Copyright information to put in the README. Typically "Copyright <year> <company>."
     type: string
-
-  - name: CopyrightYear
-    description: The year of the copyright
-    type: string
+    default: ""
 
   - name: TerraformVersion
     description: The version of Terraform to use
     type: string
     default: 1.5.7
-
-  - name: Providers
-    description: The providers to configure. The keys are the provider source URLs and the values are the versions.
-    type: map
-    default: {}
 
 dependencies:
   - name: module

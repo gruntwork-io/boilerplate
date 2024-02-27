@@ -1,4 +1,2 @@
 ModuleName: vpc
-IncludeCopyright: true
-CopyrightHolder: Gruntwork
-CopyrightYear: "2024"
+CopyrightInfo: Copyright 2024 Gruntwork, Inc.
