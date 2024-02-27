@@ -1,3 +1,5 @@
 ModuleName: vpc
 CopyrightHolder: Gruntwork
 CopyrightYear: "2024"
+Providers:
+  aws: "~> 5.0"

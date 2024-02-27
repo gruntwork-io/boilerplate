@@ -16,10 +16,7 @@ variables:
     type: string
     default: 1.5.7
 
-  - name: License
-    description: The license to use for this module
-    type: enum
-    default: apache
-    options:
-      - mit
-      - apache
+  - name: Providers
+    description: The providers to configure. The keys are the provider source URLs and the values are the versions.
+    type: map
+    default: {}
