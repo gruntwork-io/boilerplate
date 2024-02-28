@@ -71,14 +71,15 @@ jobs:
 
             # We exclude the examples and test-fixtures folders as they contain example Go code, sometimes with Go
             # templating syntax in it, and that code is not meant to have automated tests run against it.
-            packages_to_test="$(go list -e ./... | grep -v examples | grep -v test-fixtures)"
+            packages_to_test="$(go list -e ./... | grep -v examples | grep -v test-fixtures | tr '\n' ' ')"
 
             # Some unit tests depend on a version being set, so here we pass in the ldflags to set the version
             # to the expected test string.
             run-go-tests \
               --path . \
               --timeout 1h \
-              --packages "-ldflags '-X github.com/gruntwork-io/go-commons/version.Version=v1.33.7' $packages_to_test" \
+              --extra-flags "-ldflags '-X github.com/gruntwork-io/go-commons/version.Version=v1.33.7'" \
+              --packages "$packages_to_test" \
               | tee /tmp/logs/all.log
           no_output_timeout: 3600s
 
