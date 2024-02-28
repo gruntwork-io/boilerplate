@@ -74,6 +74,9 @@ jobs:
             # templating syntax in it, and that code is not meant to have automated tests run against it.
             packages_to_test="$(go list -e ./... | grep -v examples | grep -v test-fixtures | tr '\n' ' ')"
 
+            # Add Golang's bin folder to the PATH as one of the boilerplate templates needs it to run goimports
+            export PATH="/home/circleci/go/bin:$PATH"
+
             # Some unit tests depend on a version being set, so here we pass in the ldflags to set the version
             # to the expected test string.
             run-go-tests \
