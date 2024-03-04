@@ -1,4 +1,5 @@
-//+build windows
+//go:build windows
+// +build windows
 
 package integration_tests
 
@@ -20,10 +21,10 @@ $ftwo = Get-ChildItem -Recurse -path %s
 Compare-Object -ReferenceObject $fone -DifferenceObject $ftwo
 `
 	powershellDiffCmd := fmt.Sprintf(powershellDiffTemplate, folderWithExpectedContents, folderWithActualContents)
-	runPowershell(t, powershellDiffCmd)
+	TestWindowsRunPowershell(t, powershellDiffCmd)
 }
 
-func runPowershell(t *testing.T, args ...string) {
+func TestWindowsRunPowershell(t *testing.T, args ...string) {
 	ps, err := exec.LookPath("powershell.exe")
 	require.NoError(t, err)
 

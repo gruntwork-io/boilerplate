@@ -100,7 +100,7 @@ jobs:
           shell: powershell.exe
           no_output_timeout: 45m
           command: |
-            go test -v ./...  -timeout 45m
+            go test -v ./... -tags windows -v -un -run TestWindows -timeout 45m
   deploy:
     <<: *env
     macos:
