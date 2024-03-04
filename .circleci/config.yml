@@ -100,7 +100,7 @@ jobs:
           shell: powershell.exe
           no_output_timeout: 45m
           command: |
-            go test -ldflags '-X github.com/gruntwork-io/go-commons/version.Version=v1.33.7' -v ./... -tags windows TestWindows  -timeout 45m
+            go test -ldflags '-X github.com/gruntwork-io/go-commons/version.Version=v1.33.7' -v ./... -tags windows TestWindows -timeout 45m
   deploy:
     <<: *env
     macos:
