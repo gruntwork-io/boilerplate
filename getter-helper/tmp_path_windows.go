@@ -1,4 +1,5 @@
-//+build windows
+//go:build windows
+// +build windows
 
 package getter_helper
 
@@ -16,7 +17,7 @@ func getTempFolder() (string, error) {
 	if err != nil {
 		return workingDir, err
 	}
-	return fixLongPath(workingDir), err
+	return filepath.ToSlash(fixLongPath(workingDir)), err
 }
 
 // The following function is copied almost verbatim from
