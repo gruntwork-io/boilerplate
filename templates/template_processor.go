@@ -466,6 +466,7 @@ func processTemplateFolder(
 	}
 
 	return filepath.Walk(opts.TemplateFolder, func(path string, info os.FileInfo, err error) error {
+		path = filepath.ToSlash(path)
 		if shouldSkipPath(path, opts, processedSkipFiles) {
 			util.Logger.Printf("Skipping %s", path)
 			return nil
@@ -473,7 +474,7 @@ func processTemplateFolder(
 			return createOutputDir(path, opts, variables)
 		} else {
 			engine := determineTemplateEngine(processedEngines, path)
-			return processFile(filepath.ToSlash(path), opts, variables, partials, engine)
+			return processFile(path, opts, variables, partials, engine)
 		}
 	})
 }
