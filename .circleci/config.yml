@@ -18,6 +18,7 @@ defaults: &defaults
   <<: *env
 
 orbs:
+  win: circleci/windows@2.4.0
   go: circleci/go@1.7.3
 
 install_gruntwork_utils: &install_gruntwork_utils
