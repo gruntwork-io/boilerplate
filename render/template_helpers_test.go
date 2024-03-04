@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"path/filepath"
 	"reflect"
 	"testing"
 	"text/template"
@@ -192,16 +193,16 @@ func TestPathRelativeToTemplate(t *testing.T) {
 		path         string
 		expected     string
 	}{
-		{"/template.txt", ".", "/"},
-		{"/foo/bar/template.txt", ".", "/foo/bar"},
-		{"/foo/bar/template.txt", "..", "/foo"},
-		{"/foo/bar/template.txt", "../..", "/"},
-		{"/foo/bar/template.txt", "../../bar/baz", "/bar/baz"},
-		{"/foo/bar/template.txt", "foo", "/foo/bar/foo"},
-		{"/foo/bar/template.txt", "./foo", "/foo/bar/foo"},
-		{"/foo/bar/template.txt", "/foo", "/foo"},
-		{"/foo/bar/template.txt", "/foo/bar/baz", "/foo/bar/baz"},
-		{"/usr/bin", "../foo", "/usr/foo"}, // Note, we are testing with a real file path here to ensure directories are handled correctly
+		{"/template.txt", ".", filepath.ToSlash("/")},
+		{"/foo/bar/template.txt", ".", filepath.ToSlash("/foo/bar")},
+		{"/foo/bar/template.txt", "..", filepath.ToSlash("/foo")},
+		{"/foo/bar/template.txt", "../..", filepath.ToSlash("/")},
+		{"/foo/bar/template.txt", "../../bar/baz", filepath.ToSlash("/bar/baz")},
+		{"/foo/bar/template.txt", "foo", filepath.ToSlash("/foo/bar/foo")},
+		{"/foo/bar/template.txt", "./foo", filepath.ToSlash("/foo/bar/foo")},
+		{"/foo/bar/template.txt", "/foo", filepath.ToSlash("/foo")},
+		{"/foo/bar/template.txt", "/foo/bar/baz", filepath.ToSlash("/foo/bar/baz")},
+		{"/usr/bin", "../foo", filepath.ToSlash("/usr/foo")}, // Note, we are testing with a real file path here to ensure directories are handled correctly
 	}
 
 	for _, testCase := range testCases {
