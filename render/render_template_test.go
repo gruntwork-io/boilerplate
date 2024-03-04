@@ -3,6 +3,7 @@ package render
 import (
 	"fmt"
 	"os"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -43,6 +44,11 @@ func TestRenderTemplate(t *testing.T) {
 	// Read an environment variable that's probably present on all systems so we can check that the env helper
 	// returns the same value
 	userFromEnvVar := os.Getenv("USER")
+
+	defaultOutputDir := "/output"
+	if runtime.GOOS == "windows" {
+		defaultOutputDir = "C:\\output"
+	}
 
 	testCases := []struct {
 		templateContents  string
@@ -86,12 +92,12 @@ func TestRenderTemplate(t *testing.T) {
 		{"Shell read env vars test: {{ env \"USER\" \"should-not-get-fallback\" }}", map[string]interface{}{}, options.ExitWithError, "", fmt.Sprintf("Shell read env vars test: %s", userFromEnvVar)},
 		{"Shell read env vars test, fallback: {{ env \"not-a-valid-env-var\" \"should-get-fallback\" }}", map[string]interface{}{}, options.ExitWithError, "", "Shell read env vars test, fallback: should-get-fallback"},
 		{"Template folder test: {{ templateFolder }}", map[string]interface{}{}, options.ExitWithError, "", "Template folder test: /templates"},
-		{"Output folder test: {{ outputFolder }}", map[string]interface{}{}, options.ExitWithError, "", "Output folder test: /output"},
+		{"Output folder test: {{ outputFolder }}", map[string]interface{}{}, options.ExitWithError, "", "Output folder test: " + defaultOutputDir},
 		{"Filter chain test: {{ .Foo | downcase | replaceAll \" \" \"\" }}", map[string]interface{}{"Foo": "foo BAR baz!"}, options.ExitWithError, "", "Filter chain test: foobarbaz!"},
 	}
 
 	for _, testCase := range testCases {
-		actualOutput, err := RenderTemplateFromString(pwd+"/template.txt", testCase.templateContents, testCase.variables, &options.BoilerplateOptions{TemplateFolder: "/templates", OutputFolder: "/output", OnMissingKey: testCase.missingKeyAction})
+		actualOutput, err := RenderTemplateFromString(pwd+"/template.txt", testCase.templateContents, testCase.variables, &options.BoilerplateOptions{TemplateFolder: "/templates", OutputFolder: defaultOutputDir, OnMissingKey: testCase.missingKeyAction})
 		if testCase.expectedErrorText == "" {
 			assert.Nil(t, err, "template = %s, variables = %s, missingKeyAction = %s, err = %v", testCase.templateContents, testCase.variables, testCase.missingKeyAction, err)
 			assert.Equal(t, testCase.expectedOutput, actualOutput, "template = %s, variables = %s, missingKeyAction = %s", testCase.templateContents, testCase.variables, testCase.missingKeyAction)
