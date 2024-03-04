@@ -1,3 +1,0 @@
-variables:
-  - name: Name
-    type: string
