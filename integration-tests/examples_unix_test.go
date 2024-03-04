@@ -7,6 +7,7 @@ package integration_tests
 
 import (
 	"fmt"
+	"github.com/gruntwork-io/terratest/modules/files"
 	"io/ioutil"
 	"os"
 	"path"
@@ -57,4 +58,40 @@ func TestExamplesShell(t *testing.T) {
 			})
 		}
 	})
+}
+
+// Separated test to create file with placeholder values which is working only on unix environments.
+func TestKebabCase(t *testing.T) {
+	t.Parallel()
+	filter := func(path string) bool {
+		return true
+	}
+	testDir, err := files.CopyFolderToTemp("../examples/for-learning-and-testing/kebab-case-bug", "kebab-case-bug", filter)
+	require.NoError(t, err)
+
+	outputBasePath, err := ioutil.TempDir("", "boilerplate-test-output")
+	require.NoError(t, err)
+
+	// rename template.txt to file name with placeholder
+	err = os.Rename(path.Join(testDir, "template.txt"), path.Join(testDir, "{{ .Name | kebabcase }}"))
+	require.NoError(t, err)
+	examplesVarFilesBasePath := "../test-fixtures/examples-var-files"
+
+	example := "kebab-case-bug"
+	outputFolder := path.Join(outputBasePath, example)
+	err = os.MkdirAll(outputFolder, 0777)
+	require.NoError(t, err)
+	varFile := path.Join(examplesVarFilesBasePath, example, "vars.yml")
+	expectedOutputFolder := path.Join("../test-fixtures", example)
+
+	t.Run(example, func(t *testing.T) {
+		t.Parallel()
+		templateFolder := testDir
+		for _, missingKeyAction := range options.AllMissingKeyActions {
+			t.Run(fmt.Sprintf("%s-missing-key-%s", example, string(missingKeyAction)), func(t *testing.T) {
+				testExample(t, templateFolder, outputFolder, varFile, expectedOutputFolder, string(missingKeyAction))
+			})
+		}
+	})
+
 }
