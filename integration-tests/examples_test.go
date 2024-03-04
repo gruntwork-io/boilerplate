@@ -91,6 +91,10 @@ func TestExamplesAsRemoteTemplate(t *testing.T) {
 				// This is captured in TestExamplesShell
 				continue
 			}
+			if strings.Contains(example.Name(), "unix") {
+				// unix specific case
+				continue
+			}
 
 			if example.Name() == "variables" {
 				t.Logf("Skipping example %s because it is implicitly tested via dependencies.", example.Name())

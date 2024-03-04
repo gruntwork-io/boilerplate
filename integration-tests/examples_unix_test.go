@@ -66,7 +66,7 @@ func TestKebabCase(t *testing.T) {
 	filter := func(path string) bool {
 		return true
 	}
-	testDir, err := files.CopyFolderToTemp("../examples/for-learning-and-testing/kebab-case-bug", "kebab-case-bug", filter)
+	testDir, err := files.CopyFolderToTemp("../examples/for-learning-and-testing/kebab-case-bug-unix", "kebab-case-bug", filter)
 	require.NoError(t, err)
 
 	outputBasePath, err := ioutil.TempDir("", "boilerplate-test-output")
@@ -77,7 +77,7 @@ func TestKebabCase(t *testing.T) {
 	require.NoError(t, err)
 	examplesVarFilesBasePath := "../test-fixtures/examples-var-files"
 
-	example := "kebab-case-bug"
+	example := "kebab-case-bug-unix"
 	outputFolder := path.Join(outputBasePath, example)
 	err = os.MkdirAll(outputFolder, 0777)
 	require.NoError(t, err)
