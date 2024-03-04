@@ -207,7 +207,7 @@ func TestPathRelativeToTemplate(t *testing.T) {
 
 	for _, testCase := range testCases {
 		actual := PathRelativeToTemplate(testCase.templatePath, testCase.path)
-		assert.Equal(t, testCase.expected, actual)
+		assert.Equal(t, testCase.expected, filepath.ToSlash(actual))
 	}
 }
 
