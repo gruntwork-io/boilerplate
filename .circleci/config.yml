@@ -85,6 +85,23 @@ jobs:
       - store_test_results:
           path: /tmp/logs
 
+  test_windows:
+    executor:
+      name: win/default
+      size: "large"
+    steps:
+      - checkout
+      - run:
+          name: Install golang
+          shell: powershell.exe
+          command: ./.circleci/install-golang.ps1
+      - run:
+          name: Run windows tests
+          shell: powershell.exe
+          no_output_timeout: 45m
+          command: |
+            go test -v ./...  -timeout 45m
+
   deploy:
     <<: *env
     macos:
