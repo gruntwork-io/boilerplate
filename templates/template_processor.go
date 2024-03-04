@@ -473,7 +473,7 @@ func processTemplateFolder(
 			return createOutputDir(path, opts, variables)
 		} else {
 			engine := determineTemplateEngine(processedEngines, path)
-			return processFile(path, opts, variables, partials, engine)
+			return processFile(filepath.ToSlash(path), opts, variables, partials, engine)
 		}
 	})
 }
