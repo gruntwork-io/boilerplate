@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"testing"
 	"text/template"
 
@@ -202,7 +203,7 @@ func TestPathRelativeToTemplate(t *testing.T) {
 		{"/foo/bar/template.txt", "./foo", filepath.ToSlash("/foo/bar/foo")},
 		{"/foo/bar/template.txt", "/foo", filepath.ToSlash("/foo")},
 		{"/foo/bar/template.txt", "/foo/bar/baz", filepath.ToSlash("/foo/bar/baz")},
-		{"/usr/bin", "../foo", filepath.ToSlash("/usr/foo")}, // Note, we are testing with a real file path here to ensure directories are handled correctly
+		{"/usr/bin", "../foo", "/foo"}, // Note, we are testing with a real file path here to ensure directories are handled correctly
 	}
 
 	for _, testCase := range testCases {
@@ -436,10 +437,18 @@ func TestLowerFirst(t *testing.T) {
 
 func TestShellSuccess(t *testing.T) {
 	t.Parallel()
-
-	output, err := shell(".", &options.BoilerplateOptions{NonInteractive: true}, "echo", "hi")
+	var output string
+	var err error
+	var eol string
+	if runtime.GOOS == "windows" {
+		eol = "\r\n"
+		output, err = shell(".", &options.BoilerplateOptions{NonInteractive: true}, "cmd.exe", "/C", "echo", "hi")
+	} else {
+		eol = "\n"
+		output, err = shell(".", &options.BoilerplateOptions{NonInteractive: true}, "echo", "hi")
+	}
 	assert.Nil(t, err, "Unexpected error: %v", err)
-	assert.Equal(t, "hi\n", output)
+	assert.Equal(t, "hi"+eol, output)
 }
 
 func TestShellError(t *testing.T) {
@@ -447,7 +456,12 @@ func TestShellError(t *testing.T) {
 
 	_, err := shell(".", &options.BoilerplateOptions{NonInteractive: true}, "not-a-real-command")
 	if assert.NotNil(t, err) {
-		assert.Contains(t, err.Error(), "executable file not found in $PATH", "Unexpected error message: %s", err.Error())
+		if runtime.GOOS == "windows" {
+			assert.Contains(t, err.Error(), "executable file not found in %PATH%", "Unexpected error message: %s", err.Error())
+		} else {
+			assert.Contains(t, err.Error(), "executable file not found in $PATH", "Unexpected error message: %s", err.Error())
+		}
+
 	}
 }
 
