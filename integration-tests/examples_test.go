@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -54,10 +55,12 @@ func TestExamples(t *testing.T) {
 				return
 			}
 
-			for _, missingKeyAction := range options.AllMissingKeyActions {
-				t.Run(fmt.Sprintf("%s-missing-key-%s", example.Name(), string(missingKeyAction)), func(t *testing.T) {
-					testExample(t, templateFolder, outputFolder, varFile, expectedOutputFolder, string(missingKeyAction))
-				})
+			if runtime.GOOS != "windows" { // skip clone test for windows because of invalid file name in git
+				for _, missingKeyAction := range options.AllMissingKeyActions {
+					t.Run(fmt.Sprintf("%s-missing-key-%s", example.Name(), string(missingKeyAction)), func(t *testing.T) {
+						testExample(t, templateFolder, outputFolder, varFile, expectedOutputFolder, string(missingKeyAction))
+					})
+				}
 			}
 		})
 	}
@@ -80,6 +83,10 @@ func TestExamplesAsRemoteTemplate(t *testing.T) {
 
 	// Insulate the following parallel tests in a group so that cleanup routines run after all tests are done.
 	t.Run("group", func(t *testing.T) {
+		if runtime.GOOS == "windows" { // skip clone test for windows because of invalid file name in git
+			t.Skip()
+			return
+		}
 		for _, example := range examples {
 			// Capture range variable to avoid it changing on each iteration during the tests
 			example := example
