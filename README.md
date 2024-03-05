@@ -11,6 +11,8 @@ Example use cases:
    code often has syntax errors or goes out of date. Now you can keep those code examples in normal source files which
    are built & tested, and embed parts of those files dynamically in your docs.
 
+See [Introducing Boilerplate](https://blog.gruntwork.io/introducing-boilerplate-6d796444ecf6) for a quick introduction.
+
 ## Example: creating a new template
 
 Create a folder called `website-boilerplate` and put a file called `boilerplate.yml` in it:
@@ -1102,6 +1104,9 @@ Before creating Boilerplate, we tried a number of other project generators, but 
 [requirements](#features). We list these alternatives below as a thank you to the creators of those projects for
 inspiring many of the ideas in Boilerplate and so you can try out other projects if Boilerplate doesn't work for you:
 
+* [cookiecutter](https://pypi.org/project/cookiecutter/): Project generator written in Python. Uses Jinja templates,
+  which are reasonably pleasant to work with, and has a huge community. However, the dependency on Python makes
+  cross-platform usage tricky, and the `cookiecutter.json` file is quite limited in what you can do.
 * [yeoman](http://yeoman.io/): Project generator written in JavaScript. Good UI and huge community. However, very
   focused on generating web projects, and creating new generators is complicated and built around NPM. Not clear if
   it supports non-interactive mode.

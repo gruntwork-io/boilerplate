@@ -1,0 +1,17 @@
+variables:
+  - name: ModuleName
+    description: The name of the module
+    type: string
+
+  - name: ExamplePath
+    description: The folder path to to the example usage of the module to test
+    type: string
+
+hooks:
+  after:
+    # Format the Go code
+    - command: goimports
+      args:
+        - "-w"
+        - "."
+      dir: "{{ outputFolder }}"

@@ -1,0 +1,22 @@
+variables:
+  - name: ModuleName
+    description: The name of the module
+    type: string
+
+  - name: CopyrightInfo
+    description: Copyright information to put in the README. Typically "Copyright <year> <company>."
+    type: string
+    default: ""
+
+  - name: TofuVersion
+    description: The version of OpenTofu to use
+    type: string
+    default: 1.6.2
+
+hooks:
+  after:
+    # Format the code
+    - command: tofu
+      args:
+        - fmt
+      dir: "{{ outputFolder }}"
