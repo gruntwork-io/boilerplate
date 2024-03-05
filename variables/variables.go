@@ -433,7 +433,6 @@ func parseStringAsJsonMap(str string) (map[string]string, error) {
 // Given a map of key:value pairs read from a Boilerplate YAML config file of the format:
 //
 // variables:
-//
 //   - name: <NAME>
 //     description: <DESCRIPTION>
 //     type: <TYPE>
