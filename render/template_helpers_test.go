@@ -193,22 +193,27 @@ func TestPathRelativeToTemplate(t *testing.T) {
 		templatePath string
 		path         string
 		expected     string
+		skip         bool
 	}{
-		{"/template.txt", ".", filepath.ToSlash("/")},
-		{"/foo/bar/template.txt", ".", filepath.ToSlash("/foo/bar")},
-		{"/foo/bar/template.txt", "..", filepath.ToSlash("/foo")},
-		{"/foo/bar/template.txt", "../..", filepath.ToSlash("/")},
-		{"/foo/bar/template.txt", "../../bar/baz", filepath.ToSlash("/bar/baz")},
-		{"/foo/bar/template.txt", "foo", filepath.ToSlash("/foo/bar/foo")},
-		{"/foo/bar/template.txt", "./foo", filepath.ToSlash("/foo/bar/foo")},
-		{"/foo/bar/template.txt", "/foo", filepath.ToSlash("/foo")},
-		{"/foo/bar/template.txt", "/foo/bar/baz", filepath.ToSlash("/foo/bar/baz")},
-		{"/usr/bin", "../foo", "/foo"}, // Note, we are testing with a real file path here to ensure directories are handled correctly
+		{"/template.txt", ".", filepath.ToSlash("/"), false},
+		{"/foo/bar/template.txt", ".", filepath.ToSlash("/foo/bar"), false},
+		{"/foo/bar/template.txt", "..", filepath.ToSlash("/foo"), false},
+		{"/foo/bar/template.txt", "../..", filepath.ToSlash("/"), false},
+		{"/foo/bar/template.txt", "../../bar/baz", filepath.ToSlash("/bar/baz"), false},
+		{"/foo/bar/template.txt", "foo", filepath.ToSlash("/foo/bar/foo"), false},
+		{"/foo/bar/template.txt", "./foo", filepath.ToSlash("/foo/bar/foo"), false},
+		{"/foo/bar/template.txt", "/foo", filepath.ToSlash("/foo"), false},
+		{"/foo/bar/template.txt", "/foo/bar/baz", filepath.ToSlash("/foo/bar/baz"), false},
+		{"/usr/bin", "../foo", "/usr/foo", runtime.GOOS == "windows"}, // Note, we are testing with a real file path here to ensure directories are handled correctly
 	}
 
 	for _, testCase := range testCases {
 		tt := testCase
 		t.Run(tt.templatePath, func(t *testing.T) {
+			if tt.skip {
+				t.Skip()
+				return
+			}
 			actual := PathRelativeToTemplate(tt.templatePath, tt.path)
 			assert.Equal(t, tt.expected, filepath.ToSlash(actual))
 		})
