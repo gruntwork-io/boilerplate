@@ -1,0 +1,21 @@
+variables:
+  - name: ModuleName
+    description: The name of the module
+    type: string
+
+  - name: ModuleSource
+    description: The source URL (or file path) to use for the module
+    type: string
+
+  - name: TofuVersion
+    description: The version of OpenTOfu to use
+    type: string
+    default: 1.6.2
+
+hooks:
+  after:
+    # Format the code
+    - command: tofu
+      args:
+        - fmt
+      dir: "{{ outputFolder }}"
