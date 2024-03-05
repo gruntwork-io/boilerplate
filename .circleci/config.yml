@@ -96,6 +96,15 @@ jobs:
           shell: powershell.exe
           command: ./.circleci/install-golang.ps1
       - run:
+          name: Install terraform
+          shell: powershell.exe
+          command: ./.circleci/install-terraform.ps1
+      - run:
+          name: Install terragrunt
+          shell: powershell.exe
+          command: ./.circleci/install-terragrunt.ps1
+
+      - run:
           name: Run windows tests
           shell: powershell.exe
           no_output_timeout: 45m
