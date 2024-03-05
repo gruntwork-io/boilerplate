@@ -2,13 +2,14 @@ package templates
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/variables"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestOutPath(t *testing.T) {
@@ -42,7 +43,7 @@ func TestOutPath(t *testing.T) {
 		}
 		actual, err := outPath(testCase.file, &opts, testCase.variables)
 		assert.NoError(t, err, "Got unexpected error (file = %s, templateFolder = %s, outputFolder = %s, and variables = %s): %v", testCase.file, testCase.templateFolder, testCase.outputFolder, testCase.variables, err)
-		assert.Equal(t, testCase.expected, actual, "(file = %s, templateFolder = %s, outputFolder = %s, and variables = %s)", testCase.file, testCase.templateFolder, testCase.outputFolder, testCase.variables)
+		assert.Equal(t, filepath.FromSlash(testCase.expected), filepath.FromSlash(actual), "(file = %s, templateFolder = %s, outputFolder = %s, and variables = %s)", testCase.file, testCase.templateFolder, testCase.outputFolder, testCase.variables)
 	}
 }
 
@@ -59,26 +60,30 @@ func TestCloneOptionsForDependency(t *testing.T) {
 			variables.Dependency{Name: "dep1", TemplateUrl: "../dep1", OutputFolder: "../out1"},
 			options.BoilerplateOptions{TemplateFolder: "/template/path/", OutputFolder: "/output/path/", NonInteractive: true, Vars: map[string]interface{}{}, OnMissingKey: options.ExitWithError},
 			map[string]interface{}{},
-			options.BoilerplateOptions{TemplateUrl: "../dep1", TemplateFolder: "/template/dep1", OutputFolder: "/output/out1", NonInteractive: true, Vars: map[string]interface{}{}, OnMissingKey: options.ExitWithError},
+			options.BoilerplateOptions{TemplateUrl: "../dep1", TemplateFolder: filepath.FromSlash("/template/dep1"), OutputFolder: filepath.FromSlash("/output/out1"), NonInteractive: true, Vars: map[string]interface{}{}, OnMissingKey: options.ExitWithError},
 		},
 		{
 			variables.Dependency{Name: "dep1", TemplateUrl: "../dep1", OutputFolder: "../out1"},
 			options.BoilerplateOptions{TemplateFolder: "/template/path/", OutputFolder: "/output/path/", NonInteractive: false, Vars: map[string]interface{}{"foo": "bar"}, OnMissingKey: options.Invalid},
 			map[string]interface{}{"baz": "blah"},
-			options.BoilerplateOptions{TemplateUrl: "../dep1", TemplateFolder: "/template/dep1", OutputFolder: "/output/out1", NonInteractive: false, Vars: map[string]interface{}{"foo": "bar", "baz": "blah"}, OnMissingKey: options.Invalid},
+			options.BoilerplateOptions{TemplateUrl: "../dep1", TemplateFolder: filepath.FromSlash("/template/dep1"), OutputFolder: filepath.FromSlash("/output/out1"), NonInteractive: false, Vars: map[string]interface{}{"foo": "bar", "baz": "blah"}, OnMissingKey: options.Invalid},
 		},
 		{
 			variables.Dependency{Name: "dep1", TemplateUrl: "{{ .foo }}", OutputFolder: "{{ .baz }}"},
 			options.BoilerplateOptions{TemplateFolder: "/template/path/", OutputFolder: "/output/path/", NonInteractive: false, Vars: map[string]interface{}{}, OnMissingKey: options.ExitWithError},
 			map[string]interface{}{"foo": "bar", "baz": "blah"},
-			options.BoilerplateOptions{TemplateUrl: "bar", TemplateFolder: "/template/path/bar", OutputFolder: "/output/path/blah", NonInteractive: false, Vars: map[string]interface{}{"foo": "bar", "baz": "blah"}, OnMissingKey: options.ExitWithError},
+			options.BoilerplateOptions{TemplateUrl: "bar", TemplateFolder: filepath.FromSlash("/template/path/bar"), OutputFolder: filepath.FromSlash("/output/path/blah"), NonInteractive: false, Vars: map[string]interface{}{"foo": "bar", "baz": "blah"}, OnMissingKey: options.ExitWithError},
 		},
 	}
 
 	for _, testCase := range testCases {
-		actualOptions, err := cloneOptionsForDependency(testCase.dependency, &testCase.opts, nil, testCase.variables)
-		assert.NoError(t, err, "Dependency: %s", testCase.dependency)
-		assert.Equal(t, testCase.expectedOpts, *actualOptions, "Dependency: %s", testCase.dependency)
+		tt := testCase
+		t.Run(tt.dependency.Name, func(t *testing.T) {
+			actualOptions, err := cloneOptionsForDependency(tt.dependency, &tt.opts, nil, tt.variables)
+			assert.NoError(t, err, "Dependency: %s", tt.dependency)
+			assert.Equal(t, tt.expectedOpts, *actualOptions, "Dependency: %s", tt.dependency)
+		})
+
 	}
 }
 
@@ -124,14 +129,18 @@ func TestCloneVariablesForDependency(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		opts := &options.BoilerplateOptions{
-			TemplateFolder: "/template/path/",
-			OutputFolder:   "/output/path/",
-			NonInteractive: true,
-			Vars:           testCase.optsVars,
-		}
-		actualVariables, err := cloneVariablesForDependency(opts, testCase.dependency, nil, testCase.variables, nil)
-		require.NoError(t, err)
-		assert.Equal(t, testCase.expectedVariables, actualVariables, "Dependency: %s", testCase.dependency)
+		tt := testCase
+		t.Run(tt.dependency.Name, func(t *testing.T) {
+			opts := &options.BoilerplateOptions{
+				TemplateFolder: "/template/path/",
+				OutputFolder:   "/output/path/",
+				NonInteractive: true,
+				Vars:           tt.optsVars,
+			}
+			actualVariables, err := cloneVariablesForDependency(opts, tt.dependency, nil, tt.variables, nil)
+			require.NoError(t, err)
+			assert.Equal(t, tt.expectedVariables, actualVariables, "Dependency: %s", tt.dependency)
+		})
+
 	}
 }

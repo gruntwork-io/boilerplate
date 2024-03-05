@@ -4,7 +4,9 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"path/filepath"
 	"reflect"
+	"runtime"
 	"testing"
 	"text/template"
 
@@ -191,22 +193,30 @@ func TestPathRelativeToTemplate(t *testing.T) {
 		templatePath string
 		path         string
 		expected     string
+		skip         bool
 	}{
-		{"/template.txt", ".", "/"},
-		{"/foo/bar/template.txt", ".", "/foo/bar"},
-		{"/foo/bar/template.txt", "..", "/foo"},
-		{"/foo/bar/template.txt", "../..", "/"},
-		{"/foo/bar/template.txt", "../../bar/baz", "/bar/baz"},
-		{"/foo/bar/template.txt", "foo", "/foo/bar/foo"},
-		{"/foo/bar/template.txt", "./foo", "/foo/bar/foo"},
-		{"/foo/bar/template.txt", "/foo", "/foo"},
-		{"/foo/bar/template.txt", "/foo/bar/baz", "/foo/bar/baz"},
-		{"/usr/bin", "../foo", "/usr/foo"}, // Note, we are testing with a real file path here to ensure directories are handled correctly
+		{"/template.txt", ".", filepath.ToSlash("/"), false},
+		{"/foo/bar/template.txt", ".", filepath.ToSlash("/foo/bar"), false},
+		{"/foo/bar/template.txt", "..", filepath.ToSlash("/foo"), false},
+		{"/foo/bar/template.txt", "../..", filepath.ToSlash("/"), false},
+		{"/foo/bar/template.txt", "../../bar/baz", filepath.ToSlash("/bar/baz"), false},
+		{"/foo/bar/template.txt", "foo", filepath.ToSlash("/foo/bar/foo"), false},
+		{"/foo/bar/template.txt", "./foo", filepath.ToSlash("/foo/bar/foo"), false},
+		{"/foo/bar/template.txt", "/foo", filepath.ToSlash("/foo"), false},
+		{"/foo/bar/template.txt", "/foo/bar/baz", filepath.ToSlash("/foo/bar/baz"), false},
+		{"/usr/bin", "../foo", "/usr/foo", runtime.GOOS == "windows"}, // Note, we are testing with a real file path here to ensure directories are handled correctly
 	}
 
 	for _, testCase := range testCases {
-		actual := PathRelativeToTemplate(testCase.templatePath, testCase.path)
-		assert.Equal(t, testCase.expected, actual)
+		tt := testCase
+		t.Run(tt.templatePath, func(t *testing.T) {
+			if tt.skip {
+				t.Skip()
+				return
+			}
+			actual := PathRelativeToTemplate(tt.templatePath, tt.path)
+			assert.Equal(t, tt.expected, filepath.ToSlash(actual))
+		})
 	}
 }
 
@@ -432,10 +442,18 @@ func TestLowerFirst(t *testing.T) {
 
 func TestShellSuccess(t *testing.T) {
 	t.Parallel()
-
-	output, err := shell(".", &options.BoilerplateOptions{NonInteractive: true}, "echo", "hi")
+	var output string
+	var err error
+	var eol string
+	if runtime.GOOS == "windows" {
+		eol = "\r\n"
+		output, err = shell(".", &options.BoilerplateOptions{NonInteractive: true}, "cmd.exe", "/C", "echo", "hi")
+	} else {
+		eol = "\n"
+		output, err = shell(".", &options.BoilerplateOptions{NonInteractive: true}, "echo", "hi")
+	}
 	assert.Nil(t, err, "Unexpected error: %v", err)
-	assert.Equal(t, "hi\n", output)
+	assert.Equal(t, "hi"+eol, output)
 }
 
 func TestShellError(t *testing.T) {
@@ -443,7 +461,12 @@ func TestShellError(t *testing.T) {
 
 	_, err := shell(".", &options.BoilerplateOptions{NonInteractive: true}, "not-a-real-command")
 	if assert.NotNil(t, err) {
-		assert.Contains(t, err.Error(), "executable file not found in $PATH", "Unexpected error message: %s", err.Error())
+		if runtime.GOOS == "windows" {
+			assert.Contains(t, err.Error(), "executable file not found in %PATH%", "Unexpected error message: %s", err.Error())
+		} else {
+			assert.Contains(t, err.Error(), "executable file not found in $PATH", "Unexpected error message: %s", err.Error())
+		}
+
 	}
 }
 
@@ -488,7 +511,7 @@ func TestToYaml(t *testing.T) {
 		{nil, "null\n"},
 		{"", "\"\"\n"},
 		{map[string]interface{}{"key": "val"}, "key: val\n"},
-		{map[string][]interface{}{"Key": []interface{}{1, 2, 3}}, "Key:\n- 1\n- 2\n- 3\n"},
+		{map[string][]interface{}{"Key": {1, 2, 3}}, "Key:\n- 1\n- 2\n- 3\n"},
 	}
 	for _, testCase := range testCases {
 		actual, err := toYaml(testCase.input)

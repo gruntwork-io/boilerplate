@@ -7,6 +7,7 @@ package integration_tests
 
 import (
 	"fmt"
+	"github.com/gruntwork-io/terratest/modules/files"
 	"io/ioutil"
 	"os"
 	"path"
@@ -57,4 +58,59 @@ func TestExamplesShell(t *testing.T) {
 			})
 		}
 	})
+}
+
+// Separated test cases with custom file renaming logic
+func TestSpecialFileNames(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		path      string
+		initLogic func(string) error
+	}{
+		{"kebab-case-bug-unix",
+			func(testDir string) error {
+				return os.Rename(path.Join(testDir, "template.txt"), path.Join(testDir, "{{ .Name | kebabcase }}"))
+			},
+		},
+		{"tofu-test-unix",
+			func(testDir string) error {
+				return os.Rename(path.Join(testDir, "template_test.go"), path.Join(testDir, "{{ .ModuleName | snakecase }}_test.go"))
+			},
+		},
+	}
+
+	for _, testCase := range testCases {
+		tt := testCase
+		t.Run(tt.path, func(t *testing.T) {
+
+			filter := func(path string) bool {
+				return true
+			}
+			testDir, err := files.CopyFolderToTemp("../examples/for-learning-and-testing/"+tt.path, tt.path, filter)
+			require.NoError(t, err)
+
+			outputBasePath, err := ioutil.TempDir("", "boilerplate-test-output")
+			require.NoError(t, err)
+
+			// run init logic
+			err = tt.initLogic(testDir)
+			require.NoError(t, err)
+			examplesVarFilesBasePath := "../test-fixtures/examples-var-files"
+
+			example := tt.path
+			outputFolder := path.Join(outputBasePath, example)
+			err = os.MkdirAll(outputFolder, 0777)
+			require.NoError(t, err)
+			varFile := path.Join(examplesVarFilesBasePath, example, "vars.yml")
+			expectedOutputFolder := path.Join("../test-fixtures/examples-expected-output-unix", example)
+
+			for _, missingKeyAction := range options.AllMissingKeyActions {
+				t.Run(fmt.Sprintf("%s-missing-key-%s", example, string(missingKeyAction)), func(t *testing.T) {
+					testExample(t, testDir, outputFolder, varFile, expectedOutputFolder, string(missingKeyAction))
+				})
+			}
+		})
+	}
+
 }

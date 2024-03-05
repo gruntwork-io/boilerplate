@@ -18,6 +18,7 @@ defaults: &defaults
   <<: *env
 
 orbs:
+  win: circleci/windows@2.4.0
   go: circleci/go@1.7.3
 
 install_gruntwork_utils: &install_gruntwork_utils
@@ -102,7 +103,34 @@ jobs:
           when: always
       - store_test_results:
           path: /tmp/logs
-
+  test_windows:
+    executor:
+      name: win/default
+      size: "medium"
+    steps:
+      - checkout
+      - run:
+          name: Install golang
+          shell: powershell.exe
+          command: ./.circleci/install-golang.ps1
+      - run:
+          name: Install terraform
+          shell: powershell.exe
+          command: ./.circleci/install-terraform.ps1
+      - run:
+          name: Install opentofu
+          shell: powershell.exe
+          command: ./.circleci/install-opentofu.ps1
+      - run:
+          name: Install terragrunt
+          shell: powershell.exe
+          command: ./.circleci/install-terragrunt.ps1
+      - run:
+          name: Run windows tests
+          shell: powershell.exe
+          no_output_timeout: 45m
+          command: |
+            go test -tags windows -ldflags '-X github.com/gruntwork-io/go-commons/version.Version=v1.33.7' -v ./... -timeout 45m
   deploy:
     <<: *env
     macos:
@@ -146,6 +174,13 @@ workflows:
           context:
             - GITHUB__PAT__gruntwork-ci
       - test:
+          context:
+            - AWS__PHXDEVOPS__circle-ci-test
+            - GITHUB__PAT__gruntwork-ci
+          filters:
+            tags:
+              only: /^v.*/
+      - test_windows:
           context:
             - AWS__PHXDEVOPS__circle-ci-test
             - GITHUB__PAT__gruntwork-ci
