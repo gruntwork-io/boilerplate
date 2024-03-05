@@ -1,5 +1,5 @@
 terraform {
-  required_version = "{{ .TerraformVersion }}"
+  required_version = "{{ .TofuVersion }}"
 }
 
 module "{{ .ModuleName | snakecase }}" {

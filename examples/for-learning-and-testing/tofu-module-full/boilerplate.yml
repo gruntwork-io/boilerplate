@@ -1,6 +1,6 @@
 variables:
   - name: ModuleName
-    description: The name of the Terraform module
+    description: The name of the module
     type: string
 
   - name: CopyrightInfo
@@ -8,30 +8,30 @@ variables:
     type: string
     default: ""
 
-  - name: TerraformVersion
-    description: The version of Terraform to use
+  - name: TofuVersion
+    description: The version of OpenTofu to use
     type: string
-    default: 1.5.7
+    default: 1.6.2
 
 dependencies:
   - name: module
-    template-url: ../terraform-module
+    template-url: ../tofu-module
     output-folder: "modules/{{ .ModuleName | kebabcase }}"
 
   - name: example
-    template-url: ../terraform-example
+    template-url: ../tofu-example
     output-folder: "examples/{{ .ModuleName | kebabcase }}"
     variables:
       - name: ModuleSource
-        description: The source URL (or file path) to use for the Terraform module
+        description: The source URL (or file path) to use for the module
         type: string
         default: "../../modules/{{ .ModuleName | kebabcase }}"
 
   - name: test
-    template-url: ../terraform-test
+    template-url: ../tofu-test
     output-folder: "test"
     variables:
       - name: ExamplePath
-        description: The source URL (or file path) to use for the Terraform module
+        description: The source URL (or file path) to use for the module
         type: string
         default: "../examples/{{ .ModuleName | kebabcase }}"

@@ -1,6 +1,6 @@
 variables:
   - name: ModuleName
-    description: The name of the Terraform module
+    description: The name of the module
     type: string
 
   - name: ExamplePath

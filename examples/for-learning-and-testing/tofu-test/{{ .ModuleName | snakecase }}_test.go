@@ -7,11 +7,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestVpc(t *testing.T) {
+func Test{{ .ModuleName | camelcase }}(t *testing.T) {
 	t.Parallel()
 
 	opts := &terraform.Options{
-		TerraformDir: "../examples/vpc",
+		TerraformDir:    "{{ .ExamplePath }}",
+		TerraformBinary: "tofu",
 	}
 
 	defer terraform.Destroy(t, opts)

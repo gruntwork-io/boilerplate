@@ -11,7 +11,8 @@ func TestVpc(t *testing.T) {
 	t.Parallel()
 
 	opts := &terraform.Options{
-		TerraformDir: "../examples/vpc",
+		TerraformDir:    "../examples/vpc",
+		TerraformBinary: "tofu",
 	}
 
 	defer terraform.Destroy(t, opts)
