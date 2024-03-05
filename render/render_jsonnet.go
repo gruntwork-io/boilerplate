@@ -21,6 +21,7 @@ var incompatibleVariables = []string{
 //
 // - templateFolder
 // - outputFolder
+//
 func RenderJsonnetTemplate(
 	templatePath string,
 	variables map[string]interface{},
