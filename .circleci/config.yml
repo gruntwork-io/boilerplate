@@ -118,10 +118,13 @@ jobs:
           shell: powershell.exe
           command: ./.circleci/install-terraform.ps1
       - run:
+          name: Install opentofu
+          shell: powershell.exe
+          command: ./.circleci/install-opentofu.ps1
+      - run:
           name: Install terragrunt
           shell: powershell.exe
           command: ./.circleci/install-terragrunt.ps1
-
       - run:
           name: Run windows tests
           shell: powershell.exe
