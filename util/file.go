@@ -77,6 +77,9 @@ func guessMimeTypeUsingGoHttpPackage(path string) (string, error) {
 		return "", nil
 	}
 
+	// skip null values from read array
+	first512Bytes = first512Bytes[:numBytesRead]
+
 	return http.DetectContentType(first512Bytes), nil
 }
 
