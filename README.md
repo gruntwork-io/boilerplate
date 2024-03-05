@@ -11,6 +11,8 @@ Example use cases:
    code often has syntax errors or goes out of date. Now you can keep those code examples in normal source files which
    are built & tested, and embed parts of those files dynamically in your docs.
 
+See [Introducing Boilerplate](https://blog.gruntwork.io/introducing-boilerplate-6d796444ecf6) for a quick introduction.
+
 ## Example: creating a new template
 
 Create a folder called `website-boilerplate` and put a file called `boilerplate.yml` in it:
