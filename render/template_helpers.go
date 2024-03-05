@@ -255,8 +255,7 @@ func include(templatePath string, opts *options.BoilerplateOptions, path string,
 // Example:
 //
 // pathRelativeToTemplate("/foo/bar/template-file.txt, "../src/code.java")
-//
-//	Returns: "/foo/src/code.java"
+//   Returns: "/foo/src/code.java"
 func PathRelativeToTemplate(templatePath string, filePath string) string {
 	if path.IsAbs(filePath) {
 		return filePath
