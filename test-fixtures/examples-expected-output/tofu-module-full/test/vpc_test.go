@@ -1,6 +1,7 @@
 package test
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/gruntwork-io/terratest/modules/terraform"
@@ -11,7 +12,7 @@ func TestVpc(t *testing.T) {
 	t.Parallel()
 
 	opts := &terraform.Options{
-		TerraformDir:    "../examples/vpc",
+		TerraformDir:    filepath.FromSlash("../examples/vpc"),
 		TerraformBinary: "tofu",
 	}
 
