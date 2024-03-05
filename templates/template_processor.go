@@ -2,12 +2,13 @@ package templates
 
 import (
 	"fmt"
-	"github.com/gruntwork-io/go-commons/collections"
 	"net/url"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
+
+	"github.com/gruntwork-io/go-commons/collections"
 
 	"github.com/gruntwork-io/boilerplate/config"
 	"github.com/gruntwork-io/boilerplate/errors"
