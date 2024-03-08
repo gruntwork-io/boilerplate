@@ -28,6 +28,8 @@ func TestIsTextFile(t *testing.T) {
 		{"text-file.txt", true},
 		{"text-file.md", true},
 		{"text-file.tf", true},
+		{"json-file.json", true},
+		{"yaml-file.yaml", true},
 	}
 
 	for _, testCase := range testCases {

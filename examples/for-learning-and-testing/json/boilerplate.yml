@@ -1,0 +1,3 @@
+variables:
+  - name: Foo
+    type: string
