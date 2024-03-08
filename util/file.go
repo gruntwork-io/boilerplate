@@ -13,6 +13,8 @@ import (
 	"github.com/gruntwork-io/boilerplate/errors"
 )
 
+var textMimeTypePrefixes = []string{"text", "application/json"}
+
 // Return true if the path exists
 func PathExists(path string) bool {
 	_, err := os.Stat(path)
@@ -33,7 +35,12 @@ func IsTextFile(path string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	return strings.HasPrefix(mimeType, "text"), nil
+	for _, prefix := range textMimeTypePrefixes {
+		if strings.HasPrefix(mimeType, prefix) {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // Guess the mime type for the given file using a variety of heuristics. Under the hood, uses the Unix/Linux file
