@@ -1,0 +1,4 @@
+variables:
+  - name: EmptyVariable
+    type: string
+    default: ""
