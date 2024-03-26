@@ -33,6 +33,7 @@ func TestIsTextFile(t *testing.T) {
 		{"file-go.go", true},
 		{"file-java.java", true},
 		{"file-xml.xml", true},
+		{"file-hcl.hcl", true},
 	}
 
 	for _, testCase := range testCases {
