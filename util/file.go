@@ -2,13 +2,15 @@ package util
 
 import (
 	"fmt"
+	"github.com/gabriel-vasile/mimetype"
 	"github.com/gruntwork-io/boilerplate/errors"
-	"github.com/xyproto/binary"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
 )
+
+const textMimeType = "text/plain"
 
 // Return true if the path exists
 func PathExists(path string) bool {
@@ -22,13 +24,30 @@ func IsDir(path string) bool {
 	return err == nil && fileInfo.IsDir()
 }
 
-// IsTextFile - usage of xyproto/binary library to identify if the file is binary or text.
+// IsTextFile - usage of mimetype library to identify if the file is binary or text.
 func IsTextFile(path string) (bool, error) {
-	isBinary, err := binary.File(path)
-	if err != nil {
-		return false, err
+	if !PathExists(path) {
+		return false, NoSuchFile(path)
 	}
-	return !isBinary, nil
+	// consider empty file as binary file
+	fileInfo, err := os.Stat(path)
+	if err != nil {
+		return false, errors.WithStackTrace(err)
+	}
+	if fileInfo.Size() == 0 {
+		return false, nil
+	}
+
+	detectedMIME, err := mimetype.DetectFile(path)
+	if err != nil {
+		return false, errors.WithStackTrace(err)
+	}
+	for mtype := detectedMIME; mtype != nil; mtype = mtype.Parent() {
+		if mtype.Is(textMimeType) {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // Return true if the OS has the given command installed
