@@ -1,0 +1,1 @@
+package is_text_file

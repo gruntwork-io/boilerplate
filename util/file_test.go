@@ -30,13 +30,21 @@ func TestIsTextFile(t *testing.T) {
 		{"text-file.tf", true},
 		{"json-file.json", true},
 		{"yaml-file.yaml", true},
+		{"file-go.go", true},
+		{"file-java.java", true},
+		{"file-xml.xml", true},
+		{"file-hcl.hcl", true},
 	}
 
 	for _, testCase := range testCases {
-		actual, err := IsTextFile(fmt.Sprintf("../test-fixtures/util-test/is-text-file/%s", testCase.file))
+		testCase := testCase
+		t.Run(testCase.file, func(t *testing.T) {
+			t.Parallel()
+			actual, err := IsTextFile(fmt.Sprintf("../test-fixtures/util-test/is-text-file/%s", testCase.file))
 
-		assert.Nil(t, err)
-		assert.Equal(t, testCase.isText, actual, "Incorrect classification for %s", testCase.file)
+			assert.Nil(t, err)
+			assert.Equal(t, testCase.isText, actual, "Incorrect classification for %s", testCase.file)
+		})
 	}
 }
 

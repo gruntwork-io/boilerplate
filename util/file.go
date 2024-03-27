@@ -2,18 +2,15 @@ package util
 
 import (
 	"fmt"
-	"io"
+	"github.com/gabriel-vasile/mimetype"
+	"github.com/gruntwork-io/boilerplate/errors"
 	"io/ioutil"
-	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
-
-	"github.com/gruntwork-io/boilerplate/errors"
 )
 
-var textMimeTypePrefixes = []string{"text", "application/json"}
+const textMimeType = "text/plain"
 
 // Return true if the path exists
 func PathExists(path string) bool {
@@ -27,67 +24,30 @@ func IsDir(path string) bool {
 	return err == nil && fileInfo.IsDir()
 }
 
-// There is no way to know for sure if a file is text or binary. The best we can do is use various heuristics to guess.
-// The best set of heuristics is in the Unix/Linux file command, so we use that if it's available. Otherwise, we turn
-// to Go's HTTP package. For more info, see: http://stackoverflow.com/q/16760378/483528
+// IsTextFile - usage of mimetype library to identify if the file is binary or text.
 func IsTextFile(path string) (bool, error) {
-	mimeType, err := GuessMimeType(path)
-	if err != nil {
-		return false, err
+	if !PathExists(path) {
+		return false, NoSuchFile(path)
 	}
-	for _, prefix := range textMimeTypePrefixes {
-		if strings.HasPrefix(mimeType, prefix) {
+	// consider empty file as binary file
+	fileInfo, err := os.Stat(path)
+	if err != nil {
+		return false, errors.WithStackTrace(err)
+	}
+	if fileInfo.Size() == 0 {
+		return false, nil
+	}
+
+	detectedMIME, err := mimetype.DetectFile(path)
+	if err != nil {
+		return false, errors.WithStackTrace(err)
+	}
+	for mtype := detectedMIME; mtype != nil; mtype = mtype.Parent() {
+		if mtype.Is(textMimeType) {
 			return true, nil
 		}
 	}
 	return false, nil
-}
-
-// Guess the mime type for the given file using a variety of heuristics. Under the hood, uses the Unix/Linux file
-// command, if available, and Go's HTTP package otherwise.
-func GuessMimeType(path string) (string, error) {
-	if PathExists(path) {
-		if CommandInstalled("file") {
-			return guessMimeTypeUsingFileCommand(path)
-		} else {
-			return guessMimeTypeUsingGoHttpPackage(path)
-		}
-	} else {
-		return "", errors.WithStackTrace(NoSuchFile(path))
-	}
-}
-
-// Use the Unix/Linux "file" command to determine the mime type. This performs a number of checks and tends to do a
-// good job with most files.
-func guessMimeTypeUsingFileCommand(path string) (string, error) {
-	return RunCommandAndGetOutput("file", "-b", "--mime", path)
-}
-
-// Use a package built into Go for detecting the mime type of arbitrary content. In my experience, it doesn't work
-// very well.
-func guessMimeTypeUsingGoHttpPackage(path string) (string, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return "", errors.WithStackTrace(err)
-	}
-	defer file.Close()
-
-	first512Bytes := make([]byte, 512)
-	numBytesRead, err := file.Read(first512Bytes)
-	if err != nil && err != io.EOF {
-		return "", errors.WithStackTrace(err)
-	}
-
-	// If it's an empty file, there is no real distinction, so default to "false", as there is not much processing
-	// you can do on an empty file anyway
-	if numBytesRead == 0 {
-		return "", nil
-	}
-
-	// skip null values from read array
-	first512Bytes = first512Bytes[:numBytesRead]
-
-	return http.DetectContentType(first512Bytes), nil
 }
 
 // Return true if the OS has the given command installed
