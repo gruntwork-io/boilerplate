@@ -24,11 +24,11 @@ variables:
     default: us-east-1
 
   - name: TerraformVersion
-    description: Used by the tfenv tool to automatically select which version of Terraform to use.
+    description: Used by the mise tool to automatically select which version of Terraform to use.
     default: 1.0.11
 
   - name: TerragruntVersion
-    description: Used by the tgswitch tool to automatically select which version of Terragrunt to use.
+    description: Used by the mise tool to automatically select which version of Terragrunt to use.
     default: v0.36.1
 
 
