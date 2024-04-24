@@ -10,6 +10,9 @@ env: &env
     GO111MODULE: auto
     # Since we are running in docker, USER doesn't get set, so we need to set it explicitly
     USER: circleci
+    # Mise ASDF defaults to using main.tf to determine the terraform version to use, so we need to
+		# override this to use the .terraform-version file instead.
+		ASDF_HASHICORP_TERRAFORM_VERSION_FILE: .terraform-version
 
 defaults: &defaults
   resource_class: medium
