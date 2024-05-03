@@ -15,4 +15,4 @@
 {{ true | ternary "foo" "bar" }}
 
 {{ $myList := list 1 2 3 4 5 -}}
-{{ listSlice $myList 1 3 }}
+{{ sliceList $myList 1 3 }}
