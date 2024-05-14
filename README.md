@@ -183,6 +183,8 @@ The `boilerplate` binary supports the following options:
   folder without any variables). Default: `exit`.
 * `--disable-hooks`: If this flag is set, no hooks will execute.
 * `--disable-shell`: If this flag is set, no `shell` helpers will execute. They will instead return the text "replace-me".
+* `--disable-dependency-prompt` (optional): Do not prompt for confirmation to include dependencies. Has the same effect as
+  --non-interactive, without disabling variable prompts. Default: `false`.
 * `--help`: Show the help text and exit.
 * `--version`: Show the version and exit.
 
@@ -367,11 +369,11 @@ executing the current one. Each dependency may contain the following keys:
     - Defaults set on root variables.
     - Defaults set within the dependency boilerplate config.
 * `for_each`: If you set this to a list of values, `boilerplate` will loop over each value, and render this dependency
-  once for each value. This allows you to dynamically render a dependency multiple times based on user input. The 
+  once for each value. This allows you to dynamically render a dependency multiple times based on user input. The
   current value in the loop will be available as the variable `__each__`, available to both your Go templating and
-  in other `dependencies` params: e.g., you could reference `{{ .__each__ }}` in `output-folder` to render to each 
+  in other `dependencies` params: e.g., you could reference `{{ .__each__ }}` in `output-folder` to render to each
   iteration to a different folder.
-* `for_each_reference`: The name of another variable whose value should be used as the `for_each` value.  
+* `for_each_reference`: The name of another variable whose value should be used as the `for_each` value.
 
 See the [Dependencies](#dependencies) section for more info.
 
@@ -506,7 +508,7 @@ Note the following:
         # Skip this dependency if both .Foo and .Bar are set to true
         skip: "{{ and .Foo .Bar }}"
     ```
-* Looping over dependencies: You can render a dependency multiple times, dynamically, based on user input, via the 
+* Looping over dependencies: You can render a dependency multiple times, dynamically, based on user input, via the
   `for_each` or `for_each_reference` parameter. Example:
 
     ```yaml
@@ -518,7 +520,7 @@ Note the following:
           - dev
           - stage
           - prod
-    
+
     dependencies:
       - name: loop-dependency-example
         template-url: ../terraform
@@ -533,6 +535,9 @@ Note the following:
             # Use the environment name in the server name
             default: "example-{{ .__each__ }}"
     ```
+* Confirming dependency includes: By default in interactive mode, the user must confirm to include each dependency.
+  If `--non-interactive` is set, dependencies will be included automatically, so long as `skip` is false. If you'd
+  like to keep interactive mode enabled, but disable dependency confirmation, set `--disable-dependency-prompt`.
 
 #### Hooks
 
@@ -572,7 +577,7 @@ Note the following:
     ```yaml
     after:
       - command: some-command
-        dir: "{{ outputFolder }}/foo/bar"  
+        dir: "{{ outputFolder }}/foo/bar"
     ```
 * `skip` (Optional): Skip this hook if this condition, which can use Go templating syntax and
   boilerplate variables, evaluates to the string `true`. This is useful to conditionally enable or disable
@@ -658,21 +663,21 @@ you were using `boilerplate` to generate a Java project, your template folder co
 
 #### Validations
 
-Boilerplate allows you to specify a set of validations when defining a variable. When a user is prompted for a variable that has 
-validations defined, their input must pass all defined validations. If the user's input does not pass all validations, they'll be 
+Boilerplate allows you to specify a set of validations when defining a variable. When a user is prompted for a variable that has
+validations defined, their input must pass all defined validations. If the user's input does not pass all validations, they'll be
 presented with real-time feedback on exactly which rules their submission is failing. Once a user's submission passes all defined
 validations, Boilerplate will accept their submitted value.
 
-Here's an example prompt for a variable with validations that shows how invalid submissions are handled: 
+Here's an example prompt for a variable with validations that shows how invalid submissions are handled:
 
 ![Example Boilerplate real-time validation](./docs/bp-validation.png)
 
-Here's an example demonstating how to specify validations when defining your variables: 
+Here's an example demonstating how to specify validations when defining your variables:
 
 ```yaml
 variables:
   - name: CompanyName
-    description: Enter the name of your organization. 
+    description: Enter the name of your organization.
     default: ""
     type: string
     validations:
@@ -680,14 +685,14 @@ variables:
       - length-5-22
       - alphanumeric
 ```
-This `boilerplate.yml` snippet defines a variable, `CompanyName` which: 
+This `boilerplate.yml` snippet defines a variable, `CompanyName` which:
 * Must be supplied by the user. No empty or nil values will be accepted.
 * Must have a length between 5 and 22 characters
 * Must contain only alphanumeric characters (no special characters)
 
 **Currently supported validations**
 
-Boilerplate uses the [`go-ozzo/ozzo-validation` library](https://github.com/go-ozzo/ozzo-validation). The following validations are currently supported: 
+Boilerplate uses the [`go-ozzo/ozzo-validation` library](https://github.com/go-ozzo/ozzo-validation). The following validations are currently supported:
 
  - "required" - field cannot be empty
  - "length-{min-int}-{max-int}" - field must be between ${min-int} and ${max-int} characters in length
@@ -701,18 +706,18 @@ Boilerplate uses the [`go-ozzo/ozzo-validation` library](https://github.com/go-o
 #### Variable Ordering
 
 Boilerplate allows you to define the relative order in which a set of variables should be presented to the user when prompting
-for human input. 
+for human input.
 
-Here's an example demonstrating how to define the relative order of a set of variables: 
+Here's an example demonstrating how to define the relative order of a set of variables:
 
 ```yaml
-variables: 
+variables:
   - name: WebsiteURL
     order: 0
     description: Enter the URL to your homepage
- - name: ImagePath: 
+ - name: ImagePath:
    order: 1
-   description: Enter the full filepath to your logo image 
+   description: Enter the full filepath to your logo image
  - name: ProfileName
    order: 2
    description: Enter the display name for your user

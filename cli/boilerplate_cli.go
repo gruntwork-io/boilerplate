@@ -92,6 +92,10 @@ func CreateBoilerplateCli() *cli.App {
 			Name:  options.OptDisableShell,
 			Usage: "If this flag is set, no shell helpers will execute. They will instead return the text 'replace-me'.",
 		},
+		&cli.BoolFlag{
+			Name:  options.OptDisableDependencyPrompt,
+			Usage: fmt.Sprintf("Do not prompt for confirmation to include dependencies. Has the same effect as --%s, without disabling variable prompts.", options.OptNonInteractive),
+		},
 	}
 
 	// We pass JSON/YAML content to various CLI flags, such as --var, and this JSON/YAML content may contain commas or
