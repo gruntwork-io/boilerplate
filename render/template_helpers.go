@@ -56,7 +56,7 @@ func CreateTemplateHelpers(templatePath string, opts *options.BoilerplateOptions
 	sprigFuncs := sprig.FuncMap()
 	// We rename a few sprig functions that overlap with boilerplate implementations. See DEPRECATED note on boilerplate
 	// functions below for more details.
-	sprigFuncs["listSlice"] = sprigFuncs["slice"]
+	sprigFuncs["sliceList"] = sprigFuncs["slice"]
 	sprigFuncs["replaceAll"] = sprigFuncs["replace"]
 	sprigFuncs["keysUnordered"] = sprigFuncs["keys"]
 	sprigFuncs["readEnv"] = sprigFuncs["env"]
