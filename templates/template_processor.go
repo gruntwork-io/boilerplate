@@ -305,15 +305,16 @@ func cloneOptionsForDependency(
 	}
 
 	return &options.BoilerplateOptions{
-		TemplateUrl:     templateUrl,
-		TemplateFolder:  templateFolder,
-		OutputFolder:    outputFolder,
-		NonInteractive:  originalOpts.NonInteractive,
-		Vars:            vars,
-		OnMissingKey:    originalOpts.OnMissingKey,
-		OnMissingConfig: originalOpts.OnMissingConfig,
-		DisableHooks:    originalOpts.DisableHooks,
-		DisableShell:    originalOpts.DisableShell,
+		TemplateUrl:             templateUrl,
+		TemplateFolder:          templateFolder,
+		OutputFolder:            outputFolder,
+		NonInteractive:          originalOpts.NonInteractive,
+		Vars:                    vars,
+		OnMissingKey:            originalOpts.OnMissingKey,
+		OnMissingConfig:         originalOpts.OnMissingConfig,
+		DisableHooks:            originalOpts.DisableHooks,
+		DisableShell:            originalOpts.DisableShell,
+		DisableDependencyPrompt: originalOpts.DisableDependencyPrompt,
 	}, nil
 }
 
@@ -338,13 +339,14 @@ func cloneVariablesForDependency(
 		NonInteractive: true,
 		OnMissingKey:   options.ExitWithError,
 
-		TemplateUrl:     opts.TemplateUrl,
-		TemplateFolder:  opts.TemplateFolder,
-		OutputFolder:    opts.OutputFolder,
-		Vars:            opts.Vars,
-		OnMissingConfig: opts.OnMissingConfig,
-		DisableHooks:    opts.DisableHooks,
-		DisableShell:    opts.DisableShell,
+		TemplateUrl:             opts.TemplateUrl,
+		TemplateFolder:          opts.TemplateFolder,
+		OutputFolder:            opts.OutputFolder,
+		Vars:                    opts.Vars,
+		OnMissingConfig:         opts.OnMissingConfig,
+		DisableHooks:            opts.DisableHooks,
+		DisableShell:            opts.DisableShell,
+		DisableDependencyPrompt: opts.DisableDependencyPrompt,
 	}
 
 	// Start with the original variables. Note that it doesn't matter that originalVariables contains both CLI and
@@ -414,7 +416,7 @@ func cloneVariablesForDependency(
 }
 
 // Prompt the user to verify if the given dependency should be executed and return true if they confirm. If
-// options.NonInteractive is set to true, this function always returns true.
+// options.NonInteractive or options.DisableDependencyPrompt are set to true, this function always returns true.
 func shouldProcessDependency(dependency variables.Dependency, opts *options.BoilerplateOptions, variables map[string]interface{}) (bool, error) {
 	shouldSkip, err := shouldSkipDependency(dependency, opts, variables)
 	if err != nil {
@@ -424,7 +426,7 @@ func shouldProcessDependency(dependency variables.Dependency, opts *options.Boil
 		return false, nil
 	}
 
-	if opts.NonInteractive {
+	if opts.NonInteractive || opts.DisableDependencyPrompt {
 		return true, nil
 	}
 
