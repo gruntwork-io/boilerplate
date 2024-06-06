@@ -1,7 +1,7 @@
 env: &env
   environment:
     GRUNTWORK_INSTALLER_VERSION: v0.0.36
-    MODULE_CI_VERSION: v0.55.1
+    MODULE_CI_VERSION: v0.57.0
     MISE_VERSION: v2024.4.0
     TERRAFORM_VERSION: 1.0.11
     TERRAGRUNT_VERSION: v0.36.1
@@ -137,8 +137,8 @@ jobs:
   deploy:
     <<: *env
     macos:
-      xcode: 14.2.0
-    resource_class: macos.x86.medium.gen2
+      xcode: 15.3.0
+    resource_class: macos.m1.medium.gen1
     steps:
       - checkout
       - attach_workspace:
@@ -156,7 +156,7 @@ jobs:
           command: |
             export AC_PASSWORD=${MACOS_AC_PASSWORD}
             export AC_PROVIDER=${MACOS_AC_PROVIDER}
-            
+
             sign-binary --install-macos-sign-dependencies --os mac .gon_amd64.hcl
             sign-binary --os mac .gon_arm64.hcl
             echo "Done signing the binary"
