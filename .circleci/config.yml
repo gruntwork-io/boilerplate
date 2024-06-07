@@ -16,8 +16,8 @@ env: &env
 
 defaults: &defaults
   resource_class: medium
-  docker:
-    - image: cimg/python:3.10.2
+  machine:
+    - image: ubuntu-2204:2024.04.4
   <<: *env
 
 orbs:
