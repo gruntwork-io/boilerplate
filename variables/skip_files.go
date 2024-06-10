@@ -2,7 +2,7 @@ package variables
 
 import "github.com/gruntwork-io/boilerplate/errors"
 
-// A single skip_file entry, which is a file that (conditionally) should be excluded from the rendered output.
+// A single skip_file or skip_templating entry, which is a file that (conditionally) should be excluded from the rendered output.
 type SkipFile struct {
 	Path    string
 	NotPath string
@@ -27,15 +27,15 @@ func (skipFile SkipFile) MarshalYAML() (interface{}, error) {
 
 // Given a list of key:value pairs read from a Boilerplate YAML config file of the format:
 //
-// skip_files:
+// (skip_files|skip_templating):
 //   - path: <PATH>
 //     if: <SKIPIF>
 //   - path: <PATH>
 //   - not_path: <PATH>
 //
 // convert to a list of SkipFile structs.
-func UnmarshalSkipFilesFromBoilerplateConfigYaml(fields map[string]interface{}) ([]SkipFile, error) {
-	rawSkipFiles, err := unmarshalListOfFields(fields, "skip_files")
+func UnmarshalSkipFilesFromBoilerplateConfigYaml(fields map[string]interface{}, fieldName string) ([]SkipFile, error) {
+	rawSkipFiles, err := unmarshalListOfFields(fields, fieldName)
 	if err != nil || rawSkipFiles == nil {
 		return nil, err
 	}

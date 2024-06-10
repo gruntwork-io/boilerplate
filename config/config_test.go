@@ -711,6 +711,34 @@ func TestParseBoilerplateConfigWithSkipFiles(t *testing.T) {
 	assert.Equal(t, expected, actual)
 }
 
+// YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
+const configWithSkipTemplating = `skip_templating:
+  - path: "docs/README_ALWAYS_SKIP.md"
+  - path: "docs/README_MAYBE_SKIP.md"
+    if: "{{ .MaybeSkip }}"
+  - not_path: "docs/**/*"
+    if: "{{ .DocsOnly }}"
+`
+
+func TestParseBoilerplateConfigWithSkipTemplating(t *testing.T) {
+	t.Parallel()
+
+	actual, err := ParseBoilerplateConfig([]byte(configWithSkipTemplating))
+	require.NoError(t, err)
+
+	expected := &BoilerplateConfig{
+		Variables:    []variables.Variable{},
+		Dependencies: []variables.Dependency{},
+		Hooks:        variables.Hooks{},
+		SkipTemplating: []variables.SkipFile{
+			{Path: "docs/README_ALWAYS_SKIP.md", If: ""},
+			{Path: "docs/README_MAYBE_SKIP.md", If: "{{ .MaybeSkip }}"},
+			{NotPath: "docs/**/*", If: "{{ .DocsOnly }}"},
+		},
+	}
+	assert.Equal(t, expected, actual)
+}
+
 func TestMarshalBoilerplateConfig(t *testing.T) {
 	t.Parallel()
 
