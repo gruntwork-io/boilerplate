@@ -11,7 +11,7 @@ require (
 	github.com/google/go-jsonnet v0.18.0
 	github.com/gruntwork-io/go-commons v0.12.4
 	github.com/gruntwork-io/terratest v0.40.15
-	github.com/hashicorp/go-getter v1.7.4
+	github.com/hashicorp/go-getter v1.7.5
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-version v1.6.0
 	github.com/huandu/xstrings v1.3.3 // indirect
