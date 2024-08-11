@@ -56,6 +56,7 @@ func ParseCLIContext(cliContext *cli.Context) (*options.BoilerplateOptions, erro
 		Manifest:                cliContext.Bool(options.OptManifest) || cliContext.String(options.OptManifestFile) != "",
 		ManifestFile:            cliContext.String(options.OptManifestFile),
 		Parallelism:             cliContext.Int(options.OptParallelism),
+		Silent:                  cliContext.Bool(options.OptSilent),
 	}
 
 	if err := validateOptions(opts); err != nil {
