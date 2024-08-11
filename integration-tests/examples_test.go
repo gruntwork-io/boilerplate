@@ -138,6 +138,7 @@ func testExample(t *testing.T, templateFolder string, outputFolder string, varFi
 		"--non-interactive",
 		"--missing-key-action",
 		missingKeyAction,
+		"--silent",
 	}
 
 	// Special handling for the shell-disabled case, which we use to test that we can disable hooks and shell helpers

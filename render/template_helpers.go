@@ -255,7 +255,8 @@ func include(templatePath string, opts *options.BoilerplateOptions, path string,
 // Example:
 //
 // pathRelativeToTemplate("/foo/bar/template-file.txt, "../src/code.java")
-//   Returns: "/foo/src/code.java"
+//
+//	Returns: "/foo/src/code.java"
 func PathRelativeToTemplate(templatePath string, filePath string) string {
 	if path.IsAbs(filePath) {
 		return filePath
@@ -606,7 +607,7 @@ func keys(value interface{}) ([]string, error) {
 // string.
 func shell(templatePath string, opts *options.BoilerplateOptions, rawArgs ...string) (string, error) {
 	if opts.DisableShell {
-		util.Logger.Printf("Shell helpers are disabled. Will not execute shell command '%v'. Returning placeholder value '%s' instead.", rawArgs, SHELL_DISABLED_PLACEHOLDER)
+		opts.Logger.Info(fmt.Sprintf("Shell helpers are disabled. Will not execute shell command '%v'. Returning placeholder value '%s' instead.", rawArgs, SHELL_DISABLED_PLACEHOLDER))
 		return SHELL_DISABLED_PLACEHOLDER, nil
 	}
 

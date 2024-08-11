@@ -41,10 +41,10 @@ func (config *BoilerplateConfig) GetVariablesMap() map[string]variables.Variable
 
 // Implement the go-yaml unmarshal interface for BoilerplateConfig. We can't let go-yaml handle this itself because:
 //
-// 1. Variable is an interface
-// 2. We need to provide Defaults for optional fields, such as "type"
-// 3. We want to validate the variable as part of the unmarshalling process so we never have invalid Variable or
-//    Dependency classes floating around
+//  1. Variable is an interface
+//  2. We need to provide Defaults for optional fields, such as "type"
+//  3. We want to validate the variable as part of the unmarshalling process so we never have invalid Variable or
+//     Dependency classes floating around
 func (config *BoilerplateConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	var fields map[string]interface{}
 	if err := unmarshal(&fields); err != nil {
@@ -176,7 +176,7 @@ func LoadBoilerplateConfig(opts *options.BoilerplateOptions) (*BoilerplateConfig
 	configPath := BoilerplateConfigPath(opts.TemplateFolder)
 
 	if util.PathExists(configPath) {
-		util.Logger.Printf("Loading boilerplate config from %s", configPath)
+		opts.Logger.Info(fmt.Sprintf("Loading boilerplate config from %s", configPath))
 		bytes, err := ioutil.ReadFile(configPath)
 		if err != nil {
 			return nil, errors.WithStackTrace(err)
@@ -184,7 +184,7 @@ func LoadBoilerplateConfig(opts *options.BoilerplateOptions) (*BoilerplateConfig
 
 		return ParseBoilerplateConfig(bytes)
 	} else if opts.OnMissingConfig == options.Ignore {
-		util.Logger.Printf("Warning: boilerplate config file not found at %s. The %s flag is set, so ignoring. Note that no variables will be available while generating.", configPath, options.OptMissingConfigAction)
+		opts.Logger.Info(fmt.Sprintf("Warning: boilerplate config file not found at %s. The %s flag is set, so ignoring. Note that no variables will be available while generating.", configPath, options.OptMissingConfigAction))
 		return &BoilerplateConfig{}, nil
 	} else {
 		// If the template URL is similar to a git URL, surface in error message that there may be a misspelling/typo.

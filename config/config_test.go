@@ -2,7 +2,9 @@ package config
 
 import (
 	"bytes"
+	"io"
 	"io/ioutil"
+	"log/slog"
 	"path"
 	"path/filepath"
 	"reflect"
@@ -620,7 +622,10 @@ func TestParseBoilerplateConfigMultipleHooks(t *testing.T) {
 func TestLoadBoilerplateConfigFullConfig(t *testing.T) {
 	t.Parallel()
 
-	actual, err := LoadBoilerplateConfig(&options.BoilerplateOptions{TemplateFolder: "../test-fixtures/config-test/full-config"})
+	actual, err := LoadBoilerplateConfig(&options.BoilerplateOptions{
+		Logger:         slog.New(slog.NewJSONHandler(io.Discard, nil)),
+		TemplateFolder: "../test-fixtures/config-test/full-config",
+	})
 	expected := &BoilerplateConfig{
 		Partials: []string{"../templates/foo"},
 		Variables: []variables.Variable{
@@ -664,7 +669,10 @@ func TestLoadBoilerplateConfigNoConfigIgnore(t *testing.T) {
 	t.Parallel()
 
 	templateFolder := "../test-fixtures/config-test/no-config"
-	actual, err := LoadBoilerplateConfig(&options.BoilerplateOptions{TemplateFolder: templateFolder, OnMissingConfig: options.Ignore})
+	actual, err := LoadBoilerplateConfig(&options.BoilerplateOptions{
+		Logger:         slog.New(slog.NewJSONHandler(io.Discard, nil)),
+		TemplateFolder: templateFolder, OnMissingConfig: options.Ignore,
+	})
 	expected := &BoilerplateConfig{}
 
 	assert.Nil(t, err, "Unexpected error: %v", err)
@@ -674,7 +682,10 @@ func TestLoadBoilerplateConfigNoConfigIgnore(t *testing.T) {
 func TestLoadBoilerplateConfigInvalidConfig(t *testing.T) {
 	t.Parallel()
 
-	_, err := LoadBoilerplateConfig(&options.BoilerplateOptions{TemplateFolder: "../test-fixtures/config-test/invalid-config"})
+	_, err := LoadBoilerplateConfig(&options.BoilerplateOptions{
+		Logger:         slog.New(slog.NewJSONHandler(io.Discard, nil)),
+		TemplateFolder: "../test-fixtures/config-test/invalid-config",
+	})
 
 	assert.NotNil(t, err)
 

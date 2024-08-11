@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"io"
+	"log/slog"
 	"path/filepath"
 	"reflect"
 	"runtime"
@@ -473,7 +475,11 @@ func TestShellError(t *testing.T) {
 func TestShellDisabled(t *testing.T) {
 	t.Parallel()
 
-	output, err := shell(".", &options.BoilerplateOptions{NonInteractive: true, DisableShell: true}, "echo", "hi")
+	output, err := shell(".", &options.BoilerplateOptions{
+		Logger:         slog.New(slog.NewJSONHandler(io.Discard, nil)),
+		NonInteractive: true,
+		DisableShell:   true,
+	}, "echo", "hi")
 	assert.Nil(t, err, "Unexpected error: %v", err)
 	assert.Equal(t, SHELL_DISABLED_PLACEHOLDER, output)
 }
