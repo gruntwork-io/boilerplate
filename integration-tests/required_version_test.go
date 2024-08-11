@@ -69,6 +69,7 @@ func runRequiredVersionExample(t *testing.T, templateFolder string) error {
 		"--output-folder",
 		outputPath,
 		"--non-interactive",
+		"--silent",
 	}
 	return app.Run(args)
 }

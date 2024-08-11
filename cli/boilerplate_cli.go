@@ -2,6 +2,8 @@ package cli
 
 import (
 	"fmt"
+	"io"
+	"log/slog"
 
 	"github.com/gruntwork-io/go-commons/entrypoint"
 	"github.com/gruntwork-io/go-commons/version"
@@ -9,6 +11,7 @@ import (
 
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/templates"
+	"github.com/gruntwork-io/boilerplate/util/prefixer"
 	"github.com/gruntwork-io/boilerplate/variables"
 )
 
@@ -96,6 +99,10 @@ func CreateBoilerplateCli() *cli.App {
 			Name:  options.OptDisableDependencyPrompt,
 			Usage: fmt.Sprintf("Do not prompt for confirmation to include dependencies. Has the same effect as --%s, without disabling variable prompts.", options.OptNonInteractive),
 		},
+		&cli.BoolFlag{
+			Name:  options.OptSilent,
+			Usage: "Do not output any log messages",
+		},
 	}
 
 	// We pass JSON/YAML content to various CLI flags, such as --var, and this JSON/YAML content may contain commas or
@@ -118,6 +125,13 @@ func runApp(cliContext *cli.Context) error {
 	opts, err := options.ParseOptions(cliContext)
 	if err != nil {
 		return err
+	}
+
+	// Set up the default logger based on the --silent flag
+	if opts.Silent {
+		slog.SetDefault(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	} else {
+		slog.SetDefault(slog.New(prefixer.New()))
 	}
 
 	// The root boilerplate.yml is not itself a dependency, so we pass an empty Dependency.
