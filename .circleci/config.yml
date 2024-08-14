@@ -228,6 +228,9 @@ workflows:
             tags:
               only: /^v.*/
       - test_signing:
+          requires:
+            - test
+            - build
           context:
             - AWS__PHXDEVOPS__circle-ci-test
             - GITHUB__PAT__gruntwork-ci
