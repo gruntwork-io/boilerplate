@@ -15,9 +15,9 @@ env: &env
     ASDF_HASHICORP_TERRAFORM_VERSION_FILE: .terraform-version
 
 defaults: &defaults
-  resource_class: medium
-  docker:
-    - image: ubuntu-2204:2024.04.4
+  machine:
+    enabled: true
+    image: ubuntu-2004:2022.10.1
   <<: *env
 
 orbs:
