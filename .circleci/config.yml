@@ -39,8 +39,13 @@ version: 2.1
 jobs:
   build:
     <<: *defaults
+    macos:
+      xcode: 15.3.0
+    resource_class: macos.m1.medium.gen1
     steps:
       - checkout
+      - go/install:
+          version: "1.21.3"
       - run:
           <<: *install_gruntwork_utils
       - run: build-go-binaries --app-name boilerplate --dest-path bin --ld-flags "-X github.com/gruntwork-io/go-commons/version.Version=$CIRCLE_TAG"
