@@ -38,7 +38,7 @@ install_gruntwork_utils: &install_gruntwork_utils
 version: 2.1
 jobs:
   build:
-    <<: *defaults
+    <<: *env
     macos:
       xcode: 15.3.0
     resource_class: macos.m1.medium.gen1
