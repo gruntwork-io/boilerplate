@@ -170,9 +170,6 @@ jobs:
             unzip boilerplate_darwin_arm64.zip
             mv boilerplate_darwin_arm64 bin/
 
-            codesign -dv --verbose=4 ./bin/boilerplate_darwin_amd64
-            codesign -dv --verbose=4 ./bin/boilerplate_darwin_arm64
-
   deploy:
     <<: *env
     macos:
