@@ -217,6 +217,7 @@ workflows:
             tags:
               only: /^v.*/
           context:
+            - AWS__PHXDEVOPS__circle-ci-test
             - GITHUB__PAT__gruntwork-ci
       - test:
           context:
