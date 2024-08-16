@@ -242,7 +242,7 @@ workflows:
             branches:
               only: /.*/
             tags:
-              only: /.*/
+              ignore: /^v.*/
       - deploy:
           requires:
             - test
