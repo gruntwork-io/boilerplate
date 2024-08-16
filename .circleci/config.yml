@@ -1,7 +1,7 @@
 env: &env
   environment:
     GRUNTWORK_INSTALLER_VERSION: v0.0.36
-    MODULE_CI_VERSION: v0.55.1
+    MODULE_CI_VERSION: v0.57.0
     MISE_VERSION: v2024.4.0
     TERRAFORM_VERSION: 1.0.11
     TERRAGRUNT_VERSION: 0.36.1
@@ -17,7 +17,7 @@ env: &env
 defaults: &defaults
   resource_class: medium
   docker:
-    - image: cimg/python:3.10.2
+    - image: 087285199408.dkr.ecr.us-east-1.amazonaws.com/circle-ci-test-image-base:go1.21.9-tf1.5-tg58.8-pck1.8-ci56.0
   <<: *env
 
 orbs:
@@ -43,7 +43,7 @@ jobs:
       - checkout
       - run:
           <<: *install_gruntwork_utils
-      - run: PATH="/home/circleci/go/bin:$PATH" build-go-binaries --app-name boilerplate --dest-path bin --ld-flags "-X github.com/gruntwork-io/go-commons/version.Version=$CIRCLE_TAG"
+      - run: build-go-binaries --app-name boilerplate --dest-path bin --ld-flags "-X github.com/gruntwork-io/go-commons/version.Version=$CIRCLE_TAG"
       - run: echo "Done building assets"
       - persist_to_workspace:
           root: .
@@ -134,10 +134,46 @@ jobs:
           no_output_timeout: 45m
           command: |
             go test -tags windows -ldflags '-X github.com/gruntwork-io/go-commons/version.Version=v1.33.7' -v ./... -timeout 45m
+
+  test_signing:
+    description: Test signing binaries
+    <<: *env
+    macos:
+      xcode: 15.3.0
+    resource_class: macos.m1.medium.gen1
+    steps:
+      - checkout
+      - attach_workspace:
+          at: .
+      - go/install:
+          version: "1.18.10"
+      - run:
+          name: Install sign-binary-helpers
+          command: |
+            curl -Ls https://raw.githubusercontent.com/gruntwork-io/gruntwork-installer/master/bootstrap-gruntwork-installer.sh | bash /dev/stdin --version "${GRUNTWORK_INSTALLER_VERSION}"
+            gruntwork-install --module-name "gruntwork-module-circleci-helpers" --repo "https://github.com/gruntwork-io/terraform-aws-ci" --tag "${MODULE_CI_VERSION}"
+            gruntwork-install --module-name "sign-binary-helpers" --repo "https://github.com/gruntwork-io/terraform-aws-ci" --tag "${MODULE_CI_VERSION}"
+      - run:
+          name: Compile and sign the binaries
+          command: |
+            export AC_PASSWORD=${MACOS_AC_PASSWORD}
+            export AC_PROVIDER=${MACOS_AC_PROVIDER}
+            
+            sign-binary --os mac --install-macos-sign-dependencies .gon_amd64.hcl
+            sign-binary --os mac .gon_arm64.hcl
+            echo "Done signing the binary"
+
+            # Replace the files in bin. These are the same file names generated from .gon_amd64.hcl and .gon_arm64.hcl
+            unzip boilerplate_darwin_amd64.zip
+            mv boilerplate_darwin_amd64 bin/
+
+            unzip boilerplate_darwin_arm64.zip
+            mv boilerplate_darwin_arm64 bin/
+
   deploy:
     <<: *env
     macos:
-      xcode: 14.2.0
+      xcode: 15.3.0
     resource_class: macos.m1.medium.gen1
     steps:
       - checkout
@@ -178,6 +214,7 @@ workflows:
             tags:
               only: /^v.*/
           context:
+            - AWS__PHXDEVOPS__circle-ci-test
             - GITHUB__PAT__gruntwork-ci
       - test:
           context:
@@ -193,6 +230,19 @@ workflows:
           filters:
             tags:
               only: /^v.*/
+      - test_signing:
+          requires:
+            - test
+            - build
+          context:
+            - AWS__PHXDEVOPS__circle-ci-test
+            - GITHUB__PAT__gruntwork-ci
+            - APPLE__OSX__code-signing
+          filters:
+            branches:
+              only: /.*/
+            tags:
+              only: /.*/
       - deploy:
           requires:
             - test
