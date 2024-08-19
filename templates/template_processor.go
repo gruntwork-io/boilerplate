@@ -2,6 +2,8 @@ package templates
 
 import (
 	"fmt"
+	"io"
+	"log/slog"
 	"net/url"
 	"os"
 	"path"
@@ -16,6 +18,7 @@ import (
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/render"
 	"github.com/gruntwork-io/boilerplate/util"
+	"github.com/gruntwork-io/boilerplate/util/prefixer"
 	"github.com/gruntwork-io/boilerplate/variables"
 )
 
@@ -28,12 +31,20 @@ const eachVarName = "__each__"
 // dependent boilerplate templates, and then execute this template. Note that we pass in rootOptions so that template
 // dependencies can inspect properties of the root template.
 func ProcessTemplate(options, rootOpts *options.BoilerplateOptions, thisDep variables.Dependency) error {
+	if options.Silent {
+		options.Logger = slog.New(slog.NewTextHandler(io.Discard, nil))
+		rootOpts.Logger = options.Logger
+	} else if options.Logger == nil {
+		options.Logger = slog.New(prefixer.New())
+		rootOpts.Logger = options.Logger
+	}
+
 	// If TemplateFolder is already set, use that directly as it is a local template. Otherwise, download to a temporary
 	// working directory.
 	if options.TemplateFolder == "" {
-		workingDir, templateFolder, err := getter_helper.DownloadTemplatesToTemporaryFolder(options.TemplateUrl)
+		workingDir, templateFolder, err := getter_helper.DownloadTemplatesToTemporaryFolder(options.TemplateUrl, options.Logger)
 		defer func() {
-			util.Logger.Printf("Cleaning up working directory.")
+			options.Logger.Info(fmt.Sprintf("Cleaning up working directory."))
 			os.RemoveAll(workingDir)
 		}()
 		if err != nil {
@@ -129,7 +140,7 @@ func processHook(hook variables.Hook, opts *options.BoilerplateOptions, vars map
 		return err
 	}
 	if skip {
-		util.Logger.Printf("Skipping hook with command '%s'", hook.Command)
+		opts.Logger.Info(fmt.Sprintf("Skipping hook with command '%s'", hook.Command))
 		return nil
 	}
 
@@ -176,7 +187,7 @@ func processHook(hook variables.Hook, opts *options.BoilerplateOptions, vars map
 // Return true if the "skip" condition of this hook evaluates to true
 func shouldSkipHook(hook variables.Hook, opts *options.BoilerplateOptions, vars map[string]interface{}) (bool, error) {
 	if opts.DisableHooks {
-		util.Logger.Printf("Hooks are disabled")
+		opts.Logger.Info(fmt.Sprintf("Hooks are disabled"))
 		return true, nil
 	}
 
@@ -189,7 +200,7 @@ func shouldSkipHook(hook variables.Hook, opts *options.BoilerplateOptions, vars 
 		return false, err
 	}
 
-	util.Logger.Printf("Skip attribute for hook with command '%s' evaluated to '%s'", hook.Command, rendered)
+	opts.Logger.Info(fmt.Sprintf("Skip attribute for hook with command '%s' evaluated to '%s'", hook.Command, rendered))
 	return rendered == "true", nil
 }
 
@@ -229,7 +240,7 @@ func processDependency(
 				return err
 			}
 
-			util.Logger.Printf("Processing dependency %s, with template folder %s and output folder %s", dependency.Name, dependencyOptions.TemplateFolder, dependencyOptions.OutputFolder)
+			opts.Logger.Info(fmt.Sprintf("Processing dependency %s, with template folder %s and output folder %s", dependency.Name, dependencyOptions.TemplateFolder, dependencyOptions.OutputFolder))
 			return ProcessTemplate(dependencyOptions, opts, dependency)
 		}
 
@@ -256,7 +267,7 @@ func processDependency(
 			return doProcess(originalVars)
 		}
 	} else {
-		util.Logger.Printf("Skipping dependency %s", dependency.Name)
+		opts.Logger.Info(fmt.Sprintf("Skipping dependency %s", dependency.Name))
 		return nil
 	}
 }
@@ -347,6 +358,7 @@ func cloneVariablesForDependency(
 		DisableHooks:            opts.DisableHooks,
 		DisableShell:            opts.DisableShell,
 		DisableDependencyPrompt: opts.DisableDependencyPrompt,
+		Logger:                  opts.Logger,
 	}
 
 	// Start with the original variables. Note that it doesn't matter that originalVariables contains both CLI and
@@ -444,7 +456,7 @@ func shouldSkipDependency(dependency variables.Dependency, opts *options.Boilerp
 		return false, err
 	}
 
-	util.Logger.Printf("Skip attribute for dependency %s evaluated to '%s'", dependency.Name, rendered)
+	opts.Logger.Info(fmt.Sprintf("Skip attribute for dependency %s evaluated to '%s'", dependency.Name, rendered))
 	return rendered == "true", nil
 }
 
@@ -456,7 +468,7 @@ func processTemplateFolder(
 	variables map[string]interface{},
 	partials []string,
 ) error {
-	util.Logger.Printf("Processing templates in %s and outputting generated files to %s", opts.TemplateFolder, opts.OutputFolder)
+	opts.Logger.Info(fmt.Sprintf("Processing templates in %s and outputting generated files to %s", opts.TemplateFolder, opts.OutputFolder))
 
 	// Process and render skip files and engines before walking so we only do the rendering operation once.
 	processedSkipFiles, err := processSkipFiles(config.SkipFiles, opts, variables)
@@ -471,7 +483,7 @@ func processTemplateFolder(
 	return filepath.Walk(opts.TemplateFolder, func(path string, info os.FileInfo, err error) error {
 		path = filepath.ToSlash(path)
 		if shouldSkipPath(path, opts, processedSkipFiles) {
-			util.Logger.Printf("Skipping %s", path)
+			opts.Logger.Info(fmt.Sprintf("Skipping %s", path))
 			return nil
 		} else if util.IsDir(path) {
 			return createOutputDir(path, opts, variables)
@@ -510,7 +522,7 @@ func createOutputDir(dir string, opts *options.BoilerplateOptions, variables map
 		return err
 	}
 
-	util.Logger.Printf("Creating folder %s", destination)
+	opts.Logger.Info(fmt.Sprintf("Creating folder %s", destination))
 	return os.MkdirAll(destination, 0777)
 }
 
@@ -554,7 +566,7 @@ func copyFile(file string, opts *options.BoilerplateOptions, variables map[strin
 		return err
 	}
 
-	util.Logger.Printf("Copying %s to %s", file, destination)
+	opts.Logger.Info(fmt.Sprintf("Copying %s to %s", file, destination))
 	return util.CopyFile(file, destination)
 }
 

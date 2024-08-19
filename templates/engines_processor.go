@@ -29,7 +29,7 @@ func processEngines(
 		if err != nil {
 			return nil, err
 		}
-		debugLogForMatchedPaths(engine.Path, matchedPaths, "Engine", "Path")
+		debugLogForMatchedPaths(engine.Path, matchedPaths, "Engine", "Path", opts.Logger)
 
 		processedEngine := ProcessedEngine{
 			EvaluatedPaths: matchedPaths,

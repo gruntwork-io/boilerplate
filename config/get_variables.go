@@ -170,10 +170,10 @@ func getVariable(variable variables.Variable, opts *options.BoilerplateOptions) 
 	valueFromVars, valueSpecifiedInVars := getVariableFromVars(variable, opts)
 
 	if valueSpecifiedInVars {
-		util.Logger.Printf("Using value specified via command line options for variable '%s': %s", variable.FullName(), valueFromVars)
+		opts.Logger.Info(fmt.Sprintf("Using value specified via command line options for variable '%s': %s", variable.FullName(), valueFromVars))
 		return valueFromVars, nil
 	} else if opts.NonInteractive && variable.Default() != nil {
-		util.Logger.Printf("Using default value for variable '%s': %v", variable.FullName(), variable.Default())
+		opts.Logger.Info(fmt.Sprintf("Using default value for variable '%s': %v", variable.FullName(), variable.Default()))
 		return variable.Default(), nil
 	} else if opts.NonInteractive {
 		return nil, errors.WithStackTrace(MissingVariableWithNonInteractiveMode(variable.FullName()))
@@ -269,7 +269,7 @@ func getVariableFromUser(variable variables.Variable, opts *options.BoilerplateO
 
 	if value == "" {
 		// TODO: what if the user wanted an empty string instead of the default?
-		util.Logger.Printf("Using default value for variable '%s': %v", variable.FullName(), variable.Default())
+		opts.Logger.Info(fmt.Sprintf("Using default value for variable '%s': %v", variable.FullName(), variable.Default()))
 		return variable.Default(), nil
 	}
 

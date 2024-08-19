@@ -1,6 +1,8 @@
 package templates
 
 import (
+	"fmt"
+	"log/slog"
 	"path/filepath"
 
 	zglob "github.com/mattn/go-zglob"
@@ -8,7 +10,6 @@ import (
 	"github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/render"
-	"github.com/gruntwork-io/boilerplate/util"
 	"github.com/gruntwork-io/boilerplate/variables"
 )
 
@@ -35,7 +36,7 @@ func processSkipFiles(skipFiles []variables.SkipFile, opts *options.BoilerplateO
 			return nil, errors.WithStackTrace(err)
 		}
 		if skipFile.Path != "" {
-			debugLogForMatchedPaths(skipFile.Path, matchedPaths, "SkipFile", "Path")
+			debugLogForMatchedPaths(skipFile.Path, matchedPaths, "SkipFile", "Path", opts.Logger)
 		}
 
 		matchedNotPaths, err := renderGlobPath(opts, skipFile.NotPath, variables)
@@ -43,7 +44,7 @@ func processSkipFiles(skipFiles []variables.SkipFile, opts *options.BoilerplateO
 			return nil, errors.WithStackTrace(err)
 		}
 		if skipFile.NotPath != "" {
-			debugLogForMatchedPaths(skipFile.NotPath, matchedNotPaths, "SkipFile", "NotPath")
+			debugLogForMatchedPaths(skipFile.NotPath, matchedNotPaths, "SkipFile", "NotPath", opts.Logger)
 		}
 
 		renderedSkipIf, err := skipFileIfCondition(skipFile, opts, variables)
@@ -75,20 +76,20 @@ func skipFileIfCondition(skipFile variables.SkipFile, opts *options.BoilerplateO
 
 	// TODO: logger-debug - switch to debug
 	if skipFile.Path != "" {
-		util.Logger.Printf("If attribute for SkipFile Path %s evaluated to '%s'", skipFile.Path, rendered)
+		opts.Logger.Info(fmt.Sprintf("If attribute for SkipFile Path %s evaluated to '%s'", skipFile.Path, rendered))
 	} else if skipFile.NotPath != "" {
-		util.Logger.Printf("If attribute for SkipFile NotPath %s evaluated to '%s'", skipFile.NotPath, rendered)
+		opts.Logger.Info(fmt.Sprintf("If attribute for SkipFile NotPath %s evaluated to '%s'", skipFile.NotPath, rendered))
 	} else {
-		util.Logger.Printf("WARN: SkipFile has no path or not_path!")
+		opts.Logger.Info(fmt.Sprintf("WARN: SkipFile has no path or not_path!"))
 	}
 	return rendered == "true", nil
 }
 
-func debugLogForMatchedPaths(sourcePath string, paths []string, directiveName string, directiveAttribute string) {
+func debugLogForMatchedPaths(sourcePath string, paths []string, directiveName string, directiveAttribute string, logger *slog.Logger) {
 	// TODO: logger-debug - switch to debug
-	util.Logger.Printf("Following paths were picked up by %s attribute for %s (%s):", directiveAttribute, directiveName, sourcePath)
+	logger.Info(fmt.Sprintf("Following paths were picked up by %s attribute for %s (%s):", directiveAttribute, directiveName, sourcePath))
 	for _, path := range paths {
-		util.Logger.Printf("\t- %s", path)
+		logger.Info(fmt.Sprintf("\t- %s", path))
 	}
 }
 
@@ -108,7 +109,7 @@ func renderGlobPath(opts *options.BoilerplateOptions, path string, variables map
 	rawMatchedPaths, err := zglob.Glob(globPath)
 	if err != nil {
 		// TODO: logger-debug - switch to debug
-		util.Logger.Printf("ERROR: could not glob %s", globPath)
+		opts.Logger.Info(fmt.Sprintf("ERROR: could not glob %s", globPath))
 		return nil, errors.WithStackTrace(err)
 	}
 	// Canonicalize the matched paths prior to storage

@@ -28,6 +28,7 @@ func TestMisspelledTemplateURLErrorMessage(t *testing.T) {
 		"--output-folder",
 		outputFolder,
 		"--non-interactive",
+		"--silent",
 	}
 	runErr := app.Run(args)
 	assert.Error(t, runErr, errors.PrintErrorWithStackTrace(runErr))

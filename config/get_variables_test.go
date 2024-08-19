@@ -1,6 +1,8 @@
 package config
 
 import (
+	"io"
+	"log/slog"
 	"reflect"
 	"testing"
 
@@ -15,7 +17,7 @@ func TestGetVariableFromVarsEmptyVars(t *testing.T) {
 	t.Parallel()
 
 	variable := variables.NewStringVariable("foo")
-	opts := &options.BoilerplateOptions{}
+	opts := &options.BoilerplateOptions{Logger: slog.New(slog.NewJSONHandler(io.Discard, nil))}
 
 	_, containsValue := getVariableFromVars(variable, opts)
 	assert.False(t, containsValue)
@@ -108,6 +110,7 @@ func TestGetVariableInVarsNonInteractive(t *testing.T) {
 
 	variable := variables.NewStringVariable("foo")
 	opts := &options.BoilerplateOptions{
+		Logger:         slog.New(slog.NewJSONHandler(io.Discard, nil)),
 		NonInteractive: true,
 		Vars: map[string]interface{}{
 			"key1": "value1",
@@ -128,6 +131,7 @@ func TestGetVariableDefaultNonInteractive(t *testing.T) {
 
 	variable := variables.NewStringVariable("foo").WithDefault("bar")
 	opts := &options.BoilerplateOptions{
+		Logger:         slog.New(slog.NewJSONHandler(io.Discard, nil)),
 		NonInteractive: true,
 		Vars: map[string]interface{}{
 			"key1": "value1",
@@ -225,6 +229,7 @@ func TestGetVariablesMatchFromVarsAndDefaults(t *testing.T) {
 	t.Parallel()
 
 	opts := &options.BoilerplateOptions{
+		Logger:         slog.New(slog.NewJSONHandler(io.Discard, nil)),
 		NonInteractive: true,
 		Vars: map[string]interface{}{
 			"key1": "value1",

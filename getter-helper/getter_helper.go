@@ -3,6 +3,7 @@ package getter_helper
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -12,7 +13,6 @@ import (
 	urlhelper "github.com/hashicorp/go-getter/helper/url"
 
 	"github.com/gruntwork-io/boilerplate/errors"
-	"github.com/gruntwork-io/boilerplate/util"
 )
 
 var forcedRegexp = regexp.MustCompile(`^([A-Za-z0-9]+)::(.+)$`)
@@ -100,7 +100,7 @@ func NewGetterClient(src string, dst string) (*getter.Client, error) {
 // DownloadTemplatesToTemporaryFolder uses the go-getter library to fetch the templates from the configured URL to a
 // temporary folder and returns the path to that folder. If there is a subdir in the template URL, return the combined
 // path as well.
-func DownloadTemplatesToTemporaryFolder(templateUrl string) (string, string, error) {
+func DownloadTemplatesToTemporaryFolder(templateUrl string, logger *slog.Logger) (string, string, error) {
 	workingDir, err := getTempFolder()
 	if err != nil {
 		return workingDir, workingDir, errors.WithStackTrace(err)
@@ -109,7 +109,7 @@ func DownloadTemplatesToTemporaryFolder(templateUrl string) (string, string, err
 	// Always set a subdir path because go-getter can not clone into an existing dir.
 	cloneDir := filepath.Join(workingDir, "wd")
 
-	util.Logger.Printf("Downloading templates from %s to %s", templateUrl, workingDir)
+	logger.Info(fmt.Sprintf("Downloading templates from %s to %s", templateUrl, workingDir))
 
 	// If there is a subdir component, we download everything and combine the path at the end to return the working path
 	mainPath, subDir := getter.SourceDirSubdir(templateUrl)
