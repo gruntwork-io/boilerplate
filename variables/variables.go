@@ -433,6 +433,7 @@ func parseStringAsJsonMap(str string) (map[string]string, error) {
 // Given a map of key:value pairs read from a Boilerplate YAML config file of the format:
 //
 // variables:
+//
 //   - name: <NAME>
 //     description: <DESCRIPTION>
 //     type: <TYPE>
@@ -514,7 +515,7 @@ func UnmarshalVariableFromBoilerplateConfigYaml(fields map[string]interface{}) (
 	}
 	variable.options = options
 
-	validationRules, err := unmarshalValidationsField(fields, *name, variableType)
+	validationRules, err := unmarshalValidationsField(fields)
 	if err != nil {
 		return nil, err
 	}

@@ -408,7 +408,7 @@ See the [Hooks](#hooks) section for more info.
 #### Variables
 
 You must provide a value for every variable defined in `boilerplate.yml`, or project generation will fail. There are
-four ways to provide a value for a variable:
+five ways to provide a value for a variable:
 
 1. `--var` option(s) you pass in when calling boilerplate. Example:
    `boilerplate --var Title=Boilerplate --var ShowLogo=false`. To specify a complex type like a map or a list on the
@@ -437,6 +437,9 @@ four ways to provide a value for a variable:
    the user to provide a value. Note that the `--non-interactive` flag disables this functionality.
 1. Defaults defined in `boilerplate.yml`. The final fallback is the optional `default` that you can include as part of
    the variable definition in `boilerplate.yml`.
+1. An environment variable with the name `BOILERPLATE_<VARIABLE_NAME>`. For example, if you have a variable called
+   `Title`, you can set the value of this variable by setting the environment variable `BOILERPLATE_Title`. This is
+   useful for automation and CI/CD pipelines.
 
 Note that variables can reference other variables using Go templating syntax:
 

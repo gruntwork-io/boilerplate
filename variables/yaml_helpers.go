@@ -2,7 +2,7 @@ package variables
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -24,18 +24,18 @@ import (
 //
 // This method looks up the given fieldName in the map and unmarshals the data inside of it it into a map of the
 // key:value pairs.
-func unmarshalMapOfFields(fields map[string]interface{}, fieldName string) (map[string]interface{}, error) {
+func unmarshalMapOfFields(fields map[string]any, fieldName string) (map[string]interface{}, error) {
 	fieldAsYaml, containsField := fields[fieldName]
 	if !containsField || fieldAsYaml == nil {
 		return nil, nil
 	}
 
-	asYamlMap, isYamlMap := fieldAsYaml.(map[interface{}]interface{})
+	asYamlMap, isYamlMap := fieldAsYaml.(map[any]interface{})
 	if !isYamlMap {
-		return nil, errors.WithStackTrace(InvalidTypeForField{FieldName: fieldName, ExpectedType: "map[string]interface{}", ActualType: reflect.TypeOf(fieldAsYaml)})
+		return nil, errors.WithStackTrace(InvalidTypeForField{FieldName: fieldName, ExpectedType: "map[string]any", ActualType: reflect.TypeOf(fieldAsYaml)})
 	}
 
-	stringMap := map[string]interface{}{}
+	stringMap := map[string]any{}
 	for key, value := range asYamlMap {
 		if keyAsString, isString := key.(string); isString {
 			stringMap[keyAsString] = value
@@ -57,7 +57,7 @@ func unmarshalMapOfFields(fields map[string]interface{}, fieldName string) (map[
 //
 // This method looks up the given fieldName in the map and unmarshals the data inside of it it into a map of the
 // key:value pairs, where both the keys and values are strings.
-func unmarshalMapOfStrings(fields map[string]interface{}, fieldName string) (map[string]string, error) {
+func unmarshalMapOfStrings(fields map[string]any, fieldName string) (map[string]string, error) {
 	rawMap, err := unmarshalMapOfFields(fields, fieldName)
 	if err != nil {
 		return nil, err
@@ -84,14 +84,14 @@ func unmarshalMapOfStrings(fields map[string]interface{}, fieldName string) (map
 //
 // This method takes looks up the given fieldName in the map and unmarshals the data inside of it it into a list of
 // strings with the given values.
-func UnmarshalListOfStrings(fields map[string]interface{}, fieldName string) ([]string, error) {
+func UnmarshalListOfStrings(fields map[string]any, fieldName string) ([]string, error) {
 	fieldAsYaml, containsField := fields[fieldName]
 	if !containsField || fieldAsYaml == nil {
 		return nil, nil
 	}
 
 	switch asList := fieldAsYaml.(type) {
-	case []interface{}:
+	case []any:
 		listOfStrings := []string{}
 
 		for _, asYaml := range asList {
@@ -106,7 +106,7 @@ func UnmarshalListOfStrings(fields map[string]interface{}, fieldName string) ([]
 	case []string:
 		return asList, nil
 	default:
-		return nil, errors.WithStackTrace(InvalidTypeForField{FieldName: fieldName, ExpectedType: "[]interface{} or []string", ActualType: reflect.TypeOf(fieldAsYaml)})
+		return nil, errors.WithStackTrace(InvalidTypeForField{FieldName: fieldName, ExpectedType: "[]any or []string", ActualType: reflect.TypeOf(fieldAsYaml)})
 	}
 }
 
@@ -124,23 +124,23 @@ func UnmarshalListOfStrings(fields map[string]interface{}, fieldName string) ([]
 //
 // This method takes looks up the given fieldName in the map and unmarshals the data inside of it it into a list of
 // maps, where each map contains the set of key:value pairs
-func unmarshalListOfFields(fields map[string]interface{}, fieldName string) ([]map[string]interface{}, error) {
+func unmarshalListOfFields(fields map[string]any, fieldName string) ([]map[string]interface{}, error) {
 	fieldAsYaml, containsField := fields[fieldName]
 	if !containsField || fieldAsYaml == nil {
 		return nil, nil
 	}
 
-	asYamlList, isYamlList := fieldAsYaml.([]interface{})
+	asYamlList, isYamlList := fieldAsYaml.([]any)
 	if !isYamlList {
-		return nil, errors.WithStackTrace(InvalidTypeForField{FieldName: fieldName, ExpectedType: "[]interface{}", ActualType: reflect.TypeOf(fieldAsYaml)})
+		return nil, errors.WithStackTrace(InvalidTypeForField{FieldName: fieldName, ExpectedType: "[]any", ActualType: reflect.TypeOf(fieldAsYaml)})
 	}
 
-	listOfFields := []map[string]interface{}{}
+	listOfFields := []map[string]any{}
 
 	for _, asYaml := range asYamlList {
-		asYamlMap, isYamlMap := asYaml.(map[interface{}]interface{})
+		asYamlMap, isYamlMap := asYaml.(map[any]interface{})
 		if !isYamlMap {
-			return nil, errors.WithStackTrace(InvalidTypeForField{FieldName: fieldName, ExpectedType: "map[string]interface{}", ActualType: reflect.TypeOf(asYaml)})
+			return nil, errors.WithStackTrace(InvalidTypeForField{FieldName: fieldName, ExpectedType: "map[string]any", ActualType: reflect.TypeOf(asYaml)})
 		}
 
 		listOfFields = append(listOfFields, util.ToStringToGenericMap(asYamlMap))
@@ -160,7 +160,7 @@ func unmarshalListOfFields(fields map[string]interface{}, fieldName string) ([]m
 // strings. This is meant to be used to parse the options field of an Enum variable. If the given variableType is not
 // an Enum and options have been specified, or this variable is an Enum and options have not been specified, this
 // method will return an error.
-func unmarshalOptionsField(fields map[string]interface{}, context string, variableType BoilerplateType) ([]string, error) {
+func unmarshalOptionsField(fields map[string]any, context string, variableType BoilerplateType) ([]string, error) {
 	options, hasOptions := fields["options"]
 
 	if !hasOptions {
@@ -175,7 +175,7 @@ func unmarshalOptionsField(fields map[string]interface{}, context string, variab
 		return nil, errors.WithStackTrace(OptionsCanOnlyBeUsedWithEnum{Context: context, Type: variableType})
 	}
 
-	optionsAsList, isList := options.([]interface{})
+	optionsAsList, isList := options.([]any)
 	if !isList {
 		return nil, errors.WithStackTrace(InvalidTypeForField{FieldName: "options", ExpectedType: "List", ActualType: reflect.TypeOf(options), Context: context})
 	}
@@ -294,8 +294,8 @@ func ConvertValidationStringtoRules(ruleString string) ([]CustomValidationRule, 
 //
 // This method looks up the validations specified in the map and applies them to the specified fields so that users prompted for input
 // get real-time feedback on the validity of their entries
-func unmarshalValidationsField(fields map[string]interface{}, context string, variableType BoilerplateType) ([]CustomValidationRule, error) {
-	validations, _ := fields["validations"]
+func unmarshalValidationsField(fields map[string]any) ([]CustomValidationRule, error) {
+	validations := fields["validations"]
 
 	validationsAsString := fmt.Sprintf("%v", validations)
 
@@ -314,7 +314,7 @@ func unmarshalValidationsField(fields map[string]interface{}, context string, va
 // This method takes looks up the options key in the map and unmarshals the data inside of it it into a
 // BoilerplateType. If no type is specified, this method returns the default type (String). If an unrecognized type is
 // specified, this method returns an error.
-func unmarshalTypeField(fields map[string]interface{}, context string) (BoilerplateType, error) {
+func unmarshalTypeField(fields map[string]any, context string) (BoilerplateType, error) {
 	variableTypeAsString, err := unmarshalStringField(fields, "type", false, context)
 	if err != nil {
 		return BOILERPLATE_TYPE_DEFAULT, err
@@ -331,7 +331,7 @@ func unmarshalTypeField(fields map[string]interface{}, context string) (Boilerpl
 	return BOILERPLATE_TYPE_DEFAULT, nil
 }
 
-func unmarshalIntField(fields map[string]interface{}, fieldName string, requiredField bool, context string) (*int, error) {
+func unmarshalIntField(fields map[string]any, fieldName string, requiredField bool, context string) (*int, error) {
 	value, hasValue := fields[fieldName]
 	if !hasValue {
 		if requiredField {
@@ -354,7 +354,7 @@ func unmarshalIntField(fields map[string]interface{}, fieldName string, required
 //
 // This method takes looks up the given fieldName in the map and unmarshals the data inside of it into a string. If
 // requiredField is true and fieldName was not in the map, this method will return an error.
-func unmarshalStringField(fields map[string]interface{}, fieldName string, requiredField bool, context string) (*string, error) {
+func unmarshalStringField(fields map[string]any, fieldName string, requiredField bool, context string) (*string, error) {
 	value, hasValue := fields[fieldName]
 	if !hasValue {
 		if requiredField {
@@ -372,7 +372,7 @@ func unmarshalStringField(fields map[string]interface{}, fieldName string, requi
 }
 
 // UnmarshalString is the public convenience interface for unmarshalStringField.
-func UnmarshalString(fields map[string]interface{}, fieldName string, isRequiredField bool) (*string, error) {
+func UnmarshalString(fields map[string]any, fieldName string, isRequiredField bool) (*string, error) {
 	return unmarshalStringField(fields, fieldName, isRequiredField, "")
 }
 
@@ -382,7 +382,7 @@ func UnmarshalString(fields map[string]interface{}, fieldName string, isRequired
 //
 // This method takes looks up the given fieldName in the map and unmarshals the data inside of it into a bool. If
 // requiredField is true and fieldName was not in the map, this method will return an error.
-func unmarshalBooleanField(fields map[string]interface{}, fieldName string, requiredField bool, context string) (bool, error) {
+func unmarshalBooleanField(fields map[string]any, fieldName string, requiredField bool, context string) (bool, error) {
 	value, hasValue := fields[fieldName]
 	if !hasValue {
 		if requiredField {
@@ -399,10 +399,38 @@ func unmarshalBooleanField(fields map[string]interface{}, fieldName string, requ
 	}
 }
 
+// parseVariablesFromEnvironmentVariables parses variables from environment variables
+//
+// These variables are expected to be in the format:
+//
+//	BOILERPLATE_var_name=value
+func parseVariablesFromEnvironmentVariables() (map[string]any, error) {
+	vars := map[string]any{}
+
+	for _, envVar := range os.Environ() {
+		key, value, found := strings.Cut(envVar, "=")
+		if !found {
+			return vars, errors.WithStackTrace(InvalidVarSyntax(envVar))
+		}
+
+		if strings.HasPrefix(key, "BOILERPLATE_") {
+			key = strings.TrimPrefix(key, "BOILERPLATE_")
+			parsedValue, err := ParseYamlString(value)
+			if err != nil {
+				return vars, err
+			}
+
+			vars[key] = parsedValue
+		}
+	}
+
+	return vars, nil
+}
+
 // Parse a list of NAME=VALUE pairs passed in as command-line options into a map of variable names to variable values.
 // Along the way, each value is parsed as YAML.
-func parseVariablesFromKeyValuePairs(varsList []string) (map[string]interface{}, error) {
-	vars := map[string]interface{}{}
+func parseVariablesFromKeyValuePairs(varsList []string) (map[string]any, error) {
+	vars := map[string]any{}
 
 	for _, variable := range varsList {
 		key, value, found := strings.Cut(variable, "=")
@@ -426,8 +454,8 @@ func parseVariablesFromKeyValuePairs(varsList []string) (map[string]interface{},
 }
 
 // Parse a YAML string into a Go type
-func ParseYamlString(str string) (interface{}, error) {
-	var parsedValue interface{}
+func ParseYamlString(str string) (any, error) {
+	var parsedValue any
 
 	err := yaml.Unmarshal([]byte(str), &parsedValue)
 	if err != nil {
@@ -444,8 +472,8 @@ func ParseYamlString(str string) (interface{}, error) {
 
 // Parse a list of YAML files that define variables into a map from variable name to variable value. Along the way,
 // each value is parsed as YAML.
-func parseVariablesFromVarFiles(varFileList []string) (map[string]interface{}, error) {
-	vars := map[string]interface{}{}
+func parseVariablesFromVarFiles(varFileList []string) (map[string]any, error) {
+	vars := map[string]any{}
 
 	for _, varFile := range varFileList {
 		varsInFile, err := ParseVariablesFromVarFile(varFile)
@@ -460,18 +488,18 @@ func parseVariablesFromVarFiles(varFileList []string) (map[string]interface{}, e
 
 // Parse the variables in the given YAML file into a map of variable name to variable value. Along the way, each value
 // is parsed as YAML.
-func ParseVariablesFromVarFile(varFilePath string) (map[string]interface{}, error) {
-	bytes, err := ioutil.ReadFile(varFilePath)
+func ParseVariablesFromVarFile(varFilePath string) (map[string]any, error) {
+	bytes, err := os.ReadFile(varFilePath)
 	if err != nil {
-		return map[string]interface{}{}, errors.WithStackTrace(err)
+		return map[string]any{}, errors.WithStackTrace(err)
 	}
 	return parseVariablesFromVarFileContents(bytes)
 }
 
 // Parse the variables in the given YAML contents into a map of variable name to variable value. Along the way, each
 // value is parsed as YAML.
-func parseVariablesFromVarFileContents(varFileContents []byte) (map[string]interface{}, error) {
-	vars := make(map[string]interface{})
+func parseVariablesFromVarFileContents(varFileContents []byte) (map[string]any, error) {
+	vars := make(map[string]any)
 
 	if err := yaml.Unmarshal(varFileContents, &vars); err != nil {
 		return vars, err
@@ -482,7 +510,7 @@ func parseVariablesFromVarFileContents(varFileContents []byte) (map[string]inter
 		return nil, errors.WithStackTrace(err)
 	}
 
-	vars, ok := converted.(map[string]interface{})
+	vars, ok := converted.(map[string]any)
 	if !ok {
 		return nil, YAMLConversionErr{converted}
 	}
@@ -493,8 +521,13 @@ func parseVariablesFromVarFileContents(varFileContents []byte) (map[string]inter
 // Parse variables passed in via command line options, either as a list of NAME=VALUE variable pairs in varsList, or a
 // list of paths to YAML files that define NAME: VALUE pairs. Return a map of the NAME: VALUE pairs. Along the way,
 // each VALUE is parsed as YAML.
-func ParseVars(varsList []string, varFileList []string) (map[string]interface{}, error) {
-	variables := map[string]interface{}{}
+func ParseVars(varsList []string, varFileList []string) (map[string]any, error) {
+	variables := map[string]any{}
+
+	varsFromEnv, err := parseVariablesFromEnvironmentVariables()
+	if err != nil {
+		return variables, err
+	}
 
 	varsFromVarsList, err := parseVariablesFromKeyValuePairs(varsList)
 	if err != nil {
@@ -506,16 +539,16 @@ func ParseVars(varsList []string, varFileList []string) (map[string]interface{},
 		return variables, err
 	}
 
-	return util.MergeMaps(varsFromVarsList, varsFromVarFiles), nil
+	return util.MergeMaps(varsFromEnv, varsFromVarsList, varsFromVarFiles), nil
 }
 
-// convertYAMLToStringMap modifies an input with type map[interface{}]interface{} to map[string]interface{} so that it may be
+// convertYAMLToStringMap modifies an input with type map[any]interface{} to map[string]interface{} so that it may be
 // properly marshalled in to JSON.
 // See: https://github.com/go-yaml/yaml/issues/139
-func ConvertYAMLToStringMap(yamlMapOrList interface{}) (interface{}, error) {
+func ConvertYAMLToStringMap(yamlMapOrList any) (interface{}, error) {
 	switch mapOrList := yamlMapOrList.(type) {
-	case map[interface{}]interface{}:
-		outputMap := map[string]interface{}{}
+	case map[any]interface{}:
+		outputMap := map[string]any{}
 		for k, v := range mapOrList {
 			strK, ok := k.(string)
 			if !ok {
@@ -528,7 +561,7 @@ func ConvertYAMLToStringMap(yamlMapOrList interface{}) (interface{}, error) {
 			outputMap[strK] = res
 		}
 		return outputMap, nil
-	case []interface{}:
+	case []any:
 		for index, value := range mapOrList {
 			res, err := ConvertYAMLToStringMap(value)
 			if err != nil {
@@ -543,7 +576,7 @@ func ConvertYAMLToStringMap(yamlMapOrList interface{}) (interface{}, error) {
 // Custom error types
 
 type YAMLConversionErr struct {
-	Key interface{}
+	Key any
 }
 
 func (err YAMLConversionErr) Error() string {
@@ -563,7 +596,7 @@ func (err OptionsMissing) Error() string {
 }
 
 type InvalidVariableValue struct {
-	Value    interface{}
+	Value    any
 	Variable Variable
 }
 

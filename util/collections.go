@@ -3,8 +3,8 @@ package util
 import "fmt"
 
 // Merge all the maps into one. Sadly, Go has no generics, so this is only defined for string to interface maps.
-func MergeMaps(maps ...map[string]interface{}) map[string]interface{} {
-	out := map[string]interface{}{}
+func MergeMaps(maps ...map[string]any) map[string]any {
+	out := map[string]any{}
 
 	for _, currMap := range maps {
 		for key, value := range currMap {
@@ -27,7 +27,7 @@ func ListContains(needle string, haystack []string) bool {
 }
 
 // Convert a generic list to a list of strings
-func ToStringList(genericList []interface{}) []string {
+func ToStringList(genericList []any) []string {
 	stringList := []string{}
 
 	for _, value := range genericList {
@@ -38,7 +38,7 @@ func ToStringList(genericList []interface{}) []string {
 }
 
 // Convert a generic map to a map from string to string
-func ToStringMap(genericMap map[interface{}]interface{}) map[string]string {
+func ToStringMap(genericMap map[any]any) map[string]string {
 	stringMap := map[string]string{}
 
 	for key, value := range genericMap {
@@ -49,8 +49,8 @@ func ToStringMap(genericMap map[interface{}]interface{}) map[string]string {
 }
 
 // Convert a generic map to a map from string to interface
-func ToStringToGenericMap(genericMap map[interface{}]interface{}) map[string]interface{} {
-	stringToGenericMap := map[string]interface{}{}
+func ToStringToGenericMap(genericMap map[any]any) map[string]any {
+	stringToGenericMap := map[string]any{}
 
 	for key, value := range genericMap {
 		stringToGenericMap[ToString(key)] = value
@@ -60,6 +60,6 @@ func ToStringToGenericMap(genericMap map[interface{}]interface{}) map[string]int
 }
 
 // Convert a single value to its string representation
-func ToString(value interface{}) string {
+func ToString(value any) string {
 	return fmt.Sprintf("%v", value)
 }
