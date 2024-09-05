@@ -21,7 +21,7 @@ func TestEnvVarExample(t *testing.T) {
 	args := []string{
 		"boilerplate",
 		"--template-url",
-		"../examples/for-learning-and-testing/env-vars",
+		"../test-fixtures/env-vars",
 		"--output-folder",
 		tempdir,
 		"--non-interactive",
