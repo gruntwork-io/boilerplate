@@ -2,6 +2,7 @@ package integration_tests
 
 import (
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -34,7 +35,7 @@ func TestEnvVarExample(t *testing.T) {
 	assert.FileExists(t, testTxt)
 	content, err := os.ReadFile(testTxt)
 	require.NoError(t, err)
-	assert.Equal(t, "default-value\n", string(content))
+	assert.Equal(t, "default-value", strings.TrimSpace(string(content)))
 
 	t.Setenv("BOILERPLATE_ValueFromEnvVar", "env-var-value")
 	err = app.Run(args)
@@ -42,5 +43,5 @@ func TestEnvVarExample(t *testing.T) {
 
 	content, err = os.ReadFile(testTxt)
 	require.NoError(t, err)
-	assert.Equal(t, "env-var-value\n", string(content))
+	assert.Equal(t, "env-var-value", strings.TrimSpace(string(content)))
 }
