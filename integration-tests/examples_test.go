@@ -2,7 +2,6 @@ package integration_tests
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"runtime"
@@ -28,11 +27,11 @@ func TestExamples(t *testing.T) {
 	examplesExpectedOutputBasePath := "../test-fixtures/examples-expected-output"
 	examplesVarFilesBasePath := "../test-fixtures/examples-var-files"
 
-	outputBasePath, err := ioutil.TempDir("", "boilerplate-test-output")
+	outputBasePath, err := os.MkdirTemp("", "boilerplate-test-output")
 	require.NoError(t, err)
 	defer os.RemoveAll(outputBasePath)
 
-	examples, err := ioutil.ReadDir(examplesBasePath)
+	examples, err := os.ReadDir(examplesBasePath)
 	require.NoError(t, err)
 
 	for _, example := range examples {
@@ -74,11 +73,11 @@ func TestExamplesAsRemoteTemplate(t *testing.T) {
 	examplesExpectedOutputBasePath := "../test-fixtures/examples-expected-output"
 	examplesVarFilesBasePath := "../test-fixtures/examples-var-files"
 
-	outputBasePath, err := ioutil.TempDir("", "boilerplate-test-output")
+	outputBasePath, err := os.MkdirTemp("", "boilerplate-test-output")
 	require.NoError(t, err)
 	defer os.RemoveAll(outputBasePath)
 
-	examples, err := ioutil.ReadDir(examplesBasePath)
+	examples, err := os.ReadDir(examplesBasePath)
 	require.NoError(t, err)
 
 	// Insulate the following parallel tests in a group so that cleanup routines run after all tests are done.

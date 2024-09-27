@@ -1,0 +1,6 @@
+variables:
+  - name: ValueFromEnvVar
+    description: A value from an environment variable
+    type: string
+    default: default-value
+
