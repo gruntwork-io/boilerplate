@@ -6,7 +6,7 @@ env: &env
     TERRAFORM_VERSION: 1.0.11
     TERRAGRUNT_VERSION: 0.36.1
     PACKER_VERSION: NONE
-    GOLANG_VERSION: "1.18"
+    GOLANG_VERSION: "1.23"
     GO111MODULE: auto
     # Since we are running in docker, USER doesn't get set, so we need to set it explicitly
     USER: circleci
@@ -68,7 +68,7 @@ jobs:
               --go-version ${GOLANG_VERSION}
 
             go install github.com/jstemmer/go-junit-report@latest
-            go install golang.org/x/tools/cmd/goimports@v0.24.0
+            go install golang.org/x/tools/cmd/goimports@latest
 
             # Install OpenTofu: https://opentofu.org/docs/intro/install/deb/
             curl --proto '=https' --tlsv1.2 -fsSL https://get.opentofu.org/install-opentofu.sh -o install-opentofu.sh
