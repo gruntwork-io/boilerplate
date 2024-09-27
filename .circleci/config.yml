@@ -68,7 +68,7 @@ jobs:
               --go-version ${GOLANG_VERSION}
 
             go install github.com/jstemmer/go-junit-report@latest
-            go install golang.org/x/tools/cmd/goimports@latest
+            go install golang.org/x/tools/cmd/goimports@v0.24.0
 
             # Install OpenTofu: https://opentofu.org/docs/intro/install/deb/
             curl --proto '=https' --tlsv1.2 -fsSL https://get.opentofu.org/install-opentofu.sh -o install-opentofu.sh
