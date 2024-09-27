@@ -438,8 +438,8 @@ five ways to provide a value for a variable:
 1. Defaults defined in `boilerplate.yml`. The final fallback is the optional `default` that you can include as part of
    the variable definition in `boilerplate.yml`.
 1. An environment variable with the name `BOILERPLATE_<VARIABLE_NAME>`. For example, if you have a variable called
-   `Title`, you can set the value of this variable by setting the environment variable `BOILERPLATE_Title`. This is
-   useful for automation and CI/CD pipelines.
+   `Title`, you can set the value of this variable by setting the environment variable `BOILERPLATE_Title` (note the case
+   sensitivity). This is useful for automation and CI/CD pipelines.
 
 Note that variables can reference other variables using Go templating syntax:
 

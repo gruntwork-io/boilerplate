@@ -408,6 +408,10 @@ func parseVariablesFromEnvironmentVariables() (map[string]any, error) {
 	vars := map[string]any{}
 
 	for _, envVar := range os.Environ() {
+		if !strings.Contains(envVar, "BOILERPLATE_") {
+			continue
+		}
+
 		key, value, found := strings.Cut(envVar, "=")
 		if !found {
 			return vars, errors.WithStackTrace(InvalidVarSyntax(envVar))
