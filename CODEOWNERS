@@ -1,1 +1,5 @@
-* @brikis98 @hongil0316
+# GRUNTWORK CODEOWNERS FILE
+# Gruntwork sets the codeowner for its repositories to the machine user `gruntwork-codeowner`. 
+# We use an internal process for triaging all incoming issues and pull requests and that process will end up setting an assignee for any new issues.
+
+* @gruntwork-codeowner
