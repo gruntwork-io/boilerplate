@@ -169,7 +169,7 @@ The `boilerplate` binary supports the following options:
 
 * `--template-url URL` (required): Generate the project from the templates in `URL`. This can be a local path, or a
   [go-getter](https://github.com/hashicorp/go-getter) compatible URL for remote templates (e.g.,
-  `git@github.com:gruntwork-io/boilerplate.git//examples/for-learning-and-testing/include?ref=master`).
+  `git@github.com:gruntwork-io/boilerplate.git//examples/for-learning-and-testing/include?ref=main`).
 * `--output-folder` (required): Create the output files and folders in `FOLDER`.
 * `--non-interactive` (optional): Do not prompt for input variables. All variables must be set via `--var` and
   `--var-file` options instead.
@@ -211,7 +211,7 @@ boilerplate --template-url ~/templates --output-folder ~/output --var-file vars.
 Generate a project in ~/output from the templates in this repo's `include` example dir, using variables read from a file:
 
 ```
-boilerplate --template-url "git@github.com:gruntwork-io/boilerplate.git//examples/for-learning-and-testing/include?ref=master" --output-folder ~/output --var-file vars.yml
+boilerplate --template-url "git@github.com:gruntwork-io/boilerplate.git//examples/for-learning-and-testing/include?ref=main" --output-folder ~/output --var-file vars.yml
 ```
 
 
