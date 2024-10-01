@@ -18,7 +18,7 @@ variables:
 
   - name: RemoteBranch
     description: The branch of boilerplate repo to use when pulling down remote dependencies.
-    default: "master"
+    default: "main"
 
 dependencies:
   - name: docs

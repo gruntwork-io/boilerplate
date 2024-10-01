@@ -30,7 +30,7 @@ Generate a project in ~/output from the templates in ~/templates, using variable
 
 Generate a project in ~/output from the templates in this repo's include example dir, using variables read from a file:
 
-	boilerplate --template-url "git@github.com:gruntwork-io/boilerplate.git//examples/for-learning-and-testing/include?ref=master" --output-folder ~/output --var-file vars.yml
+	boilerplate --template-url "git@github.com:gruntwork-io/boilerplate.git//examples/for-learning-and-testing/include?ref=main" --output-folder ~/output --var-file vars.yml
 
 
 Options:
@@ -58,7 +58,7 @@ func CreateBoilerplateCli() *cli.App {
 	app.Flags = []cli.Flag{
 		&cli.StringFlag{
 			Name:  options.OptTemplateUrl,
-			Usage: "Generate the project from the templates in `URL`. This can be a local path, or a go-getter compatible URL for remote templates (e.g., `git@github.com:gruntwork-io/boilerplate.git//examples/for-learning-and-testing/include?ref=master`).",
+			Usage: "Generate the project from the templates in `URL`. This can be a local path, or a go-getter compatible URL for remote templates (e.g., `git@github.com:gruntwork-io/boilerplate.git//examples/for-learning-and-testing/include?ref=main`).",
 		},
 		&cli.StringFlag{
 			Name:  options.OptOutputFolder,
