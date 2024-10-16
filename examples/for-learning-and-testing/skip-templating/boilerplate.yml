@@ -1,0 +1,7 @@
+variables:
+  - name: VarVal
+    type: string
+    default: "val"
+
+skip_templating:
+  - path: "**/d.yml"
