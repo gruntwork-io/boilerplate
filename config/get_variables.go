@@ -203,7 +203,7 @@ func getVariableFromUser(variable variables.Variable, opts *options.BoilerplateO
 	value := ""
 	// Display rich prompts to the user, based on the type of variable we're asking for
 	switch variable.Type() {
-	case variables.String, variables.Int, variables.Float, variables.Bool:
+	case variables.String, variables.Int, variables.Float, variables.Bool, variables.List, variables.Map:
 		msg := fmt.Sprintf("Enter a value [type %s]", variable.Type())
 		if variable.Default() != nil {
 			msg = fmt.Sprintf("%s (default: %v)", msg, variable.Default())
@@ -229,6 +229,14 @@ func getVariableFromUser(variable variables.Variable, opts *options.BoilerplateO
 				log.Fatal("quit")
 			}
 			return value, err
+		}
+	default:
+		if variable.Default() == nil {
+			fmt.Println()
+			msg := fmt.Sprintf("Variable %s of type '%s' does not support manual input and has no default value.\n"+
+				"Please update the variable in the boilerplate.yml file to include a default value or provide a value via the command line using the --var option.",
+				pterm.Green(variable.FullName()), variable.Type())
+			log.Fatal(msg)
 		}
 	}
 
