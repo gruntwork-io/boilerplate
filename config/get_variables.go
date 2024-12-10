@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"sort"
-	"strconv"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/terminal"
@@ -15,7 +14,6 @@ import (
 	"github.com/gruntwork-io/boilerplate/util"
 	"github.com/gruntwork-io/boilerplate/variables"
 	"github.com/hashicorp/go-multierror"
-	"github.com/inancgumus/screen"
 	"github.com/pterm/pterm"
 )
 
@@ -195,9 +193,6 @@ func getVariableFromVars(variable variables.Variable, opts *options.BoilerplateO
 
 // Get the value for the given variable by prompting the user
 func getVariableFromUser(variable variables.Variable, opts *options.BoilerplateOptions, invalidEntries variables.InvalidEntries) (interface{}, error) {
-	// Start by clearing any previous contents
-	screen.Clear()
-
 	// Add a newline for legibility and padding
 	fmt.Println()
 
@@ -208,9 +203,13 @@ func getVariableFromUser(variable variables.Variable, opts *options.BoilerplateO
 	value := ""
 	// Display rich prompts to the user, based on the type of variable we're asking for
 	switch variable.Type() {
-	case variables.String:
+	case variables.String, variables.Int, variables.Float, variables.Bool:
+		msg := fmt.Sprintf("Enter a value [type %s]", variable.Type())
+		if variable.Default() != nil {
+			msg = fmt.Sprintf("%s (default: %v)", msg, variable.Default())
+		}
 		prompt := &survey.Input{
-			Message: fmt.Sprintf("Please enter %s", variable.FullName()),
+			Message: msg,
 		}
 		err := survey.AskOne(prompt, &value)
 		if err != nil {
@@ -255,6 +254,17 @@ func getVariableFromUser(variable variables.Variable, opts *options.BoilerplateO
 		}
 		m[customValidation.DescriptionText()] = val
 	}
+	// Validate that the type can be parsed
+	if _, err := variables.ConvertType(valueToValidate, variable); err != nil {
+		hasValidationErrs = true
+		msg := fmt.Sprintf("Value must be of type %s: %s", variable.Type(), err)
+		m[msg] = false
+	}
+	// Validate that the value is not empty if no default is provided
+	if value == "" && variable.Default() == nil {
+		hasValidationErrs = true
+		m["Value must be provided"] = false
+	}
 	if hasValidationErrs {
 		ie := variables.InvalidEntries{
 			Issues: []variables.ValidationIssue{
@@ -273,23 +283,12 @@ func getVariableFromUser(variable variables.Variable, opts *options.BoilerplateO
 		return variable.Default(), nil
 	}
 
-	// Clear the terminal of all previous text for legibility
-	util.ClearTerminal()
-
-	if variable.Type() == variables.String {
-		_, intErr := strconv.Atoi(value)
-		if intErr == nil {
-			value = fmt.Sprintf(`"%s"`, value)
-		}
-	}
-
-	return variables.ParseYamlString(value)
+	return value, nil
 }
 
 // RenderValidationErrors displays in user-legible format the exact validation errors
 // that the user's last submission generated
 func renderValidationErrors(val interface{}, m map[string]bool) {
-	util.ClearTerminal()
 	pterm.Warning.WithPrefix(pterm.Prefix{Text: "Invalid entry"}).Println(val)
 	for k, v := range m {
 		if v {
