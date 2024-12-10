@@ -30,6 +30,7 @@ require (
 require (
 	github.com/gabriel-vasile/mimetype v1.4.6
 	github.com/google/go-cmp v0.6.0
+	golang.org/x/exp v0.0.0-20241009180824-f66d83c29e7c
 )
 
 require (
@@ -112,7 +113,6 @@ require (
 	go.opentelemetry.io/otel/sdk v1.31.0 // indirect
 	go.opentelemetry.io/otel/sdk/metric v1.31.0 // indirect
 	go.opentelemetry.io/otel/trace v1.31.0 // indirect
-	golang.org/x/exp v0.0.0-20241009180824-f66d83c29e7c // indirect
 	golang.org/x/net v0.30.0 // indirect
 	golang.org/x/oauth2 v0.23.0 // indirect
 	golang.org/x/sync v0.8.0 // indirect

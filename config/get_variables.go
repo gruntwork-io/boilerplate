@@ -200,8 +200,39 @@ func getVariableFromUser(variable variables.Variable, opts *options.BoilerplateO
 	// with their input
 	renderVariablePrompts(variable, invalidEntries)
 
-	value := ""
+	value, err := getUserInput(variable)
+	if err != nil {
+		return value, err
+	}
+	// If any of the variable's validation rules are not satisfied by the user's submission,
+	// store the validation errors in a map. We'll then recursively call get_variable_from_user
+	// again, this time passing in the validation errors map, so that we can render to the terminal
+	// the exact issues with each submission
+	validationMap, hasValidationErrs := validateUserInput(value, variable)
+	if hasValidationErrs {
+		ie := variables.InvalidEntries{
+			Issues: []variables.ValidationIssue{
+				{
+					Value:         value,
+					ValidationMap: validationMap,
+				},
+			},
+		}
+		return getVariableFromUser(variable, opts, ie)
+	}
+
+	if value == "" {
+		// TODO: what if the user wanted an empty string instead of the default?
+		util.Logger.Printf("Using default value for variable '%s': %v", variable.FullName(), variable.Default())
+		return variable.Default(), nil
+	}
+
+	return value, nil
+}
+
+func getUserInput(variable variables.Variable) (string, error) {
 	// Display rich prompts to the user, based on the type of variable we're asking for
+	value := ""
 	switch variable.Type() {
 	case variables.String, variables.Int, variables.Float, variables.Bool, variables.List, variables.Map:
 		msg := fmt.Sprintf("Enter a value [type %s]", variable.Type())
@@ -239,17 +270,17 @@ func getVariableFromUser(variable variables.Variable, opts *options.BoilerplateO
 			log.Fatal(msg)
 		}
 	}
+	return value, nil
+}
 
+func validateUserInput(value string, variable variables.Variable) (map[string]bool, bool) {
 	var valueToValidate interface{}
 	if value == "" {
 		valueToValidate = variable.Default()
 	} else {
 		valueToValidate = value
 	}
-	// If any of the variable's validation rules are not satisfied by the user's submission,
-	// store the validation errors in a map. We'll then recursively call get_variable_from_user
-	// again, this time passing in the validation errors map, so that we can render to the terminal
-	// the exact issues with each submission
+
 	m := make(map[string]bool)
 	hasValidationErrs := false
 	for _, customValidation := range variable.Validations() {
@@ -273,25 +304,7 @@ func getVariableFromUser(variable variables.Variable, opts *options.BoilerplateO
 		hasValidationErrs = true
 		m["Value must be provided"] = false
 	}
-	if hasValidationErrs {
-		ie := variables.InvalidEntries{
-			Issues: []variables.ValidationIssue{
-				{
-					Value:         value,
-					ValidationMap: m,
-				},
-			},
-		}
-		return getVariableFromUser(variable, opts, ie)
-	}
-
-	if value == "" {
-		// TODO: what if the user wanted an empty string instead of the default?
-		util.Logger.Printf("Using default value for variable '%s': %v", variable.FullName(), variable.Default())
-		return variable.Default(), nil
-	}
-
-	return value, nil
+	return m, hasValidationErrs
 }
 
 // RenderValidationErrors displays in user-legible format the exact validation errors
