@@ -4,6 +4,8 @@ import (
 	"reflect"
 	"testing"
 
+	"golang.org/x/exp/maps"
+
 	"github.com/stretchr/testify/assert"
 
 	"github.com/gruntwork-io/boilerplate/errors"
@@ -261,4 +263,33 @@ func TestGetVariablesMatchFromVarsAndDefaults(t *testing.T) {
 
 	assert.Nil(t, err)
 	assert.Equal(t, expected, actual)
+}
+
+func TestValidateUserInput(t *testing.T) {
+	t.Parallel()
+
+	// An empty variable with no default value should fail validation
+	v := variables.NewStringVariable("foo")
+	m, hasValidationErrs := validateUserInput("", v)
+	assert.True(t, hasValidationErrs)
+	assert.Equal(t, map[string]bool{"Value must be provided": false}, m)
+
+	// An empty variable with a default value should pass validation
+	v = variables.NewStringVariable("foo").WithDefault("bar")
+	m, hasValidationErrs = validateUserInput("", v)
+	assert.False(t, hasValidationErrs)
+	assert.Empty(t, m)
+
+	// A non-empty variable should pass validation
+	v = variables.NewStringVariable("foo")
+	m, hasValidationErrs = validateUserInput("bar", v)
+	assert.False(t, hasValidationErrs)
+	assert.Empty(t, m)
+
+	// A variable that cannot be parsed should fail validation
+	v = variables.NewIntVariable("foo")
+	m, hasValidationErrs = validateUserInput("bar", v)
+	assert.True(t, hasValidationErrs)
+	key := maps.Keys(m)[0]
+	assert.Contains(t, key, "Value must be of type int")
 }
