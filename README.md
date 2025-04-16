@@ -555,32 +555,35 @@ Note the following:
   to run the command (optional). Example:
 
     ```yaml
-    before:
-      - command: echo
-        args:
-          - Hello
-          - World
-        env:
-          FOO: BAR
-        dir: "/foo/bar"
+    hooks:
+       before:
+         - command: echo
+           args:
+             - Hello
+             - World
+           env:
+             FOO: BAR
+           dir: "/foo/bar"
     ```
 * You can use Go templating syntax in `command`, `args`, `env`, and `dir`. For example, you can pass Boilerplate
   variables to your scripts as follows:
 
     ```yaml
-    before:
-      - command: foo.sh
-        args:
-          - {{ .SomeVariable }}
-          - {{ .AnotherVariable }}
+    hooks:
+       before:
+         - command: foo.sh
+           args:
+             - {{ .SomeVariable }}
+             - {{ .AnotherVariable }}
     ```
 * By default, Boilerplate runs your `command` with the working directory set to the `--template-url` option. You can
   override this with the `dir` parameter. For example, here is how you can set it to a sub-folder of the output folder:
 
     ```yaml
-    after:
-      - command: some-command
-        dir: "{{ outputFolder }}/foo/bar"
+    hooks:
+       after:
+         - command: some-command
+           dir: "{{ outputFolder }}/foo/bar"
     ```
 * `skip` (Optional): Skip this hook if this condition, which can use Go templating syntax and
   boilerplate variables, evaluates to the string `true`. This is useful to conditionally enable or disable
