@@ -1,0 +1,26 @@
+variables:
+  - name: AwsRegion
+    description: Into which region should the VPC be deployed?
+    type: enum
+    default: eu-west-1
+    options:
+      - us-east-1
+      - us-east-2
+      - us-west-1
+      - eu-west-1
+      - ap-southeast-1
+
+  - name: VpcName
+    description: What should the VPC be called?
+    type: string
+    default: my-vpc
+
+  - name: CidrBlock
+    description: What should the CIDR block be for the VPC?
+    type: string
+    default: 10.0.0.0/16
+
+  - name: NumNatGateways
+    description: How many NAT Gateways should be deployed in the VPC?
+    type: int
+    default: 1
