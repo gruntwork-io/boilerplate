@@ -1,8 +1,6 @@
 module github.com/gruntwork-io/boilerplate
 
-go 1.23.0
-
-toolchain go1.24.2
+go 1.24.4
 
 require (
 	github.com/AlecAivazis/survey/v2 v2.3.7
