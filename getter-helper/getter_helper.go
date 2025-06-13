@@ -109,7 +109,7 @@ func DownloadTemplatesToTemporaryFolder(templateUrl string) (string, string, err
 	// Always set a subdir path because go-getter can not clone into an existing dir.
 	cloneDir := filepath.Join(workingDir, "wd")
 
-	util.Logger.Printf("Downloading templates from %s to %s", templateUrl, workingDir)
+	util.Logger.Printf("Downloading templates to %s", workingDir)
 
 	// If there is a subdir component, we download everything and combine the path at the end to return the working path
 	mainPath, subDir := getter.SourceDirSubdir(templateUrl)
