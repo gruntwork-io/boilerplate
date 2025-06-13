@@ -4,3 +4,6 @@ vendor
 .DS_Store
 *.iml
 boilerplate
+
+# Runbook-frontend
+*node_modules
