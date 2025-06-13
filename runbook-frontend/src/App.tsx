@@ -1,7 +1,7 @@
 import './App.css'
 
 import React, { useState, useEffect } from 'react'
-import Form from '@rjsf/daisyui';
+import Form from '@rjsf/core';
 import validator from '@rjsf/validator-ajv8';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faFolder, faFile } from '@fortawesome/free-solid-svg-icons'
