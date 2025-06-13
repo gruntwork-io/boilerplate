@@ -86,9 +86,9 @@ func setupRoutes(e *echo.Echo, schema interface{}, opts *options.BoilerplateOpti
 }
 
 func getJsonSchema(opts *options.BoilerplateOptions) (any, error) {
-	// TODO: Implement actual schema generation based on template variables
-	schema := map[string]any{
-		"hello": "world",
+	schema, err := templates.GetJsonSchema(opts)
+	if err != nil {
+		return nil, err
 	}
 	return schema, nil
 }

@@ -47,6 +47,29 @@ type ValidationIssue struct {
 	ValidationMap map[string]bool
 }
 
+// Convert Golang boilerplate types to strings we can output in JSON file
+func (boilerplateType BoilerplateType) JsonSchemaType() string {
+	switch boilerplateType {
+	case String:
+		return "string"
+	case Int:
+		return "integer"
+	case Float:
+		return "number"
+	case Bool:
+		return "boolean"
+	case List:
+		return "array"
+	case Map:
+		return "object"
+	case Enum:
+		return "string"
+	// TODO: this should probably be an error instead
+	default:
+		return "string"
+	}
+}
+
 // Custom error types
 
 type InvalidBoilerplateType string

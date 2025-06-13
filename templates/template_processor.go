@@ -6,6 +6,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/gruntwork-io/go-commons/collections"
@@ -662,4 +663,98 @@ func pathInAnySkipNotPath(canonicalPath string, skipFileList []ProcessedSkipFile
 		}
 	}
 	return false
+}
+
+// Get the JSON schema for the given boilerplate.yml file
+// TODO: This function was blindly copy/pasted from Jim's implementation; double-check the logic and edge cases here.
+func GetJsonSchema(options *options.BoilerplateOptions) (map[string]interface{}, error) {
+	// If TemplateFolder is already set, use that directly as it is a local template. Otherwise, download to a temporary
+	// working directory.
+	if options.TemplateFolder == "" {
+		workingDir, templateFolder, err := getter_helper.DownloadTemplatesToTemporaryFolder(options.TemplateUrl)
+		defer func() {
+			util.Logger.Printf("Cleaning up working directory.")
+			os.RemoveAll(workingDir)
+		}()
+		if err != nil {
+			return nil, err
+		}
+
+		// Set the TemplateFolder of the options to the download dir
+		options.TemplateFolder = templateFolder
+	}
+
+	boilerplateConfig, err := config.LoadBoilerplateConfig(options)
+	if err != nil {
+		return nil, err
+	}
+	if err := config.EnforceRequiredVersion(boilerplateConfig); err != nil {
+		return nil, err
+	}
+
+	rootSchema, err := ConvertBoilerplateTemplateToJsonSchemaProps(boilerplateConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	depSchemas := []map[string]interface{}{rootSchema}
+	for _, dep := range boilerplateConfig.Dependencies {
+		depOptions, err := cloneOptionsForDependency(dep, options, nil, nil)
+		if err != nil {
+			return nil, err
+		}
+		depSchema, err := GetJsonSchema(depOptions)
+		depSchemas = append(depSchemas, depSchema)
+	}
+
+	props := util.MergeMaps(depSchemas...)
+
+	return map[string]interface{}{
+		"title": "Inputs",
+		"type":  "object",
+		//"required": []string{"title"}, TODO: all these props should be required? Or all have defaults?
+		"properties": props,
+	}, nil
+}
+
+func ConvertBoilerplateTemplateToJsonSchemaProps(cfg *config.BoilerplateConfig) (map[string]interface{}, error) {
+	schema := map[string]interface{}{}
+
+	for _, variable := range cfg.Variables {
+		varType := variable.Type().JsonSchemaType()
+
+		props := map[string]interface{}{
+			"title":       titleize(variable.Name()),
+			"description": variable.Description(),
+			"type":        varType,
+			"default":     variable.Default(),
+		}
+
+		if varType == "array" {
+			props["items"] = map[string]interface{}{
+				"type": "string",
+			}
+		}
+
+		if variable.Type() == variables.Enum {
+			props["enum"] = variable.Options()
+		}
+
+		schema[variable.Name()] = props
+	}
+
+	return schema, nil
+}
+
+var capitalLetters = regexp.MustCompile(`([A-Z])`)
+
+// Based on the Rails humanize function: https://apidock.com/rails/v5.2.3/String/titleize
+// Capitalizes all the words and replaces some characters in the string to create a nicer looking title. titleize is
+// meant for creating pretty output.
+func titleize(str string) string {
+	noUnderscores := strings.ReplaceAll(str, "_", " ")
+	noDashes := strings.ReplaceAll(noUnderscores, "-", " ")
+	// TODO: this is a hacky implementation that doesn't convert CamelCase properly. E.g., FooBAR will become Foo B A R.
+	camelCaseToStartCase := capitalLetters.ReplaceAllString(noDashes, " $1")
+	return strings.Title(camelCaseToStartCase)
 }
