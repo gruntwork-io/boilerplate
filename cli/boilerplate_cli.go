@@ -8,6 +8,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/gruntwork-io/boilerplate/options"
+	"github.com/gruntwork-io/boilerplate/runbook"
 	"github.com/gruntwork-io/boilerplate/templates"
 	"github.com/gruntwork-io/boilerplate/variables"
 )
@@ -124,8 +125,18 @@ func runApp(cliContext *cli.Context) error {
 		return err
 	}
 
+	// If runbook mode is enabled, launch the web-based variable collection interface
+	if opts.Runbook {
+		return launchRunbook(opts)
+	}
+
 	// The root boilerplate.yml is not itself a dependency, so we pass an empty Dependency.
 	emptyDep := variables.Dependency{}
 
 	return templates.ProcessTemplate(opts, opts, emptyDep)
+}
+
+// launchRunbook starts a web server that provides a form-based interface for collecting variables
+func launchRunbook(opts *options.BoilerplateOptions) error {
+	return runbook.LaunchRunbook(opts)
 }
