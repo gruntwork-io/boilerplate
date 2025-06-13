@@ -97,8 +97,8 @@ func CreateBoilerplateCli() *cli.App {
 			Usage: fmt.Sprintf("Do not prompt for confirmation to include dependencies. Has the same effect as --%s, without disabling variable prompts.", options.OptNonInteractive),
 		},
 		&cli.BoolFlag{
-			Name:  options.OptWeb,
-			Usage: "Launch interactive web interface for interacting with boilerplate templates.",
+			Name:  options.OptRunbook,
+			Usage: "Launch a web-based runbook to interact with boilerplate templates.",
 		},
 	}
 
