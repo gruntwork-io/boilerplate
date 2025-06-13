@@ -6,4 +6,5 @@ vendor
 boilerplate
 
 # Runbook-frontend
-*node_modules
+runbook-frontend/node_modules
+runbook-frontend/dist
