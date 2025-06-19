@@ -65,8 +65,7 @@ func setupRoutes(e *echo.Echo, schema interface{}, opts *options.BoilerplateOpti
 	e.GET("/form", func(c echo.Context) error {
 		return c.JSON(200, schema)
 	})
-	e.GET("/render", func(c echo.Context) error {
-
+	e.POST("/render", func(c echo.Context) error {
 		// The root boilerplate.yml is not itself a dependency, so we pass an empty Dependency.Add commentMore actions
 		emptyDep := variables.Dependency{}
 
