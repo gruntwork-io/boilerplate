@@ -19,10 +19,11 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [schema, setSchema] = useState({});
-  // const [formValues, setFormValues] = useState({});
+  const [formValues, setFormValues] = useState({});
   // const [selectedFile, setSelectedFile] = useState<FileInfo | null>(null);
   // const [selectedFileContents, setSelectedFileContents] = useState("");
 
+  // Define a helpful wrapper function to handle async actions to standardize error handling and loading states
   const doAsyncAction = async(action: () => Promise<void>) => {
     try {
       setLoading(true);
@@ -63,7 +64,7 @@ function App() {
           <Form schema={schema}
                 validator={validator}
                 // uiSchema={uiSchema}
-                // formData={formValues}
+                formData={formValues}
                 // onSubmit={renderFiles}
                 // onError={log("errors")} 
                 />

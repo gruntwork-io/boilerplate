@@ -1,42 +1,175 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
-}
+@import "tailwindcss";
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
-}
-
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
+@layer components {
+    /* Form Container */
+    .rjsf {
+      @apply max-w-2xl mx-auto p-8 bg-white;
+    }
+  
+    /* Fieldset and Legend */
+    .rjsf fieldset {
+      @apply border-0 p-0 m-0;
+    }
+  
+    .rjsf legend {
+      @apply text-3xl font-normal text-gray-800 mb-2 w-full;
+    }
+  
+    /* Form Groups */
+    .form-group {
+      @apply mb-8;
+    }
+  
+    .form-group:last-child {
+      @apply mb-0;
+    }
+  
+    /* Labels */
+    .control-label {
+      @apply block text-base font-medium text-gray-800 mb-1;
+    }
+  
+    /* Field Descriptions */
+    .field-description {
+      @apply text-sm text-gray-500 mb-2 leading-relaxed;
+    }
+  
+    /* Text Inputs */
+    .form-control[type="text"],
+    .form-control[type="number"] {
+      @apply w-full px-4 py-3 border border-gray-300 rounded-md text-base
+             placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-400/50 
+             focus:border-blue-400 transition-all duration-200 bg-white;
+    }
+  
+    .form-control[type="text"]:hover,
+    .form-control[type="number"]:hover {
+      @apply border-gray-400;
+    }
+  
+    .form-control[type="text"]:focus,
+    .form-control[type="number"]:focus {
+      @apply border-blue-400 ring-2 ring-blue-400/50;
+    }
+  
+    /* Select Dropdowns */
+    .form-control select,
+    select.form-control {
+      @apply w-full px-4 py-3 border border-gray-300 rounded-md text-base
+             bg-white focus:outline-none focus:ring-2 focus:ring-blue-400/50 
+             focus:border-blue-400 transition-all duration-200 cursor-pointer;
+    }
+  
+    .form-control select:hover,
+    select.form-control:hover {
+      @apply border-gray-400;
+    }
+  
+    /* Submit Button */
+    .btn {
+      @apply inline-flex items-center justify-center px-6 py-3 border border-transparent 
+             text-base font-normal rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 
+             transition-all duration-200 cursor-pointer;
+    }
+  
+    .btn-info {
+      @apply text-black bg-gray-200 hover:bg-gray-300 focus:ring-sky-400 
+             active:bg-sky-600 disabled:opacity-50 disabled:cursor-not-allowed;
+    }
+  
+    /* Alternative button styles */
+    .btn-primary {
+      @apply text-white bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500;
+    }
+  
+    .btn-secondary {
+      @apply text-gray-700 bg-gray-100 hover:bg-gray-200 focus:ring-gray-500 border-gray-300;
+    }
+  
+    .btn-success {
+      @apply text-white bg-green-600 hover:bg-green-700 focus:ring-green-500;
+    }
+  
+    /* Error States */
+    .form-control:invalid,
+    .form-control.error {
+      @apply border-red-300 focus:border-red-500 focus:ring-red-500;
+    }
+  
+    .field-error {
+      @apply text-red-600 text-sm mt-1;
+    }
+  
+    /* Help Text */
+    .field-help {
+      @apply text-xs text-gray-500 mt-1;
+    }
+  
+    /* Dark Mode Support */
+    @media (prefers-color-scheme: dark) {
+      .rjsf {
+        @apply bg-gray-800 border-gray-700;
+      }
+  
+      .rjsf legend {
+        @apply text-gray-100 border-gray-700;
+      }
+  
+      .control-label {
+        @apply text-gray-300;
+      }
+  
+      .field-description {
+        @apply text-gray-400;
+      }
+  
+      .form-control[type="text"],
+      .form-control[type="number"],
+      .form-control select,
+      select.form-control {
+        @apply bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400
+               focus:border-blue-400 focus:ring-blue-400;
+      }
+  
+      .form-control[type="text"]:hover,
+      .form-control[type="number"]:hover,
+      .form-control select:hover,
+      select.form-control:hover {
+        @apply border-gray-500;
+      }
+    }
+  
+    /* Responsive Design */
+    @media (max-width: 640px) {
+      .rjsf {
+        @apply p-4 mx-4;
+      }
+  
+      .rjsf legend {
+        @apply text-xl;
+      }
+  
+      .form-group {
+        @apply mb-4;
+      }
+    }
   }
-  to {
-    transform: rotate(360deg);
+  
+  /* Additional utility classes for form layouts */
+  @layer utilities {
+    .form-row {
+      @apply flex flex-wrap -mx-2;
+    }
+  
+    .form-col {
+      @apply px-2 flex-1 min-w-0;
+    }
+  
+    .form-col-half {
+      @apply px-2 w-1/2;
+    }
+  
+    .form-col-third {
+      @apply px-2 w-1/3;
+    }
   }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
-}
-
-.card {
-  padding: 2em;
-}
-
-.read-the-docs {
-  color: #888;
-}
