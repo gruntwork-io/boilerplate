@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/gruntwork-io/boilerplate/manifest"
+
 	"github.com/gruntwork-io/boilerplate/config"
 	"github.com/gruntwork-io/boilerplate/getterhelper"
 	"github.com/gruntwork-io/boilerplate/internal/fileutil"
@@ -38,6 +40,21 @@ func ProcessTemplate(options, rootOpts *options.BoilerplateOptions, thisDep *var
 
 // ProcessTemplateWithContext is like ProcessTemplate but accepts a context for cancellation and timeouts.
 func ProcessTemplateWithContext(ctx context.Context, options, rootOpts *options.BoilerplateOptions, thisDep *variables.Dependency) error {
+	_, err := processTemplateWithContextInternal(ctx, options, rootOpts, thisDep, false)
+	return err
+}
+
+// ProcessTemplateWithManifest works like ProcessTemplate but also returns the manifest of generated files
+func ProcessTemplateWithManifest(options, rootOpts *options.BoilerplateOptions, thisDep *variables.Dependency) (*manifest.Manifest, error) {
+	return processTemplateWithContextInternal(context.Background(), options, rootOpts, thisDep, true)
+}
+
+// ProcessTemplateWithContextAndManifest is like ProcessTemplateWithManifest but accepts a context for cancellation and timeouts.
+func ProcessTemplateWithContextAndManifest(ctx context.Context, options, rootOpts *options.BoilerplateOptions, thisDep *variables.Dependency) (*manifest.Manifest, error) {
+	return processTemplateWithContextInternal(ctx, options, rootOpts, thisDep, true)
+}
+
+func processTemplateWithContextInternal(ctx context.Context, options, rootOpts *options.BoilerplateOptions, thisDep *variables.Dependency, returnManifest bool) (*manifest.Manifest, error) {
 	// If TemplateFolder is already set, use that directly as it is a local template. Otherwise, download to a temporary
 	// working directory.
 	if options.TemplateFolder == "" {
@@ -52,7 +69,7 @@ func ProcessTemplateWithContext(ctx context.Context, options, rootOpts *options.
 		}()
 
 		if downloadErr != nil {
-			return downloadErr
+			return nil, downloadErr
 		}
 
 		// Set the TemplateFolder of the options to the download dir
@@ -61,58 +78,66 @@ func ProcessTemplateWithContext(ctx context.Context, options, rootOpts *options.
 
 	rootBoilerplateConfig, rootCfgErr := config.LoadBoilerplateConfig(rootOpts)
 	if rootCfgErr != nil {
-		return rootCfgErr
+		return nil, rootCfgErr
 	}
 
 	if err := config.EnforceRequiredVersion(rootBoilerplateConfig); err != nil {
-		return err
+		return nil, err
 	}
 
 	boilerplateConfig, cfgErr := config.LoadBoilerplateConfig(options)
 	if cfgErr != nil {
-		return cfgErr
+		return nil, cfgErr
 	}
 
 	if err := config.EnforceRequiredVersion(boilerplateConfig); err != nil {
-		return err
+		return nil, err
 	}
 
 	vars, err := config.GetVariablesWithContext(ctx, options, boilerplateConfig, rootBoilerplateConfig, thisDep)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	err = os.MkdirAll(options.OutputFolder, defaultDirPerm)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	err = processHooks(ctx, boilerplateConfig.Hooks.BeforeHooks, options, vars)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	err = processDependencies(ctx, boilerplateConfig.Dependencies, options, boilerplateConfig.GetVariablesMap(), vars)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	partials, err := processPartials(ctx, boilerplateConfig.Partials, options, vars)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	err = processTemplateFolder(ctx, boilerplateConfig, options, vars, partials)
+	var fileManifest *manifest.Manifest
+	if returnManifest {
+		fileManifest = manifest.NewManifest(options.OutputFolder)
+	}
+
+	err = processTemplateFolder(ctx, boilerplateConfig, options, vars, partials, fileManifest)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	err = processHooks(ctx, boilerplateConfig.Hooks.AfterHooks, options, vars)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	if returnManifest {
+		return fileManifest, nil
+	}
+	return nil, nil
 }
 
 func processPartials(ctx context.Context, partials []string, opts *options.BoilerplateOptions, vars map[string]any) ([]string, error) {
@@ -696,6 +721,7 @@ func processTemplateFolder(
 	opts *options.BoilerplateOptions,
 	variables map[string]any,
 	partials []string,
+	fileManifest *manifest.Manifest,
 ) error {
 	logging.Logger.Printf("Processing templates in %s and outputting generated files to %s", opts.TemplateFolder, opts.OutputFolder)
 
@@ -721,7 +747,7 @@ func processTemplateFolder(
 			return createOutputDir(ctx, path, opts, variables)
 		default:
 			engine := determineTemplateEngine(processedEngines, path)
-			return processFile(ctx, path, opts, variables, partials, engine)
+			return processFile(ctx, path, opts, variables, partials, engine, fileManifest)
 		}
 	})
 }
@@ -735,6 +761,7 @@ func processFile(
 	variables map[string]any,
 	partials []string,
 	engine variables.TemplateEngineType,
+	fileManifest *manifest.Manifest,
 ) error {
 	isText, err := fileutil.IsTextFile(path)
 	if err != nil {
@@ -742,9 +769,9 @@ func processFile(
 	}
 
 	if isText {
-		return processTemplate(ctx, path, opts, variables, partials, engine)
+		return processTemplate(ctx, path, opts, variables, partials, engine, fileManifest)
 	} else {
-		return copyFile(ctx, path, opts, variables)
+		return copyFile(ctx, path, opts, variables, fileManifest)
 	}
 }
 
@@ -795,7 +822,7 @@ func outPath(ctx context.Context, file string, opts *options.BoilerplateOptions,
 }
 
 // Copy the given file, which is in options.TemplateFolder, to options.OutputFolder
-func copyFile(ctx context.Context, file string, opts *options.BoilerplateOptions, variables map[string]any) error {
+func copyFile(ctx context.Context, file string, opts *options.BoilerplateOptions, variables map[string]any, fileManifest *manifest.Manifest) error {
 	destination, err := outPath(ctx, file, opts, variables)
 	if err != nil {
 		return err
@@ -803,7 +830,17 @@ func copyFile(ctx context.Context, file string, opts *options.BoilerplateOptions
 
 	logging.Logger.Printf("Copying %s to %s", file, destination)
 
-	return fileutil.CopyFile(file, destination)
+	if err := fileutil.CopyFile(file, destination); err != nil {
+		return err
+	}
+
+	if fileManifest != nil {
+		if err := fileManifest.AddFile(destination); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // processTemplate runs the template at templatePath, which is in templateFolder, through the Go template engine with the given
@@ -815,6 +852,7 @@ func processTemplate(
 	vars map[string]any,
 	partials []string,
 	engine variables.TemplateEngineType,
+	fileManifest *manifest.Manifest,
 ) error {
 	destination, err := outPath(ctx, templatePath, opts, vars)
 	if err != nil {
@@ -838,7 +876,17 @@ func processTemplate(
 		destination = strings.TrimSuffix(destination, ".jsonnet")
 	}
 
-	return fileutil.WriteFileWithSamePermissions(templatePath, destination, []byte(out))
+	if err := fileutil.WriteFileWithSamePermissions(templatePath, destination, []byte(out)); err != nil {
+		return err
+	}
+
+	if fileManifest != nil {
+		if err := fileManifest.AddFile(destination); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // Return true if this is a path that should not be copied
