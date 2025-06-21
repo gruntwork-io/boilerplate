@@ -4,7 +4,7 @@
 package integration_tests
 
 import (
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -19,9 +19,9 @@ func TestForProductionTerragruntArchitectureBoilerplateExample(t *testing.T) {
 
 	forProductionExamplePath := "../examples/for-production/terragrunt-architecture-catalog"
 
-	outputBasePath, err := ioutil.TempDir("", "boilerplate-for-production-output")
+	outputBasePath, err := os.MkdirTemp("", "boilerplate-for-production-output")
 	require.NoError(t, err)
-	//defer os.RemoveAll(outputBasePath)
+	defer os.RemoveAll(outputBasePath)
 
 	templateFolder, err := filepath.Abs(filepath.Join(forProductionExamplePath, "blueprints", "reference-architecture"))
 	require.NoError(t, err)
