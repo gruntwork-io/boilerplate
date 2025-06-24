@@ -499,7 +499,7 @@ func camelCase(str string) string {
 	// Capitalize each word
 	capitalized := []string{}
 	for _, word := range words {
-		capitalized = append(capitalized, strings.Title(word))
+		capitalized = append(capitalized, strings.Title(strings.ToLower(word)))
 	}
 
 	// Join everything back together into a string
