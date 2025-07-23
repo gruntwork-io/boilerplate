@@ -520,6 +520,102 @@ func TestToYaml(t *testing.T) {
 	}
 }
 
+func TestFromYaml(t *testing.T) {
+	t.Parallel()
+	testCases := []struct {
+		name     string
+		input    string
+		expected interface{}
+	}{
+		{
+			name:     "empty string",
+			input:    "",
+			expected: nil,
+		},
+		{
+			name:     "simple scalar values",
+			input:    "hello",
+			expected: "hello",
+		},
+		{
+			name:     "simple key-value with multiple types",
+			input:    "name: John\nage: 30\nactive: true\nheight: 5.9",
+			expected: map[interface{}]interface{}{"name": "John", "age": 30, "active": true, "height": 5.9},
+		},
+		{
+			name:     "array",
+			input:    "- apple\n- banana\n- 42\n- true",
+			expected: []interface{}{"apple", "banana", 42, true},
+		},
+		{
+			name:     "nested object",
+			input:    "person:\n  name: John\n  age: 30\n  skills:\n    - go\n    - yaml",
+			expected: map[interface{}]interface{}{
+				"person": map[interface{}]interface{}{
+					"name": "John",
+					"age":  30,
+					"skills": []interface{}{"go", "yaml"},
+				},
+			},
+		},
+		{
+			name: "complex structure",
+			input: `
+config:
+  debug: true
+  timeout: 300
+users:
+  - name: Alice
+    roles: [admin, user]
+  - name: Bob
+    roles: [user]`,
+			expected: map[interface{}]interface{}{
+				"config": map[interface{}]interface{}{
+					"debug":   true,
+					"timeout": 300,
+				},
+				"users": []interface{}{
+					map[interface{}]interface{}{
+						"name":  "Alice",
+						"roles": []interface{}{"admin", "user"},
+					},
+					map[interface{}]interface{}{
+						"name":  "Bob",
+						"roles": []interface{}{"user"},
+					},
+				},
+			},
+		},
+		{
+			name:     "special cases",
+			input:    "message: \"Hello World\"\nnumeric_key: 123\nempty_obj: {}\nempty_array: []",
+			expected: map[interface{}]interface{}{"message": "Hello World", "numeric_key": 123, "empty_obj": map[interface{}]interface{}{}, "empty_array": []interface{}{}},
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			actual, err := fromYaml(testCase.input)
+			require.NoError(t, err)
+			assert.Equal(t, testCase.expected, actual)
+		})
+	}
+
+	// Test error cases
+	t.Run("invalid YAML", func(t *testing.T) {
+		invalidCases := []string{
+			"invalid: [unclosed",
+			"key1: value1\nkey2: [\n  unclosed array",
+			"parent:\n\tchild: value\n  other: value", // mixed tab/space indentation
+		}
+
+		for _, input := range invalidCases {
+			_, err := fromYaml(input)
+			assert.Error(t, err, "Expected error for invalid YAML: %s", input)
+		}
+	})
+}
+
 // I cannot believe I have to write my own function and test code for rounding numbers in Go. FML.
 func TestRound(t *testing.T) {
 	t.Parallel()
