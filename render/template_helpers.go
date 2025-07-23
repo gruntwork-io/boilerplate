@@ -95,10 +95,12 @@ func CreateTemplateHelpers(templatePath string, opts *options.BoilerplateOptions
 		"templateIsDefined": wrapIsDefinedWithTemplate(tmpl),
 
 		"templateFolder":        func() (string, error) { return filepath.Abs(opts.TemplateFolder) },
+		"templateUrl":           func() string { return opts.TemplateUrl },
 		"outputFolder":          func() (string, error) { return filepath.Abs(opts.OutputFolder) },
 		"relPath":               relPath,
 		"boilerplateConfigDeps": boilerplateConfigDeps(opts),
 		"boilerplateConfigVars": boilerplateConfigVars(opts),
+		"vars":                  func() map[string]interface{} { return opts.Vars },
 		"envWithDefault":        env,
 
 		// DEPRECATIONS
