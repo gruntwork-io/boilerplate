@@ -866,6 +866,8 @@ Boilerplate also includes several custom helpers that you can access that enhanc
   to execute commands, see [hooks](#hooks).
 * `templateFolder`: Return the value of the template working dir. This is the value of the `--template-url` command-line
   option if local template, or the download dir if remote template. Useful for building relative paths.
+* `templateUrl`: Return the value of the template URL as was provided in the `--template-url`.
+* `vars`: Return the dictionary of all input variables.
 * `outputFolder`: Return the value of the `--output-folder` command-line option. Useful for building relative paths.
 * `envWithDefault NAME DEFAULT`: Render the value of environment variable `NAME`. If that environment variable is empty or not
   defined, render `DEFAULT` instead.
