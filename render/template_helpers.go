@@ -82,6 +82,7 @@ func CreateTemplateHelpers(templatePath string, opts *options.BoilerplateOptions
 		"trimPrefixBoilerplate": trimPrefix,
 		"trimSuffixBoilerplate": trimSuffix,
 		"toYaml":                toYaml,
+		"fromYaml":              fromYaml,
 
 		"numRange":   slice,
 		"keysSorted": keys,
@@ -654,6 +655,15 @@ func toYaml(obj interface{}) (string, error) {
 		return "", errors.WithStackTrace(err)
 	}
 	return string(yamlObj), nil
+}
+
+func fromYaml(yamlStr string) (interface{}, error) {
+	var obj interface{}
+	err := yaml.Unmarshal([]byte(yamlStr), &obj)
+	if err != nil {
+		return nil, errors.WithStackTrace(err)
+	}
+	return obj, nil
 }
 
 // Returns the relative path between the output folders of a "base" path and a "target" path.
