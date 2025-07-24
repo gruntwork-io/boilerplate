@@ -159,16 +159,16 @@ func TestForEachReferenceRendersAsTemplate(t *testing.T) {
 	defer os.RemoveAll(tempDir)
 
 	templateFolder := filepath.Join(tempDir, "template")
-	err = os.MkdirAll(templateFolder, 0755)
+	err = os.MkdirAll(templateFolder, 0o755)
 	require.NoError(t, err)
-	err = os.WriteFile(filepath.Join(templateFolder, "boilerplate.yml"), []byte("variables: []\n"), 0644)
+	err = os.WriteFile(filepath.Join(templateFolder, "boilerplate.yml"), []byte("variables: []\n"), 0o644)
 	require.NoError(t, err)
-	err = os.WriteFile(filepath.Join(templateFolder, "test.txt"), []byte("{{ .__each__ }}"), 0644)
+	err = os.WriteFile(filepath.Join(templateFolder, "test.txt"), []byte("{{ .__each__ }}"), 0o644)
 	require.NoError(t, err)
 
 	dependency := variables.Dependency{
 		Name:         "test",
-		TemplateUrl:  templateFolder,
+		TemplateUrl:  ".",
 		OutputFolder: "{{ .__each__ }}",
 		// This template should render to "template1" by looking up deployments[region_1].template
 		ForEachReference: "{{ index .deployments .region \"template\" }}",
