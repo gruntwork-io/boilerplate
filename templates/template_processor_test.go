@@ -149,3 +149,58 @@ func TestCloneVariablesForDependency(t *testing.T) {
 
 	}
 }
+
+func TestForEachReferenceRendersAsTemplate(t *testing.T) {
+	t.Parallel()
+
+	// Test that ForEachReference templates get rendered to resolve variable names dynamically
+	tempDir, err := os.MkdirTemp("", "boilerplate-test")
+	require.NoError(t, err)
+	defer os.RemoveAll(tempDir)
+
+	templateFolder := filepath.Join(tempDir, "template")
+	err = os.MkdirAll(templateFolder, 0o755)
+	require.NoError(t, err)
+	err = os.WriteFile(filepath.Join(templateFolder, "boilerplate.yml"), []byte("variables: []\n"), 0o644)
+	require.NoError(t, err)
+	err = os.WriteFile(filepath.Join(templateFolder, "test.txt"), []byte("{{ .__each__ }}"), 0o644)
+	require.NoError(t, err)
+
+	dependency := variables.Dependency{
+		Name:         "test",
+		TemplateUrl:  ".",
+		OutputFolder: "{{ .__each__ }}",
+		// This template should render to "template1" by looking up deployments[region_1].template
+		ForEachReference: "{{ index .deployments .region \"template\" }}",
+	}
+
+	// Test data: region_1 points to template1, which contains the list to iterate over
+	variables := map[string]interface{}{
+		"region": "region_1",
+		"deployments": map[string]interface{}{
+			"region_1": map[string]interface{}{
+				"template": "template1", // Points to the variable name to use for iteration
+			},
+		},
+		"template1": []string{"a", "b"}, // The actual list that gets iterated over
+	}
+
+	opts := &options.BoilerplateOptions{
+		TemplateFolder:          templateFolder,
+		OutputFolder:            tempDir,
+		NonInteractive:          true,
+		OnMissingKey:            options.ExitWithError,
+		OnMissingConfig:         options.Exit,
+		DisableHooks:            true,
+		DisableDependencyPrompt: true,
+	}
+
+	err = processDependency(dependency, opts, nil, variables)
+	require.NoError(t, err)
+
+	// Should create directories "a" and "b" from template1 list
+	for _, expected := range []string{"a", "b"} {
+		_, err := os.Stat(filepath.Join(tempDir, expected))
+		assert.NoError(t, err)
+	}
+}

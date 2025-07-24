@@ -65,7 +65,7 @@ func ProcessTemplate(options, rootOpts *options.BoilerplateOptions, thisDep vari
 		return err
 	}
 
-	err = os.MkdirAll(options.OutputFolder, 0777)
+	err = os.MkdirAll(options.OutputFolder, 0o777)
 	if err != nil {
 		return errors.WithStackTrace(err)
 	}
@@ -235,7 +235,11 @@ func processDependency(
 
 		forEach := dependency.ForEach
 		if len(dependency.ForEachReference) > 0 {
-			value, err := variables.UnmarshalListOfStrings(originalVars, dependency.ForEachReference)
+			renderedReference, err := render.RenderTemplateFromString(opts.TemplateFolder, dependency.ForEachReference, originalVars, opts)
+			if err != nil {
+				return err
+			}
+			value, err := variables.UnmarshalListOfStrings(originalVars, renderedReference)
 			if err != nil {
 				return err
 			}
@@ -384,7 +388,19 @@ func cloneVariablesForDependency(
 		if err != nil {
 			return nil, err
 		}
+		// If the value is a string, render it
+		if strValue, ok := varValue.(string); ok {
+			renderedValue, err := render.RenderTemplateFromString(opts.TemplateFolder, strValue, currentVariables, opts)
+			if err != nil {
+				return nil, err
+			}
+			varValue = renderedValue
+		}
 		newVariables[variable.Name()] = varValue
+		// Update currentVariables to include the newly processed variable
+		currentVariables = util.MergeMaps(currentVariables, map[string]interface{}{
+			variable.Name(): varValue,
+		})
 	}
 
 	newVariables = util.MergeMaps(newVariables, varFileVars)
@@ -511,7 +527,7 @@ func createOutputDir(dir string, opts *options.BoilerplateOptions, variables map
 	}
 
 	util.Logger.Printf("Creating folder %s", destination)
-	return os.MkdirAll(destination, 0777)
+	return os.MkdirAll(destination, 0o777)
 }
 
 // Compute the path where the given file, which is in templateFolder, should be copied in outputFolder. If the file
