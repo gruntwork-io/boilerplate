@@ -112,6 +112,30 @@ func processPartials(partials []string, opts *options.BoilerplateOptions, vars m
 
 // Process the given list of hooks, which are scripts that should be executed at the command-line
 func processHooks(hooks []variables.Hook, opts *options.BoilerplateOptions, vars map[string]interface{}) error {
+	// If there are no hooks, nothing to do
+	if len(hooks) == 0 {
+		return nil
+	}
+
+	// If hooks are disabled, skip all hooks
+	if opts.DisableHooks {
+		util.Logger.Printf("Hooks are disabled, skipping %d hook(s)", len(hooks))
+		return nil
+	}
+
+	// If not in non-interactive mode, ask for user confirmation
+	if !opts.NonInteractive {
+		confirmed, err := util.PromptUserForYesNo(fmt.Sprintf("This boilerplate template has %d hook(s) that will execute scripts! Do you want to proceed with hook execution?", len(hooks)))
+		if err != nil {
+			return err
+		}
+		if !confirmed {
+			util.Logger.Printf("User declined hook execution, skipping %d hook(s)", len(hooks))
+			return nil
+		}
+	}
+
+	// Process each hook
 	for _, hook := range hooks {
 		err := processHook(hook, opts, vars)
 		if err != nil {
@@ -175,11 +199,6 @@ func processHook(hook variables.Hook, opts *options.BoilerplateOptions, vars map
 
 // Return true if the "skip" condition of this hook evaluates to true
 func shouldSkipHook(hook variables.Hook, opts *options.BoilerplateOptions, vars map[string]interface{}) (bool, error) {
-	if opts.DisableHooks {
-		util.Logger.Printf("Hooks are disabled")
-		return true, nil
-	}
-
 	if hook.Skip == "" {
 		return false, nil
 	}
