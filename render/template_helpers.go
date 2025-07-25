@@ -258,7 +258,8 @@ func include(templatePath string, opts *options.BoilerplateOptions, path string,
 // Example:
 //
 // pathRelativeToTemplate("/foo/bar/template-file.txt, "../src/code.java")
-//   Returns: "/foo/src/code.java"
+//
+//	Returns: "/foo/src/code.java"
 func PathRelativeToTemplate(templatePath string, filePath string) string {
 	if path.IsAbs(filePath) {
 		return filePath
@@ -615,6 +616,18 @@ func shell(templatePath string, opts *options.BoilerplateOptions, rawArgs ...str
 
 	if len(rawArgs) == 0 {
 		return "", errors.WithStackTrace(NoArgsPassedToShellHelper)
+	}
+
+	// If not in non-interactive mode, ask for user confirmation
+	if !opts.NonInteractive {
+		confirmed, err := util.PromptUserForYesNo(fmt.Sprintf("This template will execute shell command '%v'! Do you want to proceed with shell execution?", rawArgs))
+		if err != nil {
+			return "", err
+		}
+		if !confirmed {
+			util.Logger.Printf("User declined shell execution, returning placeholder value '%s' instead.", SHELL_DISABLED_PLACEHOLDER)
+			return SHELL_DISABLED_PLACEHOLDER, nil
+		}
 	}
 
 	args, envVars := separateArgsAndEnvVars(rawArgs)
