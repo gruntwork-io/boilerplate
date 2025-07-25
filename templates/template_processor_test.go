@@ -93,7 +93,7 @@ func TestCloneOptionsForDependency(t *testing.T) {
 	}
 }
 
-func TestProcessTemplateWithManifest(t *testing.T) {
+func TestProcessTemplateReturnsFiles(t *testing.T) {
 	t.Parallel()
 
 	// Create a temporary directory for the test
@@ -125,14 +125,14 @@ func TestProcessTemplateWithManifest(t *testing.T) {
 		OnMissingConfig: options.Exit,
 	}
 
-	// Call ProcessTemplateWithManifest
-	manifest, err := ProcessTemplateWithManifest(opts, opts, variables.Dependency{})
+	// Call ProcessTemplate
+	files, err := ProcessTemplate(opts, opts, variables.Dependency{})
 	require.NoError(t, err)
-	require.NotNil(t, manifest)
+	require.NotNil(t, files)
 
-	// Verify the manifest contains the expected file
-	require.Len(t, manifest.Files, 1)
-	assert.Equal(t, "test.txt", manifest.Files[0].Path)
+	// Verify the files list contains the expected file
+	require.Len(t, files, 1)
+	assert.Equal(t, "test.txt", files[0])
 
 	// Verify the file content
 	content, err := os.ReadFile(filepath.Join(outputDir, "test.txt"))
@@ -172,9 +172,11 @@ func TestProcessTemplate(t *testing.T) {
 		OnMissingConfig: options.Exit,
 	}
 
-	// Call the original ProcessTemplate function
-	err = ProcessTemplate(opts, opts, variables.Dependency{})
+	// Call ProcessTemplate function
+	files, err := ProcessTemplate(opts, opts, variables.Dependency{})
 	require.NoError(t, err)
+	require.Len(t, files, 1)
+	assert.Equal(t, "test.txt", files[0])
 
 	// Verify the file content
 	content, err := os.ReadFile(filepath.Join(outputDir, "test.txt"))

@@ -1,7 +1,9 @@
 package cli
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/gruntwork-io/go-commons/entrypoint"
 	"github.com/gruntwork-io/go-commons/version"
@@ -96,6 +98,10 @@ func CreateBoilerplateCli() *cli.App {
 			Name:  options.OptDisableDependencyPrompt,
 			Usage: fmt.Sprintf("Do not prompt for confirmation to include dependencies. Has the same effect as --%s, without disabling variable prompts.", options.OptNonInteractive),
 		},
+		&cli.BoolFlag{
+			Name:  options.OptOutputManifest,
+			Usage: "Write a JSON list of all generated files to boilerplate-manifest.json in the current working directory.",
+		},
 	}
 
 	// We pass JSON/YAML content to various CLI flags, such as --var, and this JSON/YAML content may contain commas or
@@ -123,5 +129,21 @@ func runApp(cliContext *cli.Context) error {
 	// The root boilerplate.yml is not itself a dependency, so we pass an empty Dependency.
 	emptyDep := variables.Dependency{}
 
-	return templates.ProcessTemplate(opts, opts, emptyDep)
+	generatedFiles, err := templates.ProcessTemplate(opts, opts, emptyDep)
+	if err != nil {
+		return err
+	}
+
+	if opts.OutputManifest {
+		data, err := json.Marshal(generatedFiles)
+		if err != nil {
+			return err
+		}
+		err = os.WriteFile("boilerplate-manifest.json", data, 0644)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

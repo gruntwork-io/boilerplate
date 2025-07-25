@@ -25,23 +25,13 @@ import (
 // The name of the variable that contains the current value of the loop in each iteration of for_each
 const eachVarName = "__each__"
 
-// Maintaining original function name and signature for backwards compatability
-func ProcessTemplate(options, rootOpts *options.BoilerplateOptions, thisDep variables.Dependency) error {
-	_, err := processTemplateInternal(options, rootOpts, thisDep, false)
-	return err
-}
-
-// ProcessTemplateWithManifest works like ProcessTemplate but also returns the manifest of generated files
-func ProcessTemplateWithManifest(options, rootOpts *options.BoilerplateOptions, thisDep variables.Dependency) (*manifest.Manifest, error) {
-	return processTemplateInternal(options, rootOpts, thisDep, true)
-}
-
 // Process the boilerplate template specified in the given options and use the existing variables. This function will
 // download remote templates to a temporary working directory, which is cleaned up at the end of the function. This
 // function will load any missing variables (either from command line options or by prompting the user), execute all the
 // dependent boilerplate templates, and then execute this template. Note that we pass in rootOptions so that template
 // dependencies can inspect properties of the root template.
-func processTemplateInternal(options, rootOpts *options.BoilerplateOptions, thisDep variables.Dependency, returnManifest bool) (*manifest.Manifest, error) {
+// Returns a list of generated file paths relative to the output directory.
+func ProcessTemplate(options, rootOpts *options.BoilerplateOptions, thisDep variables.Dependency) ([]string, error) {
 	// If TemplateFolder is already set, use that directly as it is a local template. Otherwise, download to a temporary
 	// working directory.
 	if options.TemplateFolder == "" {
@@ -99,10 +89,7 @@ func processTemplateInternal(options, rootOpts *options.BoilerplateOptions, this
 		return nil, err
 	}
 
-	var fileManifest *manifest.Manifest
-	if returnManifest {
-		fileManifest = manifest.NewManifest(options.OutputFolder)
-	}
+	fileManifest := manifest.NewManifest(options.OutputFolder)
 
 	err = processTemplateFolder(boilerplateConfig, options, vars, partials, fileManifest)
 	if err != nil {
@@ -114,10 +101,12 @@ func processTemplateInternal(options, rootOpts *options.BoilerplateOptions, this
 		return nil, err
 	}
 
-	if returnManifest {
-		return fileManifest, nil
+	var paths []string
+	for _, file := range fileManifest.Files {
+		paths = append(paths, file.Path)
 	}
-	return nil, nil
+
+	return paths, nil
 }
 
 func processPartials(partials []string, opts *options.BoilerplateOptions, vars map[string]interface{}) ([]string, error) {
@@ -401,7 +390,8 @@ func processDependency(
 			}
 
 			util.Logger.Printf("Processing dependency %s, with template folder %s and output folder %s", dependency.Name, dependencyOptions.TemplateFolder, dependencyOptions.OutputFolder)
-			return ProcessTemplate(dependencyOptions, opts, dependency)
+			_, err = ProcessTemplate(dependencyOptions, opts, dependency)
+			return err
 		}
 
 		forEach := dependency.ForEach
