@@ -199,6 +199,11 @@ func processHook(hook variables.Hook, opts *options.BoilerplateOptions, vars map
 
 // Return true if the "skip" condition of this hook evaluates to true
 func shouldSkipHook(hook variables.Hook, opts *options.BoilerplateOptions, vars map[string]interface{}) (bool, error) {
+	if opts.DisableHooks {
+		util.Logger.Printf("Hooks are disabled")
+		return true, nil
+	}
+
 	if hook.Skip == "" {
 		return false, nil
 	}
