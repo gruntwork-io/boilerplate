@@ -119,10 +119,7 @@ func processTemplateWithContextInternal(ctx context.Context, options, rootOpts *
 		return nil, err
 	}
 
-	var fileManifest *manifest.Manifest
-	if returnManifest {
-		fileManifest = manifest.NewManifest(options.OutputFolder)
-	}
+	fileManifest := manifest.NewManifest(options.OutputFolder)
 
 	err = processTemplateFolder(ctx, boilerplateConfig, options, vars, partials, fileManifest)
 	if err != nil {
