@@ -185,6 +185,10 @@ The `boilerplate` binary supports the following options:
 * `--disable-shell`: If this flag is set, no `shell` helpers will execute. They will instead return the text "replace-me".
 * `--disable-dependency-prompt` (optional): Do not prompt for confirmation to include dependencies. Has the same effect as
   --non-interactive, without disabling variable prompts. Default: `false`.
+* `--parallel-for-each` (optional): Process `for_each` dependencies in parallel instead of sequentially. This can 
+significantly improve performance when you have multiple dependencies that take time to process. **WARNING**: Ensure 
+that shell commands/hooks within your dependencies are thread-safe, as multiple dependencies may execute concurrently.
+Operations like file I/O, network requests, or resource creation should be designed to handle concurrent execution.
 * `--help`: Show the help text and exit.
 * `--version`: Show the version and exit.
 
@@ -212,6 +216,12 @@ Generate a project in ~/output from the templates in this repo's `include` examp
 
 ```
 boilerplate --template-url "git@github.com:gruntwork-io/boilerplate.git//examples/for-learning-and-testing/include?ref=main" --output-folder ~/output --var-file vars.yml
+```
+
+Generate a project with parallel processing of dependencies which use `for_each` or `for_each_reference`:
+
+```
+boilerplate --template-url ~/templates --output-folder ~/output --var-file vars.yml --parallel-for-each
 ```
 
 
@@ -373,6 +383,25 @@ executing the current one. Each dependency may contain the following keys:
   current value in the loop will be available as the variable `__each__`, available to both your Go templating and
   in other `dependencies` params: e.g., you could reference `{{ .__each__ }}` in `output-folder` to render to each
   iteration to a different folder.
+
+  **Parallel Processing**
+
+  By default, `for_each` dependencies are processed sequentially (one after another). You can enable parallel 
+  processing using the `--parallel-for-each` flag, which will process all items in a `for_each` loop concurrently. 
+  This can significantly improve performance when:
+  - You have many items in your `for_each` lists
+  - Each dependency takes significant time to process (e.g., complex templating, slow hooks)
+  - Dependencies are independent and don't rely on each other's output
+
+  **Thread Safety Considerations**
+
+  When using `--parallel-for-each`, be aware that multiple dependencies may execute simultaneously. Ensure your 
+  templates and hooks are thread-safe:
+  - File operations should use unique file paths (leverage `{{ .__each__ }}` in `output-folder`)
+  - Shell commands should not conflict with each other (avoid shared resources)
+  - External API calls should handle concurrent requests appropriately
+  - Database operations should use proper locking or transactions
+
 * `for_each_reference`: The name of another variable whose value should be used as the `for_each` value.
 
 See the [Dependencies](#dependencies) section for more info.

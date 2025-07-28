@@ -7,8 +7,10 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/gruntwork-io/go-commons/collections"
+	"github.com/hashicorp/go-multierror"
 
 	"github.com/gruntwork-io/boilerplate/config"
 	"github.com/gruntwork-io/boilerplate/errors"
@@ -248,14 +250,45 @@ func processDependency(
 		}
 
 		if len(forEach) > 0 {
-			for _, item := range forEach {
-				updatedVars := collections.MergeMaps(originalVars, map[string]interface{}{eachVarName: item})
-				if err := doProcess(updatedVars); err != nil {
-					return err
+			if opts.ParallelForEach {
+				// Process dependencies in parallel
+				util.Logger.Printf("Processing dependencies in parallel")
+				var wg sync.WaitGroup
+				errChan := make(chan error, len(forEach))
+				
+				for _, item := range forEach {
+					wg.Add(1)
+					go func(forEachItem interface{}) {
+						defer wg.Done()
+						updatedVars := collections.MergeMaps(originalVars, map[string]interface{}{eachVarName: forEachItem})
+						if err := doProcess(updatedVars); err != nil {
+							errChan <- err
+						}
+					}(item)
 				}
+				
+				// Wait for all goroutines to complete
+				wg.Wait()
+				close(errChan)
+				
+				// Collect all errors
+				var errs *multierror.Error
+				for err := range errChan {
+					errs = multierror.Append(errs, err)
+				}
+				
+				return errs.ErrorOrNil()
+			} else {
+				util.Logger.Printf("Processing dependencies sequentially")
+				// Process dependencies sequentially (original behavior)
+				for _, item := range forEach {
+					updatedVars := collections.MergeMaps(originalVars, map[string]interface{}{eachVarName: item})
+					if err := doProcess(updatedVars); err != nil {
+						return err
+					}
+				}
+				return nil
 			}
-
-			return nil
 		} else {
 			return doProcess(originalVars)
 		}
@@ -319,6 +352,7 @@ func cloneOptionsForDependency(
 		DisableHooks:            originalOpts.DisableHooks,
 		DisableShell:            originalOpts.DisableShell,
 		DisableDependencyPrompt: originalOpts.DisableDependencyPrompt,
+		ParallelForEach:         originalOpts.ParallelForEach,
 	}, nil
 }
 

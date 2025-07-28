@@ -96,6 +96,10 @@ func CreateBoilerplateCli() *cli.App {
 			Name:  options.OptDisableDependencyPrompt,
 			Usage: fmt.Sprintf("Do not prompt for confirmation to include dependencies. Has the same effect as --%s, without disabling variable prompts.", options.OptNonInteractive),
 		},
+		&cli.BoolFlag{
+			Name:  options.OptParallelForEach,
+			Usage: "If this flag is set, for_each'd dependencies will be processed in parallel instead of sequentially. This can significantly speed up template generation when dependencies take time to process. WARNING: Ensure that shell commands/hooks within dependencies are thread-safe, as multiple dependencies may execute concurrently.",
+		},
 	}
 
 	// We pass JSON/YAML content to various CLI flags, such as --var, and this JSON/YAML content may contain commas or
