@@ -1,10 +1,14 @@
 package templates
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
+	"sync/atomic"
 	"testing"
 
+	"github.com/hashicorp/go-multierror"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/variables"
 	"github.com/stretchr/testify/assert"
@@ -204,3 +208,154 @@ func TestForEachReferenceRendersAsTemplate(t *testing.T) {
 		assert.NoError(t, err)
 	}
 }
+
+// Test both parallel and sequential processing modes, including __each__ variable handling
+func TestProcessDependencyBothModes(t *testing.T) {
+	tempDir, templateDir := createTestTemplate(t, "boilerplate-both-modes-test")
+	defer os.RemoveAll(tempDir)
+
+	dependency := variables.Dependency{
+		Name:         "test-dependency",
+		TemplateUrl:  templateDir,
+		OutputFolder: "output/{{ .__each__ }}",
+		ForEach:      []string{"alpha", "beta", "gamma"},
+	}
+
+	// Test both parallel and sequential modes
+	for _, parallel := range []bool{false, true} {
+		mode := "sequential"
+		if parallel {
+			mode = "parallel"
+		}
+		
+		t.Run(mode, func(t *testing.T) {
+			outputDir := filepath.Join(tempDir, mode)
+			err := os.MkdirAll(outputDir, 0o755)
+			require.NoError(t, err)
+
+			opts := &options.BoilerplateOptions{
+				TemplateFolder:  templateDir,
+				OutputFolder:    outputDir,
+				NonInteractive:  true,
+				ParallelForEach: parallel,
+				OnMissingKey:    options.ExitWithError,
+			}
+
+			err = processDependency(dependency, opts, map[string]variables.Variable{}, map[string]interface{}{})
+			require.NoError(t, err)
+
+			// Verify all outputs were created correctly
+			for _, item := range dependency.ForEach {
+				outputPath := filepath.Join(outputDir, "output", item, "test.txt")
+				assert.FileExists(t, outputPath)
+				
+				content, err := os.ReadFile(outputPath)
+				require.NoError(t, err)
+				
+				// Verify __each__ variable was set correctly
+				assert.Contains(t, string(content), fmt.Sprintf("Value: %s", item))
+			}
+		})
+	}
+}
+
+// Test error collection in parallel processing
+func TestProcessDependencyParallelErrorCollection(t *testing.T) {
+	opts := &options.BoilerplateOptions{
+		TemplateFolder:  "/nonexistent",
+		OutputFolder:    "/tmp",
+		NonInteractive:  true,
+		ParallelForEach: true,
+		OnMissingKey:    options.ExitWithError,
+	}
+
+	dependency := variables.Dependency{
+		Name:         "failing-dependency",
+		TemplateUrl:  "/nonexistent/template",
+		OutputFolder: "output/{{ .__each__ }}",
+		ForEach:      []string{"item1", "item2", "item3"},
+	}
+
+	err := processDependency(dependency, opts, map[string]variables.Variable{}, map[string]interface{}{})
+	
+	assert.Error(t, err)
+	
+	// Check if it's a multierror (parallel processing should collect multiple errors)
+	if multiErr, ok := err.(*multierror.Error); ok {
+		assert.GreaterOrEqual(t, len(multiErr.Errors), 1)
+	}
+}
+
+// Test that race conditions don't occur during parallel processing
+func TestProcessDependencyNoRaceConditions(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping race condition test in short mode")
+	}
+
+	tempDir, templateDir := createTestTemplate(t, "boilerplate-race-test")
+	defer os.RemoveAll(tempDir)
+
+	// Run multiple concurrent dependency processes
+	numConcurrentRuns := 5
+	var wg sync.WaitGroup
+	var errorCount int32
+
+	for i := 0; i < numConcurrentRuns; i++ {
+		wg.Add(1)
+		go func(runIndex int) {
+			defer wg.Done()
+
+			runOutputDir := filepath.Join(tempDir, fmt.Sprintf("run%d", runIndex))
+			err := os.MkdirAll(runOutputDir, 0o755)
+			if err != nil {
+				atomic.AddInt32(&errorCount, 1)
+				return
+			}
+
+			opts := &options.BoilerplateOptions{
+				TemplateFolder:  templateDir,
+				OutputFolder:    runOutputDir,
+				NonInteractive:  true,
+				ParallelForEach: true,
+				OnMissingKey:    options.ExitWithError,
+			}
+
+			dependency := variables.Dependency{
+				Name:         fmt.Sprintf("test-dependency-%d", runIndex),
+				TemplateUrl:  templateDir,
+				OutputFolder: "output/{{ .__each__ }}",
+				ForEach:      []string{"item1", "item2", "item3"},
+			}
+
+			if err := processDependency(dependency, opts, map[string]variables.Variable{}, map[string]interface{}{}); err != nil {
+				atomic.AddInt32(&errorCount, 1)
+			}
+		}(i)
+	}
+
+	wg.Wait()
+	assert.Equal(t, int32(0), errorCount, "Race conditions should not cause errors")
+}
+
+// Helper function to create a basic test template
+func createTestTemplate(t *testing.T, prefix string) (tempDir, templateDir string) {
+	tempDir, err := os.MkdirTemp("", prefix)
+	require.NoError(t, err)
+
+	templateDir = filepath.Join(tempDir, "template")
+	err = os.MkdirAll(templateDir, 0o755)
+	require.NoError(t, err)
+
+	err = os.WriteFile(filepath.Join(templateDir, "boilerplate.yml"), []byte(`variables:
+  - name: TestVar
+    default: "{{ .__each__ }}"
+`), 0o644)
+	require.NoError(t, err)
+
+	err = os.WriteFile(filepath.Join(templateDir, "test.txt"), []byte(`Value: {{ .TestVar }}`), 0o644)
+	require.NoError(t, err)
+
+	return tempDir, templateDir
+}
+
+
