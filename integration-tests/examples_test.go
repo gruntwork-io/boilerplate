@@ -181,8 +181,8 @@ func TestExampleWithManifest(t *testing.T) {
 	err = app.Run(args)
 	require.NoError(t, err)
 
-	// Check manifest file was created
-	manifestPath := "boilerplate-manifest.json"
+	// Check manifest file was created in output directory
+	manifestPath := "output/boilerplate-manifest.json"
 	require.FileExists(t, manifestPath)
 
 	// Read and verify manifest content
@@ -190,6 +190,11 @@ func TestExampleWithManifest(t *testing.T) {
 	require.NoError(t, err)
 	
 	manifestStr := string(manifestContent)
+	// Verify versioned manifest structure
+	assert.Contains(t, manifestStr, "latest_version")
+	assert.Contains(t, manifestStr, "versions")
 	assert.Contains(t, manifestStr, "index.html")
 	assert.Contains(t, manifestStr, "logo.png")
+	assert.Contains(t, manifestStr, "template_url")
+	assert.Contains(t, manifestStr, "boilerplate_version")
 }

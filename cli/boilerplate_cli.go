@@ -1,14 +1,13 @@
 package cli
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 
 	"github.com/gruntwork-io/go-commons/entrypoint"
 	"github.com/gruntwork-io/go-commons/version"
 	"github.com/urfave/cli/v2"
 
+	"github.com/gruntwork-io/boilerplate/manifest"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/templates"
 	"github.com/gruntwork-io/boilerplate/variables"
@@ -135,11 +134,14 @@ func runApp(cliContext *cli.Context) error {
 	}
 
 	if opts.OutputManifest {
-		data, err := json.Marshal(generatedFiles)
-		if err != nil {
-			return err
+		// Convert file paths to GeneratedFile structs
+		files := make([]manifest.GeneratedFile, 0, len(generatedFiles))
+		for _, path := range generatedFiles {
+			files = append(files, manifest.GeneratedFile{Path: path})
 		}
-		err = os.WriteFile("boilerplate-manifest.json", data, 0644)
+		
+		// Update versioned manifest
+		err = manifest.UpdateVersionedManifest(opts.OutputFolder, opts.TemplateUrl, opts.Vars, files)
 		if err != nil {
 			return err
 		}

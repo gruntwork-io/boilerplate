@@ -10,8 +10,6 @@ import (
 
 	"github.com/gruntwork-io/go-commons/collections"
 
-	"github.com/gruntwork-io/boilerplate/manifest"
-
 	"github.com/gruntwork-io/boilerplate/config"
 	"github.com/gruntwork-io/boilerplate/errors"
 	getter_helper "github.com/gruntwork-io/boilerplate/getter-helper"
@@ -88,9 +86,9 @@ func ProcessTemplate(options, rootOpts *options.BoilerplateOptions, thisDep vari
 		return nil, err
 	}
 
-	fileManifest := manifest.NewManifest(options.OutputFolder)
+	var generatedFilePaths []string
 
-	err = processTemplateFolder(boilerplateConfig, options, vars, partials, fileManifest)
+	err = processTemplateFolder(boilerplateConfig, options, vars, partials, &generatedFilePaths)
 	if err != nil {
 		return nil, err
 	}
@@ -100,12 +98,7 @@ func ProcessTemplate(options, rootOpts *options.BoilerplateOptions, thisDep vari
 		return nil, err
 	}
 
-	var paths []string
-	for _, file := range fileManifest.Files {
-		paths = append(paths, file.Path)
-	}
-
-	return paths, nil
+	return generatedFilePaths, nil
 }
 
 func processPartials(partials []string, opts *options.BoilerplateOptions, vars map[string]interface{}) ([]string, error) {
@@ -482,7 +475,7 @@ func processTemplateFolder(
 	opts *options.BoilerplateOptions,
 	variables map[string]interface{},
 	partials []string,
-	fileManifest *manifest.Manifest,
+	generatedFilePaths *[]string,
 ) error {
 	util.Logger.Printf("Processing templates in %s and outputting generated files to %s", opts.TemplateFolder, opts.OutputFolder)
 
@@ -505,7 +498,7 @@ func processTemplateFolder(
 			return createOutputDir(path, opts, variables)
 		} else {
 			engine := determineTemplateEngine(processedEngines, path)
-			return processFile(path, opts, variables, partials, engine, fileManifest)
+			return processFile(path, opts, variables, partials, engine, generatedFilePaths)
 		}
 	})
 }
@@ -518,7 +511,7 @@ func processFile(
 	variables map[string]interface{},
 	partials []string,
 	engine variables.TemplateEngineType,
-	fileManifest *manifest.Manifest,
+	generatedFilePaths *[]string,
 ) error {
 	isText, err := util.IsTextFile(path)
 	if err != nil {
@@ -526,9 +519,9 @@ func processFile(
 	}
 
 	if isText {
-		return processTemplate(path, opts, variables, partials, engine, fileManifest)
+		return processTemplate(path, opts, variables, partials, engine, generatedFilePaths)
 	} else {
-		return copyFile(path, opts, variables, fileManifest)
+		return copyFile(path, opts, variables, generatedFilePaths)
 	}
 }
 
@@ -577,7 +570,7 @@ func outPath(file string, opts *options.BoilerplateOptions, variables map[string
 }
 
 // Copy the given file, which is in options.TemplateFolder, to options.OutputFolder
-func copyFile(file string, opts *options.BoilerplateOptions, variables map[string]interface{}, fileManifest *manifest.Manifest) error {
+func copyFile(file string, opts *options.BoilerplateOptions, variables map[string]interface{}, generatedFilePaths *[]string) error {
 	destination, err := outPath(file, opts, variables)
 	if err != nil {
 		return err
@@ -588,10 +581,13 @@ func copyFile(file string, opts *options.BoilerplateOptions, variables map[strin
 		return err
 	}
 
-	if fileManifest != nil {
-		if err := fileManifest.AddFile(destination); err != nil {
-			return err
+	if generatedFilePaths != nil {
+		// Convert to relative path from output directory
+		relPath, err := filepath.Rel(opts.OutputFolder, destination)
+		if err != nil {
+			relPath = destination
 		}
+		*generatedFilePaths = append(*generatedFilePaths, relPath)
 	}
 
 	return nil
@@ -605,7 +601,7 @@ func processTemplate(
 	vars map[string]interface{},
 	partials []string,
 	engine variables.TemplateEngineType,
-	fileManifest *manifest.Manifest,
+	generatedFilePaths *[]string,
 ) error {
 	destination, err := outPath(templatePath, opts, vars)
 	if err != nil {
@@ -632,10 +628,13 @@ func processTemplate(
 		return err
 	}
 
-	if fileManifest != nil {
-		if err := fileManifest.AddFile(destination); err != nil {
-			return err
+	if generatedFilePaths != nil {
+		// Convert to relative path from output directory
+		relPath, err := filepath.Rel(opts.OutputFolder, destination)
+		if err != nil {
+			relPath = destination
 		}
+		*generatedFilePaths = append(*generatedFilePaths, relPath)
 	}
 
 	return nil
