@@ -3,12 +3,11 @@ package cli
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"os"
 
 	"github.com/urfave/cli/v2"
 
+	"github.com/gruntwork-io/boilerplate/manifest"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/templates"
 	"github.com/gruntwork-io/boilerplate/variables"
@@ -135,12 +134,7 @@ func runApp(cliContext *cli.Context) error {
 			return err
 		}
 
-		data, err := json.Marshal(m)
-		if err != nil {
-			return err
-		}
-
-		err = os.WriteFile("boilerplate-manifest.json", data, 0644)
+		err = manifest.UpdateVersionedManifest(opts.OutputFolder, opts.TemplateURL, opts.Vars, m)
 		if err != nil {
 			return err
 		}

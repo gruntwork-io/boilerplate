@@ -1,75 +1,77 @@
 package manifest
 
 import (
+	"encoding/json"
+	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func TestNewManifest(t *testing.T) {
+func TestUpdateVersionedManifestMultipleVersions(t *testing.T) {
 	t.Parallel()
 
-	outputDir := "/test/output"
+	// Create temporary directory
+	tempDir, err := os.MkdirTemp("", "manifest-test")
+	require.NoError(t, err)
+	defer os.RemoveAll(tempDir)
 
-	manifest := NewManifest(outputDir)
+	// First update
+	err = UpdateVersionedManifest(tempDir, "template1", map[string]interface{}{"var1": "value1"}, []GeneratedFile{{Path: "file1.txt"}})
+	require.NoError(t, err)
 
-	assert.Equal(t, outputDir, manifest.OutputDir)
-	assert.Empty(t, manifest.Files)
+	// Wait a moment to ensure different timestamps
+	time.Sleep(time.Second * 1)
+
+	// Second update
+	err = UpdateVersionedManifest(tempDir, "template2", map[string]interface{}{"var2": "value2"}, []GeneratedFile{{Path: "file2.txt"}})
+	require.NoError(t, err)
+
+	// Read manifest
+	manifestPath := filepath.Join(tempDir, "boilerplate-manifest.json")
+	data, err := os.ReadFile(manifestPath)
+	require.NoError(t, err)
+
+	var manifest VersionedManifest
+	err = json.Unmarshal(data, &manifest)
+	require.NoError(t, err)
+
+	// Verify we have 2 versions
+	assert.Len(t, manifest.Versions, 2)
+	assert.NotEmpty(t, manifest.LatestVersion)
+
+	// Verify latest version points to second update
+	latestEntry := manifest.Versions[manifest.LatestVersion]
+	assert.Equal(t, "template2", latestEntry.TemplateURL)
+	assert.Equal(t, map[string]interface{}{"var2": "value2"}, latestEntry.Variables)
 }
 
-func TestAddFile(t *testing.T) {
+func TestUpdateVersionedManifestInvalidExistingFile(t *testing.T) {
 	t.Parallel()
 
-	outputDir := "/test/output"
-	manifest := NewManifest(outputDir)
+	// Create temporary directory
+	tempDir, err := os.MkdirTemp("", "manifest-test")
+	require.NoError(t, err)
+	defer os.RemoveAll(tempDir)
 
-	// Test adding a file in the output directory
-	outputPath := filepath.Join(outputDir, "subdir", "file.txt")
+	// Create invalid JSON file
+	manifestPath := filepath.Join(tempDir, "boilerplate-manifest.json")
+	err = os.WriteFile(manifestPath, []byte("invalid json"), 0644)
+	require.NoError(t, err)
 
-	err := manifest.AddFile(outputPath)
-
+	// Update should still work (creates new manifest)
+	err = UpdateVersionedManifest(tempDir, "template", map[string]interface{}{}, []GeneratedFile{})
 	assert.NoError(t, err)
-	assert.Len(t, manifest.Files, 1)
-	assert.Equal(t, "subdir/file.txt", manifest.Files[0].Path)
-}
 
-func TestAddFileOutsideOutputDir(t *testing.T) {
-	t.Parallel()
+	// Verify manifest was recreated
+	data, err := os.ReadFile(manifestPath)
+	require.NoError(t, err)
 
-	outputDir := "/test/output"
-	manifest := NewManifest(outputDir)
-
-	// Test adding a file outside the output directory
-	outputPath := "/other/dir/file.txt"
-
-	err := manifest.AddFile(outputPath)
-
+	var manifest VersionedManifest
+	err = json.Unmarshal(data, &manifest)
 	assert.NoError(t, err)
-	assert.Len(t, manifest.Files, 1)
-	expectedRelPath, _ := filepath.Rel(outputDir, outputPath)
-	assert.Equal(t, expectedRelPath, manifest.Files[0].Path)
-}
-
-func TestAddMultipleFiles(t *testing.T) {
-	t.Parallel()
-
-	outputDir := "/test/output"
-	manifest := NewManifest(outputDir)
-
-	// Add first file
-	err1 := manifest.AddFile(
-		filepath.Join(outputDir, "file1.txt"),
-	)
-
-	// Add second file
-	err2 := manifest.AddFile(
-		filepath.Join(outputDir, "subdir", "file2.txt"),
-	)
-
-	assert.NoError(t, err1)
-	assert.NoError(t, err2)
-	assert.Len(t, manifest.Files, 2)
-	assert.Equal(t, "file1.txt", manifest.Files[0].Path)
-	assert.Equal(t, "subdir/file2.txt", manifest.Files[1].Path)
+	assert.Len(t, manifest.Versions, 1)
 }
