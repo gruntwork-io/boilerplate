@@ -27,7 +27,8 @@ const eachVarName = "__each__"
 // function will load any missing variables (either from command line options or by prompting the user), execute all the
 // dependent boilerplate templates, and then execute this template. Note that we pass in rootOptions so that template
 // dependencies can inspect properties of the root template.
-func ProcessTemplate(options, rootOpts *options.BoilerplateOptions, thisDep variables.Dependency) error {
+// Returns a list of generated file paths relative to the output directory.
+func ProcessTemplate(options, rootOpts *options.BoilerplateOptions, thisDep variables.Dependency) ([]string, error) {
 	// If TemplateFolder is already set, use that directly as it is a local template. Otherwise, download to a temporary
 	// working directory.
 	if options.TemplateFolder == "" {
@@ -37,7 +38,7 @@ func ProcessTemplate(options, rootOpts *options.BoilerplateOptions, thisDep vari
 			os.RemoveAll(workingDir)
 		}()
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		// Set the TemplateFolder of the options to the download dir
@@ -46,56 +47,58 @@ func ProcessTemplate(options, rootOpts *options.BoilerplateOptions, thisDep vari
 
 	rootBoilerplateConfig, err := config.LoadBoilerplateConfig(rootOpts)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if err := config.EnforceRequiredVersion(rootBoilerplateConfig); err != nil {
-		return err
+		return nil, err
 	}
 
 	boilerplateConfig, err := config.LoadBoilerplateConfig(options)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if err := config.EnforceRequiredVersion(boilerplateConfig); err != nil {
-		return err
+		return nil, err
 	}
 
 	vars, err := config.GetVariables(options, boilerplateConfig, rootBoilerplateConfig, thisDep)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	err = os.MkdirAll(options.OutputFolder, 0o777)
 	if err != nil {
-		return errors.WithStackTrace(err)
+		return nil, errors.WithStackTrace(err)
 	}
 
 	err = processHooks(boilerplateConfig.Hooks.BeforeHooks, options, vars)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	err = processDependencies(boilerplateConfig.Dependencies, options, boilerplateConfig.GetVariablesMap(), vars)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	partials, err := processPartials(boilerplateConfig.Partials, options, vars)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	err = processTemplateFolder(boilerplateConfig, options, vars, partials)
+	var generatedFilePaths []string
+
+	err = processTemplateFolder(boilerplateConfig, options, vars, partials, &generatedFilePaths)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	err = processHooks(boilerplateConfig.Hooks.AfterHooks, options, vars)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return generatedFilePaths, nil
 }
 
 func processPartials(partials []string, opts *options.BoilerplateOptions, vars map[string]interface{}) ([]string, error) {
@@ -230,7 +233,8 @@ func processDependency(
 			}
 
 			util.Logger.Printf("Processing dependency %s, with template folder %s and output folder %s", dependency.Name, dependencyOptions.TemplateFolder, dependencyOptions.OutputFolder)
-			return ProcessTemplate(dependencyOptions, opts, dependency)
+			_, err = ProcessTemplate(dependencyOptions, opts, dependency)
+			return err
 		}
 
 		forEach := dependency.ForEach
@@ -471,6 +475,7 @@ func processTemplateFolder(
 	opts *options.BoilerplateOptions,
 	variables map[string]interface{},
 	partials []string,
+	generatedFilePaths *[]string,
 ) error {
 	util.Logger.Printf("Processing templates in %s and outputting generated files to %s", opts.TemplateFolder, opts.OutputFolder)
 
@@ -493,7 +498,7 @@ func processTemplateFolder(
 			return createOutputDir(path, opts, variables)
 		} else {
 			engine := determineTemplateEngine(processedEngines, path)
-			return processFile(path, opts, variables, partials, engine)
+			return processFile(path, opts, variables, partials, engine, generatedFilePaths)
 		}
 	})
 }
@@ -506,6 +511,7 @@ func processFile(
 	variables map[string]interface{},
 	partials []string,
 	engine variables.TemplateEngineType,
+	generatedFilePaths *[]string,
 ) error {
 	isText, err := util.IsTextFile(path)
 	if err != nil {
@@ -513,9 +519,9 @@ func processFile(
 	}
 
 	if isText {
-		return processTemplate(path, opts, variables, partials, engine)
+		return processTemplate(path, opts, variables, partials, engine, generatedFilePaths)
 	} else {
-		return copyFile(path, opts, variables)
+		return copyFile(path, opts, variables, generatedFilePaths)
 	}
 }
 
@@ -564,14 +570,27 @@ func outPath(file string, opts *options.BoilerplateOptions, variables map[string
 }
 
 // Copy the given file, which is in options.TemplateFolder, to options.OutputFolder
-func copyFile(file string, opts *options.BoilerplateOptions, variables map[string]interface{}) error {
+func copyFile(file string, opts *options.BoilerplateOptions, variables map[string]interface{}, generatedFilePaths *[]string) error {
 	destination, err := outPath(file, opts, variables)
 	if err != nil {
 		return err
 	}
 
 	util.Logger.Printf("Copying %s to %s", file, destination)
-	return util.CopyFile(file, destination)
+	if err := util.CopyFile(file, destination); err != nil {
+		return err
+	}
+
+	if generatedFilePaths != nil {
+		// Convert to relative path from output directory
+		relPath, err := filepath.Rel(opts.OutputFolder, destination)
+		if err != nil {
+			relPath = destination
+		}
+		*generatedFilePaths = append(*generatedFilePaths, relPath)
+	}
+
+	return nil
 }
 
 // Run the template at templatePath, which is in templateFolder, through the Go template engine with the given
@@ -582,6 +601,7 @@ func processTemplate(
 	vars map[string]interface{},
 	partials []string,
 	engine variables.TemplateEngineType,
+	generatedFilePaths *[]string,
 ) error {
 	destination, err := outPath(templatePath, opts, vars)
 	if err != nil {
@@ -604,7 +624,20 @@ func processTemplate(
 		destination = strings.TrimSuffix(destination, ".jsonnet")
 	}
 
-	return util.WriteFileWithSamePermissions(templatePath, destination, []byte(out))
+	if err := util.WriteFileWithSamePermissions(templatePath, destination, []byte(out)); err != nil {
+		return err
+	}
+
+	if generatedFilePaths != nil {
+		// Convert to relative path from output directory
+		relPath, err := filepath.Rel(opts.OutputFolder, destination)
+		if err != nil {
+			relPath = destination
+		}
+		*generatedFilePaths = append(*generatedFilePaths, relPath)
+	}
+
+	return nil
 }
 
 // Return true if this is a path that should not be copied
