@@ -27,6 +27,7 @@ type BoilerplateConfig struct {
 	Hooks           variables.Hooks
 	Partials        []string
 	SkipFiles       []variables.SkipFile
+	SkipTemplating  []variables.SkipFile
 	Engines         []variables.Engine
 }
 
@@ -76,10 +77,16 @@ func (config *BoilerplateConfig) UnmarshalYAML(unmarshal func(interface{}) error
 		return err
 	}
 
-	skipFiles, err := variables.UnmarshalSkipFilesFromBoilerplateConfigYaml(fields)
+	skipFiles, err := variables.UnmarshalSkipFilesFromBoilerplateConfigYaml(fields, "skip_files")
 	if err != nil {
 		return err
 	}
+
+	skipTemplating, err := variables.UnmarshalSkipFilesFromBoilerplateConfigYaml(fields, "skip_templating")
+	if err != nil {
+		return err
+	}
+
 
 	engines, err := variables.UnmarshalEnginesFromBoilerplateConfigYaml(fields)
 	if err != nil {
@@ -93,6 +100,7 @@ func (config *BoilerplateConfig) UnmarshalYAML(unmarshal func(interface{}) error
 		Hooks:           hooks,
 		Partials:        partials,
 		SkipFiles:       skipFiles,
+		SkipTemplating:  skipTemplating,
 		Engines:         engines,
 	}
 	return nil
@@ -153,6 +161,20 @@ func (config *BoilerplateConfig) MarshalYAML() (interface{}, error) {
 			return nil, err
 		}
 		configYml["skip_files"] = skipFilesYml
+	}
+	if len(config.SkipTemplating) > 0 {
+		// Due to go type system, we can only pass through []interface{}, even though []SkipTemplating is technically
+		// polymorphic to that type. So we reconstruct the list using the right type before passing it in to the marshal
+		// function.
+		interfaceList := []interface{}{}
+		for _, skipTemplate := range config.SkipTemplating {
+			interfaceList = append(interfaceList, skipTemplate)
+		}
+		skipTemplatingYml, err := util.MarshalListOfObjectsToYAML(interfaceList)
+		if err != nil {
+			return nil, err
+		}
+		configYml["skip_templating"] = skipTemplatingYml
 	}
 	if len(config.Engines) > 0 {
 		// Due to go type system, we can only pass through []interface{}, even though []Engine is technically
