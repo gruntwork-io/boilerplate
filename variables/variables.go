@@ -251,6 +251,15 @@ func ConvertType(value interface{}, variable Variable) (interface{}, error) {
 		if isString {
 			return asString, nil
 		}
+		if asInt, isInt := value.(int); isInt {
+			return strconv.Itoa(asInt), nil
+		}
+		if asFloat, isFloat := value.(float64); isFloat {
+			return strconv.FormatFloat(asFloat, 'f', -1, 64), nil
+		}
+		if asBool, isBool := value.(bool); isBool {
+			return strconv.FormatBool(asBool), nil
+		}
 	case Int:
 		if asInt, isInt := value.(int); isInt {
 			return asInt, nil
