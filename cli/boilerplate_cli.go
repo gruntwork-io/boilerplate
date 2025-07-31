@@ -27,6 +27,7 @@ Generate a project in ~/output from the templates in ~/templates, using variable
 Generate a project in ~/output from the templates in ~/templates, using variables read from a file:
 
     boilerplate --template-url ~/templates --output-folder ~/output --var-file vars.yml
+    boilerplate --template-url ~/templates --output-folder ~/output --var-file vars.json
 
 Generate a project in ~/output from the templates in this repo's include example dir, using variables read from a file:
 
@@ -74,7 +75,7 @@ func CreateBoilerplateCli() *cli.App {
 		},
 		&cli.StringSliceFlag{
 			Name:  options.OptVarFile,
-			Usage: "Load variable values from the YAML file `FILE`. May be specified more than once.",
+			Usage: "Load variable values from the YAML or JSON file `FILE`. May be specified more than once.",
 		},
 		&cli.StringFlag{
 			Name:  options.OptMissingKeyAction,

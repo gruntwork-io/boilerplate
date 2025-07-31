@@ -21,6 +21,14 @@ key2: value2
 key3: value3
 `
 
+const JSON_FILE_ONE_VAR = `{"key": "value"}`
+
+const JSON_FILE_MULTIPLE_VARS = `{
+  "key1": "value1",
+  "key2": "value2", 
+  "key3": "value3"
+}`
+
 func TestParseVariablesFromVarFileContents(t *testing.T) {
 	t.Parallel()
 
@@ -48,6 +56,33 @@ func TestParseVariablesFromVarFileContents(t *testing.T) {
 		}
 	}
 }
+
+func TestParseVariablesFromJsonFileContents(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		fileContents        string
+		expectJsonError     bool
+		expectedVars        map[string]interface{}
+	}{
+		{"{}", false, map[string]interface{}{}},
+		{JSON_FILE_ONE_VAR, false, map[string]interface{}{"key": "value"}},
+		{JSON_FILE_MULTIPLE_VARS, false, map[string]interface{}{"key1": "value1", "key2": "value2", "key3": "value3"}},
+		{"invalid json", true, map[string]interface{}{}},
+	}
+
+	for _, testCase := range testCases {
+		actualVars, err := parseVariablesFromJsonFileContents([]byte(testCase.fileContents))
+		if testCase.expectJsonError {
+			assert.NotNil(t, err)
+		} else {
+			assert.Nil(t, err, "Got unexpected error: %v", err)
+			assert.Equal(t, testCase.expectedVars, actualVars)
+		}
+	}
+}
+
+
 
 func TestParseVariablesFromKeyValuePairs(t *testing.T) {
 	t.Parallel()
