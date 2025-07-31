@@ -174,7 +174,7 @@ The `boilerplate` binary supports the following options:
 * `--non-interactive` (optional): Do not prompt for input variables. All variables must be set via `--var` and
   `--var-file` options instead.
 * `--var NAME=VALUE` (optional): Use `NAME=VALUE` to set variable `NAME` to `VALUE`. May be specified more than once.
-* `--var-file FILE` (optional): Load variable values from the YAML file `FILE`. May be specified more than once.
+* `--var-file FILE` (optional): Load variable values from the YAML or JSON file `FILE`. May be specified more than once.
 * `--missing-key-action ACTION` (optional): What to do if a template looks up a variable that is not defined. Must
   be one of: `invalid` (render the text "<no value>"), `zero` (render the zero value for the variable), or `error`
   (return an error and exit immediately). Default: `error`.
@@ -206,6 +206,7 @@ Generate a project in ~/output from the templates in ~/templates, using variable
 
 ```
 boilerplate --template-url ~/templates --output-folder ~/output --var-file vars.yml
+boilerplate --template-url ~/templates --output-folder ~/output --var-file vars.json
 ```
 
 Generate a project in ~/output from the templates in this repo's `include` example dir, using variables read from a file:
@@ -416,11 +417,12 @@ five ways to provide a value for a variable:
    `--var foo='{key: "value"}' --var bar='["a", "b", "c"]'`. If you want to specify the value of a
    variable for a specific dependency, use the `<DEPENDENCY_NAME>.<VARIABLE_NAME>` syntax. For example:
    `boilerplate --var Description='Welcome to my home page!' --var about.Description='About Us' --var ShowLogo=false`.
-1. `--var-file` option(s) you pass in when calling boilerplate. Example: `boilerplate --var-file vars.yml`. The vars
-   file must be a simple YAML file that defines key, value pairs, where the key is the name of a variable (or
+1. `--var-file` option(s) you pass in when calling boilerplate. Example: `boilerplate --var-file vars.yml` or `boilerplate --var-file vars.json`. The vars
+   file can be either YAML or JSON format that defines key, value pairs, where the key is the name of a variable (or
    `<DEPENDENCY_NAME>.<VARIABLE_NAME>` for a variable in a dependency) and the value is the value to set for that
-   variable. Example:
+   variable. Examples:
 
+   YAML format:
    ```yaml
    Title: Boilerplate
    ShowLogo: false
@@ -432,6 +434,24 @@ five ways to provide a value for a variable:
    ExampleOfAList:
      - value1
      - value2
+   ```
+   
+   JSON format:
+   ```json
+   {
+     "Title": "Boilerplate",
+     "ShowLogo": false,
+     "Description": "Welcome to my home page!",
+     "about.Description": "Welcome to my home page!",
+     "ExampleOfAMap": {
+       "key1": "value1",
+       "key2": "value2"
+     },
+     "ExampleOfAList": [
+       "value1",
+       "value2"
+     ]
+   }
    ```
 1. Manual input. If no value is specified via the `--var` or `--var-file` flags, Boilerplate will interactively prompt
    the user to provide a value. Note that the `--non-interactive` flag disables this functionality.
