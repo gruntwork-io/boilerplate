@@ -1,6 +1,7 @@
 package templates
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"net/url"
 	"os"
@@ -112,138 +113,177 @@ func processPartials(partials []string, opts *options.BoilerplateOptions, vars m
 
 // Process the given list of hooks, which are scripts that should be executed at the command-line
 func processHooks(hooks []variables.Hook, opts *options.BoilerplateOptions, vars map[string]interface{}) error {
-	// If there are no hooks, nothing to do
-	if len(hooks) == 0 {
+	if len(hooks) == 0 || opts.DisableHooks {
+		if opts.DisableHooks {
+			util.Logger.Printf("Hooks are disabled, skipping %d hook(s)", len(hooks))
+		}
 		return nil
 	}
 
-	// If hooks are disabled, skip all hooks
-	if opts.DisableHooks {
-		util.Logger.Printf("Hooks are disabled, skipping %d hook(s)", len(hooks))
-		return nil
-	}
-
-	// Ask for confirmation for each hook
 	executeAll := false
-	hookAnswers := make(map[string]bool) // Remember answers for identical commands
+	hookAnswers := make(map[string]bool)
 
 	for _, hook := range hooks {
-		// Check if this hook should be skipped
 		skip, err := shouldSkipHook(hook, opts, vars)
-		if err != nil {
-			return err
-		}
-		if skip {
-			util.Logger.Printf("Skipping hook with command '%s'", hook.Command)
+		if err != nil || skip {
+			if skip {
+				util.Logger.Printf("Skipping hook with command '%s'", hook.Command)
+			}
+			if err != nil {
+				return err
+			}
 			continue
 		}
 
-		// Render all hook details to show what will be executed
-		renderedCmd, err := render.RenderTemplateFromString(config.BoilerplateConfigPath(opts.TemplateFolder), hook.Command, vars, opts)
+		hookDetails, err := renderHookDetails(hook, opts, vars)
 		if err != nil {
 			return err
 		}
 
-		renderedArgs := []string{}
-		for _, arg := range hook.Args {
-			renderedArg, err := render.RenderTemplateFromString(config.BoilerplateConfigPath(opts.TemplateFolder), arg, vars, opts)
-			if err != nil {
-				return err
-			}
-			renderedArgs = append(renderedArgs, renderedArg)
+		hookKey := generateHookKey(hookDetails)
+
+		// Check previous confirmation
+		shouldExecute, shouldSetExecuteAll := handlePreviousHookConfirmation(hookKey, hookAnswers, executeAll)
+		if !shouldExecute {
+			continue
+		}
+		if shouldSetExecuteAll {
+			executeAll = true
 		}
 
-		renderedEnv := []string{}
-		for key, value := range hook.Env {
-			renderedKey, err := render.RenderTemplateFromString(config.BoilerplateConfigPath(opts.TemplateFolder), key, vars, opts)
+		// Handle user confirmation if needed
+		if !executeAll && !hookAnswers[hookKey] {
+			shouldExecute, shouldSetExecuteAll, err = handleHookUserConfirmation(hookDetails, hookKey, hookAnswers)
 			if err != nil {
 				return err
 			}
-			renderedValue, err := render.RenderTemplateFromString(config.BoilerplateConfigPath(opts.TemplateFolder), value, vars, opts)
-			if err != nil {
-				return err
+			if !shouldExecute {
+				continue
 			}
-			renderedEnv = append(renderedEnv, fmt.Sprintf("%s=%s", renderedKey, renderedValue))
-		}
-
-		workingDir := opts.TemplateFolder
-		if hook.WorkingDir != "" {
-			workingDir, err = render.RenderTemplateFromString(config.BoilerplateConfigPath(opts.TemplateFolder), hook.WorkingDir, vars, opts)
-			if err != nil {
-				return err
-			}
-		}
-
-		// Create a unique key for this hook based on all its parameters
-		hookKey := fmt.Sprintf("%s|%v|%v|%s", renderedCmd, renderedArgs, renderedEnv, workingDir)
-
-		// Determine if we should execute this hook
-		shouldExecute := false
-		reason := ""
-
-		// Check if we already have an answer for this command
-		if answer, exists := hookAnswers[hookKey]; exists {
-			if answer {
-				shouldExecute = true
-				reason = "previously confirmed"
-			} else {
-				reason = "previously declined"
-			}
-		} else if executeAll {
-			shouldExecute = true
-			reason = "all confirmed"
-		} else {
-			// Print hook details for user confirmation
-			printHookDetails(renderedCmd, renderedArgs, renderedEnv, workingDir)
-
-			// Ask for user confirmation
-			confirmed, err := util.PromptUserForYesNoAll(fmt.Sprintf("Execute hook with command '%s'?", renderedCmd))
-			if err != nil {
-				return err
-			}
-
-			switch confirmed {
-			case util.UserResponseYes:
-				shouldExecute = true
-				reason = "user confirmed"
-			case util.UserResponseAll:
-				shouldExecute = true
+			if shouldSetExecuteAll {
 				executeAll = true
-				reason = "user confirmed all"
-			case util.UserResponseNo:
-				reason = "user declined"
 			}
-			hookAnswers[hookKey] = shouldExecute
 		}
 
-		// Execute or skip the hook
-		if shouldExecute {
-			util.Logger.Printf("Executing hook with command '%s' (%s)", renderedCmd, reason)
-			if err := processHook(hook, opts, vars); err != nil {
-				return err
-			}
-		} else {
-			util.Logger.Printf("Skipping hook with command '%s' (%s)", renderedCmd, reason)
+		// Execute the hook
+		if err := processHook(hook, opts, vars); err != nil {
+			return err
 		}
 	}
 
 	return nil
 }
 
-// printHookDetails prints the details of a hook that will be executed
-func printHookDetails(cmd string, args []string, env []string, workingDir string) {
-	util.Logger.Printf("Hook details:")
-	util.Logger.Printf("  Command: %s", cmd)
-	if len(args) > 0 {
-		util.Logger.Printf("  Arguments: %v", args)
+// renderHookDetails renders the hook details and returns a pre-rendered string representation
+func renderHookDetails(hook variables.Hook, opts *options.BoilerplateOptions, vars map[string]interface{}) (string, error) {
+	base := config.BoilerplateConfigPath(opts.TemplateFolder)
+	render := func(s string) (string, error) {
+		return render.RenderTemplateFromString(base, s, vars, opts)
 	}
-	if len(env) > 0 {
-		util.Logger.Printf("  Environment variables:")
-		for _, envVar := range env {
-			util.Logger.Printf("    %s", envVar)
+
+	cmd, err := render(hook.Command)
+	if err != nil {
+		return "", err
+	}
+
+	args := make([]string, len(hook.Args))
+	for i, a := range hook.Args {
+		if args[i], err = render(a); err != nil {
+			return "", err
 		}
 	}
-	util.Logger.Printf("  Working directory: %s", workingDir)
+
+	env := make([]string, 0, len(hook.Env))
+	for k, v := range hook.Env {
+		key, err := render(k)
+		if err != nil {
+			return "", err
+		}
+		val, err := render(v)
+		if err != nil {
+			return "", err
+		}
+		env = append(env, fmt.Sprintf("%s=%s", key, val))
+	}
+
+	wd := opts.TemplateFolder
+	if hook.WorkingDir != "" {
+		if wd, err = render(hook.WorkingDir); err != nil {
+			return "", err
+		}
+	}
+
+	// Create a user-friendly string representation for the hook details
+	var details []string
+	details = append(details, fmt.Sprintf("Command: %s", cmd))
+	if len(args) > 0 {
+		details = append(details, fmt.Sprintf("Arguments: %v", args))
+	}
+	if len(env) > 0 {
+		details = append(details, fmt.Sprintf("Environment: %v", env))
+	}
+	details = append(details, fmt.Sprintf("Working Directory: %s", wd))
+
+	hookDetails := strings.Join(details, "\n")
+	return hookDetails, nil
+}
+
+// handlePreviousHookConfirmation checks if a hook was previously confirmed or declined
+func handlePreviousHookConfirmation(hookKey string, hookAnswers map[string]bool, executeAll bool) (bool, bool) {
+	confirmed, seen := hookAnswers[hookKey]
+	if !seen && !executeAll {
+		return true, false
+	}
+
+	if seen && !confirmed {
+		util.Logger.Printf("Skipping hook (previously declined)")
+		return false, false
+	}
+
+	util.Logger.Printf("Executing hook (%s)", "previously confirmed or all confirmed")
+	return true, false
+}
+
+// handleHookUserConfirmation prompts the user for confirmation and handles the response
+func handleHookUserConfirmation(hookDetails string, hookKey string, hookAnswers map[string]bool) (bool, bool, error) {
+	printHookDetails(hookDetails)
+
+	resp, err := util.PromptUserForYesNoAll("Execute hook?")
+	if err != nil {
+		return false, false, err
+	}
+
+	switch resp {
+	case util.UserResponseYes:
+		hookAnswers[hookKey] = true
+		util.Logger.Printf("Executing hook (user confirmed)")
+		return true, false, nil // should execute, don't set executeAll
+	case util.UserResponseAll:
+		hookAnswers[hookKey] = true
+		util.Logger.Printf("Executing hook (user confirmed all)")
+		return true, true, nil // should execute, set executeAll
+	case util.UserResponseNo:
+		hookAnswers[hookKey] = false
+		util.Logger.Printf("Skipping hook (user declined)")
+		return false, false, nil // don't execute, don't set executeAll
+	}
+
+	return false, false, nil
+}
+
+// generateHookKey creates a unique key for a hook using a checksum of the hook details
+func generateHookKey(hookDetails string) string {
+	hash := sha256.Sum256([]byte(hookDetails))
+	return fmt.Sprintf("hook_%x", hash)
+}
+
+// printHookDetails prints the details of a hook that will be executed
+func printHookDetails(hookDetails string) {
+	util.Logger.Printf("Hook details:")
+	lines := strings.Split(hookDetails, "\n")
+	for _, line := range lines {
+		util.Logger.Printf("  %s", line)
+	}
 }
 
 // Process the given hook, which is a script that should be execute at the command-line
