@@ -52,10 +52,10 @@ func PromptUserForYesNo(prompt string) (bool, error) {
 	}
 }
 
-// Prompt the user for a yes/no/all response and return the response type.
+// Prompt the user for a y/a/n response and return the response type.
 // Returns: UserResponseYes, UserResponseNo, or UserResponseAll.
 func PromptUserForYesNoAll(prompt string) (UserResponse, error) {
-	resp, err := PromptUserForInput(fmt.Sprintf("%s (y/n/all) ", prompt))
+	resp, err := PromptUserForInput(fmt.Sprintf("%s (y/a/n) ", prompt))
 
 	if err != nil {
 		return UserResponseNo, errors.WithStackTrace(err)
@@ -64,7 +64,7 @@ func PromptUserForYesNoAll(prompt string) (UserResponse, error) {
 	switch strings.ToLower(resp) {
 	case "y", "yes":
 		return UserResponseYes, nil
-	case "all":
+	case "a", "all":
 		return UserResponseAll, nil
 	default:
 		return UserResponseNo, nil
