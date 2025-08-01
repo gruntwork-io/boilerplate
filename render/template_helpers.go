@@ -659,7 +659,7 @@ func shell(templatePath string, opts *options.BoilerplateOptions, rawArgs ...str
 	if opts.NonInteractive {
 		opts.ShellCommandAnswers[shellKey] = true
 		util.Logger.Printf("Executing shell command (non-interactive mode)")
-		return util.RunShellCommandAndGetOutput(workingDir, envVars, args[0], args[1:]...)
+		return util.RunShellCommandAndGetOutput(workingDir, envVars, args...)
 	}
 
 	// Check previous confirmation
@@ -669,7 +669,7 @@ func shell(templatePath string, opts *options.BoilerplateOptions, rawArgs ...str
 			return SHELL_DISABLED_PLACEHOLDER, nil
 		}
 		util.Logger.Printf("Executing shell command (%s)", "previously confirmed or all confirmed")
-		return util.RunShellCommandAndGetOutput(workingDir, envVars, args[0], args[1:]...)
+		return util.RunShellCommandAndGetOutput(workingDir, envVars, args...)
 	}
 
 	// Handle user confirmation
@@ -694,7 +694,7 @@ func shell(templatePath string, opts *options.BoilerplateOptions, rawArgs ...str
 		return SHELL_DISABLED_PLACEHOLDER, nil
 	}
 
-	return util.RunShellCommandAndGetOutput(workingDir, envVars, args[0], args[1:]...)
+	return util.RunShellCommandAndGetOutput(workingDir, envVars, args...)
 }
 
 // To pass env vars to the shell helper, we use the format ENV:KEY=VALUE. This method goes through the given list of

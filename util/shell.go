@@ -9,7 +9,9 @@ import (
 )
 
 // Run the given shell command with the given environment variables and arguments in the given working directory
-func RunShellCommandAndGetOutput(workingDir string, envVars []string, command string, args ...string) (string, error) {
+func RunShellCommandAndGetOutput(workingDir string, envVars []string, argslist ...string) (string, error) {
+	command := argslist[0]
+	args := argslist[1:]
 	Logger.Printf("Running command: %s %s", command, strings.Join(args, " "))
 
 	cmd := exec.Command(command, args...)
