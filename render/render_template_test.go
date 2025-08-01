@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/gruntwork-io/boilerplate/options"
+	"github.com/gruntwork-io/boilerplate/testutil"
 )
 
 const EMBED_WHOLE_FILE_TEMPLATE = `
@@ -106,7 +107,9 @@ func TestRenderTemplate(t *testing.T) {
 				t.Skip("Skipping test because of skip flag")
 				return
 			}
-			actualOutput, err := RenderTemplateFromString(pwd+"/template.txt", tt.templateContents, tt.variables, &options.BoilerplateOptions{TemplateFolder: "/templates", OutputFolder: defaultOutputDir, OnMissingKey: testCase.missingKeyAction})
+			opts := testutil.CreateTestOptionsWithOutput("/templates", defaultOutputDir)
+			opts.OnMissingKey = testCase.missingKeyAction
+			actualOutput, err := RenderTemplateFromString(pwd+"/template.txt", tt.templateContents, tt.variables, opts)
 			if tt.expectedErrorText == "" {
 				assert.Nil(t, err, "template = %s, variables = %s, missingKeyAction = %s, err = %v", tt.templateContents, tt.variables, tt.missingKeyAction, err)
 				assert.Equal(t, tt.expectedOutput, actualOutput, "template = %s, variables = %s, missingKeyAction = %s", tt.templateContents, tt.variables, tt.missingKeyAction)
