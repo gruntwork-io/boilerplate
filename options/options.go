@@ -17,8 +17,8 @@ const OptVar = "var"
 const OptVarFile = "var-file"
 const OptMissingKeyAction = "missing-key-action"
 const OptMissingConfigAction = "missing-config-action"
-const OptDisableHooks = "disable-hooks"
-const OptDisableShell = "disable-shell"
+const OptNoHooks = "no-hooks"
+const OptNoShell = "no-shell"
 const OptDisableDependencyPrompt = "disable-dependency-prompt"
 
 // The command-line options for the boilerplate app
@@ -33,9 +33,13 @@ type BoilerplateOptions struct {
 	Vars                    map[string]interface{}
 	OnMissingKey            MissingKeyAction
 	OnMissingConfig         MissingConfigAction
-	DisableHooks            bool
-	DisableShell            bool
+	NoHooks                 bool
+	NoShell                 bool
 	DisableDependencyPrompt bool
+	// Track if user has chosen to execute all shell commands without confirmation
+	ExecuteAllShellCommands bool
+	// Track shell command confirmations similar to hooks
+	ShellCommandAnswers map[string]bool
 }
 
 // Validate that the options have reasonable values and return an error if they don't
@@ -93,9 +97,11 @@ func ParseOptions(cliContext *cli.Context) (*BoilerplateOptions, error) {
 		OnMissingKey:            missingKeyAction,
 		OnMissingConfig:         missingConfigAction,
 		Vars:                    vars,
-		DisableHooks:            cliContext.Bool(OptDisableHooks),
-		DisableShell:            cliContext.Bool(OptDisableShell),
+		NoHooks:                 cliContext.Bool(OptNoHooks),
+		NoShell:                 cliContext.Bool(OptNoShell),
 		DisableDependencyPrompt: cliContext.Bool(OptDisableDependencyPrompt),
+		ExecuteAllShellCommands: false,
+		ShellCommandAnswers:     make(map[string]bool),
 	}
 
 	if err := options.Validate(); err != nil {

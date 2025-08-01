@@ -12,6 +12,7 @@ import (
 
 	"github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/boilerplate/options"
+	"github.com/gruntwork-io/boilerplate/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -445,12 +446,13 @@ func TestShellSuccess(t *testing.T) {
 	var output string
 	var err error
 	var eol string
+	opts := testutil.CreateTestOptionsForShell(true, false)
 	if runtime.GOOS == "windows" {
 		eol = "\r\n"
-		output, err = shell(".", &options.BoilerplateOptions{NonInteractive: true}, "cmd.exe", "/C", "echo", "hi")
+		output, err = shell(".", opts, "cmd.exe", "/C", "echo", "hi")
 	} else {
 		eol = "\n"
-		output, err = shell(".", &options.BoilerplateOptions{NonInteractive: true}, "echo", "hi")
+		output, err = shell(".", opts, "echo", "hi")
 	}
 	assert.Nil(t, err, "Unexpected error: %v", err)
 	assert.Equal(t, "hi"+eol, output)
@@ -459,7 +461,8 @@ func TestShellSuccess(t *testing.T) {
 func TestShellError(t *testing.T) {
 	t.Parallel()
 
-	_, err := shell(".", &options.BoilerplateOptions{NonInteractive: true}, "not-a-real-command")
+	opts := testutil.CreateTestOptionsForShell(true, false)
+	_, err := shell(".", opts, "not-a-real-command")
 	if assert.NotNil(t, err) {
 		if runtime.GOOS == "windows" {
 			assert.Contains(t, err.Error(), "executable file not found in %PATH%", "Unexpected error message: %s", err.Error())
@@ -473,7 +476,8 @@ func TestShellError(t *testing.T) {
 func TestShellDisabled(t *testing.T) {
 	t.Parallel()
 
-	output, err := shell(".", &options.BoilerplateOptions{NonInteractive: true, DisableShell: true}, "echo", "hi")
+	opts := testutil.CreateTestOptionsForShell(true, true)
+	output, err := shell(".", opts, "echo", "hi")
 	assert.Nil(t, err, "Unexpected error: %v", err)
 	assert.Equal(t, SHELL_DISABLED_PLACEHOLDER, output)
 }
@@ -548,12 +552,12 @@ func TestFromYaml(t *testing.T) {
 			expected: []interface{}{"apple", "banana", 42, true},
 		},
 		{
-			name:     "nested object",
-			input:    "person:\n  name: John\n  age: 30\n  skills:\n    - go\n    - yaml",
+			name:  "nested object",
+			input: "person:\n  name: John\n  age: 30\n  skills:\n    - go\n    - yaml",
 			expected: map[interface{}]interface{}{
 				"person": map[interface{}]interface{}{
-					"name": "John",
-					"age":  30,
+					"name":   "John",
+					"age":    30,
 					"skills": []interface{}{"go", "yaml"},
 				},
 			},

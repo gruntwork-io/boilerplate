@@ -181,8 +181,8 @@ The `boilerplate` binary supports the following options:
 * `--missing-config-action ACTION` (optional): What to do if a template folder does not have a `boilerplate.yml` file.
   Must be one of: `exit` (return an error and exit immediately) or `ignore` (log a warning and process the template
   folder without any variables). Default: `exit`.
-* `--disable-hooks`: If this flag is set, no hooks will execute.
-* `--disable-shell`: If this flag is set, no `shell` helpers will execute. They will instead return the text "replace-me".
+* `--no-hooks`: If this flag is set, no hooks will execute.
+* `--no-shell`: If this flag is set, no `shell` helpers will execute. They will instead return the text "replace-me".
 * `--disable-dependency-prompt` (optional): Do not prompt for confirmation to include dependencies. Has the same effect as
   --non-interactive, without disabling variable prompts. Default: `false`.
 * `--help`: Show the help text and exit.
@@ -546,6 +546,15 @@ Note the following:
 
 You can specify `hooks` in `boilerplate.yml` to tell Boilerplate to execute arbitrary shell commands.
 
+**Security Note**: By default, Boilerplate will print hook details and prompt for confirmation before executing hooks for security reasons, as hooks can run arbitrary shell commands. When prompted, you will see the message `Execute hook? (y/a/n) :` where:
+- `y` means yes (execute this hook)
+- `a` means execute all hooks (skip future prompts for remaining hooks)
+- `n` means don't execute this hook
+
+Your responses will be remembered for the current session, so you won't be prompted again for the same hook. The same confirmation behavior applies to shell commands executed via the `shell` helper. To run hooks without confirmation, use the `--non-interactive` flag. To disable hook execution entirely, use the `--no-hooks` flag.
+
+**Execution Logic**: Hooks are executed in the order they appear in the `boilerplate.yml` file. `before` hooks are executed before any template rendering begins, while `after` hooks are executed after all template rendering has completed. If a hook fails (exits with a non-zero status code), Boilerplate will stop execution and report the error.
+
 Note the following:
 
 * The `before` hook allows you to run scripts before Boilerplate has started rendering.
@@ -587,7 +596,7 @@ Note the following:
     ```
 * `skip` (Optional): Skip this hook if this condition, which can use Go templating syntax and
   boilerplate variables, evaluates to the string `true`. This is useful to conditionally enable or disable
-  dependencies.
+  hooks.
 * For an alternative way to execute commands, see the `shell` helper in [template helpers](#template-helpers).
 
 #### Skip Files
@@ -862,8 +871,7 @@ Boilerplate also includes several custom helpers that you can access that enhanc
 * `shell CMD ARGS...`: Execute the given shell command, passing it the given args, and render whatever that command
   prints to stdout. The working directory for the command will be set to the directory of the template being rendered,
   so you can use paths relative to the file from which you are calling the `shell` helper. Any argument you pass of the
-  form `ENV:KEY=VALUE` will be set as an environment variable for the command rather than an argument. For another way
-  to execute commands, see [hooks](#hooks).
+  form `ENV:KEY=VALUE` will be set as an environment variable for the command rather than an argument. **Security Note**: Shell commands will prompt for confirmation before execution. To run shell commands without confirmation, use the `--non-interactive` flag. To disable shell command execution entirely, use the `--no-shell` flag. For another way to execute commands, see [hooks](#hooks).
 * `templateFolder`: Return the value of the template working dir. This is the value of the `--template-url` command-line
   option if local template, or the download dir if remote template. Useful for building relative paths.
 * `templateUrl`: Return the value of the template URL as was provided in the `--template-url`.

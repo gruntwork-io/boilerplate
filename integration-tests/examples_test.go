@@ -141,7 +141,7 @@ func testExample(t *testing.T, templateFolder string, outputFolder string, varFi
 
 	// Special handling for the shell-disabled case, which we use to test that we can disable hooks and shell helpers
 	if strings.Contains(templateFolder, "shell-disabled") {
-		args = append(args, "--disable-hooks", "--disable-shell")
+		args = append(args, "--no-hooks", "--no-shell")
 	}
 
 	err := app.Run(args)
