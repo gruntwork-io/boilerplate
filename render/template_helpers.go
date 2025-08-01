@@ -642,7 +642,7 @@ func printShellCommandDetails(args []string, envVars []string, workingDir string
 // Run the given shell command specified in args in the working dir specified by templatePath and return stdout as a
 // string.
 func shell(templatePath string, opts *options.BoilerplateOptions, rawArgs ...string) (string, error) {
-	if opts.DisableShell {
+	if opts.NoShell {
 		util.Logger.Printf("Shell helpers are disabled. Will not execute shell command '%v'. Returning placeholder value '%s'.", rawArgs, SHELL_DISABLED_PLACEHOLDER)
 		return SHELL_DISABLED_PLACEHOLDER, nil
 	}

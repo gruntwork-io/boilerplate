@@ -473,7 +473,7 @@ func TestShellError(t *testing.T) {
 func TestShellDisabled(t *testing.T) {
 	t.Parallel()
 
-	output, err := shell(".", &options.BoilerplateOptions{NonInteractive: true, DisableShell: true}, "echo", "hi")
+	output, err := shell(".", &options.BoilerplateOptions{NonInteractive: true, NoShell: true}, "echo", "hi")
 	assert.Nil(t, err, "Unexpected error: %v", err)
 	assert.Equal(t, SHELL_DISABLED_PLACEHOLDER, output)
 }
@@ -548,12 +548,12 @@ func TestFromYaml(t *testing.T) {
 			expected: []interface{}{"apple", "banana", 42, true},
 		},
 		{
-			name:     "nested object",
-			input:    "person:\n  name: John\n  age: 30\n  skills:\n    - go\n    - yaml",
+			name:  "nested object",
+			input: "person:\n  name: John\n  age: 30\n  skills:\n    - go\n    - yaml",
 			expected: map[interface{}]interface{}{
 				"person": map[interface{}]interface{}{
-					"name": "John",
-					"age":  30,
+					"name":   "John",
+					"age":    30,
 					"skills": []interface{}{"go", "yaml"},
 				},
 			},

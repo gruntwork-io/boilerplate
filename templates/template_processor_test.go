@@ -191,7 +191,7 @@ func TestForEachReferenceRendersAsTemplate(t *testing.T) {
 		NonInteractive:          true,
 		OnMissingKey:            options.ExitWithError,
 		OnMissingConfig:         options.Exit,
-		DisableHooks:            true,
+		NoHooks:                 true,
 		DisableDependencyPrompt: true,
 	}
 

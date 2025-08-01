@@ -113,8 +113,8 @@ func processPartials(partials []string, opts *options.BoilerplateOptions, vars m
 
 // Process the given list of hooks, which are scripts that should be executed at the command-line
 func processHooks(hooks []variables.Hook, opts *options.BoilerplateOptions, vars map[string]interface{}) error {
-	if len(hooks) == 0 || opts.DisableHooks {
-		if opts.DisableHooks {
+	if len(hooks) == 0 || opts.NoHooks {
+		if opts.NoHooks {
 			util.Logger.Printf("Hooks are disabled, skipping %d hook(s)", len(hooks))
 		}
 		return nil
@@ -466,8 +466,8 @@ func cloneOptionsForDependency(
 		Vars:                    vars,
 		OnMissingKey:            originalOpts.OnMissingKey,
 		OnMissingConfig:         originalOpts.OnMissingConfig,
-		DisableHooks:            originalOpts.DisableHooks,
-		DisableShell:            originalOpts.DisableShell,
+		NoHooks:                 originalOpts.NoHooks,
+		NoShell:                 originalOpts.NoShell,
 		DisableDependencyPrompt: originalOpts.DisableDependencyPrompt,
 	}, nil
 }
@@ -498,8 +498,8 @@ func cloneVariablesForDependency(
 		OutputFolder:            opts.OutputFolder,
 		Vars:                    opts.Vars,
 		OnMissingConfig:         opts.OnMissingConfig,
-		DisableHooks:            opts.DisableHooks,
-		DisableShell:            opts.DisableShell,
+		NoHooks:                 opts.NoHooks,
+		NoShell:                 opts.NoShell,
 		DisableDependencyPrompt: opts.DisableDependencyPrompt,
 	}
 
