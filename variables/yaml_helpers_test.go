@@ -130,6 +130,55 @@ func TestConvert(t *testing.T) {
 	}
 }
 
+func TestConvertNested(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name  string
+		input interface{}
+	}{
+		{
+			name: "map nested in map",
+			input: map[string]interface{}{
+				"key1": map[interface{}]interface{}{
+					"nested": "value",
+				},
+			},
+		},
+		{
+			name: "map nested in list",
+			input: []interface{}{
+				map[interface{}]interface{}{
+					"nested": "value",
+				},
+			},
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			result, err := ConvertYAMLToStringMap(testCase.input)
+			assert.NoError(t, err)
+			
+			// Check that conversion actually happened - MUST work, not optional
+			switch v := result.(type) {
+			case map[string]interface{}:
+				for _, value := range v {
+					nestedMap, ok := value.(map[string]interface{})
+					assert.True(t, ok, "Expected nested map[string]interface{}, got %T", value)
+					assert.Equal(t, "value", nestedMap["nested"])
+				}
+			case []interface{}:
+				for _, item := range v {
+					nestedMap, ok := item.(map[string]interface{})
+					assert.True(t, ok, "Expected nested map[string]interface{}, got %T", item)
+					assert.Equal(t, "value", nestedMap["nested"])
+				}
+			}
+		})
+	}
+}
+
 func TestParserulestring(t *testing.T) {
 	t.Parallel()
 
