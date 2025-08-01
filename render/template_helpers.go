@@ -610,7 +610,7 @@ func keys(value interface{}) ([]string, error) {
 // string.
 func shell(templatePath string, opts *options.BoilerplateOptions, rawArgs ...string) (string, error) {
 	if opts.DisableShell {
-		util.Logger.Printf("Shell helpers are disabled. Will not execute shell command '%v'. Returning placeholder value '%s' instead.", rawArgs, SHELL_DISABLED_PLACEHOLDER)
+		util.Logger.Printf("Shell helpers are disabled. Will not execute shell command '%v'. Returning placeholder value '%s'.", rawArgs, SHELL_DISABLED_PLACEHOLDER)
 		return SHELL_DISABLED_PLACEHOLDER, nil
 	}
 
@@ -618,28 +618,25 @@ func shell(templatePath string, opts *options.BoilerplateOptions, rawArgs ...str
 		return "", errors.WithStackTrace(NoArgsPassedToShellHelper)
 	}
 
-	// If not in non-interactive mode, ask for user confirmation
-	if !opts.NonInteractive {
-		// Check if user has already chosen to execute all shell commands
-		if opts.ExecuteAllShellCommands {
-			util.Logger.Printf("Executing shell command '%v' (all confirmed)", rawArgs)
-		} else {
-			confirmed, err := util.PromptUserForYesNoAll(fmt.Sprintf("Execute shell command '%v'?", rawArgs))
-			if err != nil {
-				return "", err
-			}
-			switch confirmed {
-			case util.UserResponseYes:
-				// Continue with execution
-			case util.UserResponseAll:
-				// Set the flag to execute all future shell commands without confirmation
-				opts.ExecuteAllShellCommands = true
-				util.Logger.Printf("User confirmed all shell commands, will execute future shell commands without confirmation")
-			case util.UserResponseNo:
-				util.Logger.Printf("User declined shell execution, returning placeholder value '%s' instead.", SHELL_DISABLED_PLACEHOLDER)
-				return SHELL_DISABLED_PLACEHOLDER, nil
-			}
+	if !opts.NonInteractive && !opts.ExecuteAllShellCommands {
+		prompt := fmt.Sprintf("Execute shell command '%v'?", rawArgs)
+		resp, err := util.PromptUserForYesNoAll(prompt)
+		if err != nil {
+			return "", err
 		}
+
+		switch resp {
+		case util.UserResponseNo:
+			util.Logger.Printf("User declined shell execution, returning placeholder value '%s'.", SHELL_DISABLED_PLACEHOLDER)
+			return SHELL_DISABLED_PLACEHOLDER, nil
+		case util.UserResponseAll:
+			opts.ExecuteAllShellCommands = true
+			util.Logger.Println("User confirmed all shell commands, will execute future shell commands without confirmation")
+		}
+	}
+
+	if opts.ExecuteAllShellCommands {
+		util.Logger.Printf("Executing shell command '%v' (all confirmed)", rawArgs)
 	}
 
 	args, envVars := separateArgsAndEnvVars(rawArgs)
