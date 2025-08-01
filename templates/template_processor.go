@@ -120,7 +120,7 @@ func processHooks(hooks []variables.Hook, opts *options.BoilerplateOptions, vars
 		return nil
 	}
 
-	executeAll := false
+	executeAll := opts.NonInteractive // Auto-confirm all if non-interactive
 	hookAnswers := make(map[string]bool)
 
 	for _, hook := range hooks {
@@ -151,8 +151,8 @@ func processHooks(hooks []variables.Hook, opts *options.BoilerplateOptions, vars
 			executeAll = true
 		}
 
-		// Handle user confirmation if needed
-		if !executeAll && !hookAnswers[hookKey] {
+		// Handle user confirmation if needed (skip if non-interactive)
+		if !executeAll && !hookAnswers[hookKey] && !opts.NonInteractive {
 			shouldExecute, shouldSetExecuteAll, err = handleHookUserConfirmation(hookDetails, hookKey, hookAnswers)
 			if err != nil {
 				return err

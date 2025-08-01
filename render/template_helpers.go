@@ -655,6 +655,13 @@ func shell(templatePath string, opts *options.BoilerplateOptions, rawArgs ...str
 	workingDir := filepath.Dir(templatePath)
 	shellKey := generateShellCommandKey(args, envVars, workingDir)
 
+	// Auto-confirm all if non-interactive
+	if opts.NonInteractive {
+		opts.ShellCommandAnswers[shellKey] = true
+		util.Logger.Printf("Executing shell command (non-interactive mode)")
+		return util.RunShellCommandAndGetOutput(workingDir, envVars, args[0], args[1:]...)
+	}
+
 	// Check previous confirmation
 	if confirmed, seen := opts.ShellCommandAnswers[shellKey]; seen || opts.ExecuteAllShellCommands {
 		if seen && !confirmed {
@@ -665,28 +672,26 @@ func shell(templatePath string, opts *options.BoilerplateOptions, rawArgs ...str
 		return util.RunShellCommandAndGetOutput(workingDir, envVars, args[0], args[1:]...)
 	}
 
-	// Handle user confirmation if needed
-	if !opts.NonInteractive {
-		printShellCommandDetails(args, envVars, workingDir)
+	// Handle user confirmation
+	printShellCommandDetails(args, envVars, workingDir)
 
-		resp, err := util.PromptUserForYesNoAll("Execute shell command?")
-		if err != nil {
-			return "", err
-		}
+	resp, err := util.PromptUserForYesNoAll("Execute shell command?")
+	if err != nil {
+		return "", err
+	}
 
-		switch resp {
-		case util.UserResponseYes:
-			opts.ShellCommandAnswers[shellKey] = true
-			util.Logger.Printf("Executing shell command (user confirmed)")
-		case util.UserResponseAll:
-			opts.ShellCommandAnswers[shellKey] = true
-			opts.ExecuteAllShellCommands = true
-			util.Logger.Printf("Executing shell command (user confirmed all)")
-		case util.UserResponseNo:
-			opts.ShellCommandAnswers[shellKey] = false
-			util.Logger.Printf("Skipping shell command (user declined)")
-			return SHELL_DISABLED_PLACEHOLDER, nil
-		}
+	switch resp {
+	case util.UserResponseYes:
+		opts.ShellCommandAnswers[shellKey] = true
+		util.Logger.Printf("Executing shell command (user confirmed)")
+	case util.UserResponseAll:
+		opts.ShellCommandAnswers[shellKey] = true
+		opts.ExecuteAllShellCommands = true
+		util.Logger.Printf("Executing shell command (user confirmed all)")
+	case util.UserResponseNo:
+		opts.ShellCommandAnswers[shellKey] = false
+		util.Logger.Printf("Skipping shell command (user declined)")
+		return SHELL_DISABLED_PLACEHOLDER, nil
 	}
 
 	return util.RunShellCommandAndGetOutput(workingDir, envVars, args[0], args[1:]...)
