@@ -36,6 +36,8 @@ type BoilerplateOptions struct {
 	DisableHooks            bool
 	DisableShell            bool
 	DisableDependencyPrompt bool
+	// Track if user has chosen to execute all shell commands without confirmation
+	ExecuteAllShellCommands bool
 }
 
 // Validate that the options have reasonable values and return an error if they don't
@@ -96,6 +98,7 @@ func ParseOptions(cliContext *cli.Context) (*BoilerplateOptions, error) {
 		DisableHooks:            cliContext.Bool(OptDisableHooks),
 		DisableShell:            cliContext.Bool(OptDisableShell),
 		DisableDependencyPrompt: cliContext.Bool(OptDisableDependencyPrompt),
+		ExecuteAllShellCommands: false,
 	}
 
 	if err := options.Validate(); err != nil {
