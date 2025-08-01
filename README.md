@@ -546,6 +546,8 @@ Note the following:
 
 You can specify `hooks` in `boilerplate.yml` to tell Boilerplate to execute arbitrary shell commands.
 
+**Security Note**: By default, Boilerplate will prompt for confirmation before executing hooks for security reasons, as hooks can run arbitrary shell commands. To run hooks without confirmation, use the `--non-interactive` flag. To disable hook execution entirely, use the `--no-hooks` flag.
+
 Note the following:
 
 * The `before` hook allows you to run scripts before Boilerplate has started rendering.
@@ -587,7 +589,7 @@ Note the following:
     ```
 * `skip` (Optional): Skip this hook if this condition, which can use Go templating syntax and
   boilerplate variables, evaluates to the string `true`. This is useful to conditionally enable or disable
-  dependencies.
+  hooks.
 * For an alternative way to execute commands, see the `shell` helper in [template helpers](#template-helpers).
 
 #### Skip Files
@@ -862,8 +864,10 @@ Boilerplate also includes several custom helpers that you can access that enhanc
 * `shell CMD ARGS...`: Execute the given shell command, passing it the given args, and render whatever that command
   prints to stdout. The working directory for the command will be set to the directory of the template being rendered,
   so you can use paths relative to the file from which you are calling the `shell` helper. Any argument you pass of the
-  form `ENV:KEY=VALUE` will be set as an environment variable for the command rather than an argument. For another way
-  to execute commands, see [hooks](#hooks).
+  form `ENV:KEY=VALUE` will be set as an environment variable for the command rather than an argument. **Security Note**: 
+  By default, Boilerplate will prompt for confirmation before executing shell commands for security reasons, as they can 
+  run arbitrary code. To run shell commands without confirmation, use the `--non-interactive` flag. To disable shell 
+  command execution entirely, use the `--no-shell` flag. For another way to execute commands, see [hooks](#hooks).
 * `templateFolder`: Return the value of the template working dir. This is the value of the `--template-url` command-line
   option if local template, or the download dir if remote template. Useful for building relative paths.
 * `templateUrl`: Return the value of the template URL as was provided in the `--template-url`.
