@@ -10,6 +10,7 @@ import (
 
 	"github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/boilerplate/options"
+	"github.com/gruntwork-io/boilerplate/testutil"
 	"github.com/gruntwork-io/boilerplate/variables"
 )
 
@@ -17,7 +18,7 @@ func TestGetVariableFromVarsEmptyVars(t *testing.T) {
 	t.Parallel()
 
 	variable := variables.NewStringVariable("foo")
-	opts := &options.BoilerplateOptions{}
+	opts := testutil.CreateTestOptions("")
 
 	_, containsValue := getVariableFromVars(variable, opts)
 	assert.False(t, containsValue)
@@ -97,7 +98,7 @@ func TestGetVariableNoMatchNonInteractive(t *testing.T) {
 	t.Parallel()
 
 	variable := variables.NewStringVariable("foo")
-	opts := &options.BoilerplateOptions{NonInteractive: true}
+	opts := testutil.CreateTestOptionsForShell(true, false)
 
 	_, err := getVariable(variable, opts)
 

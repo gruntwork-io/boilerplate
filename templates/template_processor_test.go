@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/gruntwork-io/boilerplate/options"
+	"github.com/gruntwork-io/boilerplate/testutil"
 	"github.com/gruntwork-io/boilerplate/variables"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -136,12 +137,8 @@ func TestCloneVariablesForDependency(t *testing.T) {
 	for _, testCase := range testCases {
 		tt := testCase
 		t.Run(tt.dependency.Name, func(t *testing.T) {
-			opts := &options.BoilerplateOptions{
-				TemplateFolder: "/template/path/",
-				OutputFolder:   "/output/path/",
-				NonInteractive: true,
-				Vars:           tt.optsVars,
-			}
+			opts := testutil.CreateTestOptionsWithOutput("/template/path/", "/output/path/")
+			opts.Vars = tt.optsVars
 			actualVariables, err := cloneVariablesForDependency(opts, tt.dependency, nil, tt.variables, nil)
 			require.NoError(t, err)
 			assert.Equal(t, tt.expectedVariables, actualVariables, "Dependency: %s", tt.dependency)
@@ -185,15 +182,7 @@ func TestForEachReferenceRendersAsTemplate(t *testing.T) {
 		"template1": []string{"a", "b"}, // The actual list that gets iterated over
 	}
 
-	opts := &options.BoilerplateOptions{
-		TemplateFolder:          templateFolder,
-		OutputFolder:            tempDir,
-		NonInteractive:          true,
-		OnMissingKey:            options.ExitWithError,
-		OnMissingConfig:         options.Exit,
-		NoHooks:                 true,
-		DisableDependencyPrompt: true,
-	}
+	opts := testutil.CreateTestOptionsWithOutput(templateFolder, tempDir)
 
 	err = processDependency(dependency, opts, nil, variables)
 	require.NoError(t, err)

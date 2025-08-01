@@ -14,6 +14,7 @@ import (
 
 	"github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/boilerplate/options"
+	"github.com/gruntwork-io/boilerplate/testutil"
 	"github.com/gruntwork-io/boilerplate/variables"
 
 	// NOTE: we use this library to format the yaml to a standard format that lexicographically sorts the dictionary
@@ -620,7 +621,7 @@ func TestParseBoilerplateConfigMultipleHooks(t *testing.T) {
 func TestLoadBoilerplateConfigFullConfig(t *testing.T) {
 	t.Parallel()
 
-	actual, err := LoadBoilerplateConfig(&options.BoilerplateOptions{TemplateFolder: "../test-fixtures/config-test/full-config"})
+	actual, err := LoadBoilerplateConfig(testutil.CreateTestOptions("../test-fixtures/config-test/full-config"))
 	expected := &BoilerplateConfig{
 		Partials: []string{"../templates/foo"},
 		Variables: []variables.Variable{
@@ -654,7 +655,7 @@ func TestLoadBoilerplateConfigNoConfig(t *testing.T) {
 	t.Parallel()
 
 	templateFolder := "../test-fixtures/config-test/no-config"
-	_, err := LoadBoilerplateConfig(&options.BoilerplateOptions{TemplateFolder: templateFolder})
+	_, err := LoadBoilerplateConfig(testutil.CreateTestOptions(templateFolder))
 	expectedErr := BoilerplateConfigNotFound(path.Join(templateFolder, "boilerplate.yml"))
 
 	assert.True(t, errors.IsError(err, expectedErr), "Expected error %v but got %v", expectedErr, err)
@@ -664,7 +665,9 @@ func TestLoadBoilerplateConfigNoConfigIgnore(t *testing.T) {
 	t.Parallel()
 
 	templateFolder := "../test-fixtures/config-test/no-config"
-	actual, err := LoadBoilerplateConfig(&options.BoilerplateOptions{TemplateFolder: templateFolder, OnMissingConfig: options.Ignore})
+	opts := testutil.CreateTestOptions(templateFolder)
+	opts.OnMissingConfig = options.Ignore
+	actual, err := LoadBoilerplateConfig(opts)
 	expected := &BoilerplateConfig{}
 
 	assert.Nil(t, err, "Unexpected error: %v", err)
@@ -674,7 +677,7 @@ func TestLoadBoilerplateConfigNoConfigIgnore(t *testing.T) {
 func TestLoadBoilerplateConfigInvalidConfig(t *testing.T) {
 	t.Parallel()
 
-	_, err := LoadBoilerplateConfig(&options.BoilerplateOptions{TemplateFolder: "../test-fixtures/config-test/invalid-config"})
+	_, err := LoadBoilerplateConfig(testutil.CreateTestOptions("../test-fixtures/config-test/invalid-config"))
 
 	assert.NotNil(t, err)
 
