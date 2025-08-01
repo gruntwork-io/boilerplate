@@ -606,6 +606,31 @@ func keys(value interface{}) ([]string, error) {
 	return out, nil
 }
 
+// formatShellCommandDetails creates a user-friendly string representation of shell command details
+func formatShellCommandDetails(args []string, envVars []string, workingDir string) string {
+	var details []string
+	details = append(details, fmt.Sprintf("Command: %s", args[0]))
+	if len(args) > 1 {
+		details = append(details, fmt.Sprintf("Arguments: %v", args[1:]))
+	}
+	if len(envVars) > 0 {
+		details = append(details, fmt.Sprintf("Environment: %v", envVars))
+	}
+	details = append(details, fmt.Sprintf("Working Directory: %s", workingDir))
+
+	return strings.Join(details, "\n")
+}
+
+// printShellCommandDetails prints the details of a shell command that will be executed
+func printShellCommandDetails(args []string, envVars []string, workingDir string) {
+	util.Logger.Printf("Shell command details:")
+	details := formatShellCommandDetails(args, envVars, workingDir)
+	lines := strings.Split(details, "\n")
+	for _, line := range lines {
+		util.Logger.Printf("  %s", line)
+	}
+}
+
 // Run the given shell command specified in args in the working dir specified by templatePath and return stdout as a
 // string.
 func shell(templatePath string, opts *options.BoilerplateOptions, rawArgs ...string) (string, error) {
@@ -618,9 +643,13 @@ func shell(templatePath string, opts *options.BoilerplateOptions, rawArgs ...str
 		return "", errors.WithStackTrace(NoArgsPassedToShellHelper)
 	}
 
+	args, envVars := separateArgsAndEnvVars(rawArgs)
+	workingDir := filepath.Dir(templatePath)
+
 	if !opts.NonInteractive && !opts.ExecuteAllShellCommands {
-		prompt := fmt.Sprintf("Execute shell command '%v'?", rawArgs)
-		resp, err := util.PromptUserForYesNoAll(prompt)
+		printShellCommandDetails(args, envVars, workingDir)
+
+		resp, err := util.PromptUserForYesNoAll("Execute shell command?")
 		if err != nil {
 			return "", err
 		}
@@ -636,11 +665,10 @@ func shell(templatePath string, opts *options.BoilerplateOptions, rawArgs ...str
 	}
 
 	if opts.ExecuteAllShellCommands {
-		util.Logger.Printf("Executing shell command '%v' (all confirmed)", rawArgs)
+		util.Logger.Printf("Executing shell command (all confirmed)")
 	}
 
-	args, envVars := separateArgsAndEnvVars(rawArgs)
-	return util.RunShellCommandAndGetOutput(filepath.Dir(templatePath), envVars, args[0], args[1:]...)
+	return util.RunShellCommandAndGetOutput(workingDir, envVars, args[0], args[1:]...)
 }
 
 // To pass env vars to the shell helper, we use the format ENV:KEY=VALUE. This method goes through the given list of
