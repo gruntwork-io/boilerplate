@@ -123,40 +123,131 @@ func processHooks(hooks []variables.Hook, opts *options.BoilerplateOptions, vars
 		return nil
 	}
 
-	// If not in non-interactive mode, ask for user confirmation
-	if !opts.NonInteractive {
-		confirmed, err := util.PromptUserForYesNo(fmt.Sprintf("This boilerplate template has %d hook(s) that will execute scripts! Do you want to proceed with hook execution?", len(hooks)))
-		if err != nil {
-			return err
-		}
-		if !confirmed {
-			util.Logger.Printf("User declined hook execution, skipping %d hook(s)", len(hooks))
-			return nil
-		}
-	}
+	// Ask for confirmation for each hook
+	executeAll := false
+	hookAnswers := make(map[string]bool) // Remember answers for identical commands
 
-	// Process each hook
 	for _, hook := range hooks {
-		err := processHook(hook, opts, vars)
+		// Check if this hook should be skipped
+		skip, err := shouldSkipHook(hook, opts, vars)
 		if err != nil {
 			return err
+		}
+		if skip {
+			util.Logger.Printf("Skipping hook with command '%s'", hook.Command)
+			continue
+		}
+
+		// Render all hook details to show what will be executed
+		renderedCmd, err := render.RenderTemplateFromString(config.BoilerplateConfigPath(opts.TemplateFolder), hook.Command, vars, opts)
+		if err != nil {
+			return err
+		}
+
+		renderedArgs := []string{}
+		for _, arg := range hook.Args {
+			renderedArg, err := render.RenderTemplateFromString(config.BoilerplateConfigPath(opts.TemplateFolder), arg, vars, opts)
+			if err != nil {
+				return err
+			}
+			renderedArgs = append(renderedArgs, renderedArg)
+		}
+
+		renderedEnv := []string{}
+		for key, value := range hook.Env {
+			renderedKey, err := render.RenderTemplateFromString(config.BoilerplateConfigPath(opts.TemplateFolder), key, vars, opts)
+			if err != nil {
+				return err
+			}
+			renderedValue, err := render.RenderTemplateFromString(config.BoilerplateConfigPath(opts.TemplateFolder), value, vars, opts)
+			if err != nil {
+				return err
+			}
+			renderedEnv = append(renderedEnv, fmt.Sprintf("%s=%s", renderedKey, renderedValue))
+		}
+
+		workingDir := opts.TemplateFolder
+		if hook.WorkingDir != "" {
+			workingDir, err = render.RenderTemplateFromString(config.BoilerplateConfigPath(opts.TemplateFolder), hook.WorkingDir, vars, opts)
+			if err != nil {
+				return err
+			}
+		}
+
+		// Create a unique key for this hook based on all its parameters
+		hookKey := fmt.Sprintf("%s|%v|%v|%s", renderedCmd, renderedArgs, renderedEnv, workingDir)
+
+		// Determine if we should execute this hook
+		shouldExecute := false
+		reason := ""
+
+		// Check if we already have an answer for this command
+		if answer, exists := hookAnswers[hookKey]; exists {
+			if answer {
+				shouldExecute = true
+				reason = "previously confirmed"
+			} else {
+				reason = "previously declined"
+			}
+		} else if executeAll {
+			shouldExecute = true
+			reason = "all confirmed"
+		} else {
+			// Print hook details for user confirmation
+			printHookDetails(renderedCmd, renderedArgs, renderedEnv, workingDir)
+
+			// Ask for user confirmation
+			confirmed, err := util.PromptUserForYesNoAll(fmt.Sprintf("Execute hook with command '%s'?", renderedCmd))
+			if err != nil {
+				return err
+			}
+
+			switch confirmed {
+			case util.UserResponseYes:
+				shouldExecute = true
+				reason = "user confirmed"
+			case util.UserResponseAll:
+				shouldExecute = true
+				executeAll = true
+				reason = "user confirmed all"
+			case util.UserResponseNo:
+				reason = "user declined"
+			}
+			hookAnswers[hookKey] = shouldExecute
+		}
+
+		// Execute or skip the hook
+		if shouldExecute {
+			util.Logger.Printf("Executing hook with command '%s' (%s)", renderedCmd, reason)
+			if err := processHook(hook, opts, vars); err != nil {
+				return err
+			}
+		} else {
+			util.Logger.Printf("Skipping hook with command '%s' (%s)", renderedCmd, reason)
 		}
 	}
 
 	return nil
 }
 
+// printHookDetails prints the details of a hook that will be executed
+func printHookDetails(cmd string, args []string, env []string, workingDir string) {
+	util.Logger.Printf("Hook details:")
+	util.Logger.Printf("  Command: %s", cmd)
+	if len(args) > 0 {
+		util.Logger.Printf("  Arguments: %v", args)
+	}
+	if len(env) > 0 {
+		util.Logger.Printf("  Environment variables:")
+		for _, envVar := range env {
+			util.Logger.Printf("    %s", envVar)
+		}
+	}
+	util.Logger.Printf("  Working directory: %s", workingDir)
+}
+
 // Process the given hook, which is a script that should be execute at the command-line
 func processHook(hook variables.Hook, opts *options.BoilerplateOptions, vars map[string]interface{}) error {
-	skip, err := shouldSkipHook(hook, opts, vars)
-	if err != nil {
-		return err
-	}
-	if skip {
-		util.Logger.Printf("Skipping hook with command '%s'", hook.Command)
-		return nil
-	}
-
 	cmd, err := render.RenderTemplateFromString(config.BoilerplateConfigPath(opts.TemplateFolder), hook.Command, vars, opts)
 	if err != nil {
 		return err
@@ -199,11 +290,6 @@ func processHook(hook variables.Hook, opts *options.BoilerplateOptions, vars map
 
 // Return true if the "skip" condition of this hook evaluates to true
 func shouldSkipHook(hook variables.Hook, opts *options.BoilerplateOptions, vars map[string]interface{}) (bool, error) {
-	if opts.DisableHooks {
-		util.Logger.Printf("Hooks are disabled")
-		return true, nil
-	}
-
 	if hook.Skip == "" {
 		return false, nil
 	}
@@ -470,7 +556,7 @@ func shouldProcessDependency(dependency variables.Dependency, opts *options.Boil
 		return true, nil
 	}
 
-	return util.PromptUserForYesNo(fmt.Sprintf("This boilerplate template has a dependency! Run boilerplate on dependency %s with template folder %s and output folder %s?", dependency.Name, dependency.TemplateUrl, dependency.OutputFolder))
+	return util.PromptUserForYesNo(fmt.Sprintf("Process dependency '%s'?", dependency.Name))
 }
 
 // Return true if the skip parameter of the given dependency evaluates to a "true" value

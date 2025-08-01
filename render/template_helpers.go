@@ -620,13 +620,25 @@ func shell(templatePath string, opts *options.BoilerplateOptions, rawArgs ...str
 
 	// If not in non-interactive mode, ask for user confirmation
 	if !opts.NonInteractive {
-		confirmed, err := util.PromptUserForYesNo(fmt.Sprintf("This template will execute shell command '%v'! Do you want to proceed with shell execution?", rawArgs))
-		if err != nil {
-			return "", err
-		}
-		if !confirmed {
-			util.Logger.Printf("User declined shell execution, returning placeholder value '%s' instead.", SHELL_DISABLED_PLACEHOLDER)
-			return SHELL_DISABLED_PLACEHOLDER, nil
+		// Check if user has already chosen to execute all shell commands
+		if opts.ExecuteAllShellCommands {
+			util.Logger.Printf("Executing shell command '%v' (all confirmed)", rawArgs)
+		} else {
+			confirmed, err := util.PromptUserForYesNoAll(fmt.Sprintf("Execute shell command '%v'?", rawArgs))
+			if err != nil {
+				return "", err
+			}
+			switch confirmed {
+			case util.UserResponseYes:
+				// Continue with execution
+			case util.UserResponseAll:
+				// Set the flag to execute all future shell commands without confirmation
+				opts.ExecuteAllShellCommands = true
+				util.Logger.Printf("User confirmed all shell commands, will execute future shell commands without confirmation")
+			case util.UserResponseNo:
+				util.Logger.Printf("User declined shell execution, returning placeholder value '%s' instead.", SHELL_DISABLED_PLACEHOLDER)
+				return SHELL_DISABLED_PLACEHOLDER, nil
+			}
 		}
 	}
 
