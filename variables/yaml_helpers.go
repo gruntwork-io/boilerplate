@@ -565,6 +565,16 @@ func ConvertYAMLToStringMap(yamlMapOrList any) (interface{}, error) {
 			outputMap[strK] = res
 		}
 		return outputMap, nil
+	// catch cases where there is a map[any]interface{} nested in a map[string]any
+	case map[string]any:
+		for k, v := range mapOrList {
+			res, err := ConvertYAMLToStringMap(v)
+			if err != nil {
+				return nil, err
+			}
+			mapOrList[k] = res
+		}
+		return mapOrList, nil
 	case []any:
 		for index, value := range mapOrList {
 			res, err := ConvertYAMLToStringMap(value)
