@@ -2,6 +2,7 @@ package render
 
 import (
 	"bufio"
+	"crypto/sha256"
 	"fmt"
 	"io/ioutil"
 	"math"
@@ -258,7 +259,8 @@ func include(templatePath string, opts *options.BoilerplateOptions, path string,
 // Example:
 //
 // pathRelativeToTemplate("/foo/bar/template-file.txt, "../src/code.java")
-//   Returns: "/foo/src/code.java"
+//
+//	Returns: "/foo/src/code.java"
 func PathRelativeToTemplate(templatePath string, filePath string) string {
 	if path.IsAbs(filePath) {
 		return filePath
@@ -605,11 +607,43 @@ func keys(value interface{}) ([]string, error) {
 	return out, nil
 }
 
+// formatShellCommandDetails creates a user-friendly string representation of shell command details
+func formatShellCommandDetails(args []string, envVars []string, workingDir string) string {
+	var details []string
+	details = append(details, fmt.Sprintf("Command: %s", args[0]))
+	if len(args) > 1 {
+		details = append(details, fmt.Sprintf("Arguments: %v", args[1:]))
+	}
+	if len(envVars) > 0 {
+		details = append(details, fmt.Sprintf("Environment: %v", envVars))
+	}
+	details = append(details, fmt.Sprintf("Working Directory: %s", workingDir))
+
+	return strings.Join(details, "\n")
+}
+
+// generateShellCommandKey creates a unique key for a shell command using a checksum
+func generateShellCommandKey(args []string, envVars []string, workingDir string) string {
+	commandDetails := fmt.Sprintf("cmd:%s|args:%v|env:%v|wd:%s", args[0], args[1:], envVars, workingDir)
+	hash := sha256.Sum256([]byte(commandDetails))
+	return fmt.Sprintf("shell_%x", hash)
+}
+
+// printShellCommandDetails prints the details of a shell command that will be executed
+func printShellCommandDetails(args []string, envVars []string, workingDir string) {
+	util.Logger.Printf("Shell command details:")
+	details := formatShellCommandDetails(args, envVars, workingDir)
+	lines := strings.Split(details, "\n")
+	for _, line := range lines {
+		util.Logger.Printf("  %s", line)
+	}
+}
+
 // Run the given shell command specified in args in the working dir specified by templatePath and return stdout as a
 // string.
 func shell(templatePath string, opts *options.BoilerplateOptions, rawArgs ...string) (string, error) {
-	if opts.DisableShell {
-		util.Logger.Printf("Shell helpers are disabled. Will not execute shell command '%v'. Returning placeholder value '%s' instead.", rawArgs, SHELL_DISABLED_PLACEHOLDER)
+	if opts.NoShell {
+		util.Logger.Printf("Shell helpers are disabled. Will not execute shell command '%v'. Returning placeholder value '%s'.", rawArgs, SHELL_DISABLED_PLACEHOLDER)
 		return SHELL_DISABLED_PLACEHOLDER, nil
 	}
 
@@ -618,7 +652,49 @@ func shell(templatePath string, opts *options.BoilerplateOptions, rawArgs ...str
 	}
 
 	args, envVars := separateArgsAndEnvVars(rawArgs)
-	return util.RunShellCommandAndGetOutput(filepath.Dir(templatePath), envVars, args[0], args[1:]...)
+	workingDir := filepath.Dir(templatePath)
+	shellKey := generateShellCommandKey(args, envVars, workingDir)
+
+	// Auto-confirm all if non-interactive
+	if opts.NonInteractive {
+		opts.ShellCommandAnswers[shellKey] = true
+		util.Logger.Printf("Executing shell command (non-interactive mode)")
+		return util.RunShellCommandAndGetOutput(workingDir, envVars, args...)
+	}
+
+	// Check previous confirmation
+	if confirmed, seen := opts.ShellCommandAnswers[shellKey]; seen || opts.ExecuteAllShellCommands {
+		if seen && !confirmed {
+			util.Logger.Printf("Skipping shell command (previously declined)")
+			return SHELL_DISABLED_PLACEHOLDER, nil
+		}
+		util.Logger.Printf("Executing shell command (%s)", "previously confirmed or all confirmed")
+		return util.RunShellCommandAndGetOutput(workingDir, envVars, args...)
+	}
+
+	// Handle user confirmation
+	printShellCommandDetails(args, envVars, workingDir)
+
+	resp, err := util.PromptUserForYesNoAll("Execute shell command?")
+	if err != nil {
+		return "", err
+	}
+
+	switch resp {
+	case util.UserResponseYes:
+		opts.ShellCommandAnswers[shellKey] = true
+		util.Logger.Printf("Executing shell command (user confirmed)")
+	case util.UserResponseAll:
+		opts.ShellCommandAnswers[shellKey] = true
+		opts.ExecuteAllShellCommands = true
+		util.Logger.Printf("Executing shell command (user confirmed all)")
+	case util.UserResponseNo:
+		opts.ShellCommandAnswers[shellKey] = false
+		util.Logger.Printf("Skipping shell command (user declined)")
+		return SHELL_DISABLED_PLACEHOLDER, nil
+	}
+
+	return util.RunShellCommandAndGetOutput(workingDir, envVars, args...)
 }
 
 // To pass env vars to the shell helper, we use the format ENV:KEY=VALUE. This method goes through the given list of
