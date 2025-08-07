@@ -77,7 +77,7 @@ func unmarshalMapOfStrings(fields map[string]any, fieldName string) (map[string]
 	return stringMap, nil
 }
 
-// Given a map of key:value pairs read from a Boilerplate YAML config file of the format:
+// UnmarshalListOfStrings given a map of key:value pairs read from a Boilerplate YAML config file of the format:
 //
 // fieldName:
 //   - value1
@@ -193,7 +193,7 @@ type CustomValidationRule struct {
 type CustomValidationRuleCollection []CustomValidationRule
 
 func (c CustomValidationRuleCollection) GetValidators() []validation.Rule {
-	var validatorsToReturn []validation.Rule
+	validatorsToReturn := make([]validation.Rule, 0, len(c))
 	for _, rule := range c {
 		validatorsToReturn = append(validatorsToReturn, rule.Validator)
 	}
@@ -323,19 +323,19 @@ func unmarshalValidationsField(fields map[string]any) ([]CustomValidationRule, e
 func unmarshalTypeField(fields map[string]any, context string) (BoilerplateType, error) {
 	variableTypeAsString, err := unmarshalStringField(fields, "type", false, context)
 	if err != nil {
-		return BOILERPLATE_TYPE_DEFAULT, err
+		return boilerplateTypeDefault, err
 	}
 
 	if variableTypeAsString != nil {
 		variableType, err := ParseBoilerplateType(*variableTypeAsString)
 		if err != nil {
-			return BOILERPLATE_TYPE_DEFAULT, err
+			return boilerplateTypeDefault, err
 		}
 
 		return *variableType, nil
 	}
 
-	return BOILERPLATE_TYPE_DEFAULT, nil
+	return boilerplateTypeDefault, nil
 }
 
 func unmarshalIntField(fields map[string]any, fieldName string, requiredField bool, context string) (*int, error) {
@@ -465,7 +465,7 @@ func parseVariablesFromKeyValuePairs(varsList []string) (map[string]any, error) 
 	return vars, nil
 }
 
-// Parse a YAML string into a Go type
+// ParseYamlString parses a YAML string into a Go type
 func ParseYamlString(str string) (any, error) {
 	var parsedValue any
 
@@ -499,7 +499,7 @@ func parseVariablesFromVarFiles(varFileList []string) (map[string]any, error) {
 	return vars, nil
 }
 
-// Parse the variables in the given YAML file into a map of variable name to variable value. Along the way, each value
+// ParseVariablesFromVarFile parses the variables in the given YAML file into a map of variable name to variable value. Along the way, each value
 // is parsed as YAML.
 func ParseVariablesFromVarFile(varFilePath string) (map[string]any, error) {
 	bytes, err := os.ReadFile(varFilePath)
@@ -532,7 +532,7 @@ func parseVariablesFromVarFileContents(varFileContents []byte) (map[string]any, 
 	return vars, nil
 }
 
-// Parse variables passed in via command line options, either as a list of NAME=VALUE variable pairs in varsList, or a
+// ParseVars parses variables passed in via command line options, either as a list of NAME=VALUE variable pairs in varsList, or a
 // list of paths to YAML files that define NAME: VALUE pairs. Return a map of the NAME: VALUE pairs. Along the way,
 // each VALUE is parsed as YAML.
 func ParseVars(varsList []string, varFileList []string) (map[string]any, error) {
@@ -556,7 +556,7 @@ func ParseVars(varsList []string, varFileList []string) (map[string]any, error) 
 	return util.MergeMaps(varsFromEnv, varsFromVarsList, varsFromVarFiles), nil
 }
 
-// convertYAMLToStringMap modifies an input with type map[any]interface{} to map[string]interface{} so that it may be
+// ConvertYAMLToStringMap modifies an input with type map[any]interface{} to map[string]interface{} so that it may be
 // properly marshalled in to JSON.
 // See: https://github.com/go-yaml/yaml/issues/139
 func ConvertYAMLToStringMap(yamlMapOrList any) (interface{}, error) {

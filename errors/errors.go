@@ -1,3 +1,4 @@
+// Package errors provides utilities for error handling with stack traces.
 package errors
 
 import (
@@ -7,7 +8,7 @@ import (
 	goerrors "github.com/go-errors/errors"
 )
 
-// Wrap the given error in an Error type that contains the stack trace. If the given error already has a stack trace,
+// WithStackTrace wraps the given error in an Error type that contains the stack trace. If the given error already has a stack trace,
 // it is used directly. If the given error is nil, return nil.
 func WithStackTrace(err error) error {
 	if err == nil {
@@ -17,7 +18,7 @@ func WithStackTrace(err error) error {
 	return goerrors.Wrap(err, 1)
 }
 
-// Wrap the given error in an Error type that contains the stack trace and has the given message prepended as part of
+// WithStackTraceAndPrefix wraps the given error in an Error type that contains the stack trace and has the given message prepended as part of
 // the error message. If the given error already has a stack trace, it is used directly. If the given error is nil,
 // return nil.
 func WithStackTraceAndPrefix(err error, message string, args ...interface{}) error {
@@ -28,13 +29,13 @@ func WithStackTraceAndPrefix(err error, message string, args ...interface{}) err
 	return goerrors.WrapPrefix(err, fmt.Sprintf(message, args...), 1)
 }
 
-// Returns true if actual is the same type of error as expected. This method unwraps the given error objects (if they
+// IsError returns true if actual is the same type of error as expected. This method unwraps the given error objects (if they
 // are wrapped in objects with a stacktrace) and then does a simple equality check on them.
 func IsError(actual error, expected error) bool {
 	return goerrors.Is(Unwrap(actual), expected)
 }
 
-// If the given error is a wrapper that contains a stacktrace, unwrap it and return the original, underlying error.
+// Unwrap unwraps the given error if it is a wrapper that contains a stacktrace and returns the original, underlying error.
 // In all other cases, return the error unchanged
 func Unwrap(err error) error {
 	if err == nil {
@@ -51,7 +52,7 @@ func Unwrap(err error) error {
 	return err
 }
 
-// Convert the given error to a string, including the stack trace if available
+// PrintErrorWithStackTrace converts the given error to a string, including the stack trace if available
 func PrintErrorWithStackTrace(err error) string {
 	if err == nil {
 		return ""

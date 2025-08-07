@@ -3,9 +3,7 @@ package render
 import (
 	"bufio"
 	"crypto/sha256"
-	"errors"
 	"fmt"
-	"io/ioutil"
 	"math"
 	"os"
 	"path"
@@ -25,35 +23,38 @@ import (
 	"github.com/gruntwork-io/boilerplate/util"
 	"github.com/gruntwork-io/boilerplate/variables"
 	"gopkg.in/yaml.v2"
+
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
-var SNIPPET_MARKER_REGEX = regexp.MustCompile("boilerplate-snippet:\\s*(.+?)(?:\\s|$)")
+var snippetMarkerRegex = regexp.MustCompile(`boilerplate-snippet:\s*(.+?)(?:\s|$)`)
 
-var WHITESPACE_REGEX = regexp.MustCompile("[[:space:]]+")
+var whitespaceRegex = regexp.MustCompile("[[:space:]]+")
 
-var PUNCTUATION_OR_WHITESPACE_REGEX = regexp.MustCompile("([[:space:]]|[[:punct:]])+")
+var punctuationOrWhitespaceRegex = regexp.MustCompile("([[:space:]]|[[:punct:]])+")
 
-var ENV_VAR_REGEX = regexp.MustCompile("^ENV:(.+?)=(.*)$")
+var envVarRegex = regexp.MustCompile("^ENV:(.+?)=(.*)$")
 
-const SHELL_DISABLED_PLACEHOLDER = "replace-me"
+const shellDisabledPlaceholder = "replace-me"
 
-// This regex can be used to split CamelCase strings into "words". That is, given a string like FooBarBaz, you can use
+// camelCaseRegex can be used to split CamelCase strings into "words". That is, given a string like FooBarBaz, you can use
 // this regex to split it into an array ["Foo", "Bar", "Baz"]. It also handles lower camel case, which is the same as
 // camel case, except it starts with a lower case word, such as fooBarBaz.
 //
 // To capture lowercase camel case, we just look for words that consist of lower case letters and digits at the start
 // of the string. To capture all other camel case, we look for "words" that start with one or more consecutive upper
 // case letters followed by one or more lower case letters or digits.
-var CAMEL_CASE_REGEX = regexp.MustCompile(
+var camelCaseRegex = regexp.MustCompile(
 	"(^([[:lower:]]|[[:digit:]])+)|" + // Handle lower camel case
 		"([[:upper:]]*([[:lower:]]|[[:digit:]]|$)*)") // Handle normal camel case
 
-// All boilerplate template helpers implement this signature. They get the path of the template they are rendering as
+// TemplateHelper represents all boilerplate template helpers. They get the path of the template they are rendering as
 // the first arg, the Boilerplate Options as the second arg, and then any arguments the user passed when calling the
 // helper.
 type TemplateHelper func(templatePath string, opts *options.BoilerplateOptions, args ...string) (string, error)
 
-// Create a map of custom template helpers exposed by boilerplate
+// CreateTemplateHelpers creates a map of custom template helpers exposed by boilerplate
 func CreateTemplateHelpers(templatePath string, opts *options.BoilerplateOptions, tmpl *template.Template) template.FuncMap {
 	sprigFuncs := sprig.FuncMap()
 	// We rename a few sprig functions that overlap with boilerplate implementations. See DEPRECATED note on boilerplate
@@ -97,7 +98,7 @@ func CreateTemplateHelpers(templatePath string, opts *options.BoilerplateOptions
 		"templateIsDefined": wrapIsDefinedWithTemplate(tmpl),
 
 		"templateFolder":        func() (string, error) { return filepath.Abs(opts.TemplateFolder) },
-		"templateUrl":           func() string { return opts.TemplateUrl },
+		"templateUrl":           func() string { return opts.TemplateURL },
 		"outputFolder":          func() (string, error) { return filepath.Abs(opts.OutputFolder) },
 		"relPath":               relPath,
 		"boilerplateConfigDeps": boilerplateConfigDeps(opts),
@@ -108,11 +109,11 @@ func CreateTemplateHelpers(templatePath string, opts *options.BoilerplateOptions
 		// DEPRECATIONS
 
 		// These functions are exactly the same as their sprig counterpart
-		"downcase":   strings.ToLower, // lower
-		"upcase":     strings.ToUpper, // upper
-		"capitalize": strings.Title,   // title
-		"snakeCase":  snakeCase,       // snakecase
-		"camelCase":  camelCase,       // camelcase
+		"downcase":   strings.ToLower,   // lower
+		"upcase":     strings.ToUpper,   // upper
+		"capitalize": titleCaseAllWords, // title
+		"snakeCase":  snakeCase,         // snakecase
+		"camelCase":  camelCase,         // camelcase
 
 		// In sprig, trimPrefix and trimSuffix take the arguments in different orders so that you can use pipelines. For backwards compatibility, we
 		// have:
@@ -233,10 +234,12 @@ func templateIsDefined(tmpl *template.Template, name string) bool {
 // contents of that snippet with that name will be returned. A snippet is any text in the file surrounded by a line on
 // each side of the format "boilerplate-snippet: NAME" (typically using the comment syntax for the language).
 func snippet(templatePath string, opts *options.BoilerplateOptions, args ...string) (string, error) {
+	const snippetArgsWithName = 2
+
 	switch len(args) {
 	case 1:
 		return readFile(templatePath, args[0])
-	case 2:
+	case snippetArgsWithName:
 		return readSnippetFromFile(templatePath, args[0], args[1])
 	default:
 		return "", pkgErrors.WithStackTrace(InvalidSnippetArguments(args))
@@ -258,7 +261,7 @@ func include(templatePath string, opts *options.BoilerplateOptions, path string,
 	return RenderTemplateFromString(templatePath, templateContents, varData, opts)
 }
 
-// Returns the given filePath relative to the given templatePath. If filePath is already an absolute path, returns it
+// PathRelativeToTemplate returns the given filePath relative to the given templatePath. If filePath is already an absolute path, returns it
 // unchanged.
 //
 // Example:
@@ -267,11 +270,12 @@ func include(templatePath string, opts *options.BoilerplateOptions, path string,
 //
 //	Returns: "/foo/src/code.java"
 func PathRelativeToTemplate(templatePath string, filePath string) string {
-	if path.IsAbs(filePath) {
+	switch {
+	case path.IsAbs(filePath):
 		return filePath
-	} else if util.IsDir(templatePath) {
+	case util.IsDir(templatePath):
 		return filepath.Join(templatePath, filePath)
-	} else {
+	default:
 		templateDir := filepath.Dir(templatePath)
 		return filepath.Join(templateDir, filePath)
 	}
@@ -281,7 +285,7 @@ func PathRelativeToTemplate(templatePath string, filePath string) string {
 func readFile(templatePath, path string) (string, error) {
 	relativePath := PathRelativeToTemplate(templatePath, path)
 
-	bytes, err := ioutil.ReadFile(relativePath)
+	bytes, err := os.ReadFile(relativePath)
 	if err != nil {
 		return "", pkgErrors.WithStackTrace(err)
 	}
@@ -337,8 +341,10 @@ func readSnippetFromScanner(scanner *bufio.Scanner, snippetName string) (string,
 // Extract the snippet name from the line of text. A snippet is of the form "boilerplate-snippet: NAME". If no snippet
 // name is found, return false for the second argument.
 func extractSnippetName(line string) (string, bool) {
-	match := SNIPPET_MARKER_REGEX.FindStringSubmatch(line)
-	if len(match) == 2 {
+	const expectedMatchGroups = 2
+
+	match := snippetMarkerRegex.FindStringSubmatch(line)
+	if len(match) == expectedMatchGroups {
 		snippetName := strings.TrimSpace(match[1])
 		return snippetName, snippetName != ""
 	} else {
@@ -369,24 +375,6 @@ func wrapFloatToIntFunction(f func(float64) int) func(interface{}) (int, error) 
 		}
 
 		return f(valueAsFloat), nil
-	}
-}
-
-// Wrap a function that takes two ints as input and returns an int as output so it can take any kind of number as input
-// and return an int as output
-func wrapIntIntToIntFunction(f func(int, int) int) func(interface{}, interface{}) (int, error) {
-	return func(arg1 interface{}, arg2 interface{}) (int, error) {
-		arg1AsInt, err := toInt(arg1)
-		if err != nil {
-			return 0, pkgErrors.WithStackTrace(err)
-		}
-
-		arg2AsInt, err := toInt(arg2)
-		if err != nil {
-			return 0, pkgErrors.WithStackTrace(err)
-		}
-
-		return f(arg1AsInt, arg2AsInt), nil
 	}
 }
 
@@ -486,11 +474,12 @@ func toInt(value interface{}) (int, error) {
 // in this issue: https://github.com/golang/go/issues/4594. However, it was closed as "wontfix". Note the half dozen
 // attempts to implement this function, most of which are wrong. This seems to be the right solution:
 func round(f float64) int {
-	if math.Abs(f) < 0.5 {
+	const roundingThreshold = 0.5
+	if math.Abs(f) < roundingThreshold {
 		return 0
 	}
 
-	return int(f + math.Copysign(0.5, f))
+	return int(f + math.Copysign(roundingThreshold, f))
 }
 
 // Convert a string to an all lowercase, dash-delimited string, dropping all other punctuation and whitespace. E.g.
@@ -515,12 +504,12 @@ func camelCase(str string) string {
 	collapsed := collapseWhiteSpaceAndPunctuationToDelimiter(trimmed, " ")
 
 	// Now we split on whitespace to find all the words in the string
-	words := WHITESPACE_REGEX.Split(collapsed, -1)
+	words := whitespaceRegex.Split(collapsed, -1)
 
-	// Capitalize each word
+	// Capitalize each word, preserving the rest of the word as-is
 	capitalized := []string{}
 	for _, word := range words {
-		capitalized = append(capitalized, strings.Title(word))
+		capitalized = append(capitalized, upperFirst(word))
 	}
 
 	// Join everything back together into a string
@@ -545,6 +534,23 @@ func lowerFirst(str string) string {
 	return string(chars)
 }
 
+// Returns a copy of str with the first character converted to upper case.
+func upperFirst(str string) string {
+	if len(str) == 0 {
+		return str
+	}
+
+	chars := []rune(str)
+	chars[0] = unicode.ToUpper(chars[0])
+
+	return string(chars)
+}
+
+// titleCaseAllWords applies title casing to the entire string using Unicode-aware rules.
+func titleCaseAllWords(str string) string {
+	return cases.Title(language.Und).String(str)
+}
+
 // This function converts a string to an all lower case string delimited with the given delimiter, dropping all other
 // punctuation and whitespace. For example, "foo BAR baz" and the delimiter "-" would become "foo-bar-baz".
 // TODO: handle all punctuation
@@ -560,10 +566,10 @@ func toDelimitedString(str string, delimiter string) string {
 	collapsed := collapseWhiteSpaceAndPunctuationToDelimiter(trimmed, " ")
 
 	// The final step is to split the string into individual camel case "words" (see the comments on
-	// CAMEL_CASE_REGEX for details on how it works) so that something like "FooBarBaz" becomes the array
+	// camelCaseRegex for details on how it works) so that something like "FooBarBaz" becomes the array
 	// ["Foo", "Bar", "Baz"]. We then combine all these words with the delimiter in between them ("Foo-Bar-Baz")
 	// and convert the entire string to lower case ("foo-bar-baz").
-	return strings.ToLower(strings.Join(CAMEL_CASE_REGEX.FindAllString(collapsed, -1), delimiter))
+	return strings.ToLower(strings.Join(camelCaseRegex.FindAllString(collapsed, -1), delimiter))
 }
 
 // Returns str with all leading and trailing whitespace and punctuation removed. E.g. "   foo!!!" becomes "foo".
@@ -574,7 +580,7 @@ func trimWhiteSpaceAndPunctuation(str string) string {
 // Returns str with all consecutive whitespace and punctuation in it collapsed to the given delimiter. E.g.
 // "foo.....bar_____baz" with a delimiter "-" becomes "foo-bar-baz".
 func collapseWhiteSpaceAndPunctuationToDelimiter(str string, delimiter string) string {
-	return PUNCTUATION_OR_WHITESPACE_REGEX.ReplaceAllString(str, delimiter)
+	return punctuationOrWhitespaceRegex.ReplaceAllString(str, delimiter)
 }
 
 // Generate a slice from start (inclusive) to end (exclusive), incrementing by increment. For example, slice(0, 5, 1)
@@ -665,12 +671,12 @@ func printShellCommandDetails(args []string, envVars []string, workingDir string
 // string.
 func shell(templatePath string, opts *options.BoilerplateOptions, rawArgs ...string) (string, error) {
 	if opts.NoShell {
-		util.Logger.Printf("Shell helpers are disabled. Will not execute shell command '%v'. Returning placeholder value '%s'.", rawArgs, SHELL_DISABLED_PLACEHOLDER)
-		return SHELL_DISABLED_PLACEHOLDER, nil
+		util.Logger.Printf("Shell helpers are disabled. Will not execute shell command '%v'. Returning placeholder value '%s'.", rawArgs, shellDisabledPlaceholder)
+		return shellDisabledPlaceholder, nil
 	}
 
 	if len(rawArgs) == 0 {
-		return "", pkgErrors.WithStackTrace(NoArgsPassedToShellHelper)
+		return "", pkgErrors.WithStackTrace(NoArgsPassedToShellHelper{})
 	}
 
 	args, envVars := separateArgsAndEnvVars(rawArgs)
@@ -690,7 +696,7 @@ func shell(templatePath string, opts *options.BoilerplateOptions, rawArgs ...str
 	if confirmed, seen := opts.ShellCommandAnswers[shellKey]; seen || opts.ExecuteAllShellCommands {
 		if seen && !confirmed {
 			util.Logger.Printf("Skipping shell command (previously declined)")
-			return SHELL_DISABLED_PLACEHOLDER, nil
+			return shellDisabledPlaceholder, nil
 		}
 
 		util.Logger.Printf("Executing shell command (%s)", "previously confirmed or all confirmed")
@@ -721,7 +727,7 @@ func shell(templatePath string, opts *options.BoilerplateOptions, rawArgs ...str
 
 		util.Logger.Printf("Skipping shell command (user declined)")
 
-		return SHELL_DISABLED_PLACEHOLDER, nil
+		return shellDisabledPlaceholder, nil
 	}
 
 	return util.RunShellCommandAndGetOutput(workingDir, envVars, args...)
@@ -734,8 +740,10 @@ func separateArgsAndEnvVars(rawArgs []string) ([]string, []string) {
 	envVars := []string{}
 
 	for _, rawArg := range rawArgs {
-		matches := ENV_VAR_REGEX.FindStringSubmatch(rawArg)
-		if len(matches) == 3 {
+		const expectedEnvVarMatches = 3
+
+		matches := envVarRegex.FindStringSubmatch(rawArg)
+		if len(matches) == expectedEnvVarMatches {
 			key := matches[1]
 			value := matches[2]
 			envVars = append(envVars, fmt.Sprintf("%s=%s", key, value))
@@ -804,7 +812,7 @@ func boilerplateConfigDeps(opts *options.BoilerplateOptions) func(string, string
 		dep := deps[name]
 
 		if dep.Name == "" {
-			return "", fmt.Errorf(`The dependency "%s" was not found.`, name)
+			return "", fmt.Errorf(`the dependency "%s" was not found`, name)
 		}
 
 		r := reflect.ValueOf(dep)
@@ -821,7 +829,7 @@ func boilerplateConfigVars(opts *options.BoilerplateOptions) func(string, string
 		myVar := vars[name]
 
 		if myVar.Name() == "" {
-			return "", fmt.Errorf(`The variable "%s" was not found.`, name)
+			return "", fmt.Errorf(`the variable "%s" was not found`, name)
 		}
 
 		r := reflect.ValueOf(myVar)
@@ -851,7 +859,13 @@ func (args InvalidSnippetArguments) Error() string {
 	return fmt.Sprintf("The snippet helper expects the following args: snippet <TEMPLATE_PATH> <PATH> [SNIPPET_NAME]. Instead, got args: %s", []string(args))
 }
 
-var NoArgsPassedToShellHelper = errors.New("The shell helper requires at least one argument")
+type NoArgsPassedToShellHelper struct{}
+
+func (NoArgsPassedToShellHelper) Error() string {
+	return "The shell helper requires at least one argument"
+}
+
+var ErrNoArgsPassedToShellHelper = NoArgsPassedToShellHelper{}
 
 type InvalidTypeForMethodArgument struct {
 	MethodName   string

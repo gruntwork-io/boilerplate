@@ -1,7 +1,7 @@
 //go:build aix || darwin || dragonfly || freebsd || (js && wasm) || linux || netbsd || openbsd || solaris
 // +build aix darwin dragonfly freebsd js,wasm linux netbsd openbsd solaris
 
-package getter_helper
+package getterhelper_test
 
 import (
 	"os"
@@ -12,6 +12,8 @@ import (
 	"github.com/gruntwork-io/terratest/modules/git"
 	"github.com/gruntwork-io/terratest/modules/shell"
 	"github.com/stretchr/testify/require"
+
+	"github.com/gruntwork-io/boilerplate/getterhelper"
 )
 
 func TestDownloadTemplatesToTempDir(t *testing.T) {
@@ -22,8 +24,8 @@ func TestDownloadTemplatesToTempDir(t *testing.T) {
 	examplePath := filepath.Join(pwd, "..", "examples", "for-learning-and-testing", "variables")
 
 	branch := git.GetCurrentBranchName(t)
-	templateUrl := "git@github.com:gruntwork-io/boilerplate.git//examples/for-learning-and-testing/variables?ref=" + branch
-	workingDir, workPath, err := DownloadTemplatesToTemporaryFolder(templateUrl)
+	templateURL := "git@github.com:gruntwork-io/boilerplate.git//examples/for-learning-and-testing/variables?ref=" + branch
+	workingDir, workPath, err := getterhelper.DownloadTemplatesToTemporaryFolder(templateURL)
 	defer os.RemoveAll(workingDir)
 	require.NoError(t, err, errors.PrintErrorWithStackTrace(err))
 

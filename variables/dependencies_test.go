@@ -1,9 +1,11 @@
-package variables
+package variables_test
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/gruntwork-io/boilerplate/variables"
 )
 
 func TestSplitIntoDependencyNameAndVariableName(t *testing.T) {
@@ -22,7 +24,7 @@ func TestSplitIntoDependencyNameAndVariableName(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		actualDependencyName, actualOriginalVariableName := SplitIntoDependencyNameAndVariableName(testCase.variableName)
+		actualDependencyName, actualOriginalVariableName := variables.SplitIntoDependencyNameAndVariableName(testCase.variableName)
 		assert.Equal(t, testCase.expectedDependencyName, actualDependencyName, "Variable name: %s", testCase.variableName)
 		assert.Equal(t, testCase.expectedOriginalVariableName, actualOriginalVariableName, "Variable name: %s", testCase.variableName)
 	}

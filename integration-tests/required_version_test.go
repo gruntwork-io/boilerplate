@@ -1,15 +1,12 @@
-package integration_tests
+package integrationtests //nolint:testpackage
 
 import (
 	"errors"
-	"io/ioutil"
-	"os"
 	"testing"
 
 	"github.com/gruntwork-io/boilerplate/cli"
 	"github.com/gruntwork-io/boilerplate/config"
 	"github.com/gruntwork-io/go-commons/version"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -36,12 +33,12 @@ func TestRequiredVersionOverTest(t *testing.T) {
 	require.Equal(t, testVersion, version.GetVersion())
 
 	err := runRequiredVersionExample(t, "../test-fixtures/regression-test/required-version/over-test")
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	errUnwrapped := errors.Unwrap(err)
 	var invalidBoilerplateVersion config.InvalidBoilerplateVersion
 	isInvalidVersionErr := errors.As(errUnwrapped, &invalidBoilerplateVersion)
-	assert.True(t, isInvalidVersionErr)
+	require.True(t, isInvalidVersionErr)
 }
 
 func TestRequiredVersionUnderTest(t *testing.T) {
@@ -57,11 +54,10 @@ func TestRequiredVersionUnderTest(t *testing.T) {
 }
 
 func runRequiredVersionExample(t *testing.T, templateFolder string) error {
+	t.Helper()
 	app := cli.CreateBoilerplateCli()
 
-	outputPath, err := ioutil.TempDir("", "boilerplate-test-output-reqver")
-	require.NoError(t, err)
-	defer os.RemoveAll(outputPath)
+	outputPath := t.TempDir()
 
 	args := []string{
 		"boilerplate",

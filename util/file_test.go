@@ -1,10 +1,13 @@
-package util
+package util_test
 
 import (
 	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	util "github.com/gruntwork-io/boilerplate/util"
 )
 
 func TestIsTextFile(t *testing.T) {
@@ -37,9 +40,9 @@ func TestIsTextFile(t *testing.T) {
 		testCase := testCase
 		t.Run(testCase.file, func(t *testing.T) {
 			t.Parallel()
-			actual, err := IsTextFile("../test-fixtures/util-test/is-text-file/" + testCase.file)
+			actual, err := util.IsTextFile("../test-fixtures/util-test/is-text-file/" + testCase.file)
 
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, testCase.isText, actual, "Incorrect classification for %s", testCase.file)
 		})
 	}
@@ -48,7 +51,7 @@ func TestIsTextFile(t *testing.T) {
 func TestIsTextFileInvalidPath(t *testing.T) {
 	t.Parallel()
 
-	_, err := IsTextFile("invalid-path")
-	assert.Error(t, err)
-	assert.ErrorIs(t, err, NoSuchFile("invalid-path"), "Expected NoSuchFile error but got %s", reflect.TypeOf(err))
+	_, err := util.IsTextFile("invalid-path")
+	require.Error(t, err)
+	require.ErrorIs(t, err, util.NoSuchFile("invalid-path"), "Expected NoSuchFile error but got %s", reflect.TypeOf(err))
 }

@@ -1,10 +1,12 @@
-package variables
+package variables_test
 
 import (
 	"errors"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/gruntwork-io/boilerplate/variables"
 )
 
 func TestEnginesRequiresSupportedTemplateEngine(t *testing.T) {
@@ -17,12 +19,12 @@ func TestEnginesRequiresSupportedTemplateEngine(t *testing.T) {
 	}{
 		{
 			name:        "gotemplate",
-			typeStr:     string(GoTemplate),
+			typeStr:     string(variables.GoTemplate),
 			expectError: false,
 		},
 		{
 			name:        "jsonnet",
-			typeStr:     string(Jsonnet),
+			typeStr:     string(variables.Jsonnet),
 			expectError: false,
 		},
 		{
@@ -47,15 +49,15 @@ func TestEnginesRequiresSupportedTemplateEngine(t *testing.T) {
 					},
 				},
 			}
-			_, err := UnmarshalEnginesFromBoilerplateConfigYaml(mockFields)
+			_, err := variables.UnmarshalEnginesFromBoilerplateConfigYaml(mockFields)
 			if tc.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
 				underlyingErr := errors.Unwrap(err)
-				var invalidTemplateEngineErr InvalidTemplateEngineErr
+				var invalidTemplateEngineErr variables.InvalidTemplateEngineErr
 				hasType := errors.As(underlyingErr, &invalidTemplateEngineErr)
-				assert.True(t, hasType)
+				require.True(t, hasType)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 		})
 	}

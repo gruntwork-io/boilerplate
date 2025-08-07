@@ -78,11 +78,12 @@ func skipFileIfCondition(skipFile variables.SkipFile, opts *options.BoilerplateO
 	}
 
 	// TODO: logger-debug - switch to debug
-	if skipFile.Path != "" {
+	switch {
+	case skipFile.Path != "":
 		util.Logger.Printf("If attribute for SkipFile Path %s evaluated to '%s'", skipFile.Path, rendered)
-	} else if skipFile.NotPath != "" {
+	case skipFile.NotPath != "":
 		util.Logger.Printf("If attribute for SkipFile NotPath %s evaluated to '%s'", skipFile.NotPath, rendered)
-	} else {
+	default:
 		util.Logger.Printf("WARN: SkipFile has no path or not_path!")
 	}
 

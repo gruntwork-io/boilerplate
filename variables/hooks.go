@@ -4,7 +4,7 @@ import (
 	"github.com/gruntwork-io/boilerplate/util"
 )
 
-// A single hook, which is a command that is executed by boilerplate
+// Hook represents a single hook, which is a command that is executed by boilerplate
 type Hook struct {
 	Env        map[string]string
 	Command    string
@@ -13,13 +13,13 @@ type Hook struct {
 	Args       []string
 }
 
-// All the scripts to execute as boilerplate hooks
+// Hooks represents all the scripts to execute as boilerplate hooks
 type Hooks struct {
 	BeforeHooks []Hook
 	AfterHooks  []Hook
 }
 
-// Implement the go-yaml marshaler interface so that the config can be marshaled into yaml. We use a custom marshaler
+// MarshalYAML implements the go-yaml marshaler interface so that the config can be marshaled into yaml. We use a custom marshaler
 // instead of defining the fields as tags so that we skip the attributes that are empty.
 func (hook Hook) MarshalYAML() (interface{}, error) {
 	hookYml := map[string]interface{}{}
@@ -81,7 +81,7 @@ func (hooks Hooks) MarshalYAML() (interface{}, error) {
 	return hooksYml, nil
 }
 
-// Given a map of key:value pairs read from a Boilerplate YAML config file of the format:
+// UnmarshalHooksFromBoilerplateConfigYaml given a map of key:value pairs read from a Boilerplate YAML config file of the format:
 //
 // hooks:
 //

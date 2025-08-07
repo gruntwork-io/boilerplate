@@ -1,12 +1,12 @@
 //go:build aix || darwin || dragonfly || freebsd || (js && wasm) || linux || netbsd || openbsd || solaris
 // +build aix darwin dragonfly freebsd js,wasm linux netbsd openbsd solaris
 
-package getter_helper
+package getterhelper
 
 import (
-	"io/ioutil"
+	"os"
 )
 
 func getTempFolder() (string, error) {
-	return ioutil.TempDir("", "boilerplate-cache*")
+	return os.MkdirTemp("", "boilerplate-cache*")
 }
