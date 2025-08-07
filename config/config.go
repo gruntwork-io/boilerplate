@@ -36,6 +36,7 @@ func (config *BoilerplateConfig) GetVariablesMap() map[string]variables.Variable
 	for _, variable := range config.Variables {
 		out[variable.Name()] = variable
 	}
+
 	return out
 }
 
@@ -95,6 +96,7 @@ func (config *BoilerplateConfig) UnmarshalYAML(unmarshal func(interface{}) error
 		SkipFiles:       skipFiles,
 		Engines:         engines,
 	}
+
 	return nil
 }
 
@@ -102,6 +104,7 @@ func (config *BoilerplateConfig) UnmarshalYAML(unmarshal func(interface{}) error
 // instead of defining the fields as tags so that we skip the attributes that are empty.
 func (config *BoilerplateConfig) MarshalYAML() (interface{}, error) {
 	configYml := map[string]interface{}{}
+
 	if len(config.Variables) > 0 {
 		// Due to go type system, we can only pass through []interface{}, even though []Variable is technically
 		// polymorphic to that type. So we reconstruct the list using the right type before passing it in to the marshal
@@ -110,12 +113,15 @@ func (config *BoilerplateConfig) MarshalYAML() (interface{}, error) {
 		for _, variable := range config.Variables {
 			interfaceList = append(interfaceList, variable)
 		}
+
 		varsYml, err := util.MarshalListOfObjectsToYAML(interfaceList)
 		if err != nil {
 			return nil, err
 		}
+
 		configYml["variables"] = varsYml
 	}
+
 	if len(config.Dependencies) > 0 {
 		// Due to go type system, we can only pass through []interface{}, even though []Dependency is technically
 		// polymorphic to that type. So we reconstruct the list using the right type before passing it in to the marshal
@@ -124,22 +130,28 @@ func (config *BoilerplateConfig) MarshalYAML() (interface{}, error) {
 		for _, dep := range config.Dependencies {
 			interfaceList = append(interfaceList, dep)
 		}
+
 		depsYml, err := util.MarshalListOfObjectsToYAML(interfaceList)
 		if err != nil {
 			return nil, err
 		}
+
 		configYml["dependencies"] = depsYml
 	}
+
 	if len(config.Hooks.BeforeHooks) > 0 || len(config.Hooks.AfterHooks) > 0 {
 		hooksYml, err := config.Hooks.MarshalYAML()
 		if err != nil {
 			return nil, err
 		}
+
 		configYml["hooks"] = hooksYml
 	}
+
 	if len(config.Partials) > 0 {
 		configYml["partials"] = config.Partials
 	}
+
 	if len(config.SkipFiles) > 0 {
 		// Due to go type system, we can only pass through []interface{}, even though []SkipFile is technically
 		// polymorphic to that type. So we reconstruct the list using the right type before passing it in to the marshal
@@ -148,12 +160,15 @@ func (config *BoilerplateConfig) MarshalYAML() (interface{}, error) {
 		for _, skipFile := range config.SkipFiles {
 			interfaceList = append(interfaceList, skipFile)
 		}
+
 		skipFilesYml, err := util.MarshalListOfObjectsToYAML(interfaceList)
 		if err != nil {
 			return nil, err
 		}
+
 		configYml["skip_files"] = skipFilesYml
 	}
+
 	if len(config.Engines) > 0 {
 		// Due to go type system, we can only pass through []interface{}, even though []Engine is technically
 		// polymorphic to that type. So we reconstruct the list using the right type before passing it in to the marshal
@@ -162,12 +177,15 @@ func (config *BoilerplateConfig) MarshalYAML() (interface{}, error) {
 		for _, engine := range config.Engines {
 			interfaceList = append(interfaceList, engine)
 		}
+
 		enginesYml, err := util.MarshalListOfObjectsToYAML(interfaceList)
 		if err != nil {
 			return nil, err
 		}
+
 		configYml["engines"] = enginesYml
 	}
+
 	return configYml, nil
 }
 
@@ -177,6 +195,7 @@ func LoadBoilerplateConfig(opts *options.BoilerplateOptions) (*BoilerplateConfig
 
 	if util.PathExists(configPath) {
 		util.Logger.Printf("Loading boilerplate config from %s", configPath)
+
 		bytes, err := ioutil.ReadFile(configPath)
 		if err != nil {
 			return nil, errors.WithStackTrace(err)
@@ -225,6 +244,7 @@ func EnforceRequiredVersion(boilerplateConfig *BoilerplateConfig) error {
 	if boilerplateConfig == nil || boilerplateConfig.RequiredVersion == nil {
 		return nil
 	}
+
 	constraint := *boilerplateConfig.RequiredVersion
 
 	// Base case: if using a development version, then bypass required version check
@@ -238,6 +258,7 @@ func EnforceRequiredVersion(boilerplateConfig *BoilerplateConfig) error {
 	if err != nil {
 		return errors.WithStackTrace(err)
 	}
+
 	versionConstraint, err := goversion.NewConstraint(constraint)
 	if err != nil {
 		return errors.WithStackTrace(err)
@@ -246,6 +267,7 @@ func EnforceRequiredVersion(boilerplateConfig *BoilerplateConfig) error {
 	if !versionConstraint.Check(boilerplateVersion) {
 		return errors.WithStackTrace(InvalidBoilerplateVersion{CurrentVersion: boilerplateVersion, VersionConstraints: versionConstraint})
 	}
+
 	return nil
 }
 
@@ -267,6 +289,7 @@ func maybeGitURL(templateURL string) bool {
 	if err != nil {
 		return false
 	}
+
 	return parsed.Scheme != "" || parsed.Hostname() != "" || parsed.RawQuery != ""
 }
 

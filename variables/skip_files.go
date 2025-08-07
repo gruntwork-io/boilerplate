@@ -16,12 +16,15 @@ func (skipFile SkipFile) MarshalYAML() (interface{}, error) {
 	if skipFile.Path != "" {
 		skipFileYml["path"] = skipFile.Path
 	}
+
 	if skipFile.NotPath != "" {
 		skipFileYml["not_path"] = skipFile.Path
 	}
+
 	if skipFile.If != "" {
 		skipFileYml["if"] = skipFile.If
 	}
+
 	return skipFileYml, nil
 }
 
@@ -66,6 +69,7 @@ func unmarshalSkipFileFromBoilerplateConfigYaml(fields map[string]interface{}) (
 	if err != nil {
 		return nil, err
 	}
+
 	path := ""
 	if pathPtr != nil {
 		path = *pathPtr
@@ -75,6 +79,7 @@ func unmarshalSkipFileFromBoilerplateConfigYaml(fields map[string]interface{}) (
 	if err != nil {
 		return nil, err
 	}
+
 	notPath := ""
 	if notPathPtr != nil {
 		notPath = *notPathPtr
@@ -89,6 +94,7 @@ func unmarshalSkipFileFromBoilerplateConfigYaml(fields map[string]interface{}) (
 	if err != nil {
 		return nil, err
 	}
+
 	skipIf := ""
 	if skipIfPtr != nil {
 		skipIf = *skipIfPtr

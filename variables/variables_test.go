@@ -25,7 +25,7 @@ func TestParseStringAsList(t *testing.T) {
 	for _, testCase := range testCases {
 		t.Run(testCase.testName, func(t *testing.T) {
 			actualList, err := parseStringAsList(testCase.str)
-			assert.Nil(t, err, "Got unexpected error for string '%s': %v", testCase.str, err)
+			assert.NoError(t, err, "Got unexpected error for string '%s': %v", testCase.str, err)
 			assert.Equal(t, testCase.expectedList, actualList, "For string '%s'", testCase.str)
 		})
 	}
@@ -36,10 +36,10 @@ func TestConvertType(t *testing.T) {
 	t.Parallel()
 
 	testCases := []struct {
-		testName      string
 		value         interface{}
-		variableType  BoilerplateType
 		expectedValue interface{}
+		testName      string
+		variableType  BoilerplateType
 		expectError   bool
 	}{
 		// String type tests
@@ -101,9 +101,9 @@ func TestConvertType(t *testing.T) {
 			actualValue, err := ConvertType(testCase.value, variable)
 
 			if testCase.expectError {
-				assert.NotNil(t, err, "Expected error for test case: %s", testCase.testName)
+				assert.Error(t, err, "Expected error for test case: %s", testCase.testName)
 			} else {
-				assert.Nil(t, err, "Got unexpected error for test case '%s': %v", testCase.testName, err)
+				assert.NoError(t, err, "Got unexpected error for test case '%s': %v", testCase.testName, err)
 				assert.Equal(t, testCase.expectedValue, actualValue, "For test case '%s'", testCase.testName)
 			}
 		})
@@ -114,9 +114,9 @@ func TestParseStringAsMap(t *testing.T) {
 	t.Parallel()
 
 	testCases := []struct {
+		expectedMap map[string]string
 		testName    string
 		str         string
-		expectedMap map[string]string
 	}{
 		{testName: "empty-map", str: "map[]", expectedMap: map[string]string{}},
 		{testName: "one-item", str: "map[a:b]", expectedMap: map[string]string{"a": "b"}},
@@ -131,7 +131,7 @@ func TestParseStringAsMap(t *testing.T) {
 	for _, testCase := range testCases {
 		t.Run(testCase.testName, func(t *testing.T) {
 			actualMap, err := parseStringAsMap(testCase.str)
-			assert.Nil(t, err, "Got unexpected error for string '%s': %v", testCase.str, err)
+			assert.NoError(t, err, "Got unexpected error for string '%s': %v", testCase.str, err)
 			assert.Equal(t, testCase.expectedMap, actualMap, "For string '%s'", testCase.str)
 		})
 	}

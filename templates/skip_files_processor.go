@@ -29,11 +29,13 @@ type ProcessedSkipFile struct {
 // - Rendering the if attribute using the provided variables.
 func processSkipFiles(skipFiles []variables.SkipFile, opts *options.BoilerplateOptions, variables map[string]interface{}) ([]ProcessedSkipFile, error) {
 	output := []ProcessedSkipFile{}
+
 	for _, skipFile := range skipFiles {
 		matchedPaths, err := renderGlobPath(opts, skipFile.Path, variables)
 		if err != nil {
 			return nil, errors.WithStackTrace(err)
 		}
+
 		if skipFile.Path != "" {
 			debugLogForMatchedPaths(skipFile.Path, matchedPaths, "SkipFile", "Path")
 		}
@@ -42,6 +44,7 @@ func processSkipFiles(skipFiles []variables.SkipFile, opts *options.BoilerplateO
 		if err != nil {
 			return nil, errors.WithStackTrace(err)
 		}
+
 		if skipFile.NotPath != "" {
 			debugLogForMatchedPaths(skipFile.NotPath, matchedNotPaths, "SkipFile", "NotPath")
 		}
@@ -58,6 +61,7 @@ func processSkipFiles(skipFiles []variables.SkipFile, opts *options.BoilerplateO
 		}
 		output = append(output, processedSkipFile)
 	}
+
 	return output, nil
 }
 
@@ -81,12 +85,14 @@ func skipFileIfCondition(skipFile variables.SkipFile, opts *options.BoilerplateO
 	} else {
 		util.Logger.Printf("WARN: SkipFile has no path or not_path!")
 	}
+
 	return rendered == "true", nil
 }
 
 func debugLogForMatchedPaths(sourcePath string, paths []string, directiveName string, directiveAttribute string) {
 	// TODO: logger-debug - switch to debug
 	util.Logger.Printf("Following paths were picked up by %s attribute for %s (%s):", directiveAttribute, directiveName, sourcePath)
+
 	for _, path := range paths {
 		util.Logger.Printf("\t- %s", path)
 	}
@@ -106,6 +112,7 @@ func renderGlobPath(opts *options.BoilerplateOptions, path string, variables map
 
 	globPath := filepath.Join(opts.TemplateFolder, rendered)
 	rawMatchedPaths, err := zglob.Glob(globPath)
+
 	if err != nil {
 		// TODO: logger-debug - switch to debug
 		util.Logger.Printf("ERROR: could not glob %s", globPath)
@@ -116,5 +123,6 @@ func renderGlobPath(opts *options.BoilerplateOptions, path string, variables map
 	for _, path := range rawMatchedPaths {
 		matchedPaths = append(matchedPaths, filepath.ToSlash(path))
 	}
+
 	return matchedPaths, nil
 }

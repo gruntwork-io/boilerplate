@@ -1,7 +1,6 @@
 package integration_tests
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -32,7 +31,7 @@ func TestSliceParsing(t *testing.T) {
 		"--output-folder",
 		outputFolder,
 		"--var",
-		fmt.Sprintf("MapValue=%s", mapValue),
+		"MapValue=" + mapValue,
 		"--non-interactive",
 	}
 

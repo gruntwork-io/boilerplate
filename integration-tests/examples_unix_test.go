@@ -52,7 +52,7 @@ func TestExamplesShell(t *testing.T) {
 				}
 			})
 
-			t.Run(fmt.Sprintf("%s-remote", example), func(t *testing.T) {
+			t.Run(example+"-remote", func(t *testing.T) {
 				t.Parallel()
 				templateFolder := fmt.Sprintf("git@github.com:gruntwork-io/boilerplate.git//examples/for-learning-and-testing/%s?ref=%s", example, branchName)
 				testExample(t, templateFolder, outputFolder, varFile, expectedOutputFolder, string(options.ExitWithError))
@@ -66,8 +66,8 @@ func TestSpecialFileNames(t *testing.T) {
 	t.Parallel()
 
 	testCases := []struct {
-		path      string
 		initLogic func(string) error
+		path      string
 	}{
 		{path: "kebab-case-bug-unix",
 			initLogic: func(testDir string) error {

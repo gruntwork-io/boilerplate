@@ -62,14 +62,14 @@ type Variable interface {
 
 // A private implementation of the Variable interface that forces all users to use our public constructors
 type defaultVariable struct {
+	defaultValue interface{}
 	name         string
 	description  string
-	defaultValue interface{}
 	reference    string
 	variableType BoilerplateType
-	order        int
 	options      []string
 	validations  []CustomValidationRule
+	order        int
 }
 
 // Create a new variable that holds a string
@@ -217,24 +217,31 @@ func (variable defaultVariable) MarshalYAML() (interface{}, error) {
 	if variable.Name() != "" {
 		varYml["name"] = variable.Name()
 	}
+
 	if variable.Description() != "" {
 		varYml["description"] = variable.Description()
 	}
+
 	if variable.Type() != "" {
 		varYml["type"] = variable.Type()
 	}
+
 	if variable.Default() != nil {
 		varYml["default"] = variable.Default()
 	}
+
 	if variable.Reference() != "" {
 		varYml["reference"] = variable.Reference()
 	}
+
 	if len(variable.Options()) > 0 {
 		varYml["options"] = variable.Options()
 	}
+
 	if len(variable.Validations()) > 0 {
 		varYml["validations"] = variable.Validations()
 	}
+
 	return varYml, nil
 }
 
@@ -251,12 +258,15 @@ func ConvertType(value interface{}, variable Variable) (interface{}, error) {
 		if isString {
 			return asString, nil
 		}
+
 		if asInt, isInt := value.(int); isInt {
 			return strconv.Itoa(asInt), nil
 		}
+
 		if asFloat, isFloat := value.(float64); isFloat {
 			return strconv.FormatFloat(asFloat, 'f', -1, 64), nil
 		}
+
 		if asBool, isBool := value.(bool); isBool {
 			return strconv.FormatBool(asBool), nil
 		}
@@ -264,6 +274,7 @@ func ConvertType(value interface{}, variable Variable) (interface{}, error) {
 		if asInt, isInt := value.(int); isInt {
 			return asInt, nil
 		}
+
 		if isString {
 			return strconv.Atoi(asString)
 		}
@@ -271,6 +282,7 @@ func ConvertType(value interface{}, variable Variable) (interface{}, error) {
 		if asFloat, isFloat := value.(float64); isFloat {
 			return asFloat, nil
 		}
+
 		if isString {
 			return strconv.ParseFloat(asString, 64)
 		}
@@ -278,6 +290,7 @@ func ConvertType(value interface{}, variable Variable) (interface{}, error) {
 		if asBool, isBool := value.(bool); isBool {
 			return asBool, nil
 		}
+
 		if isString {
 			return strconv.ParseBool(asString)
 		}
@@ -285,6 +298,7 @@ func ConvertType(value interface{}, variable Variable) (interface{}, error) {
 		if reflect.TypeOf(value).Kind() == reflect.Slice {
 			return value, nil
 		}
+
 		if isString {
 			return parseStringAsList(asString)
 		}
@@ -294,8 +308,10 @@ func ConvertType(value interface{}, variable Variable) (interface{}, error) {
 			if err != nil {
 				return nil, err
 			}
+
 			return value, nil
 		}
+
 		if isString {
 			return parseStringAsMap(asString)
 		}
@@ -465,6 +481,7 @@ func UnmarshalVariablesFromBoilerplateConfigYaml(fields map[string]interface{}) 
 		if err != nil {
 			return unmarshalledVariables, err
 		}
+
 		unmarshalledVariables = append(unmarshalledVariables, variable)
 	}
 
@@ -486,18 +503,21 @@ func UnmarshalVariableFromBoilerplateConfigYaml(fields map[string]interface{}) (
 	if err != nil {
 		return nil, err
 	}
+
 	variable.name = *name
 
 	variableType, err := unmarshalTypeField(fields, *name)
 	if err != nil {
 		return nil, err
 	}
+
 	variable.variableType = variableType
 
 	order, err := unmarshalIntField(fields, "order", false, *name)
 	if err != nil {
 		return nil, err
 	}
+
 	if order != nil {
 		variable.order = *order
 	}
@@ -506,6 +526,7 @@ func UnmarshalVariableFromBoilerplateConfigYaml(fields map[string]interface{}) (
 	if err != nil {
 		return nil, err
 	}
+
 	if description != nil {
 		variable.description = *description
 	}
@@ -514,6 +535,7 @@ func UnmarshalVariableFromBoilerplateConfigYaml(fields map[string]interface{}) (
 	if err != nil {
 		return nil, err
 	}
+
 	if reference != nil {
 		variable.reference = *reference
 	}
@@ -522,12 +544,14 @@ func UnmarshalVariableFromBoilerplateConfigYaml(fields map[string]interface{}) (
 	if err != nil {
 		return nil, err
 	}
+
 	variable.options = options
 
 	validationRules, err := unmarshalValidationsField(fields)
 	if err != nil {
 		return nil, err
 	}
+
 	variable.validations = validationRules
 
 	variable.defaultValue = fields["default"]
@@ -548,11 +572,11 @@ func (err ParseError) Error() string {
 }
 
 type FormatNotJsonOrGo struct {
+	JsonErr            error
+	GoErr              error
 	ExpectedJsonFormat string
 	ExpectedGoFormat   string
 	ActualFormat       string
-	JsonErr            error
-	GoErr              error
 }
 
 func (err FormatNotJsonOrGo) Error() string {

@@ -28,13 +28,16 @@ func RenderJsonnetTemplate(
 ) (string, error) {
 	jsonnetVM := jsonnet.MakeVM()
 	configureExternalVars(opts, jsonnetVM)
+
 	if err := configureTLAVarsFromBoilerplateVars(jsonnetVM, variables); err != nil {
 		return "", err
 	}
+
 	output, err := jsonnetVM.EvaluateFile(templatePath)
 	if err != nil {
 		return "", errors.WithStackTrace(err)
 	}
+
 	return output, nil
 }
 
@@ -51,8 +54,9 @@ func configureExternalVars(opts *options.BoilerplateOptions, vm *jsonnet.VM) {
 func configureTLAVarsFromBoilerplateVars(vm *jsonnet.VM, vars map[string]interface{}) error {
 	// Some of the auto injected vars are not json marshable at the moment, so we skip those.
 	jsonCompatibleMap := map[string]interface{}{}
+
 	for k, v := range vars {
-		if util.ListContains(k, incompatibleVariables) == false {
+		if !util.ListContains(k, incompatibleVariables) {
 			jsonCompatibleMap[k] = v
 		}
 	}
@@ -61,6 +65,8 @@ func configureTLAVarsFromBoilerplateVars(vm *jsonnet.VM, vars map[string]interfa
 	if err != nil {
 		return errors.WithStackTrace(err)
 	}
+
 	vm.TLACode("boilerplateVars", string(jsonBytes))
+
 	return nil
 }

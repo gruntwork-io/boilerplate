@@ -21,7 +21,7 @@ func TestForProductionTerragruntArchitectureBoilerplateExample(t *testing.T) {
 
 	outputBasePath, err := ioutil.TempDir("", "boilerplate-for-production-output")
 	require.NoError(t, err)
-	//defer os.RemoveAll(outputBasePath)
+	// defer os.RemoveAll(outputBasePath)
 
 	templateFolder, err := filepath.Abs(filepath.Join(forProductionExamplePath, "blueprints", "reference-architecture"))
 	require.NoError(t, err)

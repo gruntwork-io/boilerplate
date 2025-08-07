@@ -51,10 +51,10 @@ func TestCloneOptionsForDependency(t *testing.T) {
 	t.Parallel()
 
 	testCases := []struct {
-		dependency   variables.Dependency
-		opts         options.BoilerplateOptions
 		variables    map[string]interface{}
+		opts         options.BoilerplateOptions
 		expectedOpts options.BoilerplateOptions
+		dependency   variables.Dependency
 	}{
 		{
 			dependency:   variables.Dependency{Name: "dep1", TemplateUrl: "../dep1", OutputFolder: "../out1"},
@@ -97,10 +97,10 @@ func TestCloneVariablesForDependency(t *testing.T) {
 	t.Parallel()
 
 	testCases := []struct {
-		dependency        variables.Dependency
 		variables         map[string]interface{}
 		optsVars          map[string]interface{}
 		expectedVariables map[string]interface{}
+		dependency        variables.Dependency
 	}{
 		{
 			dependency:        variables.Dependency{Name: "dep1", TemplateUrl: "../dep1", OutputFolder: "../out1"},
@@ -129,8 +129,8 @@ func TestCloneVariablesForDependency(t *testing.T) {
 		{
 			dependency:        variables.Dependency{Name: "dep1", TemplateUrl: "../dep1", OutputFolder: "../out1", DontInheritVariables: true},
 			variables:         map[string]interface{}{"foo": "bar", "baz": "blah"},
-			optsVars:          map[string]interface{}{"dep1.abc": "should-not-be-included", "dep2.def": "should-not-be-included"},
-			expectedVariables: map[string]interface{}{"foo": "bar", "baz": "blah"},
+			optsVars:          map[string]interface{}{"dep1.abc": "should-modify-name", "dep2.def": "should-copy-unmodified"},
+			expectedVariables: map[string]interface{}{},
 		},
 	}
 

@@ -83,7 +83,7 @@ func unmarshalEngineFromBoilerplateConfigYaml(fields map[string]interface{}) (*E
 	maybeTemplateEngine := *templateEnginePtr
 
 	// Validate the template engine conforms to enum.
-	if util.ListContains(maybeTemplateEngine, availableTemplateEngines) == false {
+	if !util.ListContains(maybeTemplateEngine, availableTemplateEngines) {
 		return nil, errors.WithStackTrace(InvalidTemplateEngineErr(maybeTemplateEngine))
 	}
 

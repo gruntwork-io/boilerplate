@@ -1,13 +1,10 @@
 package util
 
 import (
-	"fmt"
 	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-
-	"github.com/gruntwork-io/boilerplate/errors"
 )
 
 func TestIsTextFile(t *testing.T) {
@@ -17,32 +14,32 @@ func TestIsTextFile(t *testing.T) {
 		file   string
 		isText bool
 	}{
-		{"binary-file.jpg", false},
-		{"binary-file.png", false},
-		{"binary-file.pdf", false},
-		{"binary-file.zip", false},
-		{"binary-file", false},
-		{"empty-file", false},
-		{"text-file.html", true},
-		{"text-file.js", true},
-		{"text-file.txt", true},
-		{"text-file.md", true},
-		{"text-file.tf", true},
-		{"json-file.json", true},
-		{"yaml-file.yaml", true},
-		{"file-go.go", true},
-		{"file-java.java", true},
-		{"file-xml.xml", true},
-		{"file-hcl.hcl", true},
+		{file: "binary-file.jpg", isText: false},
+		{file: "binary-file.png", isText: false},
+		{file: "binary-file.pdf", isText: false},
+		{file: "binary-file.zip", isText: false},
+		{file: "binary-file", isText: false},
+		{file: "empty-file", isText: false},
+		{file: "text-file.html", isText: true},
+		{file: "text-file.js", isText: true},
+		{file: "text-file.txt", isText: true},
+		{file: "text-file.md", isText: true},
+		{file: "text-file.tf", isText: true},
+		{file: "json-file.json", isText: true},
+		{file: "yaml-file.yaml", isText: true},
+		{file: "file-go.go", isText: true},
+		{file: "file-java.java", isText: true},
+		{file: "file-xml.xml", isText: true},
+		{file: "file-hcl.hcl", isText: true},
 	}
 
 	for _, testCase := range testCases {
 		testCase := testCase
 		t.Run(testCase.file, func(t *testing.T) {
 			t.Parallel()
-			actual, err := IsTextFile(fmt.Sprintf("../test-fixtures/util-test/is-text-file/%s", testCase.file))
+			actual, err := IsTextFile("../test-fixtures/util-test/is-text-file/" + testCase.file)
 
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 			assert.Equal(t, testCase.isText, actual, "Incorrect classification for %s", testCase.file)
 		})
 	}
@@ -52,6 +49,6 @@ func TestIsTextFileInvalidPath(t *testing.T) {
 	t.Parallel()
 
 	_, err := IsTextFile("invalid-path")
-	assert.NotNil(t, err)
-	assert.True(t, errors.IsError(err, NoSuchFile("invalid-path")), "Expected NoSuchFile error but got %s", reflect.TypeOf(err))
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, NoSuchFile("invalid-path"), "Expected NoSuchFile error but got %s", reflect.TypeOf(err))
 }

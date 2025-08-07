@@ -19,12 +19,14 @@ func RunShellCommandAndGetOutput(workingDir string, envVars []string, argslist .
 	cmd.Stdin = os.Stdin
 	cmd.Stderr = os.Stderr
 	cmd.Dir = workingDir
+
 	cmd.Env = append(os.Environ(), envVars...)
 
 	out, err := cmd.Output()
 	if err != nil {
 		return "", errors.WithStackTrace(err)
 	}
+
 	return string(out), nil
 }
 
@@ -38,6 +40,7 @@ func RunShellCommand(workingDir string, envVars []string, command string, args .
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
 	cmd.Dir = workingDir
+
 	cmd.Env = append(os.Environ(), envVars...)
 
 	return cmd.Run()

@@ -8,7 +8,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/testutil"
 	"github.com/gruntwork-io/boilerplate/variables"
@@ -102,8 +101,8 @@ func TestGetVariableNoMatchNonInteractive(t *testing.T) {
 
 	_, err := getVariable(variable, opts)
 
-	assert.NotNil(t, err)
-	assert.True(t, errors.IsError(err, MissingVariableWithNonInteractiveMode("foo")), "Expected a MissingVariableWithNonInteractiveMode error but got %s", reflect.TypeOf(err))
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, MissingVariableWithNonInteractiveMode("foo"), "Expected a MissingVariableWithNonInteractiveMode error but got %s", reflect.TypeOf(err))
 }
 
 func TestGetVariableInVarsNonInteractive(t *testing.T) {
@@ -122,7 +121,7 @@ func TestGetVariableInVarsNonInteractive(t *testing.T) {
 	actual, err := getVariable(variable, opts)
 	expected := "bar"
 
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, expected, actual)
 }
 
@@ -142,7 +141,7 @@ func TestGetVariableDefaultNonInteractive(t *testing.T) {
 	actual, err := getVariable(variable, opts)
 	expected := "bar"
 
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, expected, actual)
 }
 
@@ -165,7 +164,7 @@ func TestGetVariablesNoVariables(t *testing.T) {
 		},
 	}
 
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, expected, actual)
 }
 
@@ -183,8 +182,8 @@ func TestGetVariablesNoMatchNonInteractive(t *testing.T) {
 
 	_, err := GetVariables(opts, boilerplateConfig, rootBoilerplateConfig, dependency)
 
-	assert.NotNil(t, err)
-	assert.True(t, errors.IsError(err, MissingVariableWithNonInteractiveMode("foo")), "Expected a MissingVariableWithNonInteractiveMode error but got %s", reflect.TypeOf(err))
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, MissingVariableWithNonInteractiveMode("foo"), "Expected a MissingVariableWithNonInteractiveMode error but got %s", reflect.TypeOf(err))
 }
 
 func TestGetVariablesMatchFromVars(t *testing.T) {
@@ -220,7 +219,7 @@ func TestGetVariablesMatchFromVars(t *testing.T) {
 		},
 	}
 
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, expected, actual)
 }
 
@@ -262,7 +261,7 @@ func TestGetVariablesMatchFromVarsAndDefaults(t *testing.T) {
 		},
 	}
 
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, expected, actual)
 }
 

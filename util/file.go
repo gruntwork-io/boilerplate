@@ -2,12 +2,13 @@ package util
 
 import (
 	"fmt"
-	"github.com/gabriel-vasile/mimetype"
-	"github.com/gruntwork-io/boilerplate/errors"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
+
+	"github.com/gabriel-vasile/mimetype"
+	"github.com/gruntwork-io/boilerplate/errors"
 )
 
 const textMimeType = "text/plain"
@@ -34,6 +35,7 @@ func IsTextFile(path string) (bool, error) {
 	if err != nil {
 		return false, errors.WithStackTrace(err)
 	}
+
 	if fileInfo.Size() == 0 {
 		return false, nil
 	}
@@ -42,11 +44,13 @@ func IsTextFile(path string) (bool, error) {
 	if err != nil {
 		return false, errors.WithStackTrace(err)
 	}
+
 	for mtype := detectedMIME; mtype != nil; mtype = mtype.Parent() {
 		if mtype.Is(textMimeType) {
 			return true, nil
 		}
 	}
+
 	return false, nil
 }
 

@@ -36,6 +36,7 @@ func unmarshalMapOfFields(fields map[string]any, fieldName string) (map[string]i
 	}
 
 	stringMap := map[string]any{}
+
 	for key, value := range asYamlMap {
 		if keyAsString, isString := key.(string); isString {
 			stringMap[keyAsString] = value
@@ -62,6 +63,7 @@ func unmarshalMapOfStrings(fields map[string]any, fieldName string) (map[string]
 	if err != nil {
 		return nil, err
 	}
+
 	if len(rawMap) == 0 {
 		return nil, nil
 	}
@@ -195,6 +197,7 @@ func (c CustomValidationRuleCollection) GetValidators() []validation.Rule {
 	for _, rule := range c {
 		validatorsToReturn = append(validatorsToReturn, rule.Validator)
 	}
+
 	return validatorsToReturn
 }
 
@@ -208,6 +211,7 @@ func parseRuleString(ruleString string) []string {
 	ruleString = strings.ReplaceAll(ruleString, "]", "")
 	ruleString = strings.ReplaceAll(ruleString, "[", "")
 	ruleString = strings.ToLower(ruleString)
+
 	return strings.Split(ruleString, " ")
 }
 
@@ -219,7 +223,6 @@ func ConvertValidationStringtoRules(ruleString string) ([]CustomValidationRule, 
 	rules := parseRuleString(ruleString)
 
 	for _, rule := range rules {
-
 		var cvr CustomValidationRule
 
 		switch {
@@ -228,14 +231,17 @@ func ConvertValidationStringtoRules(ruleString string) ([]CustomValidationRule, 
 			valSlice := strings.Split(valString, "-")
 			minStr := valSlice[0]
 			maxStr := valSlice[1]
+
 			min, minErr := strconv.Atoi(strings.TrimSpace(minStr))
 			if minErr != nil {
 				return validationRules, minErr
 			}
+
 			max, maxErr := strconv.Atoi(strings.TrimSpace(maxStr))
 			if maxErr != nil {
 				return validationRules, maxErr
 			}
+
 			cvr = CustomValidationRule{
 				Validator: validation.Length(min, max),
 				Message:   fmt.Sprintf("Must be between %d and %d characters long", min, max),
@@ -325,6 +331,7 @@ func unmarshalTypeField(fields map[string]any, context string) (BoilerplateType,
 		if err != nil {
 			return BOILERPLATE_TYPE_DEFAULT, err
 		}
+
 		return *variableType, nil
 	}
 
@@ -419,6 +426,7 @@ func parseVariablesFromEnvironmentVariables() (map[string]any, error) {
 
 		if strings.HasPrefix(key, "BOILERPLATE_") {
 			key = strings.TrimPrefix(key, "BOILERPLATE_")
+
 			parsedValue, err := ParseYamlString(value)
 			if err != nil {
 				return vars, err
@@ -484,6 +492,7 @@ func parseVariablesFromVarFiles(varFileList []string) (map[string]any, error) {
 		if err != nil {
 			return vars, err
 		}
+
 		vars = util.MergeMaps(vars, varsInFile)
 	}
 
@@ -497,6 +506,7 @@ func ParseVariablesFromVarFile(varFilePath string) (map[string]any, error) {
 	if err != nil {
 		return map[string]any{}, errors.WithStackTrace(err)
 	}
+
 	return parseVariablesFromVarFileContents(bytes)
 }
 
@@ -553,17 +563,21 @@ func ConvertYAMLToStringMap(yamlMapOrList any) (interface{}, error) {
 	switch mapOrList := yamlMapOrList.(type) {
 	case map[any]interface{}:
 		outputMap := map[string]any{}
+
 		for k, v := range mapOrList {
 			strK, ok := k.(string)
 			if !ok {
 				return nil, YAMLConversionErr{k}
 			}
+
 			res, err := ConvertYAMLToStringMap(v)
 			if err != nil {
 				return nil, err
 			}
+
 			outputMap[strK] = res
 		}
+
 		return outputMap, nil
 	// catch cases where there is a map[any]interface{} nested in a map[string]any
 	case map[string]any:
@@ -572,8 +586,10 @@ func ConvertYAMLToStringMap(yamlMapOrList any) (interface{}, error) {
 			if err != nil {
 				return nil, err
 			}
+
 			mapOrList[k] = res
 		}
+
 		return mapOrList, nil
 	case []any:
 		for index, value := range mapOrList {
@@ -581,9 +597,11 @@ func ConvertYAMLToStringMap(yamlMapOrList any) (interface{}, error) {
 			if err != nil {
 				return nil, err
 			}
+
 			mapOrList[index] = res
 		}
 	}
+
 	return yamlMapOrList, nil
 }
 
@@ -600,7 +618,7 @@ func (err YAMLConversionErr) Error() string {
 type ValidationsMissing string
 
 func (err ValidationsMissing) Error() string {
-	return fmt.Sprintf("%s does not specify any validations. You must specify at least one validation.", string(err))
+	return string(err) + " does not specify any validations. You must specify at least one validation."
 }
 
 type OptionsMissing string
@@ -619,6 +637,7 @@ func (err InvalidVariableValue) Error() string {
 	if err.Variable.Type() == Enum {
 		message = fmt.Sprintf("%s. Value must be one of: %s.", message, err.Variable.Options())
 	}
+
 	return message
 }
 
@@ -646,13 +665,13 @@ func (err InvalidTypeForField) Error() string {
 type VariableNameCannotBeEmpty string
 
 func (varSyntax VariableNameCannotBeEmpty) Error() string {
-	return fmt.Sprintf("Variable name cannot be empty. Expected NAME=VALUE but got %s", string(varSyntax))
+	return "Variable name cannot be empty. Expected NAME=VALUE but got " + string(varSyntax)
 }
 
 type InvalidVarSyntax string
 
 func (varSyntax InvalidVarSyntax) Error() string {
-	return fmt.Sprintf("Invalid syntax for variable. Expected NAME=VALUE but got %s", string(varSyntax))
+	return "Invalid syntax for variable. Expected NAME=VALUE but got " + string(varSyntax)
 }
 
 type RequiredFieldMissing string
@@ -666,13 +685,13 @@ type MutexRequiredFieldErr struct {
 }
 
 func (err MutexRequiredFieldErr) Error() string {
-	return fmt.Sprintf("Exactly one of the following fields must be set: %s", strings.Join(err.fields, ","))
+	return "Exactly one of the following fields must be set: " + strings.Join(err.fields, ",")
 }
 
 type UnrecognizedBoilerplateType BoilerplateType
 
 func (err UnrecognizedBoilerplateType) Error() string {
-	return fmt.Sprintf("Unrecognized type: %s", BoilerplateType(err).String())
+	return "Unrecognized type: " + BoilerplateType(err).String()
 }
 
 type UndefinedOrderForFieldErr struct {
@@ -680,5 +699,5 @@ type UndefinedOrderForFieldErr struct {
 }
 
 func (err UndefinedOrderForFieldErr) Error() string {
-	return fmt.Sprintf("No order value defined for field: %s", err.fieldName)
+	return "No order value defined for field: " + err.fieldName
 }

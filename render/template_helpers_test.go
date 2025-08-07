@@ -10,7 +10,6 @@ import (
 	"testing"
 	"text/template"
 
-	"github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/testutil"
 	"github.com/stretchr/testify/assert"
@@ -22,8 +21,8 @@ func TestExtractSnippetName(t *testing.T) {
 
 	testCases := []struct {
 		line            string
-		containsSnippet bool
 		snippetName     string
+		containsSnippet bool
 	}{
 		{line: "", containsSnippet: false, snippetName: ""},
 		{line: "foo", containsSnippet: false, snippetName: ""},
@@ -110,7 +109,7 @@ this should also
 be completely ignored
 `, BODY_TEXT_ONE_LINE)
 
-var PARTIAL_FILE_MUTLIPLE_SNIPPETS = fmt.Sprintf(
+var PARTIAL_FILE_MULTIPLE_SNIPPETS = fmt.Sprintf(
 	`
 other text
 this should be ignored
@@ -169,7 +168,7 @@ func TestReadSnippetFromScanner(t *testing.T) {
 		{FULL_FILE_MULTILINE_SNIPPET_IN_HTML_COMMENTS, "foo", nil, BODY_TEXT_MULTILINE},
 		{PARTIAL_FILE_MULTILINE_SNIPPET_IN_C_COMMENTS, "foo", nil, BODY_TEXT_MULTILINE},
 		{PARTIAL_FILE_ONE_LINE_SNIPPET_IN_MISMATCHED_COMMENTS, "foo", nil, BODY_TEXT_ONE_LINE},
-		{PARTIAL_FILE_MUTLIPLE_SNIPPETS, "foo", nil, BODY_TEXT_ONE_LINE},
+		{PARTIAL_FILE_MULTIPLE_SNIPPETS, "foo", nil, BODY_TEXT_ONE_LINE},
 		{PARTIAL_FILE_EMBEDDED_SNIPPETS, "foo", nil, BODY_TEXT_ONE_LINE},
 	}
 
@@ -178,11 +177,11 @@ func TestReadSnippetFromScanner(t *testing.T) {
 		snippetText, err := readSnippetFromScanner(scanner, testCase.snippetName)
 
 		if testCase.expectedErr == nil {
-			assert.Nil(t, err)
+			assert.NoError(t, err)
 			assert.Equal(t, testCase.expectedSnippetText, snippetText)
 		} else {
-			assert.NotNil(t, err)
-			assert.True(t, errors.IsError(err, testCase.expectedErr), "Expected %s error but got %s", reflect.TypeOf(testCase.expectedErr), reflect.TypeOf(err))
+			assert.Error(t, err)
+			assert.ErrorIs(t, err, testCase.expectedErr, "Expected %s error but got %s", reflect.TypeOf(testCase.expectedErr), reflect.TypeOf(err))
 		}
 	}
 }
@@ -238,7 +237,7 @@ func TestWrapWithTemplatePath(t *testing.T) {
 	})
 
 	returnedPath, err := wrappedFunc()
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, expectedPath, returnedPath)
 	assert.Equal(t, expectedPath, actualPath)
 	assert.Equal(t, expectedOpts, actualOpts)
@@ -454,7 +453,7 @@ func TestShellSuccess(t *testing.T) {
 		eol = "\n"
 		output, err = shell(".", opts, "echo", "hi")
 	}
-	assert.Nil(t, err, "Unexpected error: %v", err)
+	assert.NoError(t, err, "Unexpected error: %v", err)
 	assert.Equal(t, "hi"+eol, output)
 }
 
@@ -463,7 +462,7 @@ func TestShellError(t *testing.T) {
 
 	opts := testutil.CreateTestOptionsForShell(true, false)
 	_, err := shell(".", opts, "not-a-real-command")
-	if assert.NotNil(t, err) {
+	if assert.Error(t, err) {
 		if runtime.GOOS == "windows" {
 			assert.Contains(t, err.Error(), "executable file not found in %PATH%", "Unexpected error message: %s", err.Error())
 		} else {
@@ -478,7 +477,7 @@ func TestShellDisabled(t *testing.T) {
 
 	opts := testutil.CreateTestOptionsForShell(true, true)
 	output, err := shell(".", opts, "echo", "hi")
-	assert.Nil(t, err, "Unexpected error: %v", err)
+	assert.NoError(t, err, "Unexpected error: %v", err)
 	assert.Equal(t, SHELL_DISABLED_PLACEHOLDER, output)
 }
 
@@ -527,9 +526,9 @@ func TestToYaml(t *testing.T) {
 func TestFromYaml(t *testing.T) {
 	t.Parallel()
 	testCases := []struct {
+		expected interface{}
 		name     string
 		input    string
-		expected interface{}
 	}{
 		{
 			name:     "empty string",
