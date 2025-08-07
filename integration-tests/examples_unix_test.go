@@ -7,11 +7,12 @@ package integration_tests
 
 import (
 	"fmt"
-	"github.com/gruntwork-io/terratest/modules/files"
 	"io/ioutil"
 	"os"
 	"path"
 	"testing"
+
+	"github.com/gruntwork-io/terratest/modules/files"
 
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/terratest/modules/git"
@@ -68,13 +69,13 @@ func TestSpecialFileNames(t *testing.T) {
 		path      string
 		initLogic func(string) error
 	}{
-		{"kebab-case-bug-unix",
-			func(testDir string) error {
+		{path: "kebab-case-bug-unix",
+			initLogic: func(testDir string) error {
 				return os.Rename(path.Join(testDir, "template.txt"), path.Join(testDir, "{{ .Name | kebabcase }}"))
 			},
 		},
-		{"tofu-test-unix",
-			func(testDir string) error {
+		{path: "tofu-test-unix",
+			initLogic: func(testDir string) error {
 				return os.Rename(path.Join(testDir, "template_test.go"), path.Join(testDir, "{{ .ModuleName | snakecase }}_test.go"))
 			},
 		},

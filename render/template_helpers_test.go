@@ -25,20 +25,20 @@ func TestExtractSnippetName(t *testing.T) {
 		containsSnippet bool
 		snippetName     string
 	}{
-		{"", false, ""},
-		{"foo", false, ""},
-		{"boilerplate", false, ""},
-		{"boilerplate-snippet", false, ""},
-		{"boilerplate-snippet:", false, ""},
-		{"boilerplate-snippet: ", false, ""},
-		{"boilerplate-snippet: foo", true, "foo"},
-		{"boilerplate-snippet:foo", true, "foo"},
-		{"boilerplate-snippet:\t\tfoo        ", true, "foo"},
-		{"<!-- boilerplate-snippet: foo -->", true, "foo"},
-		{"// boilerplate-snippet: foo", true, "foo"},
-		{"/* boilerplate-snippet: foo */", true, "foo"},
-		{"boilerplate-snippet: foo bar", true, "foo"},
-		{"boilerplate-snippet:foo-bar-baz", true, "foo-bar-baz"},
+		{line: "", containsSnippet: false, snippetName: ""},
+		{line: "foo", containsSnippet: false, snippetName: ""},
+		{line: "boilerplate", containsSnippet: false, snippetName: ""},
+		{line: "boilerplate-snippet", containsSnippet: false, snippetName: ""},
+		{line: "boilerplate-snippet:", containsSnippet: false, snippetName: ""},
+		{line: "boilerplate-snippet: ", containsSnippet: false, snippetName: ""},
+		{line: "boilerplate-snippet: foo", containsSnippet: true, snippetName: "foo"},
+		{line: "boilerplate-snippet:foo", containsSnippet: true, snippetName: "foo"},
+		{line: "boilerplate-snippet:\t\tfoo        ", containsSnippet: true, snippetName: "foo"},
+		{line: "<!-- boilerplate-snippet: foo -->", containsSnippet: true, snippetName: "foo"},
+		{line: "// boilerplate-snippet: foo", containsSnippet: true, snippetName: "foo"},
+		{line: "/* boilerplate-snippet: foo */", containsSnippet: true, snippetName: "foo"},
+		{line: "boilerplate-snippet: foo bar", containsSnippet: true, snippetName: "foo"},
+		{line: "boilerplate-snippet:foo-bar-baz", containsSnippet: true, snippetName: "foo-bar-baz"},
 	}
 
 	for _, testCase := range testCases {
