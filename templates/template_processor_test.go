@@ -25,12 +25,12 @@ func TestOutPath(t *testing.T) {
 		variables      map[string]interface{}
 		expected       string
 	}{
-		{"template-folder/foo.txt", "template-folder", "output-folder", map[string]interface{}{}, "output-folder/foo.txt"},
-		{"foo/bar/template-folder/foo.txt", "foo/bar/template-folder", "output-folder", map[string]interface{}{}, "output-folder/foo.txt"},
-		{"template-folder/foo.txt", pwd + "/template-folder", "output-folder", map[string]interface{}{}, "output-folder/foo.txt"},
-		{"template-folder/foo/bar/baz.txt", pwd + "/template-folder", "output-folder", map[string]interface{}{}, "output-folder/foo/bar/baz.txt"},
-		{"template-folder/{{.Foo}}.txt", pwd + "/template-folder", "output-folder", map[string]interface{}{"Foo": "foo"}, "output-folder/foo.txt"},
-		{"template-folder/{{.Foo | dasherize}}.txt", pwd + "/template-folder", "output-folder", map[string]interface{}{"Foo": "Foo Bar Baz"}, "output-folder/foo-bar-baz.txt"},
+		{file: "template-folder/foo.txt", templateFolder: "template-folder", outputFolder: "output-folder", variables: map[string]interface{}{}, expected: "output-folder/foo.txt"},
+		{file: "foo/bar/template-folder/foo.txt", templateFolder: "foo/bar/template-folder", outputFolder: "output-folder", variables: map[string]interface{}{}, expected: "output-folder/foo.txt"},
+		{file: "template-folder/foo.txt", templateFolder: pwd + "/template-folder", outputFolder: "output-folder", variables: map[string]interface{}{}, expected: "output-folder/foo.txt"},
+		{file: "template-folder/foo/bar/baz.txt", templateFolder: pwd + "/template-folder", outputFolder: "output-folder", variables: map[string]interface{}{}, expected: "output-folder/foo/bar/baz.txt"},
+		{file: "template-folder/{{.Foo}}.txt", templateFolder: pwd + "/template-folder", outputFolder: "output-folder", variables: map[string]interface{}{"Foo": "foo"}, expected: "output-folder/foo.txt"},
+		{file: "template-folder/{{.Foo | dasherize}}.txt", templateFolder: pwd + "/template-folder", outputFolder: "output-folder", variables: map[string]interface{}{"Foo": "Foo Bar Baz"}, expected: "output-folder/foo-bar-baz.txt"},
 	}
 
 	for _, testCase := range testCases {
@@ -57,28 +57,28 @@ func TestCloneOptionsForDependency(t *testing.T) {
 		expectedOpts options.BoilerplateOptions
 	}{
 		{
-			variables.Dependency{Name: "dep1", TemplateUrl: "../dep1", OutputFolder: "../out1"},
-			options.BoilerplateOptions{TemplateFolder: "/template/path/", OutputFolder: "/output/path/", NonInteractive: true, Vars: map[string]interface{}{}, OnMissingKey: options.ExitWithError},
-			map[string]interface{}{},
-			options.BoilerplateOptions{TemplateUrl: "../dep1", TemplateFolder: filepath.FromSlash("/template/dep1"), OutputFolder: filepath.FromSlash("/output/out1"), NonInteractive: true, Vars: map[string]interface{}{}, OnMissingKey: options.ExitWithError},
+			dependency:   variables.Dependency{Name: "dep1", TemplateUrl: "../dep1", OutputFolder: "../out1"},
+			opts:         options.BoilerplateOptions{TemplateFolder: "/template/path/", OutputFolder: "/output/path/", NonInteractive: true, Vars: map[string]interface{}{}, OnMissingKey: options.ExitWithError},
+			variables:    map[string]interface{}{},
+			expectedOpts: options.BoilerplateOptions{TemplateUrl: "../dep1", TemplateFolder: filepath.FromSlash("/template/dep1"), OutputFolder: filepath.FromSlash("/output/out1"), NonInteractive: true, Vars: map[string]interface{}{}, OnMissingKey: options.ExitWithError},
 		},
 		{
-			variables.Dependency{Name: "dep1", TemplateUrl: "../dep1", OutputFolder: "../out1"},
-			options.BoilerplateOptions{TemplateFolder: "/template/path/", OutputFolder: "/output/path/", DisableDependencyPrompt: true, Vars: map[string]interface{}{}, OnMissingKey: options.ExitWithError},
-			map[string]interface{}{},
-			options.BoilerplateOptions{TemplateUrl: "../dep1", TemplateFolder: filepath.FromSlash("/template/dep1"), OutputFolder: filepath.FromSlash("/output/out1"), DisableDependencyPrompt: true, Vars: map[string]interface{}{}, OnMissingKey: options.ExitWithError},
+			dependency:   variables.Dependency{Name: "dep1", TemplateUrl: "../dep1", OutputFolder: "../out1"},
+			opts:         options.BoilerplateOptions{TemplateFolder: "/template/path/", OutputFolder: "/output/path/", DisableDependencyPrompt: true, Vars: map[string]interface{}{}, OnMissingKey: options.ExitWithError},
+			variables:    map[string]interface{}{},
+			expectedOpts: options.BoilerplateOptions{TemplateUrl: "../dep1", TemplateFolder: filepath.FromSlash("/template/dep1"), OutputFolder: filepath.FromSlash("/output/out1"), DisableDependencyPrompt: true, Vars: map[string]interface{}{}, OnMissingKey: options.ExitWithError},
 		},
 		{
-			variables.Dependency{Name: "dep1", TemplateUrl: "../dep1", OutputFolder: "../out1"},
-			options.BoilerplateOptions{TemplateFolder: "/template/path/", OutputFolder: "/output/path/", NonInteractive: false, Vars: map[string]interface{}{"foo": "bar"}, OnMissingKey: options.Invalid},
-			map[string]interface{}{"baz": "blah"},
-			options.BoilerplateOptions{TemplateUrl: "../dep1", TemplateFolder: filepath.FromSlash("/template/dep1"), OutputFolder: filepath.FromSlash("/output/out1"), NonInteractive: false, Vars: map[string]interface{}{"foo": "bar", "baz": "blah"}, OnMissingKey: options.Invalid},
+			dependency:   variables.Dependency{Name: "dep1", TemplateUrl: "../dep1", OutputFolder: "../out1"},
+			opts:         options.BoilerplateOptions{TemplateFolder: "/template/path/", OutputFolder: "/output/path/", NonInteractive: false, Vars: map[string]interface{}{"foo": "bar"}, OnMissingKey: options.Invalid},
+			variables:    map[string]interface{}{"baz": "blah"},
+			expectedOpts: options.BoilerplateOptions{TemplateUrl: "../dep1", TemplateFolder: filepath.FromSlash("/template/dep1"), OutputFolder: filepath.FromSlash("/output/out1"), NonInteractive: false, Vars: map[string]interface{}{"foo": "bar", "baz": "blah"}, OnMissingKey: options.Invalid},
 		},
 		{
-			variables.Dependency{Name: "dep1", TemplateUrl: "{{ .foo }}", OutputFolder: "{{ .baz }}"},
-			options.BoilerplateOptions{TemplateFolder: "/template/path/", OutputFolder: "/output/path/", NonInteractive: false, Vars: map[string]interface{}{}, OnMissingKey: options.ExitWithError},
-			map[string]interface{}{"foo": "bar", "baz": "blah"},
-			options.BoilerplateOptions{TemplateUrl: "bar", TemplateFolder: filepath.FromSlash("/template/path/bar"), OutputFolder: filepath.FromSlash("/output/path/blah"), NonInteractive: false, Vars: map[string]interface{}{"foo": "bar", "baz": "blah"}, OnMissingKey: options.ExitWithError},
+			dependency:   variables.Dependency{Name: "dep1", TemplateUrl: "{{ .foo }}", OutputFolder: "{{ .baz }}"},
+			opts:         options.BoilerplateOptions{TemplateFolder: "/template/path/", OutputFolder: "/output/path/", NonInteractive: false, Vars: map[string]interface{}{}, OnMissingKey: options.ExitWithError},
+			variables:    map[string]interface{}{"foo": "bar", "baz": "blah"},
+			expectedOpts: options.BoilerplateOptions{TemplateUrl: "bar", TemplateFolder: filepath.FromSlash("/template/path/bar"), OutputFolder: filepath.FromSlash("/output/path/blah"), NonInteractive: false, Vars: map[string]interface{}{"foo": "bar", "baz": "blah"}, OnMissingKey: options.ExitWithError},
 		},
 	}
 
@@ -103,34 +103,34 @@ func TestCloneVariablesForDependency(t *testing.T) {
 		expectedVariables map[string]interface{}
 	}{
 		{
-			variables.Dependency{Name: "dep1", TemplateUrl: "../dep1", OutputFolder: "../out1"},
-			map[string]interface{}{},
-			map[string]interface{}{},
-			map[string]interface{}{},
+			dependency:        variables.Dependency{Name: "dep1", TemplateUrl: "../dep1", OutputFolder: "../out1"},
+			variables:         map[string]interface{}{},
+			optsVars:          map[string]interface{}{},
+			expectedVariables: map[string]interface{}{},
 		},
 		{
-			variables.Dependency{Name: "dep1", TemplateUrl: "../dep1", OutputFolder: "../out1"},
-			map[string]interface{}{"foo": "bar", "baz": "blah"},
-			map[string]interface{}{},
-			map[string]interface{}{"foo": "bar", "baz": "blah"},
+			dependency:        variables.Dependency{Name: "dep1", TemplateUrl: "../dep1", OutputFolder: "../out1"},
+			variables:         map[string]interface{}{"foo": "bar", "baz": "blah"},
+			optsVars:          map[string]interface{}{},
+			expectedVariables: map[string]interface{}{"foo": "bar", "baz": "blah"},
 		},
 		{
-			variables.Dependency{Name: "dep1", TemplateUrl: "../dep1", OutputFolder: "../out1"},
-			map[string]interface{}{"foo": "bar", "baz": "blah"},
-			map[string]interface{}{"dep1.abc": "should-modify-name", "dep2.def": "should-copy-unmodified"},
-			map[string]interface{}{"foo": "bar", "baz": "blah", "abc": "should-modify-name", "dep2.def": "should-copy-unmodified"},
+			dependency:        variables.Dependency{Name: "dep1", TemplateUrl: "../dep1", OutputFolder: "../out1"},
+			variables:         map[string]interface{}{"foo": "bar", "baz": "blah"},
+			optsVars:          map[string]interface{}{"dep1.abc": "should-modify-name", "dep2.def": "should-copy-unmodified"},
+			expectedVariables: map[string]interface{}{"foo": "bar", "baz": "blah", "abc": "should-modify-name", "dep2.def": "should-copy-unmodified"},
 		},
 		{
-			variables.Dependency{Name: "dep1", TemplateUrl: "../dep1", OutputFolder: "../out1"},
-			map[string]interface{}{"foo": "bar", "baz": "blah"},
-			map[string]interface{}{"dep1.abc": "should-modify-name", "dep2.def": "should-copy-unmodified", "abc": "should-be-overwritten-by-dep1.abc"},
-			map[string]interface{}{"foo": "bar", "baz": "blah", "abc": "should-modify-name", "dep2.def": "should-copy-unmodified"},
+			dependency:        variables.Dependency{Name: "dep1", TemplateUrl: "../dep1", OutputFolder: "../out1"},
+			variables:         map[string]interface{}{"foo": "bar", "baz": "blah"},
+			optsVars:          map[string]interface{}{"dep1.abc": "should-modify-name", "dep2.def": "should-copy-unmodified", "abc": "should-be-overwritten-by-dep1.abc"},
+			expectedVariables: map[string]interface{}{"foo": "bar", "baz": "blah", "abc": "should-modify-name", "dep2.def": "should-copy-unmodified"},
 		},
 		{
-			variables.Dependency{Name: "dep1", TemplateUrl: "../dep1", OutputFolder: "../out1", DontInheritVariables: true},
-			map[string]interface{}{"foo": "bar", "baz": "blah"},
-			map[string]interface{}{"dep1.abc": "should-modify-name", "dep2.def": "should-copy-unmodified"},
-			map[string]interface{}{},
+			dependency:        variables.Dependency{Name: "dep1", TemplateUrl: "../dep1", OutputFolder: "../out1", DontInheritVariables: true},
+			variables:         map[string]interface{}{"foo": "bar", "baz": "blah"},
+			optsVars:          map[string]interface{}{"dep1.abc": "should-not-be-included", "dep2.def": "should-not-be-included"},
+			expectedVariables: map[string]interface{}{"foo": "bar", "baz": "blah"},
 		},
 	}
 

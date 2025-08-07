@@ -14,12 +14,12 @@ func TestParseStringAsList(t *testing.T) {
 		str          string
 		expectedList []string
 	}{
-		{"empty-list", "[]", []string{}},
-		{"one-item", "[a]", []string{"a"}},
-		{"three-items", "[a b c]", []string{"a", "b", "c"}},
-		{"leading-trailing-whitespace", "[ a b c ]", []string{"a", "b", "c"}},
-		{"json-list-one-item", `["a"]`, []string{"a"}},
-		{"json-list-three-items", `["a", "b", "c"]`, []string{"a", "b", "c"}},
+		{testName: "empty-list", str: "[]", expectedList: []string{}},
+		{testName: "one-item", str: "[a]", expectedList: []string{"a"}},
+		{testName: "three-items", str: "[a b c]", expectedList: []string{"a", "b", "c"}},
+		{testName: "leading-trailing-whitespace", str: "[ a b c ]", expectedList: []string{"a", "b", "c"}},
+		{testName: "json-list-one-item", str: `["a"]`, expectedList: []string{"a"}},
+		{testName: "json-list-three-items", str: `["a", "b", "c"]`, expectedList: []string{"a", "b", "c"}},
 	}
 
 	for _, testCase := range testCases {
@@ -43,39 +43,39 @@ func TestConvertType(t *testing.T) {
 		expectError   bool
 	}{
 		// String type tests
-		{"string-to-string", "hello", String, "hello", false},
-		{"int-to-string", 42, String, "42", false},
-		{"float64-to-string", 3.14, String, "3.14", false},
-		{"float64-to-string-whole", 42.0, String, "42", false},
-		{"float64-to-string-negative", -15.7, String, "-15.7", false},
-		{"bool-to-string", true, String, "true", false},
-		{"bool-to-string-false", false, String, "false", false},
+		{testName: "string-to-string", value: "hello", variableType: String, expectedValue: "hello", expectError: false},
+		{testName: "int-to-string", value: 42, variableType: String, expectedValue: "42", expectError: false},
+		{testName: "float64-to-string", value: 3.14, variableType: String, expectedValue: "3.14", expectError: false},
+		{testName: "float64-to-string-whole", value: 42.0, variableType: String, expectedValue: "42", expectError: false},
+		{testName: "float64-to-string-negative", value: -15.7, variableType: String, expectedValue: "-15.7", expectError: false},
+		{testName: "bool-to-string", value: true, variableType: String, expectedValue: "true", expectError: false},
+		{testName: "bool-to-string-false", value: false, variableType: String, expectedValue: "false", expectError: false},
 
 		// Int type tests - existing functionality
-		{"int-to-int", 42, Int, 42, false},
-		{"string-to-int-valid", "123", Int, 123, false},
-		{"string-to-int-invalid", "not-a-number", Int, nil, true},
+		{testName: "int-to-int", value: 42, variableType: Int, expectedValue: 42, expectError: false},
+		{testName: "string-to-int-valid", value: "123", variableType: Int, expectedValue: 123, expectError: false},
+		{testName: "string-to-int-invalid", value: "not-a-number", variableType: Int, expectedValue: nil, expectError: true},
 
 		// Float type tests
-		{"float64-to-float", 3.14, Float, 3.14, false},
-		{"string-to-float-valid", "3.14", Float, 3.14, false},
-		{"string-to-float-invalid", "not-a-float", Float, nil, true},
+		{testName: "float64-to-float", value: 3.14, variableType: Float, expectedValue: 3.14, expectError: false},
+		{testName: "string-to-float-valid", value: "3.14", variableType: Float, expectedValue: 3.14, expectError: false},
+		{testName: "string-to-float-invalid", value: "not-a-float", variableType: Float, expectedValue: nil, expectError: true},
 
 		// Bool type tests
-		{"bool-to-bool-true", true, Bool, true, false},
-		{"bool-to-bool-false", false, Bool, false, false},
-		{"string-to-bool-true", "true", Bool, true, false},
-		{"string-to-bool-false", "false", Bool, false, false},
-		{"string-to-bool-invalid", "maybe", Bool, nil, true},
+		{testName: "bool-to-bool-true", value: true, variableType: Bool, expectedValue: true, expectError: false},
+		{testName: "bool-to-bool-false", value: false, variableType: Bool, expectedValue: false, expectError: false},
+		{testName: "string-to-bool-true", value: "true", variableType: Bool, expectedValue: true, expectError: false},
+		{testName: "string-to-bool-false", value: "false", variableType: Bool, expectedValue: false, expectError: false},
+		{testName: "string-to-bool-invalid", value: "maybe", variableType: Bool, expectedValue: nil, expectError: true},
 
 		// Nil value test
-		{"nil-value", nil, Int, nil, false},
-		{"nil-value-string", nil, String, nil, false},
+		{testName: "nil-value", value: nil, variableType: Int, expectedValue: nil, expectError: false},
+		{testName: "nil-value-string", value: nil, variableType: String, expectedValue: nil, expectError: false},
 
 		// Invalid type conversions - only test truly invalid conversions
-		{"list-to-string-invalid", []string{"a", "b"}, String, nil, true},
-		{"bool-to-int-invalid", true, Int, nil, true},
-		{"list-to-int-invalid", []string{"a", "b"}, Int, nil, true},
+		{testName: "list-to-string-invalid", value: []string{"a", "b"}, variableType: String, expectedValue: nil, expectError: true},
+		{testName: "bool-to-int-invalid", value: true, variableType: Int, expectedValue: nil, expectError: true},
+		{testName: "list-to-int-invalid", value: []string{"a", "b"}, variableType: Int, expectedValue: nil, expectError: true},
 	}
 
 	for _, testCase := range testCases {
@@ -118,14 +118,14 @@ func TestParseStringAsMap(t *testing.T) {
 		str         string
 		expectedMap map[string]string
 	}{
-		{"empty-map", "map[]", map[string]string{}},
-		{"one-item", "map[a:b]", map[string]string{"a": "b"}},
-		{"three-items", "map[a:b c:d e:f]", map[string]string{"a": "b", "c": "d", "e": "f"}},
-		{"multiple-colons", "map[a:b:c:d:e]", map[string]string{"a:b:c:d": "e"}},
-		{"leading-trailing-whitespace", "map[ a:b c:d e:f ]", map[string]string{"a": "b", "c": "d", "e": "f"}},
-		{"json-map-empty", `{}`, map[string]string{}},
-		{"json-map-one-item", `{"a": "b"}`, map[string]string{"a": "b"}},
-		{"json-map-three-items", `{"a": "b", "c": "d", "e": "f"}`, map[string]string{"a": "b", "c": "d", "e": "f"}},
+		{testName: "empty-map", str: "map[]", expectedMap: map[string]string{}},
+		{testName: "one-item", str: "map[a:b]", expectedMap: map[string]string{"a": "b"}},
+		{testName: "three-items", str: "map[a:b c:d e:f]", expectedMap: map[string]string{"a": "b", "c": "d", "e": "f"}},
+		{testName: "multiple-colons", str: "map[a:b:c:d:e]", expectedMap: map[string]string{"a:b:c:d": "e"}},
+		{testName: "leading-trailing-whitespace", str: "map[ a:b c:d e:f ]", expectedMap: map[string]string{"a": "b", "c": "d", "e": "f"}},
+		{testName: "json-map-empty", str: `{}`, expectedMap: map[string]string{}},
+		{testName: "json-map-one-item", str: `{"a": "b"}`, expectedMap: map[string]string{"a": "b"}},
+		{testName: "json-map-three-items", str: `{"a": "b", "c": "d", "e": "f"}`, expectedMap: map[string]string{"a": "b", "c": "d", "e": "f"}},
 	}
 
 	for _, testCase := range testCases {

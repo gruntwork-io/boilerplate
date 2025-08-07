@@ -29,10 +29,10 @@ func TestParseVariablesFromVarFileContents(t *testing.T) {
 		expectYamlTypeError bool
 		expectedVars        map[string]interface{}
 	}{
-		{"", false, map[string]interface{}{}},
-		{YAML_FILE_ONE_VAR, false, map[string]interface{}{"key": "value"}},
-		{YAML_FILE_MULTIPLE_VARS, false, map[string]interface{}{"key1": "value1", "key2": "value2", "key3": "value3"}},
-		{"invalid yaml", true, map[string]interface{}{}},
+		{fileContents: "", expectYamlTypeError: false, expectedVars: map[string]interface{}{}},
+		{fileContents: YAML_FILE_ONE_VAR, expectYamlTypeError: false, expectedVars: map[string]interface{}{"key": "value"}},
+		{fileContents: YAML_FILE_MULTIPLE_VARS, expectYamlTypeError: false, expectedVars: map[string]interface{}{"key1": "value1", "key2": "value2", "key3": "value3"}},
+		{fileContents: "invalid yaml", expectYamlTypeError: true, expectedVars: map[string]interface{}{}},
 	}
 
 	for _, testCase := range testCases {
@@ -57,14 +57,14 @@ func TestParseVariablesFromKeyValuePairs(t *testing.T) {
 		expectedError error
 		expectedVars  map[string]interface{}
 	}{
-		{[]string{}, nil, map[string]interface{}{}},
-		{[]string{"key=value"}, nil, map[string]interface{}{"key": "value"}},
-		{[]string{"key="}, nil, map[string]interface{}{"key": nil}},
-		{[]string{"key1=value1", "key2=value2", "key3=value3"}, nil, map[string]interface{}{"key1": "value1", "key2": "value2", "key3": "value3"}},
-		{[]string{"key1=left=right"}, nil, map[string]interface{}{"key1": "left=right"}},
-		{[]string{"invalidsyntax"}, InvalidVarSyntax("invalidsyntax"), map[string]interface{}{}},
-		{[]string{"="}, VariableNameCannotBeEmpty("="), map[string]interface{}{}},
-		{[]string{"=foo"}, VariableNameCannotBeEmpty("=foo"), map[string]interface{}{}},
+		{keyValuePairs: []string{}, expectedError: nil, expectedVars: map[string]interface{}{}},
+		{keyValuePairs: []string{"key=value"}, expectedError: nil, expectedVars: map[string]interface{}{"key": "value"}},
+		{keyValuePairs: []string{"key="}, expectedError: nil, expectedVars: map[string]interface{}{"key": nil}},
+		{keyValuePairs: []string{"key1=value1", "key2=value2", "key3=value3"}, expectedError: nil, expectedVars: map[string]interface{}{"key1": "value1", "key2": "value2", "key3": "value3"}},
+		{keyValuePairs: []string{"key1=left=right"}, expectedError: nil, expectedVars: map[string]interface{}{"key1": "left=right"}},
+		{keyValuePairs: []string{"invalidsyntax"}, expectedError: InvalidVarSyntax("invalidsyntax"), expectedVars: map[string]interface{}{}},
+		{keyValuePairs: []string{"="}, expectedError: VariableNameCannotBeEmpty("="), expectedVars: map[string]interface{}{}},
+		{keyValuePairs: []string{"=foo"}, expectedError: VariableNameCannotBeEmpty("=foo"), expectedVars: map[string]interface{}{}},
 	}
 
 	for _, testCase := range testCases {
