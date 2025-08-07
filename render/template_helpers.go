@@ -3,6 +3,7 @@ package render
 import (
 	"bufio"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"math"
@@ -19,7 +20,7 @@ import (
 
 	"github.com/Masterminds/sprig/v3"
 
-	"github.com/gruntwork-io/boilerplate/errors"
+	pkgErrors "github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/util"
 	"github.com/gruntwork-io/boilerplate/variables"
@@ -175,9 +176,11 @@ func CreateTemplateHelpers(templatePath string, opts *options.BoilerplateOptions
 	for k, v := range sprigFuncs {
 		funcs[k] = v
 	}
+
 	for k, v := range boilerplateFuncs {
 		funcs[k] = v
 	}
+
 	return funcs
 }
 
@@ -218,6 +221,7 @@ func templateIsDefined(tmpl *template.Template, name string) bool {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -235,7 +239,7 @@ func snippet(templatePath string, opts *options.BoilerplateOptions, args ...stri
 	case 2:
 		return readSnippetFromFile(templatePath, args[0], args[1])
 	default:
-		return "", errors.WithStackTrace(InvalidSnippetArguments(args))
+		return "", pkgErrors.WithStackTrace(InvalidSnippetArguments(args))
 	}
 }
 
@@ -250,6 +254,7 @@ func include(templatePath string, opts *options.BoilerplateOptions, path string,
 	if err != nil {
 		return "", err
 	}
+
 	return RenderTemplateFromString(templatePath, templateContents, varData, opts)
 }
 
@@ -275,23 +280,28 @@ func PathRelativeToTemplate(templatePath string, filePath string) string {
 // Returns the contents of the file at path, relative to templatePath, as a string
 func readFile(templatePath, path string) (string, error) {
 	relativePath := PathRelativeToTemplate(templatePath, path)
+
 	bytes, err := ioutil.ReadFile(relativePath)
 	if err != nil {
-		return "", errors.WithStackTrace(err)
+		return "", pkgErrors.WithStackTrace(err)
 	}
+
 	return string(bytes), nil
 }
 
 // Returns the contents of snippet snippetName from the file at path, relative to templatePath.
 func readSnippetFromFile(templatePath string, path string, snippetName string) (string, error) {
 	relativePath := PathRelativeToTemplate(templatePath, path)
+
 	file, err := os.Open(relativePath)
 	if err != nil {
-		return "", errors.WithStackTrace(err)
+		return "", pkgErrors.WithStackTrace(err)
 	}
+
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
+
 	return readSnippetFromScanner(scanner, snippetName)
 }
 
@@ -304,6 +314,7 @@ func readSnippetFromScanner(scanner *bufio.Scanner, snippetName string) (string,
 
 	for scanner.Scan() {
 		line := scanner.Text()
+
 		foundSnippetName, isSnippet := extractSnippetName(line)
 		if isSnippet && foundSnippetName == snippetName {
 			if inSnippet {
@@ -317,9 +328,9 @@ func readSnippetFromScanner(scanner *bufio.Scanner, snippetName string) (string,
 	}
 
 	if inSnippet {
-		return "", errors.WithStackTrace(SnippetNotTerminated(snippetName))
+		return "", pkgErrors.WithStackTrace(SnippetNotTerminated(snippetName))
 	} else {
-		return "", errors.WithStackTrace(SnippetNotFound(snippetName))
+		return "", pkgErrors.WithStackTrace(SnippetNotFound(snippetName))
 	}
 }
 
@@ -341,8 +352,9 @@ func wrapFloatToFloatFunction(f func(float64) float64) func(interface{}) (float6
 	return func(value interface{}) (float64, error) {
 		valueAsFloat, err := toFloat64(value)
 		if err != nil {
-			return 0, errors.WithStackTrace(err)
+			return 0, pkgErrors.WithStackTrace(err)
 		}
+
 		return f(valueAsFloat), nil
 	}
 }
@@ -353,8 +365,9 @@ func wrapFloatToIntFunction(f func(float64) int) func(interface{}) (int, error) 
 	return func(value interface{}) (int, error) {
 		valueAsFloat, err := toFloat64(value)
 		if err != nil {
-			return 0, errors.WithStackTrace(err)
+			return 0, pkgErrors.WithStackTrace(err)
 		}
+
 		return f(valueAsFloat), nil
 	}
 }
@@ -365,14 +378,15 @@ func wrapIntIntToIntFunction(f func(int, int) int) func(interface{}, interface{}
 	return func(arg1 interface{}, arg2 interface{}) (int, error) {
 		arg1AsInt, err := toInt(arg1)
 		if err != nil {
-			return 0, errors.WithStackTrace(err)
+			return 0, pkgErrors.WithStackTrace(err)
 		}
+
 		arg2AsInt, err := toInt(arg2)
 		if err != nil {
-			return 0, errors.WithStackTrace(err)
+			return 0, pkgErrors.WithStackTrace(err)
 		}
-		return f(arg1AsInt, arg2AsInt), nil
 
+		return f(arg1AsInt, arg2AsInt), nil
 	}
 }
 
@@ -382,14 +396,15 @@ func wrapFloatFloatToFloatFunction(f func(arg1 float64, arg2 float64) float64) f
 	return func(arg1 interface{}, arg2 interface{}) (float64, error) {
 		arg1AsFloat, err := toFloat64(arg1)
 		if err != nil {
-			return 0, errors.WithStackTrace(err)
+			return 0, pkgErrors.WithStackTrace(err)
 		}
+
 		arg2AsFloat, err := toFloat64(arg2)
 		if err != nil {
-			return 0, errors.WithStackTrace(err)
+			return 0, pkgErrors.WithStackTrace(err)
 		}
-		return f(arg1AsFloat, arg2AsFloat), nil
 
+		return f(arg1AsFloat, arg2AsFloat), nil
 	}
 }
 
@@ -474,6 +489,7 @@ func round(f float64) int {
 	if math.Abs(f) < 0.5 {
 		return 0
 	}
+
 	return int(f + math.Copysign(0.5, f))
 }
 
@@ -525,6 +541,7 @@ func lowerFirst(str string) string {
 
 	chars := []rune(str)
 	chars[0] = unicode.ToLower(chars[0])
+
 	return string(chars)
 }
 
@@ -534,7 +551,6 @@ func lowerFirst(str string) string {
 func toDelimitedString(str string, delimiter string) string {
 	// Although this function doesn't look terribly complicated, the reason why it's written this way,
 	// unfortunately, isn't terribly obvious, so I'm going to use copious comments to try to build some intuition.
-
 	// First, we strip any leading or trailing whitespace or punctuation
 	trimmed := trimWhiteSpaceAndPunctuation(str)
 
@@ -568,17 +584,17 @@ func slice(start interface{}, end interface{}, increment interface{}) ([]int, er
 
 	startAsInt, err := toInt(start)
 	if err != nil {
-		return out, errors.WithStackTrace(err)
+		return out, pkgErrors.WithStackTrace(err)
 	}
 
 	endAsInt, err := toInt(end)
 	if err != nil {
-		return out, errors.WithStackTrace(err)
+		return out, pkgErrors.WithStackTrace(err)
 	}
 
 	incrementAsInt, err := toInt(increment)
 	if err != nil {
-		return out, errors.WithStackTrace(err)
+		return out, pkgErrors.WithStackTrace(err)
 	}
 
 	for i := startAsInt; i < endAsInt; i += incrementAsInt {
@@ -593,7 +609,7 @@ func slice(start interface{}, end interface{}, increment interface{}) ([]int, er
 func keys(value interface{}) ([]string, error) {
 	valueType := reflect.ValueOf(value)
 	if valueType.Kind() != reflect.Map {
-		return nil, errors.WithStackTrace(InvalidTypeForMethodArgument{"keys", "Map", valueType.Kind().String()})
+		return nil, pkgErrors.WithStackTrace(InvalidTypeForMethodArgument{"keys", "Map", valueType.Kind().String()})
 	}
 
 	out := []string{}
@@ -610,14 +626,17 @@ func keys(value interface{}) ([]string, error) {
 // formatShellCommandDetails creates a user-friendly string representation of shell command details
 func formatShellCommandDetails(args []string, envVars []string, workingDir string) string {
 	var details []string
-	details = append(details, fmt.Sprintf("Command: %s", args[0]))
+
+	details = append(details, "Command: "+args[0])
 	if len(args) > 1 {
 		details = append(details, fmt.Sprintf("Arguments: %v", args[1:]))
 	}
+
 	if len(envVars) > 0 {
 		details = append(details, fmt.Sprintf("Environment: %v", envVars))
 	}
-	details = append(details, fmt.Sprintf("Working Directory: %s", workingDir))
+
+	details = append(details, "Working Directory: "+workingDir)
 
 	return strings.Join(details, "\n")
 }
@@ -626,13 +645,16 @@ func formatShellCommandDetails(args []string, envVars []string, workingDir strin
 func generateShellCommandKey(args []string, envVars []string, workingDir string) string {
 	commandDetails := fmt.Sprintf("cmd:%s|args:%v|env:%v|wd:%s", args[0], args[1:], envVars, workingDir)
 	hash := sha256.Sum256([]byte(commandDetails))
+
 	return fmt.Sprintf("shell_%x", hash)
 }
 
 // printShellCommandDetails prints the details of a shell command that will be executed
 func printShellCommandDetails(args []string, envVars []string, workingDir string) {
 	util.Logger.Printf("Shell command details:")
+
 	details := formatShellCommandDetails(args, envVars, workingDir)
+
 	lines := strings.Split(details, "\n")
 	for _, line := range lines {
 		util.Logger.Printf("  %s", line)
@@ -648,7 +670,7 @@ func shell(templatePath string, opts *options.BoilerplateOptions, rawArgs ...str
 	}
 
 	if len(rawArgs) == 0 {
-		return "", errors.WithStackTrace(NoArgsPassedToShellHelper)
+		return "", pkgErrors.WithStackTrace(NoArgsPassedToShellHelper)
 	}
 
 	args, envVars := separateArgsAndEnvVars(rawArgs)
@@ -658,7 +680,9 @@ func shell(templatePath string, opts *options.BoilerplateOptions, rawArgs ...str
 	// Auto-confirm all if non-interactive
 	if opts.NonInteractive {
 		opts.ShellCommandAnswers[shellKey] = true
+
 		util.Logger.Printf("Executing shell command (non-interactive mode)")
+
 		return util.RunShellCommandAndGetOutput(workingDir, envVars, args...)
 	}
 
@@ -668,7 +692,9 @@ func shell(templatePath string, opts *options.BoilerplateOptions, rawArgs ...str
 			util.Logger.Printf("Skipping shell command (previously declined)")
 			return SHELL_DISABLED_PLACEHOLDER, nil
 		}
+
 		util.Logger.Printf("Executing shell command (%s)", "previously confirmed or all confirmed")
+
 		return util.RunShellCommandAndGetOutput(workingDir, envVars, args...)
 	}
 
@@ -683,14 +709,18 @@ func shell(templatePath string, opts *options.BoilerplateOptions, rawArgs ...str
 	switch resp {
 	case util.UserResponseYes:
 		opts.ShellCommandAnswers[shellKey] = true
+
 		util.Logger.Printf("Executing shell command (user confirmed)")
 	case util.UserResponseAll:
 		opts.ShellCommandAnswers[shellKey] = true
 		opts.ExecuteAllShellCommands = true
+
 		util.Logger.Printf("Executing shell command (user confirmed all)")
 	case util.UserResponseNo:
 		opts.ShellCommandAnswers[shellKey] = false
+
 		util.Logger.Printf("Skipping shell command (user declined)")
+
 		return SHELL_DISABLED_PLACEHOLDER, nil
 	}
 
@@ -730,17 +760,20 @@ func trimSuffix(str, suffix string) string {
 func toYaml(obj interface{}) (string, error) {
 	yamlObj, err := yaml.Marshal(&obj)
 	if err != nil {
-		return "", errors.WithStackTrace(err)
+		return "", pkgErrors.WithStackTrace(err)
 	}
+
 	return string(yamlObj), nil
 }
 
 func fromYaml(yamlStr string) (interface{}, error) {
 	var obj interface{}
+
 	err := yaml.Unmarshal([]byte(yamlStr), &obj)
 	if err != nil {
-		return nil, errors.WithStackTrace(err)
+		return nil, pkgErrors.WithStackTrace(err)
 	}
+
 	return obj, nil
 }
 
@@ -748,7 +781,7 @@ func fromYaml(yamlStr string) (interface{}, error) {
 func relPath(basePath, targetPath string) (string, error) {
 	relPath, err := filepath.Rel(basePath, targetPath)
 	if err != nil {
-		return "", errors.WithStackTrace(err)
+		return "", pkgErrors.WithStackTrace(err)
 	}
 
 	return relPath, nil
@@ -776,6 +809,7 @@ func boilerplateConfigDeps(opts *options.BoilerplateOptions) func(string, string
 
 		r := reflect.ValueOf(dep)
 		f := reflect.Indirect(r).FieldByName(property)
+
 		return f.String(), nil
 	}
 }
@@ -792,6 +826,7 @@ func boilerplateConfigVars(opts *options.BoilerplateOptions) func(string, string
 
 		r := reflect.ValueOf(myVar)
 		f := reflect.Indirect(r).FieldByName(property)
+
 		return f.String(), nil
 	}
 }
@@ -801,7 +836,7 @@ func boilerplateConfigVars(opts *options.BoilerplateOptions) func(string, string
 type SnippetNotFound string
 
 func (snippetName SnippetNotFound) Error() string {
-	return fmt.Sprintf("Could not find a snippet named %s", string(snippetName))
+	return "Could not find a snippet named " + string(snippetName)
 }
 
 type SnippetNotTerminated string
@@ -816,7 +851,7 @@ func (args InvalidSnippetArguments) Error() string {
 	return fmt.Sprintf("The snippet helper expects the following args: snippet <TEMPLATE_PATH> <PATH> [SNIPPET_NAME]. Instead, got args: %s", []string(args))
 }
 
-var NoArgsPassedToShellHelper = fmt.Errorf("The shell helper requires at least one argument")
+var NoArgsPassedToShellHelper = errors.New("The shell helper requires at least one argument")
 
 type InvalidTypeForMethodArgument struct {
 	MethodName   string

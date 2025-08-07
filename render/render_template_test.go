@@ -1,7 +1,6 @@
 package render
 
 import (
-	"fmt"
 	"os"
 	"runtime"
 	"testing"
@@ -40,7 +39,7 @@ func TestRenderTemplate(t *testing.T) {
 	t.Parallel()
 
 	pwd, err := os.Getwd()
-	assert.Nil(t, err, "Couldn't get working directory")
+	assert.NoError(t, err, "Couldn't get working directory")
 
 	// Read an environment variable that's probably present on all systems so we can check that the env helper
 	// returns the same value
@@ -93,7 +92,7 @@ func TestRenderTemplate(t *testing.T) {
 		{"Keys test: {{ keys .Map }}", map[string]interface{}{"Map": map[string]string{"key1": "value1", "key2": "value2", "key3": "value3"}}, options.ExitWithError, "", "Keys test: [key1 key2 key3]", false},
 		{"Shell test: {{ shell \"echo\" .Text }}", map[string]interface{}{"Text": "Hello, World"}, options.ExitWithError, "", "Shell test: Hello, World\n", runtime.GOOS == "windows"},
 		{"Shell set env vars test: {{ shell \"printenv\" \"FOO\" \"ENV:FOO=bar\" }}", map[string]interface{}{}, options.ExitWithError, "", "Shell set env vars test: bar\n", runtime.GOOS == "windows"},
-		{"Shell read env vars test: {{ env \"USER\" \"should-not-get-fallback\" }}", map[string]interface{}{}, options.ExitWithError, "", fmt.Sprintf("Shell read env vars test: %s", userFromEnvVar), runtime.GOOS == "windows"},
+		{"Shell read env vars test: {{ env \"USER\" \"should-not-get-fallback\" }}", map[string]interface{}{}, options.ExitWithError, "", "Shell read env vars test: " + userFromEnvVar, runtime.GOOS == "windows"},
 		{"Shell read env vars test, fallback: {{ env \"not-a-valid-env-var\" \"should-get-fallback\" }}", map[string]interface{}{}, options.ExitWithError, "", "Shell read env vars test, fallback: should-get-fallback", false},
 		{"Template folder test: {{ templateFolder }}", map[string]interface{}{}, options.ExitWithError, "", "Template folder test: " + defaultTemplateDir, false},
 		{"Output folder test: {{ outputFolder }}", map[string]interface{}{}, options.ExitWithError, "", "Output folder test: " + defaultOutputDir, false},
@@ -111,10 +110,10 @@ func TestRenderTemplate(t *testing.T) {
 			opts.OnMissingKey = testCase.missingKeyAction
 			actualOutput, err := RenderTemplateFromString(pwd+"/template.txt", tt.templateContents, tt.variables, opts)
 			if tt.expectedErrorText == "" {
-				assert.Nil(t, err, "template = %s, variables = %s, missingKeyAction = %s, err = %v", tt.templateContents, tt.variables, tt.missingKeyAction, err)
+				assert.NoError(t, err, "template = %s, variables = %s, missingKeyAction = %s, err = %v", tt.templateContents, tt.variables, tt.missingKeyAction, err)
 				assert.Equal(t, tt.expectedOutput, actualOutput, "template = %s, variables = %s, missingKeyAction = %s", tt.templateContents, tt.variables, tt.missingKeyAction)
 			} else {
-				if assert.NotNil(t, err, "template = %s, variables = %s, missingKeyAction = %s", tt.templateContents, tt.variables, tt.missingKeyAction) {
+				if assert.Error(t, err, "template = %s, variables = %s, missingKeyAction = %s", tt.templateContents, tt.variables, tt.missingKeyAction) {
 					assert.Contains(t, err.Error(), tt.expectedErrorText, "template = %s, variables = %s, missingKeyAction = %s", tt.templateContents, tt.variables, tt.missingKeyAction)
 
 				}

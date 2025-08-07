@@ -11,17 +11,21 @@ import (
 // and return the results as a list. This is useful when building a custom YAML marshaler.
 func MarshalListOfObjectsToYAML(inputList []interface{}) ([]interface{}, error) {
 	output := []interface{}{}
+
 	for _, item := range inputList {
 		itemAsMarshaler, hasType := item.(yaml.Marshaler)
-		if hasType == false {
+		if !hasType {
 			return nil, errors.WithStackTrace(UnmarshalableObjectErr{item})
 		}
+
 		yaml, err := itemAsMarshaler.MarshalYAML()
 		if err != nil {
 			return nil, errors.WithStackTrace(ObjectMarshalingErr{item, err})
 		}
+
 		output = append(output, yaml)
 	}
+
 	return output, nil
 }
 

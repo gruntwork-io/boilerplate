@@ -1,6 +1,7 @@
 package errors
 
 import (
+	"errors"
 	"fmt"
 
 	goerrors "github.com/go-errors/errors"
@@ -40,7 +41,9 @@ func Unwrap(err error) error {
 		return nil
 	}
 
-	goError, isGoError := err.(*goerrors.Error)
+	goError := &goerrors.Error{}
+	isGoError := errors.As(err, &goError)
+
 	if isGoError {
 		return goError.Err
 	}
@@ -54,10 +57,14 @@ func PrintErrorWithStackTrace(err error) string {
 		return ""
 	}
 
-	switch underlyingErr := err.(type) {
-	case *goerrors.Error:
-		return underlyingErr.ErrorStack()
-	default:
-		return err.Error()
+	{
+		var underlyingErr *goerrors.Error
+
+		switch {
+		case errors.As(err, &underlyingErr):
+			return underlyingErr.ErrorStack()
+		default:
+			return err.Error()
+		}
 	}
 }

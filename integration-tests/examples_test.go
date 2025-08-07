@@ -133,7 +133,7 @@ func testExample(t *testing.T, templateFolder string, outputFolder string, varFi
 		"--var-file",
 		varFile,
 		"--var",
-		fmt.Sprintf("RemoteBranch=%s", ref),
+		"RemoteBranch=" + ref,
 		"--non-interactive",
 		"--missing-key-action",
 		missingKeyAction,

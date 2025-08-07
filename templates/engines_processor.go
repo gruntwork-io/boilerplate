@@ -9,11 +9,8 @@ import (
 )
 
 type ProcessedEngine struct {
-	// List of paths relative to template folder that should be skipped
-	EvaluatedPaths []string
-
-	// The template engine to use.
 	TemplateEngine variables.TemplateEngineType
+	EvaluatedPaths []string
 }
 
 // processEngines will take the engines list and process them in the current boilerplate context. This is primarily
@@ -24,11 +21,13 @@ func processEngines(
 	variables map[string]interface{},
 ) ([]ProcessedEngine, error) {
 	output := []ProcessedEngine{}
+
 	for _, engine := range engines {
 		matchedPaths, err := renderGlobPath(opts, engine.Path, variables)
 		if err != nil {
 			return nil, err
 		}
+
 		debugLogForMatchedPaths(engine.Path, matchedPaths, "Engine", "Path")
 
 		processedEngine := ProcessedEngine{
@@ -37,6 +36,7 @@ func processEngines(
 		}
 		output = append(output, processedEngine)
 	}
+
 	return output, nil
 }
 
@@ -53,6 +53,6 @@ func determineTemplateEngine(processedEngines []ProcessedEngine, path string) va
 			return engine.TemplateEngine
 		}
 	}
-	return variables.DefaultTemplateEngine
 
+	return variables.DefaultTemplateEngine
 }

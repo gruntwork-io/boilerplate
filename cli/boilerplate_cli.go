@@ -106,7 +106,6 @@ func CreateBoilerplateCli() *cli.App {
 	app.DisableSliceFlagSeparator = true
 
 	return app
-
 }
 
 // When you run the CLI, this is the action function that gets called

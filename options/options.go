@@ -23,23 +23,18 @@ const OptDisableDependencyPrompt = "disable-dependency-prompt"
 
 // The command-line options for the boilerplate app
 type BoilerplateOptions struct {
-	// go-getter supported URL where the template can be sourced.
-	TemplateUrl string
-	// Working directory where the go-getter defined template is downloaded.
-	TemplateFolder string
-
-	OutputFolder            string
-	NonInteractive          bool
 	Vars                    map[string]interface{}
+	ShellCommandAnswers     map[string]bool
+	TemplateUrl             string
+	TemplateFolder          string
+	OutputFolder            string
 	OnMissingKey            MissingKeyAction
 	OnMissingConfig         MissingConfigAction
+	NonInteractive          bool
 	NoHooks                 bool
 	NoShell                 bool
 	DisableDependencyPrompt bool
-	// Track if user has chosen to execute all shell commands without confirmation
 	ExecuteAllShellCommands bool
-	// Track shell command confirmations similar to hooks
-	ShellCommandAnswers map[string]bool
 }
 
 // Validate that the options have reasonable values and return an error if they don't
@@ -68,6 +63,7 @@ func ParseOptions(cliContext *cli.Context) (*BoilerplateOptions, error) {
 
 	missingKeyAction := DefaultMissingKeyAction
 	missingKeyActionValue := cliContext.String(OptMissingKeyAction)
+
 	if missingKeyActionValue != "" {
 		missingKeyAction, err = ParseMissingKeyAction(missingKeyActionValue)
 		if err != nil {
@@ -77,6 +73,7 @@ func ParseOptions(cliContext *cli.Context) (*BoilerplateOptions, error) {
 
 	missingConfigAction := DefaultMissingConfigAction
 	missingConfigActionValue := cliContext.String(OptMissingConfigAction)
+
 	if missingConfigActionValue != "" {
 		missingConfigAction, err = ParseMissingConfigAction(missingConfigActionValue)
 		if err != nil {
@@ -120,11 +117,13 @@ func DetermineTemplateConfig(templateUrl string) (string, string, error) {
 	if err != nil {
 		return "", "", err
 	}
+
 	if url.Scheme == "file" {
 		// Intentionally return as both TemplateUrl and TemplateFolder so that validation passes, but still skip
 		// download.
 		return templateUrl, templateUrl, nil
 	}
+
 	return templateUrl, "", nil
 }
 
@@ -149,6 +148,7 @@ func ParseMissingKeyAction(str string) (MissingKeyAction, error) {
 			return missingKeyAction, nil
 		}
 	}
+
 	return MissingKeyAction(""), errors.WithStackTrace(InvalidMissingKeyAction(str))
 }
 
@@ -171,6 +171,7 @@ func ParseMissingConfigAction(str string) (MissingConfigAction, error) {
 			return missingConfigAction, nil
 		}
 	}
+
 	return MissingConfigAction(""), errors.WithStackTrace(InvalidMissingConfigAction(str))
 }
 

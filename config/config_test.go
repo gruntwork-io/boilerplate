@@ -2,6 +2,7 @@ package config
 
 import (
 	"bytes"
+	"errors"
 	"io/ioutil"
 	"path"
 	"path/filepath"
@@ -12,7 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 
-	"github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/testutil"
 	"github.com/gruntwork-io/boilerplate/variables"
@@ -29,7 +29,7 @@ func TestParseBoilerplateConfigEmpty(t *testing.T) {
 	actual, err := ParseBoilerplateConfig([]byte(""))
 	expected := &BoilerplateConfig{}
 
-	assert.Nil(t, err, "Unexpected error: %v", err)
+	assert.NoError(t, err, "Unexpected error: %v", err)
 	assert.Equal(t, expected, actual)
 }
 
@@ -38,10 +38,11 @@ func TestParseBoilerplateConfigInvalid(t *testing.T) {
 
 	_, err := ParseBoilerplateConfig([]byte("not-a-valid-yaml-file"))
 
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 
 	unwrapped := errors.Unwrap(err)
-	_, isYamlTypeError := unwrapped.(*yaml.TypeError)
+	typeError := &yaml.TypeError{}
+	isYamlTypeError := errors.As(unwrapped, &typeError)
 	assert.True(t, isYamlTypeError, "Expected a YAML type error for an invalid yaml file but got %s: %v", reflect.TypeOf(unwrapped), unwrapped)
 }
 
@@ -60,7 +61,7 @@ func TestParseBoilerplateConfigEmptyVariablesAndDependencies(t *testing.T) {
 		Hooks:        variables.Hooks{},
 	}
 
-	assert.Nil(t, err, "Unexpected error: %v", err)
+	assert.NoError(t, err, "Unexpected error: %v", err)
 	assert.Equal(t, expected, actual)
 }
 
@@ -81,7 +82,7 @@ func TestParseBoilerplateConfigOneVariableMinimal(t *testing.T) {
 		Hooks:        variables.Hooks{},
 	}
 
-	assert.Nil(t, err, "Unexpected error: %v", err)
+	assert.NoError(t, err, "Unexpected error: %v", err)
 	assert.Equal(t, expected, actual)
 }
 
@@ -105,7 +106,7 @@ func TestParseBoilerplateConfigOneVariableFull(t *testing.T) {
 		Hooks:        variables.Hooks{},
 	}
 
-	assert.Nil(t, err, "Unexpected error: %v", err)
+	assert.NoError(t, err, "Unexpected error: %v", err)
 	assert.Equal(t, expected, actual)
 }
 
@@ -120,8 +121,8 @@ func TestParseBoilerplateConfigOneVariableMissingName(t *testing.T) {
 
 	_, err := ParseBoilerplateConfig([]byte(CONFIG_ONE_VARIABLE_MISSING_NAME))
 
-	assert.NotNil(t, err)
-	assert.True(t, errors.IsError(err, variables.RequiredFieldMissing("name")), "Expected a RequiredFieldMissing error but got %s: %v", reflect.TypeOf(errors.Unwrap(err)), err)
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, variables.RequiredFieldMissing("name"), "Expected a RequiredFieldMissing error but got %s: %v", reflect.TypeOf(errors.Unwrap(err)), err)
 }
 
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
@@ -135,8 +136,8 @@ func TestParseBoilerplateConfigOneVariableInvalidType(t *testing.T) {
 
 	_, err := ParseBoilerplateConfig([]byte(CONFIG_ONE_VARIABLE_INVALID_TYPE))
 
-	assert.NotNil(t, err)
-	assert.True(t, errors.IsError(err, variables.InvalidBoilerplateType("foo")), "Expected a InvalidBoilerplateType error but got %s", reflect.TypeOf(errors.Unwrap(err)))
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, variables.InvalidBoilerplateType("foo"), "Expected a InvalidBoilerplateType error but got %s", reflect.TypeOf(errors.Unwrap(err)))
 }
 
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
@@ -151,8 +152,8 @@ func TestParseBoilerplateConfigInvalidTypeForNameField(t *testing.T) {
 
 	_, err := ParseBoilerplateConfig([]byte(CONFIG_ONE_VARIABLE_INVALID_TYPE_FOR_NAME_FIELD))
 
-	assert.NotNil(t, err)
-	assert.True(t, errors.IsError(err, variables.InvalidTypeForField{FieldName: "name", ExpectedType: "string", ActualType: reflect.TypeOf([]interface{}{})}), "Expected a InvalidTypeForField error but got %s: %v", reflect.TypeOf(errors.Unwrap(err)), err)
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, variables.InvalidTypeForField{FieldName: "name", ExpectedType: "string", ActualType: reflect.TypeOf([]interface{}{})}, "Expected a InvalidTypeForField error but got %s: %v", reflect.TypeOf(errors.Unwrap(err)), err)
 }
 
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
@@ -166,8 +167,8 @@ func TestParseBoilerplateConfigOneVariableEnumNoOptions(t *testing.T) {
 
 	_, err := ParseBoilerplateConfig([]byte(CONFIG_ONE_VARIABLE_ENUM_NO_OPTIONS))
 
-	assert.NotNil(t, err)
-	assert.True(t, errors.IsError(err, variables.OptionsMissing("foo")), "Expected a VariableMissingOptions error but got %s", reflect.TypeOf(errors.Unwrap(err)))
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, variables.OptionsMissing("foo"), "Expected a VariableMissingOptions error but got %s", reflect.TypeOf(errors.Unwrap(err)))
 }
 
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
@@ -182,8 +183,8 @@ func TestParseBoilerplateConfigOneVariableEnumWrongType(t *testing.T) {
 
 	_, err := ParseBoilerplateConfig([]byte(CONFIG_ONE_VARIABLE_ENUM_OPTIONS_WRONG_TYPE))
 
-	assert.NotNil(t, err)
-	assert.True(t, errors.IsError(err, variables.InvalidTypeForField{FieldName: "options", ExpectedType: "List", ActualType: reflect.TypeOf("string"), Context: "foo"}), "Expected a InvalidTypeForField error but got %s", reflect.TypeOf(errors.Unwrap(err)))
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, variables.InvalidTypeForField{FieldName: "options", ExpectedType: "List", ActualType: reflect.TypeOf("string"), Context: "foo"}, "Expected a InvalidTypeForField error but got %s", reflect.TypeOf(errors.Unwrap(err)))
 }
 
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
@@ -199,8 +200,8 @@ func TestParseBoilerplateConfigOneVariableOptionsForNonEnum(t *testing.T) {
 
 	_, err := ParseBoilerplateConfig([]byte(CONFIG_ONE_VARIABLE_OPTIONS_FOR_NON_ENUM))
 
-	assert.NotNil(t, err)
-	assert.True(t, errors.IsError(err, variables.OptionsCanOnlyBeUsedWithEnum{Context: "foo", Type: variables.String}), "Expected a OptionsCanOnlyBeUsedWithEnum error but got %v", err)
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, variables.OptionsCanOnlyBeUsedWithEnum{Context: "foo", Type: variables.String}, "Expected a OptionsCanOnlyBeUsedWithEnum error but got %v", err)
 }
 
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
@@ -236,7 +237,7 @@ func TestParseBoilerplateConfigMultipleVariables(t *testing.T) {
 		Hooks:        variables.Hooks{},
 	}
 
-	assert.Nil(t, err, "Unexpected error: %v", err)
+	assert.NoError(t, err, "Unexpected error: %v", err)
 	assert.Equal(t, expected, actual)
 }
 
@@ -303,7 +304,7 @@ func TestParseBoilerplateConfigAllTypes(t *testing.T) {
 		Hooks:        variables.Hooks{},
 	}
 
-	assert.Nil(t, err, "Unexpected error: %v", err)
+	assert.NoError(t, err, "Unexpected error: %v", err)
 	assert.Equal(t, expected, actual)
 }
 
@@ -326,7 +327,7 @@ func TestParseBoilerplateConfigOneDependency(t *testing.T) {
 		Hooks: variables.Hooks{},
 	}
 
-	assert.Nil(t, err, "Unexpected error: %v", err)
+	assert.NoError(t, err, "Unexpected error: %v", err)
 	assert.Equal(t, expected, actual)
 }
 
@@ -386,7 +387,7 @@ func TestParseBoilerplateConfigMultipleDependencies(t *testing.T) {
 		Hooks: variables.Hooks{},
 	}
 
-	assert.Nil(t, err, "Unexpected error: %v", err)
+	assert.NoError(t, err, "Unexpected error: %v", err)
 	assert.Equal(t, expected, actual)
 }
 
@@ -401,8 +402,8 @@ func TestParseBoilerplateConfigDependencyMissingName(t *testing.T) {
 
 	_, err := ParseBoilerplateConfig([]byte(CONFIG_DEPENDENCY_MISSING_NAME))
 
-	assert.NotNil(t, err)
-	assert.True(t, errors.IsError(err, variables.RequiredFieldMissing("name")), "Expected a RequiredFieldMissing error but got %s", reflect.TypeOf(errors.Unwrap(err)))
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, variables.RequiredFieldMissing("name"), "Expected a RequiredFieldMissing error but got %s", reflect.TypeOf(errors.Unwrap(err)))
 }
 
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
@@ -416,8 +417,8 @@ func TestParseBoilerplateConfigDependencyMissingTemplateUrl(t *testing.T) {
 
 	_, err := ParseBoilerplateConfig([]byte(CONFIG_DEPENDENCY_MISSING_TEMPLATE_FOLDER))
 
-	assert.NotNil(t, err)
-	assert.True(t, errors.IsError(err, variables.RequiredFieldMissing("template-url")), "Expected a RequiredFieldMissing error but got %s", reflect.TypeOf(errors.Unwrap(err)))
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, variables.RequiredFieldMissing("template-url"), "Expected a RequiredFieldMissing error but got %s", reflect.TypeOf(errors.Unwrap(err)))
 }
 
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
@@ -435,8 +436,8 @@ func TestParseBoilerplateConfigDependencyMissingVariableName(t *testing.T) {
 
 	_, err := ParseBoilerplateConfig([]byte(CONFIG_DEPENDENCY_MISSING_VARIABLE_NAME))
 
-	assert.NotNil(t, err)
-	assert.True(t, errors.IsError(err, variables.RequiredFieldMissing("name")), "Expected a RequiredFieldMissing error but got %s", reflect.TypeOf(errors.Unwrap(err)))
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, variables.RequiredFieldMissing("name"), "Expected a RequiredFieldMissing error but got %s", reflect.TypeOf(errors.Unwrap(err)))
 }
 
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
@@ -454,8 +455,8 @@ func TestParseBoilerplateConfigDependencyMissingOutputFolder(t *testing.T) {
 
 	_, err := ParseBoilerplateConfig([]byte(CONFIG_DEPENDENCY_MISSING_OUTPUT_FOLDER))
 
-	assert.NotNil(t, err)
-	assert.True(t, errors.IsError(err, variables.RequiredFieldMissing("output-folder")), "Expected a RequiredFieldMissing error but got %s", reflect.TypeOf(errors.Unwrap(err)))
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, variables.RequiredFieldMissing("output-folder"), "Expected a RequiredFieldMissing error but got %s", reflect.TypeOf(errors.Unwrap(err)))
 }
 
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
@@ -478,8 +479,8 @@ func TestParseBoilerplateConfigDependencyDuplicateNames(t *testing.T) {
 
 	_, err := ParseBoilerplateConfig([]byte(CONFIG_DEPENDENCY_DUPLICATE_NAMES))
 
-	assert.NotNil(t, err)
-	assert.True(t, errors.IsError(err, variables.DuplicateDependencyName("dep1")), "Expected a DuplicateDependencyName error but got %s", reflect.TypeOf(errors.Unwrap(err)))
+	assert.Error(t, err)
+	assert.ErrorIs(t, err, variables.DuplicateDependencyName("dep1"), "Expected a DuplicateDependencyName error but got %s", reflect.TypeOf(errors.Unwrap(err)))
 }
 
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
@@ -496,7 +497,7 @@ func TestParseBoilerplateConfigEmptyHooks(t *testing.T) {
 		Hooks:        variables.Hooks{},
 	}
 
-	assert.Nil(t, err, "Unexpected error: %v", err)
+	assert.NoError(t, err, "Unexpected error: %v", err)
 	assert.Equal(t, expected, actual)
 }
 
@@ -516,7 +517,7 @@ func TestParseBoilerplateConfigEmptyBeforeAndAfterHooks(t *testing.T) {
 		Hooks:        variables.Hooks{},
 	}
 
-	assert.Nil(t, err, "Unexpected error: %v", err)
+	assert.NoError(t, err, "Unexpected error: %v", err)
 	assert.Equal(t, expected, actual)
 }
 
@@ -540,7 +541,7 @@ func TestParseBoilerplateConfigOneBeforeHookNoArgs(t *testing.T) {
 		},
 	}
 
-	assert.Nil(t, err, "Unexpected error: %v", err)
+	assert.NoError(t, err, "Unexpected error: %v", err)
 	assert.Equal(t, expected, actual)
 }
 
@@ -569,7 +570,7 @@ func TestParseBoilerplateConfigOneAfterHookWithArgs(t *testing.T) {
 		},
 	}
 
-	assert.Nil(t, err, "Unexpected error: %v", err)
+	assert.NoError(t, err, "Unexpected error: %v", err)
 	assert.Equal(t, expected, actual)
 }
 
@@ -614,7 +615,7 @@ func TestParseBoilerplateConfigMultipleHooks(t *testing.T) {
 		},
 	}
 
-	assert.Nil(t, err, "Unexpected error: %v", err)
+	assert.NoError(t, err, "Unexpected error: %v", err)
 	assert.Equal(t, expected, actual)
 }
 
@@ -647,7 +648,7 @@ func TestLoadBoilerplateConfigFullConfig(t *testing.T) {
 		},
 	}
 
-	assert.Nil(t, err, "Unexpected error: %v", err)
+	assert.NoError(t, err, "Unexpected error: %v", err)
 	assert.Equal(t, expected, actual)
 }
 
@@ -658,7 +659,7 @@ func TestLoadBoilerplateConfigNoConfig(t *testing.T) {
 	_, err := LoadBoilerplateConfig(testutil.CreateTestOptions(templateFolder))
 	expectedErr := BoilerplateConfigNotFound(path.Join(templateFolder, "boilerplate.yml"))
 
-	assert.True(t, errors.IsError(err, expectedErr), "Expected error %v but got %v", expectedErr, err)
+	assert.ErrorIs(t, err, expectedErr, "Expected error %v but got %v", expectedErr, err)
 }
 
 func TestLoadBoilerplateConfigNoConfigIgnore(t *testing.T) {
@@ -670,7 +671,7 @@ func TestLoadBoilerplateConfigNoConfigIgnore(t *testing.T) {
 	actual, err := LoadBoilerplateConfig(opts)
 	expected := &BoilerplateConfig{}
 
-	assert.Nil(t, err, "Unexpected error: %v", err)
+	assert.NoError(t, err, "Unexpected error: %v", err)
 	assert.Equal(t, expected, actual)
 }
 
@@ -679,10 +680,11 @@ func TestLoadBoilerplateConfigInvalidConfig(t *testing.T) {
 
 	_, err := LoadBoilerplateConfig(testutil.CreateTestOptions("../test-fixtures/config-test/invalid-config"))
 
-	assert.NotNil(t, err)
+	assert.Error(t, err)
 
 	unwrapped := errors.Unwrap(err)
-	_, isYamlTypeError := unwrapped.(*yaml.TypeError)
+	typeError := &yaml.TypeError{}
+	isYamlTypeError := errors.As(unwrapped, &typeError)
 	assert.True(t, isYamlTypeError, "Expected a YAML type error for an invalid yaml file but got %s", reflect.TypeOf(unwrapped))
 }
 
@@ -741,7 +743,7 @@ func TestMarshalBoilerplateConfig(t *testing.T) {
 			// Format the two yaml documents
 			expectedYmlFormatted := formatYAMLBytes(t, expectedYml)
 			actualYmlFormatted := formatYAMLBytes(t, actualYml)
-			assert.Equal(t, string(expectedYmlFormatted), string(actualYmlFormatted))
+			assert.YAMLEq(t, string(expectedYmlFormatted), string(actualYmlFormatted))
 		})
 	}
 }

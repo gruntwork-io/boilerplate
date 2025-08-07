@@ -30,14 +30,17 @@ func RenderTemplateWithPartials(templatePath string, partials []string, variable
 		// Use opts.TemplateFolder because the templatePath may be a subdir, but the partial paths are
 		// relative to the path passed in by the user
 		relativePath := PathRelativeToTemplate(opts.TemplateFolder, globOfPartials)
+
 		parsedTemplate, err := getTemplate(templatePath, opts).ParseGlob(relativePath)
 		if err != nil {
 			return "", errors.WithStackTrace(err)
 		}
+
 		for _, t := range parsedTemplate.Templates() {
 			tmpl.AddParseTree(t.Name(), t.Tree)
 		}
 	}
+
 	return executeTemplate(tmpl, variables)
 }
 
@@ -45,6 +48,7 @@ func RenderTemplateWithPartials(templatePath string, partials []string, variable
 // given variables as data.
 func RenderTemplateFromString(templatePath string, templateContents string, variables map[string]interface{}, opts *options.BoilerplateOptions) (string, error) {
 	tmpl := getTemplate(templatePath, opts)
+
 	parsedTemplate, err := tmpl.Parse(templateContents)
 	if err != nil {
 		return "", errors.WithStackTrace(err)
@@ -56,7 +60,8 @@ func RenderTemplateFromString(templatePath string, templateContents string, vari
 // getTemplate returns new template initialized with options and helper functions
 func getTemplate(templatePath string, opts *options.BoilerplateOptions) *template.Template {
 	tmpl := template.New(path.Base(templatePath))
-	option := fmt.Sprintf("missingkey=%s", string(opts.OnMissingKey))
+	option := "missingkey=" + string(opts.OnMissingKey)
+
 	return tmpl.Funcs(CreateTemplateHelpers(templatePath, opts, tmpl)).Option(option)
 }
 
@@ -66,6 +71,7 @@ func executeTemplate(tmpl *template.Template, variables map[string]interface{}) 
 	if err := tmpl.Execute(&output, variables); err != nil {
 		return "", errors.WithStackTrace(err)
 	}
+
 	return output.String(), nil
 }
 
@@ -108,7 +114,9 @@ func RenderVariables(
 	}
 
 	var renderErr error
+
 	renderedVariables := alreadyRenderedVariables
+
 	rendered := true
 	for iterations := 0; len(unrenderedVariables) > 0 && rendered; iterations++ {
 		if iterations > MaxRenderAttempts {
@@ -123,6 +131,7 @@ func RenderVariables(
 		rendered = attemptRenderOutput.variablesWereRendered
 		renderErr = err
 	}
+
 	if len(unrenderedVariables) > 0 {
 		return nil, renderErr
 	}
@@ -146,6 +155,7 @@ func attemptRenderVariables(
 	wasRendered := false
 
 	var allRenderErr error
+
 	for _, variableName := range unrenderedVariables {
 		rendered, err := attemptRenderVariable(opts, variables[variableName], renderedVariables)
 		if err != nil {
@@ -156,11 +166,13 @@ func attemptRenderVariables(
 			wasRendered = true
 		}
 	}
+
 	out := attemptRenderVariablesOutput{
 		unrenderedVariables:   newUnrenderedVariables,
 		renderedVariables:     renderedVariables,
 		variablesWereRendered: wasRendered,
 	}
+
 	return out, allRenderErr
 }
 
@@ -176,27 +188,34 @@ func attemptRenderVariable(opts *options.BoilerplateOptions, variable interface{
 		return RenderTemplateFromString(opts.TemplateFolder, variable.(string), renderedVariables, opts)
 	case reflect.Slice:
 		values := []interface{}{}
+
 		for i := 0; i < valueType.Len(); i++ {
 			rendered, err := attemptRenderVariable(opts, valueType.Index(i).Interface(), renderedVariables)
 			if err != nil {
 				return nil, err
 			}
+
 			values = append(values, rendered)
 		}
+
 		return values, nil
 	case reflect.Map:
 		values := map[string]interface{}{}
+
 		for _, key := range valueType.MapKeys() {
 			renderedKey, err := attemptRenderVariable(opts, key.Interface(), renderedVariables)
 			if err != nil {
 				return nil, err
 			}
+
 			renderedValue, err := attemptRenderVariable(opts, valueType.MapIndex(key).Interface(), renderedVariables)
 			if err != nil {
 				return nil, err
 			}
+
 			values[renderedKey.(string)] = renderedValue
 		}
+
 		return values, nil
 	default:
 		return variable, nil
@@ -206,8 +225,8 @@ func attemptRenderVariable(opts *options.BoilerplateOptions, variable interface{
 // Return types
 
 type attemptRenderVariablesOutput struct {
-	unrenderedVariables   []string
 	renderedVariables     map[string]interface{}
+	unrenderedVariables   []string
 	variablesWereRendered bool
 }
 

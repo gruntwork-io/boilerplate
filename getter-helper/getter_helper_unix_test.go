@@ -4,7 +4,6 @@
 package getter_helper
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -23,7 +22,7 @@ func TestDownloadTemplatesToTempDir(t *testing.T) {
 	examplePath := filepath.Join(pwd, "..", "examples", "for-learning-and-testing", "variables")
 
 	branch := git.GetCurrentBranchName(t)
-	templateUrl := fmt.Sprintf("git@github.com:gruntwork-io/boilerplate.git//examples/for-learning-and-testing/variables?ref=%s", branch)
+	templateUrl := "git@github.com:gruntwork-io/boilerplate.git//examples/for-learning-and-testing/variables?ref=" + branch
 	workingDir, workPath, err := DownloadTemplatesToTemporaryFolder(templateUrl)
 	defer os.RemoveAll(workingDir)
 	require.NoError(t, err, errors.PrintErrorWithStackTrace(err))

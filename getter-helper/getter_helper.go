@@ -28,10 +28,12 @@ func ParseGetterUrl(templateUrl string) (*url.URL, error) {
 	if err != nil {
 		return nil, errors.WithStackTrace(err)
 	}
+
 	getterURLWithGetter, err := getter.Detect(templateUrl, pwd, getter.Detectors)
 	if err != nil {
 		return nil, errors.WithStackTrace(err)
 	}
+
 	return urlParseGetterUrl(getterURLWithGetter)
 }
 
@@ -86,6 +88,7 @@ func NewGetterClient(src string, dst string) (*getter.Client, error) {
 	// getter map here rather than using getter.Getters directly because we shouldn't change the original,
 	// globally-shared getter.Getters map.
 	client.Getters = map[string]getter.Getter{}
+
 	for getterName, getterValue := range getter.Getters {
 		if getterName == "file" {
 			client.Getters[getterName] = &FileCopyGetter{}
@@ -123,5 +126,6 @@ func DownloadTemplatesToTemporaryFolder(templateUrl string) (string, string, err
 	if err := client.Get(); err != nil {
 		return workingDir, outDir, err
 	}
+
 	return workingDir, outDir, nil
 }

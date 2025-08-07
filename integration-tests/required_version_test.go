@@ -1,13 +1,13 @@
 package integration_tests
 
 import (
+	"errors"
 	"io/ioutil"
 	"os"
 	"testing"
 
 	"github.com/gruntwork-io/boilerplate/cli"
 	"github.com/gruntwork-io/boilerplate/config"
-	"github.com/gruntwork-io/go-commons/errors"
 	"github.com/gruntwork-io/go-commons/version"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -39,7 +39,8 @@ func TestRequiredVersionOverTest(t *testing.T) {
 	assert.Error(t, err)
 
 	errUnwrapped := errors.Unwrap(err)
-	_, isInvalidVersionErr := errUnwrapped.(config.InvalidBoilerplateVersion)
+	var invalidBoilerplateVersion config.InvalidBoilerplateVersion
+	isInvalidVersionErr := errors.As(errUnwrapped, &invalidBoilerplateVersion)
 	assert.True(t, isInvalidVersionErr)
 }
 

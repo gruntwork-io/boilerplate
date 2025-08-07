@@ -30,6 +30,7 @@ func ParseBoilerplateType(str string) (*BoilerplateType, error) {
 			return &boilerplateType, nil
 		}
 	}
+
 	return nil, errors.WithStackTrace(InvalidBoilerplateType(str))
 }
 

@@ -14,11 +14,11 @@ type Dependency struct {
 	TemplateUrl          string
 	OutputFolder         string
 	Skip                 string
-	DontInheritVariables bool
+	ForEachReference     string
 	Variables            []Variable
 	VarFiles             []string
 	ForEach              []string
-	ForEachReference     string
+	DontInheritVariables bool
 }
 
 // Implement the go-yaml marshaler interface so that the config can be marshaled into yaml. We use a custom marshaler
@@ -28,15 +28,19 @@ func (dependency Dependency) MarshalYAML() (interface{}, error) {
 	if dependency.Name != "" {
 		depYml["name"] = dependency.Name
 	}
+
 	if dependency.TemplateUrl != "" {
 		depYml["template-url"] = dependency.TemplateUrl
 	}
+
 	if dependency.OutputFolder != "" {
 		depYml["output-folder"] = dependency.OutputFolder
 	}
+
 	if dependency.Skip != "" {
 		depYml["skip"] = dependency.Skip
 	}
+
 	if len(dependency.Variables) > 0 {
 		// Due to go type system, we can only pass through []interface{}, even though []Variable is technically
 		// polymorphic to that type. So we reconstruct the list using the right type before passing it in to the marshal
@@ -45,21 +49,27 @@ func (dependency Dependency) MarshalYAML() (interface{}, error) {
 		for _, variable := range dependency.Variables {
 			interfaceList = append(interfaceList, variable)
 		}
+
 		varsYml, err := util.MarshalListOfObjectsToYAML(interfaceList)
 		if err != nil {
 			return nil, err
 		}
+
 		depYml["variables"] = varsYml
 	}
+
 	if len(dependency.VarFiles) > 0 {
 		depYml["var_files"] = dependency.VarFiles
 	}
+
 	if len(dependency.ForEach) > 0 {
 		depYml["for_each"] = dependency.ForEach
 	}
+
 	if len(dependency.ForEachReference) > 0 {
 		depYml["for_each_reference"] = dependency.ForEachReference
 	}
+
 	return depYml, nil
 }
 
@@ -107,6 +117,7 @@ func UnmarshalDependenciesFromBoilerplateConfigYaml(fields map[string]interface{
 		if util.ListContains(dependency.Name, dependencyNames) {
 			return unmarshalledDependencies, errors.WithStackTrace(DuplicateDependencyName(dependency.Name))
 		}
+
 		dependencyNames = append(dependencyNames, dependency.Name)
 
 		unmarshalledDependencies = append(unmarshalledDependencies, *dependency)
@@ -142,6 +153,7 @@ func UnmarshalDependencyFromBoilerplateConfigYaml(fields map[string]interface{})
 	if err != nil {
 		return nil, err
 	}
+
 	var skip string
 	if skipPtr != nil {
 		skip = *skipPtr
@@ -171,6 +183,7 @@ func UnmarshalDependencyFromBoilerplateConfigYaml(fields map[string]interface{})
 	if err != nil {
 		return nil, err
 	}
+
 	forEachReference := ""
 	if forEachReferencePtr != nil {
 		forEachReference = *forEachReferencePtr

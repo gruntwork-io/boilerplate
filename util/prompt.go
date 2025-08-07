@@ -2,7 +2,6 @@ package util
 
 import (
 	"bufio"
-	"fmt"
 	"os"
 	"strings"
 
@@ -25,7 +24,8 @@ const (
 
 // Prompt the user for text in the CLI. Returns the text entered by the user.
 func PromptUserForInput(prompt string) (string, error) {
-	BRIGHT_GREEN.Print(fmt.Sprintf("%s: ", prompt))
+	BRIGHT_GREEN.Print(prompt + ": ")
+
 	reader := bufio.NewReader(os.Stdin)
 
 	text, err := reader.ReadString('\n')
@@ -38,7 +38,7 @@ func PromptUserForInput(prompt string) (string, error) {
 
 // Prompt the user for a yes/no response and return true if they entered yes.
 func PromptUserForYesNo(prompt string) (bool, error) {
-	resp, err := PromptUserForInput(fmt.Sprintf("%s (y/n) ", prompt))
+	resp, err := PromptUserForInput(prompt + " (y/n) ")
 
 	if err != nil {
 		return false, errors.WithStackTrace(err)
@@ -55,7 +55,7 @@ func PromptUserForYesNo(prompt string) (bool, error) {
 // Prompt the user for a y/a/n response and return the response type.
 // Returns: UserResponseYes, UserResponseNo, or UserResponseAll.
 func PromptUserForYesNoAll(prompt string) (UserResponse, error) {
-	resp, err := PromptUserForInput(fmt.Sprintf("%s (y/a/n) ", prompt))
+	resp, err := PromptUserForInput(prompt + " (y/a/n) ")
 
 	if err != nil {
 		return UserResponseNo, errors.WithStackTrace(err)
