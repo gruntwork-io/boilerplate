@@ -12,7 +12,6 @@ import (
 //
 // - Go template (default)
 // - Jsonnet
-//
 type Engine struct {
 	Path           string             `yaml:"path"`
 	TemplateEngine TemplateEngineType `yaml:"template_engine"`
