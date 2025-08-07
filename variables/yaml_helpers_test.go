@@ -159,7 +159,7 @@ func TestConvertNested(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			result, err := ConvertYAMLToStringMap(testCase.input)
 			assert.NoError(t, err)
-			
+
 			// Check that conversion actually happened - MUST work, not optional
 			switch v := result.(type) {
 			case map[string]interface{}:

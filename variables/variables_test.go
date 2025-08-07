@@ -55,7 +55,7 @@ func TestConvertType(t *testing.T) {
 		{"int-to-int", 42, Int, 42, false},
 		{"string-to-int-valid", "123", Int, 123, false},
 		{"string-to-int-invalid", "not-a-number", Int, nil, true},
-		
+
 		// Float type tests
 		{"float64-to-float", 3.14, Float, 3.14, false},
 		{"string-to-float-valid", "3.14", Float, 3.14, false},
