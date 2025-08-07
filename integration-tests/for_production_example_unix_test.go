@@ -1,10 +1,9 @@
 //go:build aix || darwin || dragonfly || freebsd || (js && wasm) || linux || netbsd || openbsd || solaris
 // +build aix darwin dragonfly freebsd js,wasm linux netbsd openbsd solaris
 
-package integration_tests
+package integrationtests //nolint:testpackage
 
 import (
-	"io/ioutil"
 	"path/filepath"
 	"testing"
 
@@ -19,8 +18,7 @@ func TestForProductionTerragruntArchitectureBoilerplateExample(t *testing.T) {
 
 	forProductionExamplePath := "../examples/for-production/terragrunt-architecture-catalog"
 
-	outputBasePath, err := ioutil.TempDir("", "boilerplate-for-production-output")
-	require.NoError(t, err)
+	outputBasePath := t.TempDir()
 	// defer os.RemoveAll(outputBasePath)
 
 	templateFolder, err := filepath.Abs(filepath.Join(forProductionExamplePath, "blueprints", "reference-architecture"))
@@ -33,6 +31,7 @@ func TestForProductionTerragruntArchitectureBoilerplateExample(t *testing.T) {
 
 	// Make sure it rendered valid terragrunt outputs by running terragrunt validate in each of the relevant folders.
 	t.Run("group", func(t *testing.T) {
+		t.Parallel()
 		for _, account := range []string{"dev", "stage", "prod"} {
 			opts := &terraform.Options{
 				TerraformBinary: "terragrunt",

@@ -13,7 +13,7 @@ import (
 
 	"github.com/gruntwork-io/boilerplate/config"
 	"github.com/gruntwork-io/boilerplate/errors"
-	getter_helper "github.com/gruntwork-io/boilerplate/getter-helper"
+	"github.com/gruntwork-io/boilerplate/getterhelper"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/render"
 	"github.com/gruntwork-io/boilerplate/util"
@@ -23,7 +23,9 @@ import (
 // The name of the variable that contains the current value of the loop in each iteration of for_each
 const eachVarName = "__each__"
 
-// Process the boilerplate template specified in the given options and use the existing variables. This function will
+const defaultDirPerm = 0o777
+
+// ProcessTemplate processes the boilerplate template specified in the given options and use the existing variables. This function will
 // download remote templates to a temporary working directory, which is cleaned up at the end of the function. This
 // function will load any missing variables (either from command line options or by prompting the user), execute all the
 // dependent boilerplate templates, and then execute this template. Note that we pass in rootOptions so that template
@@ -32,32 +34,35 @@ func ProcessTemplate(options, rootOpts *options.BoilerplateOptions, thisDep vari
 	// If TemplateFolder is already set, use that directly as it is a local template. Otherwise, download to a temporary
 	// working directory.
 	if options.TemplateFolder == "" {
-		workingDir, templateFolder, err := getter_helper.DownloadTemplatesToTemporaryFolder(options.TemplateUrl)
+		workingDir, templateFolder, downloadErr := getterhelper.DownloadTemplatesToTemporaryFolder(options.TemplateURL)
 		defer func() {
 			util.Logger.Printf("Cleaning up working directory.")
-			os.RemoveAll(workingDir)
+
+			if rmErr := os.RemoveAll(workingDir); rmErr != nil {
+				util.Logger.Printf("Failed to clean up working directory %s: %v", workingDir, rmErr)
+			}
 		}()
 
-		if err != nil {
-			return err
+		if downloadErr != nil {
+			return downloadErr
 		}
 
 		// Set the TemplateFolder of the options to the download dir
 		options.TemplateFolder = templateFolder
 	}
 
-	rootBoilerplateConfig, err := config.LoadBoilerplateConfig(rootOpts)
-	if err != nil {
-		return err
+	rootBoilerplateConfig, rootCfgErr := config.LoadBoilerplateConfig(rootOpts)
+	if rootCfgErr != nil {
+		return rootCfgErr
 	}
 
 	if err := config.EnforceRequiredVersion(rootBoilerplateConfig); err != nil {
 		return err
 	}
 
-	boilerplateConfig, err := config.LoadBoilerplateConfig(options)
-	if err != nil {
-		return err
+	boilerplateConfig, cfgErr := config.LoadBoilerplateConfig(options)
+	if cfgErr != nil {
+		return cfgErr
 	}
 
 	if err := config.EnforceRequiredVersion(boilerplateConfig); err != nil {
@@ -69,7 +74,7 @@ func ProcessTemplate(options, rootOpts *options.BoilerplateOptions, thisDep vari
 		return err
 	}
 
-	err = os.MkdirAll(options.OutputFolder, 0o777)
+	err = os.MkdirAll(options.OutputFolder, defaultDirPerm)
 	if err != nil {
 		return errors.WithStackTrace(err)
 	}
@@ -103,7 +108,7 @@ func ProcessTemplate(options, rootOpts *options.BoilerplateOptions, thisDep vari
 }
 
 func processPartials(partials []string, opts *options.BoilerplateOptions, vars map[string]interface{}) ([]string, error) {
-	var renderedPartials []string
+	renderedPartials := make([]string, 0, len(partials))
 
 	for _, partial := range partials {
 		renderedPartial, err := render.RenderTemplateFromString(config.BoilerplateConfigPath(opts.TemplateFolder), partial, vars, opts)
@@ -152,18 +157,14 @@ func processHooks(hooks []variables.Hook, opts *options.BoilerplateOptions, vars
 		hookKey := generateHookKey(hookDetails)
 
 		// Check previous confirmation
-		shouldExecute, shouldSetExecuteAll := handlePreviousHookConfirmation(hookKey, hookAnswers, executeAll)
+		shouldExecute := handlePreviousHookConfirmation(hookKey, hookAnswers, executeAll)
 		if !shouldExecute {
 			continue
 		}
 
-		if shouldSetExecuteAll {
-			executeAll = true
-		}
-
 		// Handle user confirmation if needed (skip if non-interactive)
 		if !executeAll && !hookAnswers[hookKey] && !opts.NonInteractive {
-			shouldExecute, shouldSetExecuteAll, err = handleHookUserConfirmation(hookDetails, hookKey, hookAnswers)
+			shouldExecute, shouldSetExecuteAll, err := handleHookUserConfirmation(hookDetails, hookKey, hookAnswers)
 			if err != nil {
 				return err
 			}
@@ -193,30 +194,30 @@ func renderHookDetails(hook variables.Hook, opts *options.BoilerplateOptions, va
 		return render.RenderTemplateFromString(base, s, vars, opts)
 	}
 
-	cmd, err := render(hook.Command)
-	if err != nil {
-		return "", err
+	cmd, renderErr := render(hook.Command)
+	if renderErr != nil {
+		return "", renderErr
 	}
 
 	args := make([]string, len(hook.Args))
 
 	for i, a := range hook.Args {
-		if args[i], err = render(a); err != nil {
-			return "", err
+		if args[i], renderErr = render(a); renderErr != nil {
+			return "", renderErr
 		}
 	}
 
 	env := make([]string, 0, len(hook.Env))
 
 	for k, v := range hook.Env {
-		key, err := render(k)
-		if err != nil {
-			return "", err
+		key, renderErr := render(k)
+		if renderErr != nil {
+			return "", renderErr
 		}
 
-		val, err := render(v)
-		if err != nil {
-			return "", err
+		val, renderErr := render(v)
+		if renderErr != nil {
+			return "", renderErr
 		}
 
 		env = append(env, fmt.Sprintf("%s=%s", key, val))
@@ -225,8 +226,9 @@ func renderHookDetails(hook variables.Hook, opts *options.BoilerplateOptions, va
 	wd := opts.TemplateFolder
 
 	if hook.WorkingDir != "" {
-		if wd, err = render(hook.WorkingDir); err != nil {
-			return "", err
+		var wdErr error
+		if wd, wdErr = render(hook.WorkingDir); wdErr != nil {
+			return "", wdErr
 		}
 	}
 
@@ -250,20 +252,20 @@ func renderHookDetails(hook variables.Hook, opts *options.BoilerplateOptions, va
 }
 
 // handlePreviousHookConfirmation checks if a hook was previously confirmed or declined
-func handlePreviousHookConfirmation(hookKey string, hookAnswers map[string]bool, executeAll bool) (bool, bool) {
+func handlePreviousHookConfirmation(hookKey string, hookAnswers map[string]bool, executeAll bool) bool {
 	confirmed, seen := hookAnswers[hookKey]
 	if !seen && !executeAll {
-		return true, false
+		return true
 	}
 
 	if seen && !confirmed {
 		util.Logger.Printf("Skipping hook (previously declined)")
-		return false, false
+		return false
 	}
 
 	util.Logger.Printf("Executing hook (%s)", "previously confirmed or all confirmed")
 
-	return true, false
+	return true
 }
 
 // handleHookUserConfirmation prompts the user for confirmation and handles the response
@@ -317,17 +319,17 @@ func printHookDetails(hookDetails string) {
 
 // Process the given hook, which is a script that should be execute at the command-line
 func processHook(hook variables.Hook, opts *options.BoilerplateOptions, vars map[string]interface{}) error {
-	cmd, err := render.RenderTemplateFromString(config.BoilerplateConfigPath(opts.TemplateFolder), hook.Command, vars, opts)
-	if err != nil {
-		return err
+	cmd, hookRenderErr := render.RenderTemplateFromString(config.BoilerplateConfigPath(opts.TemplateFolder), hook.Command, vars, opts)
+	if hookRenderErr != nil {
+		return hookRenderErr
 	}
 
 	args := []string{}
 
 	for _, arg := range hook.Args {
-		renderedArg, err := render.RenderTemplateFromString(config.BoilerplateConfigPath(opts.TemplateFolder), arg, vars, opts)
-		if err != nil {
-			return err
+		renderedArg, hookRenderErr := render.RenderTemplateFromString(config.BoilerplateConfigPath(opts.TemplateFolder), arg, vars, opts)
+		if hookRenderErr != nil {
+			return hookRenderErr
 		}
 
 		args = append(args, renderedArg)
@@ -336,25 +338,33 @@ func processHook(hook variables.Hook, opts *options.BoilerplateOptions, vars map
 	envVars := []string{}
 
 	for key, value := range hook.Env {
-		renderedKey, err := render.RenderTemplateFromString(config.BoilerplateConfigPath(opts.TemplateFolder), key, vars, opts)
-		if err != nil {
-			return err
+		renderedKey, hookRenderErr := render.RenderTemplateFromString(config.BoilerplateConfigPath(opts.TemplateFolder), key, vars, opts)
+		if hookRenderErr != nil {
+			return hookRenderErr
 		}
 
-		renderedValue, err := render.RenderTemplateFromString(config.BoilerplateConfigPath(opts.TemplateFolder), value, vars, opts)
-		if err != nil {
-			return err
+		renderedValue, hookRenderErr := render.RenderTemplateFromString(config.BoilerplateConfigPath(opts.TemplateFolder), value, vars, opts)
+		if hookRenderErr != nil {
+			return hookRenderErr
 		}
 
 		envVars = append(envVars, fmt.Sprintf("%s=%s", renderedKey, renderedValue))
 	}
 
 	workingDir := opts.TemplateFolder
+
 	if hook.WorkingDir != "" {
-		workingDir, err = render.RenderTemplateFromString(config.BoilerplateConfigPath(opts.TemplateFolder), hook.WorkingDir, vars, opts)
-		if err != nil {
-			return err
+		renderedWd, wdErr := render.RenderTemplateFromString(
+			config.BoilerplateConfigPath(opts.TemplateFolder),
+			hook.WorkingDir,
+			vars,
+			opts,
+		)
+		if wdErr != nil {
+			return wdErr
 		}
+
+		workingDir = renderedWd
 	}
 
 	return util.RunShellCommand(workingDir, envVars, cmd, args...)
@@ -459,7 +469,7 @@ func cloneOptionsForDependency(
 	variablesInConfig map[string]variables.Variable,
 	variables map[string]interface{},
 ) (*options.BoilerplateOptions, error) {
-	renderedTemplateUrl, err := render.RenderTemplateFromString(originalOpts.TemplateFolder, dependency.TemplateUrl, variables, originalOpts)
+	renderedTemplateURL, err := render.RenderTemplateFromString(originalOpts.TemplateFolder, dependency.TemplateURL, variables, originalOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -469,13 +479,13 @@ func cloneOptionsForDependency(
 		return nil, err
 	}
 
-	templateUrl, templateFolder, err := options.DetermineTemplateConfig(renderedTemplateUrl)
+	templateURL, templateFolder, err := options.DetermineTemplateConfig(renderedTemplateURL)
 	if err != nil {
 		return nil, err
 	}
 	// If local, make sure to return relative path in context of original template folder
 	if templateFolder != "" {
-		templateFolder = render.PathRelativeToTemplate(originalOpts.TemplateFolder, renderedTemplateUrl)
+		templateFolder = render.PathRelativeToTemplate(originalOpts.TemplateFolder, renderedTemplateURL)
 	}
 
 	// Output folder should be local path relative to original output folder, or absolute path
@@ -498,7 +508,7 @@ func cloneOptionsForDependency(
 	}
 
 	return &options.BoilerplateOptions{
-		TemplateUrl:             templateUrl,
+		TemplateURL:             templateURL,
 		TemplateFolder:          templateFolder,
 		OutputFolder:            outputFolder,
 		NonInteractive:          originalOpts.NonInteractive,
@@ -532,7 +542,7 @@ func cloneVariablesForDependency(
 		NonInteractive: true,
 		OnMissingKey:   options.ExitWithError,
 
-		TemplateUrl:             opts.TemplateUrl,
+		TemplateURL:             opts.TemplateURL,
 		TemplateFolder:          opts.TemplateFolder,
 		OutputFolder:            opts.OutputFolder,
 		Vars:                    opts.Vars,
@@ -681,12 +691,14 @@ func processTemplateFolder(
 
 	return filepath.Walk(opts.TemplateFolder, func(path string, info os.FileInfo, err error) error {
 		path = filepath.ToSlash(path)
-		if shouldSkipPath(path, opts, processedSkipFiles) {
+
+		switch {
+		case shouldSkipPath(path, opts, processedSkipFiles):
 			util.Logger.Printf("Skipping %s", path)
 			return nil
-		} else if util.IsDir(path) {
+		case util.IsDir(path):
 			return createOutputDir(path, opts, variables)
-		} else {
+		default:
 			engine := determineTemplateEngine(processedEngines, path)
 			return processFile(path, opts, variables, partials, engine)
 		}
@@ -723,7 +735,7 @@ func createOutputDir(dir string, opts *options.BoilerplateOptions, variables map
 
 	util.Logger.Printf("Creating folder %s", destination)
 
-	return os.MkdirAll(destination, 0o777)
+	return os.MkdirAll(destination, defaultDirPerm)
 }
 
 // Compute the path where the given file, which is in templateFolder, should be copied in outputFolder. If the file

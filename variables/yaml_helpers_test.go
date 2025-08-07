@@ -1,4 +1,4 @@
-package variables
+package variables //nolint:testpackage
 
 import (
 	"errors"
@@ -9,13 +9,14 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-const YAML_FILE_ONE_VAR = `
+const yamlFileOneVar = `
 key: value
 `
 
-const YAML_FILE_MULTIPLE_VARS = `
+const yamlFileMultipleVars = `
 key1: value1
 key2: value2
 key3: value3
@@ -30,20 +31,20 @@ func TestParseVariablesFromVarFileContents(t *testing.T) {
 		expectYamlTypeError bool
 	}{
 		{fileContents: "", expectYamlTypeError: false, expectedVars: map[string]interface{}{}},
-		{fileContents: YAML_FILE_ONE_VAR, expectYamlTypeError: false, expectedVars: map[string]interface{}{"key": "value"}},
-		{fileContents: YAML_FILE_MULTIPLE_VARS, expectYamlTypeError: false, expectedVars: map[string]interface{}{"key1": "value1", "key2": "value2", "key3": "value3"}},
+		{fileContents: yamlFileOneVar, expectYamlTypeError: false, expectedVars: map[string]interface{}{"key": "value"}},
+		{fileContents: yamlFileMultipleVars, expectYamlTypeError: false, expectedVars: map[string]interface{}{"key1": "value1", "key2": "value2", "key3": "value3"}},
 		{fileContents: "invalid yaml", expectYamlTypeError: true, expectedVars: map[string]interface{}{}},
 	}
 
 	for _, testCase := range testCases {
 		actualVars, err := parseVariablesFromVarFileContents([]byte(testCase.fileContents))
 		if testCase.expectYamlTypeError {
-			assert.Error(t, err)
+			require.Error(t, err)
 			typeError := &yaml.TypeError{}
 			isYamlTypeError := errors.As(err, &typeError)
 			assert.True(t, isYamlTypeError, "Expected a YAML type error for an invalid yaml file but got %s", reflect.TypeOf(err))
 		} else {
-			assert.NoError(t, err, "Got unexpected error: %v", err)
+			require.NoError(t, err, "Got unexpected error: %v", err)
 			assert.Equal(t, testCase.expectedVars, actualVars)
 		}
 	}
@@ -70,10 +71,10 @@ func TestParseVariablesFromKeyValuePairs(t *testing.T) {
 	for _, testCase := range testCases {
 		actualVars, err := parseVariablesFromKeyValuePairs(testCase.keyValuePairs)
 		if testCase.expectedError == nil {
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, testCase.expectedVars, actualVars)
 		} else {
-			assert.Error(t, err)
+			require.Error(t, err)
 			assert.ErrorIs(t, err, testCase.expectedError, "Expected an error of type '%s' with value '%s' but got an error of type '%s' with value '%s'", reflect.TypeOf(testCase.expectedError), testCase.expectedError.Error(), reflect.TypeOf(err), err.Error())
 		}
 	}
@@ -125,7 +126,7 @@ func TestConvert(t *testing.T) {
 
 	for _, testCase := range testCases {
 		actual, err := ConvertYAMLToStringMap(testCase.input)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.IsType(t, testCase.expectedType, actual)
 	}
 }
@@ -157,8 +158,10 @@ func TestConvertNested(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
+
 			result, err := ConvertYAMLToStringMap(testCase.input)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			// Check that conversion actually happened - MUST work, not optional
 			switch v := result.(type) {

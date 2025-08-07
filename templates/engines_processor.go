@@ -1,3 +1,4 @@
+// Package templates provides functionality for processing and rendering templates.
 package templates
 
 import (

@@ -37,14 +37,16 @@ func RenderTemplateWithPartials(templatePath string, partials []string, variable
 		}
 
 		for _, t := range parsedTemplate.Templates() {
-			tmpl.AddParseTree(t.Name(), t.Tree)
+			if _, err := tmpl.AddParseTree(t.Name(), t.Tree); err != nil {
+				return "", errors.WithStackTrace(err)
+			}
 		}
 	}
 
 	return executeTemplate(tmpl, variables)
 }
 
-// Render the template at templatePath, with contents templateContents, using the Go template engine, passing in the
+// RenderTemplateFromString renders the template at templatePath, with contents templateContents, using the Go template engine, passing in the
 // given variables as data.
 func RenderTemplateFromString(templatePath string, templateContents string, variables map[string]interface{}, opts *options.BoilerplateOptions) (string, error) {
 	tmpl := getTemplate(templatePath, opts)
@@ -183,7 +185,7 @@ func attemptRenderVariables(
 func attemptRenderVariable(opts *options.BoilerplateOptions, variable interface{}, renderedVariables map[string]interface{}) (interface{}, error) {
 	valueType := reflect.ValueOf(variable)
 
-	switch valueType.Kind() {
+	switch valueType.Kind() { //nolint:exhaustive // TODO: Add missing reflect.Kind cases for exhaustive coverage
 	case reflect.String:
 		return RenderTemplateFromString(opts.TemplateFolder, variable.(string), renderedVariables, opts)
 	case reflect.Slice:

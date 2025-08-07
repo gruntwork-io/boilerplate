@@ -3,11 +3,10 @@
 
 // The following tests should only be run on unix machines
 
-package integration_tests
+package integrationtests //nolint:testpackage
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"testing"
@@ -27,13 +26,12 @@ func TestExamplesShell(t *testing.T) {
 	examplesExpectedOutputBasePath := "../test-fixtures/examples-expected-output"
 	examplesVarFilesBasePath := "../test-fixtures/examples-var-files"
 
-	outputBasePath, err := ioutil.TempDir("", "boilerplate-test-output")
-	require.NoError(t, err)
-	defer os.RemoveAll(outputBasePath)
+	outputBasePath := t.TempDir()
 
 	shellExamples := []string{"shell", "shell-disabled"}
 	// Insulate the following parallel tests in a group so that cleanup routines run after all tests are done.
 	t.Run("group", func(t *testing.T) {
+		t.Parallel()
 		for _, example := range shellExamples {
 			// Capture range variable to avoid it changing on each iteration during the tests
 			example := example
@@ -47,6 +45,8 @@ func TestExamplesShell(t *testing.T) {
 				templateFolder := path.Join(examplesBasePath, example)
 				for _, missingKeyAction := range options.AllMissingKeyActions {
 					t.Run(fmt.Sprintf("%s-missing-key-%s", example, string(missingKeyAction)), func(t *testing.T) {
+						t.Parallel()
+
 						testExample(t, templateFolder, outputFolder, varFile, expectedOutputFolder, string(missingKeyAction))
 					})
 				}
@@ -81,25 +81,24 @@ func TestSpecialFileNames(t *testing.T) {
 		},
 	}
 
-	for _, testCase := range testCases {
-		tt := testCase
-		t.Run(tt.path, func(t *testing.T) {
+	for _, tc := range testCases {
+		t.Run(tc.path, func(t *testing.T) {
+			t.Parallel()
 
 			filter := func(path string) bool {
 				return true
 			}
-			testDir, err := files.CopyFolderToTemp("../examples/for-learning-and-testing/"+tt.path, tt.path, filter)
+			testDir, err := files.CopyFolderToTemp("../examples/for-learning-and-testing/"+tc.path, tc.path, filter)
 			require.NoError(t, err)
 
-			outputBasePath, err := ioutil.TempDir("", "boilerplate-test-output")
-			require.NoError(t, err)
+			outputBasePath := t.TempDir()
 
 			// run init logic
-			err = tt.initLogic(testDir)
+			err = tc.initLogic(testDir)
 			require.NoError(t, err)
 			examplesVarFilesBasePath := "../test-fixtures/examples-var-files"
 
-			example := tt.path
+			example := tc.path
 			outputFolder := path.Join(outputBasePath, example)
 			err = os.MkdirAll(outputFolder, 0777)
 			require.NoError(t, err)
@@ -113,5 +112,4 @@ func TestSpecialFileNames(t *testing.T) {
 			}
 		})
 	}
-
 }

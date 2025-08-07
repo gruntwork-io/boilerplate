@@ -7,7 +7,7 @@ import (
 	"github.com/gruntwork-io/boilerplate/util"
 )
 
-// A single engine entry, which specifies which template engine should be used to render the given files grabbed by the
+// Engine represents a single engine entry, which specifies which template engine should be used to render the given files grabbed by the
 // glob. Currently only the following template engines are supported:
 //
 // - Go template (default)
@@ -32,7 +32,7 @@ var availableTemplateEngines = []string{
 	string(Jsonnet),
 }
 
-// Given a list of key:value pairs read from a Boilerplate YAML config file of the format:
+// UnmarshalEnginesFromBoilerplateConfigYaml given a list of key:value pairs read from a Boilerplate YAML config file of the format:
 //
 // engines:
 //   - path: <PATH>
@@ -90,7 +90,7 @@ func unmarshalEngineFromBoilerplateConfigYaml(fields map[string]interface{}) (*E
 	return &Engine{Path: path, TemplateEngine: TemplateEngineType(maybeTemplateEngine)}, nil
 }
 
-// Custom errors
+// InvalidTemplateEngineErr represents custom errors
 type InvalidTemplateEngineErr string
 
 func (err InvalidTemplateEngineErr) Error() string {

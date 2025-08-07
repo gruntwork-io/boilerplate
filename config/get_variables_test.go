@@ -1,4 +1,4 @@
-package config
+package config //nolint:testpackage
 
 import (
 	"reflect"
@@ -7,6 +7,7 @@ import (
 	"golang.org/x/exp/maps"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/testutil"
@@ -101,7 +102,7 @@ func TestGetVariableNoMatchNonInteractive(t *testing.T) {
 
 	_, err := getVariable(variable, opts)
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.ErrorIs(t, err, MissingVariableWithNonInteractiveMode("foo"), "Expected a MissingVariableWithNonInteractiveMode error but got %s", reflect.TypeOf(err))
 }
 
@@ -121,7 +122,7 @@ func TestGetVariableInVarsNonInteractive(t *testing.T) {
 	actual, err := getVariable(variable, opts)
 	expected := "bar"
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, expected, actual)
 }
 
@@ -141,7 +142,7 @@ func TestGetVariableDefaultNonInteractive(t *testing.T) {
 	actual, err := getVariable(variable, opts)
 	expected := "bar"
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, expected, actual)
 }
 
@@ -164,7 +165,7 @@ func TestGetVariablesNoVariables(t *testing.T) {
 		},
 	}
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, expected, actual)
 }
 
@@ -182,7 +183,7 @@ func TestGetVariablesNoMatchNonInteractive(t *testing.T) {
 
 	_, err := GetVariables(opts, boilerplateConfig, rootBoilerplateConfig, dependency)
 
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.ErrorIs(t, err, MissingVariableWithNonInteractiveMode("foo"), "Expected a MissingVariableWithNonInteractiveMode error but got %s", reflect.TypeOf(err))
 }
 
@@ -219,7 +220,7 @@ func TestGetVariablesMatchFromVars(t *testing.T) {
 		},
 	}
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, expected, actual)
 }
 
@@ -261,7 +262,7 @@ func TestGetVariablesMatchFromVarsAndDefaults(t *testing.T) {
 		},
 	}
 
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, expected, actual)
 }
 

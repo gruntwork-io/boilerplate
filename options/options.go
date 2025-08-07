@@ -1,3 +1,4 @@
+// Package options provides configuration options for the boilerplate tool.
 package options
 
 import (
@@ -6,11 +7,11 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/gruntwork-io/boilerplate/errors"
-	getter_helper "github.com/gruntwork-io/boilerplate/getter-helper"
+	"github.com/gruntwork-io/boilerplate/getterhelper"
 	"github.com/gruntwork-io/boilerplate/variables"
 )
 
-const OptTemplateUrl = "template-url"
+const OptTemplateURL = "template-url"
 const OptOutputFolder = "output-folder"
 const OptNonInteractive = "non-interactive"
 const OptVar = "var"
@@ -21,11 +22,11 @@ const OptNoHooks = "no-hooks"
 const OptNoShell = "no-shell"
 const OptDisableDependencyPrompt = "disable-dependency-prompt"
 
-// The command-line options for the boilerplate app
+// BoilerplateOptions represents the command-line options for the boilerplate app
 type BoilerplateOptions struct {
 	Vars                    map[string]interface{}
 	ShellCommandAnswers     map[string]bool
-	TemplateUrl             string
+	TemplateURL             string
 	TemplateFolder          string
 	OutputFolder            string
 	OnMissingKey            MissingKeyAction
@@ -39,22 +40,22 @@ type BoilerplateOptions struct {
 
 // Validate that the options have reasonable values and return an error if they don't
 func (options *BoilerplateOptions) Validate() error {
-	if options.TemplateUrl == "" {
-		return errors.WithStackTrace(TemplateUrlOptionCannotBeEmpty)
+	if options.TemplateURL == "" {
+		return errors.WithStackTrace(ErrTemplateURLOptionCannotBeEmpty)
 	}
 
-	if err := getter_helper.ValidateTemplateUrl(options.TemplateUrl); err != nil {
+	if err := getterhelper.ValidateTemplateURL(options.TemplateURL); err != nil {
 		return err
 	}
 
 	if options.OutputFolder == "" {
-		return errors.WithStackTrace(OutputFolderOptionCannotBeEmpty)
+		return errors.WithStackTrace(ErrOutputFolderOptionCannotBeEmpty)
 	}
 
 	return nil
 }
 
-// Parse the command line options provided by the user
+// ParseOptions parses the command line options provided by the user
 func ParseOptions(cliContext *cli.Context) (*BoilerplateOptions, error) {
 	vars, err := variables.ParseVars(cliContext.StringSlice(OptVar), cliContext.StringSlice(OptVarFile))
 	if err != nil {
@@ -81,13 +82,13 @@ func ParseOptions(cliContext *cli.Context) (*BoilerplateOptions, error) {
 		}
 	}
 
-	templateUrl, templateFolder, err := DetermineTemplateConfig(cliContext.String(OptTemplateUrl))
+	templateURL, templateFolder, err := DetermineTemplateConfig(cliContext.String(OptTemplateURL))
 	if err != nil {
 		return nil, err
 	}
 
 	options := &BoilerplateOptions{
-		TemplateUrl:             templateUrl,
+		TemplateURL:             templateURL,
 		TemplateFolder:          templateFolder,
 		OutputFolder:            cliContext.String(OptOutputFolder),
 		NonInteractive:          cliContext.Bool(OptNonInteractive),
@@ -112,8 +113,8 @@ func ParseOptions(cliContext *cli.Context) (*BoilerplateOptions, error) {
 // and determines if it is a local path. If so, use that path directly instead of downloading it to a temp working dir.
 // We do this by setting the template folder, which will instruct the process routine to skip downloading the template.
 // Returns TemplateUrl, TemplateFolder, error
-func DetermineTemplateConfig(templateUrl string) (string, string, error) {
-	url, err := getter_helper.ParseGetterUrl(templateUrl)
+func DetermineTemplateConfig(templateURL string) (string, string, error) {
+	url, err := getterhelper.ParseGetterURL(templateURL)
 	if err != nil {
 		return "", "", err
 	}
@@ -121,13 +122,13 @@ func DetermineTemplateConfig(templateUrl string) (string, string, error) {
 	if url.Scheme == "file" {
 		// Intentionally return as both TemplateUrl and TemplateFolder so that validation passes, but still skip
 		// download.
-		return templateUrl, templateUrl, nil
+		return templateURL, templateURL, nil
 	}
 
-	return templateUrl, "", nil
+	return templateURL, "", nil
 }
 
-// This type is an enum that represents what we can do when a template looks up a missing key. This typically happens
+// MissingKeyAction is an enum that represents what we can do when a template looks up a missing key. This typically happens
 // when there is a typo in the variable name in a template.
 type MissingKeyAction string
 
@@ -140,7 +141,7 @@ var (
 var AllMissingKeyActions = []MissingKeyAction{Invalid, ZeroValue, ExitWithError}
 var DefaultMissingKeyAction = ExitWithError
 
-// Convert the given string to a MissingKeyAction enum, or return an error if this is not a valid value for the
+// ParseMissingKeyAction converts the given string to a MissingKeyAction enum, or returns an error if this is not a valid value for the
 // MissingKeyAction enum
 func ParseMissingKeyAction(str string) (MissingKeyAction, error) {
 	for _, missingKeyAction := range AllMissingKeyActions {
@@ -152,7 +153,7 @@ func ParseMissingKeyAction(str string) (MissingKeyAction, error) {
 	return MissingKeyAction(""), errors.WithStackTrace(InvalidMissingKeyAction(str))
 }
 
-// This type is an enum that represents what to do when the template folder passed to boilerplate does not contain a
+// MissingConfigAction is an enum that represents what to do when the template folder passed to boilerplate does not contain a
 // boilerplate.yml file.
 type MissingConfigAction string
 
@@ -163,7 +164,7 @@ var (
 var AllMissingConfigActions = []MissingConfigAction{Exit, Ignore}
 var DefaultMissingConfigAction = Exit
 
-// Convert the given string to a MissingConfigAction enum, or return an error if this is not a valid value for the
+// ParseMissingConfigAction converts the given string to a MissingConfigAction enum, or returns an error if this is not a valid value for the
 // MissingConfigAction enum
 func ParseMissingConfigAction(str string) (MissingConfigAction, error) {
 	for _, missingConfigAction := range AllMissingConfigActions {
@@ -177,8 +178,8 @@ func ParseMissingConfigAction(str string) (MissingConfigAction, error) {
 
 // Custom error types
 
-var TemplateUrlOptionCannotBeEmpty = fmt.Errorf("The --%s option cannot be empty", OptTemplateUrl)
-var OutputFolderOptionCannotBeEmpty = fmt.Errorf("The --%s option cannot be empty", OptOutputFolder)
+var ErrTemplateURLOptionCannotBeEmpty = fmt.Errorf("the --%s option cannot be empty", OptTemplateURL)
+var ErrOutputFolderOptionCannotBeEmpty = fmt.Errorf("the --%s option cannot be empty", OptOutputFolder)
 
 type InvalidMissingKeyAction string
 

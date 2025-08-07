@@ -20,8 +20,8 @@ import (
 
 const MaxReferenceDepth = 20
 
-// Get a value for each of the variables specified in boilerplateConfig, other than those already in existingVariables.
-// The value for a variable can come from the user (if the  non-interactive option isn't set), the default value in the
+// GetVariables gets a value for each of the variables specified in boilerplateConfig, other than those already in existingVariables.
+// The value for a variable can come from the user (if the non-interactive option isn't set), the default value in the
 // config, or a command line option.
 func GetVariables(opts *options.BoilerplateOptions, boilerplateConfig, rootBoilerplateConfig *BoilerplateConfig, thisDep variables.Dependency) (map[string]interface{}, error) {
 	renderedVariables := map[string]interface{}{}
@@ -141,9 +141,9 @@ func GetValueForVariable(
 	}
 
 	if variable.Reference() != "" {
-		value, alreadyExists := valuesForPreviousVariables[variable.Reference()]
-		if alreadyExists {
-			return value, nil
+		refValue, refExists := valuesForPreviousVariables[variable.Reference()]
+		if refExists {
+			return refValue, nil
 		}
 
 		reference, containsReference := variablesInConfig[variable.Reference()]
@@ -176,16 +176,17 @@ func GetValueForVariable(
 func getVariable(variable variables.Variable, opts *options.BoilerplateOptions) (interface{}, error) {
 	valueFromVars, valueSpecifiedInVars := getVariableFromVars(variable, opts)
 
-	if valueSpecifiedInVars {
+	switch {
+	case valueSpecifiedInVars:
 		util.Logger.Printf("Using value specified via command line options for variable '%s': %s", variable.FullName(), valueFromVars)
 		return valueFromVars, nil
-	} else if opts.NonInteractive && variable.Default() != nil {
+	case opts.NonInteractive && variable.Default() != nil:
 		util.Logger.Printf("Using default value for variable '%s': %v", variable.FullName(), variable.Default())
 		return variable.Default(), nil
-	} else if opts.NonInteractive {
+	case opts.NonInteractive:
 		return nil, pkgErrors.WithStackTrace(MissingVariableWithNonInteractiveMode(variable.FullName()))
-	} else {
-		return getVariableFromUser(variable, opts, variables.InvalidEntries{})
+	default:
+		return getVariableFromUser(variable, variables.InvalidEntries{})
 	}
 }
 
@@ -201,7 +202,7 @@ func getVariableFromVars(variable variables.Variable, opts *options.BoilerplateO
 }
 
 // Get the value for the given variable by prompting the user
-func getVariableFromUser(variable variables.Variable, opts *options.BoilerplateOptions, invalidEntries variables.InvalidEntries) (interface{}, error) {
+func getVariableFromUser(variable variables.Variable, invalidEntries variables.InvalidEntries) (interface{}, error) {
 	// Add a newline for legibility and padding
 	fmt.Println()
 
@@ -228,7 +229,7 @@ func getVariableFromUser(variable variables.Variable, opts *options.BoilerplateO
 			},
 		}
 
-		return getVariableFromUser(variable, opts, ie)
+		return getVariableFromUser(variable, ie)
 	}
 
 	if value == "" {
@@ -354,8 +355,7 @@ func renderVariablePrompts(variable variables.Variable, invalidEntries variables
 	}
 }
 
-// Custom types
-// A KeyAndOrderPair is a composite of the user-defined order and the user's variable name
+// KeyAndOrderPair is a composite of the user-defined order and the user's variable name
 type KeyAndOrderPair struct {
 	Key   string
 	Order int

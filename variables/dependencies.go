@@ -1,3 +1,4 @@
+// Package variables provides functionality for handling template variables and dependencies.
 package variables
 
 import (
@@ -8,10 +9,10 @@ import (
 	"github.com/gruntwork-io/boilerplate/util"
 )
 
-// A single boilerplate template that this boilerplate.yml depends on being executed first
+// Dependency represents a single boilerplate template that this boilerplate.yml depends on being executed first
 type Dependency struct {
 	Name                 string
-	TemplateUrl          string
+	TemplateURL          string
 	OutputFolder         string
 	Skip                 string
 	ForEachReference     string
@@ -21,7 +22,7 @@ type Dependency struct {
 	DontInheritVariables bool
 }
 
-// Implement the go-yaml marshaler interface so that the config can be marshaled into yaml. We use a custom marshaler
+// MarshalYAML implements the go-yaml marshaler interface so that the config can be marshaled into yaml. We use a custom marshaler
 // instead of defining the fields as tags so that we skip the attributes that are empty.
 func (dependency Dependency) MarshalYAML() (interface{}, error) {
 	depYml := map[string]interface{}{}
@@ -29,8 +30,8 @@ func (dependency Dependency) MarshalYAML() (interface{}, error) {
 		depYml["name"] = dependency.Name
 	}
 
-	if dependency.TemplateUrl != "" {
-		depYml["template-url"] = dependency.TemplateUrl
+	if dependency.TemplateURL != "" {
+		depYml["template-url"] = dependency.TemplateURL
 	}
 
 	if dependency.OutputFolder != "" {
@@ -73,12 +74,14 @@ func (dependency Dependency) MarshalYAML() (interface{}, error) {
 	return depYml, nil
 }
 
-// Given a unique variable name, return a tuple that contains the dependency name (if any) and the variable name.
+// SplitIntoDependencyNameAndVariableName given a unique variable name, returns a tuple that contains the dependency name (if any) and the variable name.
 // Variable and dependency names are split by a dot, so for "foo.bar", this will return ("foo", "bar"). For just "foo",
 // it will return ("", "foo").
 func SplitIntoDependencyNameAndVariableName(uniqueVariableName string) (string, string) {
-	parts := strings.SplitAfterN(uniqueVariableName, ".", 2)
-	if len(parts) == 2 {
+	const maxSplitParts = 2
+
+	parts := strings.SplitAfterN(uniqueVariableName, ".", maxSplitParts)
+	if len(parts) == maxSplitParts {
 		// The split method leaves the character you split on at the end of the string, so we have to trim it
 		return strings.TrimSuffix(parts[0], "."), parts[1]
 	} else {
@@ -86,7 +89,7 @@ func SplitIntoDependencyNameAndVariableName(uniqueVariableName string) (string, 
 	}
 }
 
-// Given a map of key:value pairs read from a Boilerplate YAML config file of the format:
+// UnmarshalDependenciesFromBoilerplateConfigYaml given a map of key:value pairs read from a Boilerplate YAML config file of the format:
 //
 // dependencies:
 //
@@ -126,7 +129,7 @@ func UnmarshalDependenciesFromBoilerplateConfigYaml(fields map[string]interface{
 	return unmarshalledDependencies, nil
 }
 
-// Given a map of key:value pairs read from a Boilerplate YAML config file of the format:
+// UnmarshalDependencyFromBoilerplateConfigYaml given a map of key:value pairs read from a Boilerplate YAML config file of the format:
 //
 // name: <NAME>
 // template-url: <TEMPLATE_URL>
@@ -139,7 +142,7 @@ func UnmarshalDependencyFromBoilerplateConfigYaml(fields map[string]interface{})
 		return nil, err
 	}
 
-	templateUrl, err := unmarshalStringField(fields, "template-url", true, *name)
+	templateURL, err := unmarshalStringField(fields, "template-url", true, *name)
 	if err != nil {
 		return nil, err
 	}
@@ -191,7 +194,7 @@ func UnmarshalDependencyFromBoilerplateConfigYaml(fields map[string]interface{})
 
 	return &Dependency{
 		Name:                 *name,
-		TemplateUrl:          *templateUrl,
+		TemplateURL:          *templateURL,
 		OutputFolder:         *outputFolder,
 		Skip:                 skip,
 		DontInheritVariables: dontInheritVariables,

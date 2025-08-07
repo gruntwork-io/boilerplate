@@ -1,8 +1,6 @@
-package integration_tests
+package integrationtests //nolint:testpackage
 
 import (
-	"io/ioutil"
-	"os"
 	"testing"
 
 	"github.com/gruntwork-io/boilerplate/cli"
@@ -16,9 +14,7 @@ func TestMisspelledTemplateURLErrorMessage(t *testing.T) {
 
 	templateFolder := "../test-fixtures/regression-test/misspelled-git"
 
-	outputFolder, err := ioutil.TempDir("", "boilerplate-test-output")
-	require.NoError(t, err)
-	defer os.RemoveAll(outputFolder)
+	outputFolder := t.TempDir()
 
 	app := cli.CreateBoilerplateCli()
 	args := []string{
@@ -30,6 +26,6 @@ func TestMisspelledTemplateURLErrorMessage(t *testing.T) {
 		"--non-interactive",
 	}
 	runErr := app.Run(args)
-	assert.Error(t, runErr, errors.PrintErrorWithStackTrace(runErr))
+	require.Error(t, runErr, errors.PrintErrorWithStackTrace(runErr))
 	assert.Contains(t, runErr.Error(), "Did you misspell the URL")
 }

@@ -1,9 +1,10 @@
-package variables
+package variables //nolint:testpackage
 
 import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestParseStringAsList(t *testing.T) {
@@ -24,8 +25,10 @@ func TestParseStringAsList(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.testName, func(t *testing.T) {
+			t.Parallel()
+
 			actualList, err := parseStringAsList(testCase.str)
-			assert.NoError(t, err, "Got unexpected error for string '%s': %v", testCase.str, err)
+			require.NoError(t, err, "Got unexpected error for string '%s': %v", testCase.str, err)
 			assert.Equal(t, testCase.expectedList, actualList, "For string '%s'", testCase.str)
 		})
 	}
@@ -80,6 +83,8 @@ func TestConvertType(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.testName, func(t *testing.T) {
+			t.Parallel()
+
 			var variable Variable
 			switch testCase.variableType {
 			case String:
@@ -101,9 +106,9 @@ func TestConvertType(t *testing.T) {
 			actualValue, err := ConvertType(testCase.value, variable)
 
 			if testCase.expectError {
-				assert.Error(t, err, "Expected error for test case: %s", testCase.testName)
+				require.Error(t, err, "Expected error for test case: %s", testCase.testName)
 			} else {
-				assert.NoError(t, err, "Got unexpected error for test case '%s': %v", testCase.testName, err)
+				require.NoError(t, err, "Got unexpected error for test case '%s': %v", testCase.testName, err)
 				assert.Equal(t, testCase.expectedValue, actualValue, "For test case '%s'", testCase.testName)
 			}
 		})
@@ -130,8 +135,10 @@ func TestParseStringAsMap(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.testName, func(t *testing.T) {
+			t.Parallel()
+
 			actualMap, err := parseStringAsMap(testCase.str)
-			assert.NoError(t, err, "Got unexpected error for string '%s': %v", testCase.str, err)
+			require.NoError(t, err, "Got unexpected error for string '%s': %v", testCase.str, err)
 			assert.Equal(t, testCase.expectedMap, actualMap, "For string '%s'", testCase.str)
 		})
 	}
