@@ -32,6 +32,84 @@ func TestParseStringAsList(t *testing.T) {
 
 }
 
+func TestConvertType(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		testName      string
+		value         interface{}
+		variableType  BoilerplateType
+		expectedValue interface{}
+		expectError   bool
+	}{
+		// String type tests
+		{"string-to-string", "hello", String, "hello", false},
+		{"int-to-string", 42, String, "42", false},
+		{"float64-to-string", 3.14, String, "3.14", false},
+		{"float64-to-string-whole", 42.0, String, "42", false},
+		{"float64-to-string-negative", -15.7, String, "-15.7", false},
+		{"bool-to-string", true, String, "true", false},
+		{"bool-to-string-false", false, String, "false", false},
+
+		// Int type tests - existing functionality
+		{"int-to-int", 42, Int, 42, false},
+		{"string-to-int-valid", "123", Int, 123, false},
+		{"string-to-int-invalid", "not-a-number", Int, nil, true},
+		
+		// Float type tests
+		{"float64-to-float", 3.14, Float, 3.14, false},
+		{"string-to-float-valid", "3.14", Float, 3.14, false},
+		{"string-to-float-invalid", "not-a-float", Float, nil, true},
+
+		// Bool type tests
+		{"bool-to-bool-true", true, Bool, true, false},
+		{"bool-to-bool-false", false, Bool, false, false},
+		{"string-to-bool-true", "true", Bool, true, false},
+		{"string-to-bool-false", "false", Bool, false, false},
+		{"string-to-bool-invalid", "maybe", Bool, nil, true},
+
+		// Nil value test
+		{"nil-value", nil, Int, nil, false},
+		{"nil-value-string", nil, String, nil, false},
+
+		// Invalid type conversions - only test truly invalid conversions
+		{"list-to-string-invalid", []string{"a", "b"}, String, nil, true},
+		{"bool-to-int-invalid", true, Int, nil, true},
+		{"list-to-int-invalid", []string{"a", "b"}, Int, nil, true},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.testName, func(t *testing.T) {
+			var variable Variable
+			switch testCase.variableType {
+			case String:
+				variable = NewStringVariable("test-var")
+			case Int:
+				variable = NewIntVariable("test-var")
+			case Float:
+				variable = NewFloatVariable("test-var")
+			case Bool:
+				variable = NewBoolVariable("test-var")
+			case List:
+				variable = NewListVariable("test-var")
+			case Map:
+				variable = NewMapVariable("test-var")
+			default:
+				t.Fatalf("Unsupported variable type in test: %v", testCase.variableType)
+			}
+
+			actualValue, err := ConvertType(testCase.value, variable)
+
+			if testCase.expectError {
+				assert.NotNil(t, err, "Expected error for test case: %s", testCase.testName)
+			} else {
+				assert.Nil(t, err, "Got unexpected error for test case '%s': %v", testCase.testName, err)
+				assert.Equal(t, testCase.expectedValue, actualValue, "For test case '%s'", testCase.testName)
+			}
+		})
+	}
+}
+
 func TestParseStringAsMap(t *testing.T) {
 	t.Parallel()
 
