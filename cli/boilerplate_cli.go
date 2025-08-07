@@ -7,6 +7,7 @@ import (
 	"github.com/gruntwork-io/go-commons/version"
 	"github.com/urfave/cli/v2"
 
+	"github.com/gruntwork-io/boilerplate/manifest"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/templates"
 	"github.com/gruntwork-io/boilerplate/variables"
@@ -96,6 +97,10 @@ func CreateBoilerplateCli() *cli.App {
 			Name:  options.OptDisableDependencyPrompt,
 			Usage: fmt.Sprintf("Do not prompt for confirmation to include dependencies. Has the same effect as --%s, without disabling variable prompts.", options.OptNonInteractive),
 		},
+		&cli.BoolFlag{
+			Name:  options.OptOutputManifest,
+			Usage: "Write a JSON list of all generated files to boilerplate-manifest.json in the current working directory.",
+		},
 	}
 
 	// We pass JSON/YAML content to various CLI flags, such as --var, and this JSON/YAML content may contain commas or
@@ -123,5 +128,24 @@ func runApp(cliContext *cli.Context) error {
 	// The root boilerplate.yml is not itself a dependency, so we pass an empty Dependency.
 	emptyDep := variables.Dependency{}
 
-	return templates.ProcessTemplate(opts, opts, emptyDep)
+	generatedFiles, err := templates.ProcessTemplate(opts, opts, emptyDep)
+	if err != nil {
+		return err
+	}
+
+	if opts.OutputManifest {
+		// Convert file paths to GeneratedFile structs
+		files := make([]manifest.GeneratedFile, 0, len(generatedFiles))
+		for _, path := range generatedFiles {
+			files = append(files, manifest.GeneratedFile{Path: path})
+		}
+		
+		// Update versioned manifest
+		err = manifest.UpdateVersionedManifest(opts.OutputFolder, opts.TemplateUrl, opts.Vars, files)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

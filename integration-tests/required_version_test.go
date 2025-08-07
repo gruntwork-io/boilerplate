@@ -1,13 +1,12 @@
 package integration_tests
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
 
 	"github.com/gruntwork-io/boilerplate/cli"
 	"github.com/gruntwork-io/boilerplate/config"
-	"github.com/gruntwork-io/go-commons/errors"
+	"github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/go-commons/version"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -58,7 +57,7 @@ func TestRequiredVersionUnderTest(t *testing.T) {
 func runRequiredVersionExample(t *testing.T, templateFolder string) error {
 	app := cli.CreateBoilerplateCli()
 
-	outputPath, err := ioutil.TempDir("", "boilerplate-test-output-reqver")
+	outputPath, err := os.MkdirTemp("", "boilerplate-test-output-reqver")
 	require.NoError(t, err)
 	defer os.RemoveAll(outputPath)
 
