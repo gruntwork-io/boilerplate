@@ -5,5 +5,5 @@ import (
 	"os"
 )
 
-// A simple logger we can use to get consistent log formatting through out the app
+// Logger is a simple logger we can use to get consistent log formatting throughout the app
 var Logger = log.New(os.Stdout, "[boilerplate] ", log.LstdFlags)

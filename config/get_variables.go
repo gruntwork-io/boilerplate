@@ -1,14 +1,16 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"log"
+	"maps"
 	"sort"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/terminal"
 	validation "github.com/go-ozzo/ozzo-validation"
-	"github.com/gruntwork-io/boilerplate/errors"
+	pkgErrors "github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/render"
 	"github.com/gruntwork-io/boilerplate/util"
@@ -19,11 +21,11 @@ import (
 
 const MaxReferenceDepth = 20
 
-// Get a value for each of the variables specified in boilerplateConfig, other than those already in existingVariables.
-// The value for a variable can come from the user (if the  non-interactive option isn't set), the default value in the
+// GetVariables gets a value for each of the variables specified in boilerplateConfig, other than those already in existingVariables.
+// The value for a variable can come from the user (if the non-interactive option isn't set), the default value in the
 // config, or a command line option.
-func GetVariables(opts *options.BoilerplateOptions, boilerplateConfig, rootBoilerplateConfig *BoilerplateConfig, thisDep variables.Dependency) (map[string]interface{}, error) {
-	renderedVariables := map[string]interface{}{}
+func GetVariables(opts *options.BoilerplateOptions, boilerplateConfig, rootBoilerplateConfig *BoilerplateConfig, thisDep variables.Dependency) (map[string]any, error) {
+	renderedVariables := map[string]any{}
 
 	// Add a variable for all variables contained in the root config file. This will allow Golang template users
 	// to directly access these with an expression like "{{ .BoilerplateConfigVars.foo.Default }}"
@@ -36,10 +38,11 @@ func GetVariables(opts *options.BoilerplateOptions, boilerplateConfig, rootBoile
 	for _, dep := range rootBoilerplateConfig.Dependencies {
 		rootConfigDeps[dep.Name] = dep
 	}
+
 	renderedVariables["BoilerplateConfigDeps"] = rootConfigDeps
 
 	// Add a variable for "the boilerplate template currently being processed".
-	thisTemplateProps := map[string]interface{}{}
+	thisTemplateProps := map[string]any{}
 	thisTemplateProps["Config"] = boilerplateConfig
 	thisTemplateProps["Options"] = opts
 	thisTemplateProps["CurrentDep"] = thisDep
@@ -48,12 +51,10 @@ func GetVariables(opts *options.BoilerplateOptions, boilerplateConfig, rootBoile
 	// The variables up to this point don't need any additional processing as they are builtin. User defined variables
 	// can reference and use Go template syntax, so we pass them through a rendering pipeline to ensure they are
 	// evaluated to values that can be used in the rest of the templates.
-	variablesToRender := map[string]interface{}{}
+	variablesToRender := map[string]any{}
 
 	// Collect the variable values that have been passed in from the command line.
-	for key, value := range opts.Vars {
-		variablesToRender[key] = value
-	}
+	maps.Copy(variablesToRender, opts.Vars)
 
 	// Collect the variable values that are defined in the config and get the value.
 	variablesInConfig := boilerplateConfig.GetVariablesMap()
@@ -81,7 +82,7 @@ func GetVariables(opts *options.BoilerplateOptions, boilerplateConfig, rootBoile
 
 	// Sort the KeyAndOrderPairs by their order value
 	// N.B. this syntax of sort.Slice requires Go 1.18 or above!
-	sort.Slice(keyAndOrderPairs[:], func(i, j int) bool {
+	sort.Slice(keyAndOrderPairs, func(i, j int) bool {
 		return keyAndOrderPairs[i].Order < keyAndOrderPairs[j].Order
 	})
 
@@ -91,10 +92,12 @@ func GetVariables(opts *options.BoilerplateOptions, boilerplateConfig, rootBoile
 	// by looking up its key in the original config-provided variables map
 	for _, keyOrderPair := range keyAndOrderPairs {
 		variable := variablesInConfig[keyOrderPair.Key]
+
 		unmarshalled, err := GetValueForVariable(variable, variablesInConfig, variablesToRender, opts, 0)
 		if err != nil {
 			return nil, err
 		}
+
 		variablesToRender[variable.Name()] = unmarshalled
 	}
 
@@ -108,10 +111,12 @@ func GetVariables(opts *options.BoilerplateOptions, boilerplateConfig, rootBoile
 	// Convert all the rendered variables to match the type definition in the boilerplate config.
 	for _, variable := range variablesInConfig {
 		renderedValue := newlyRenderedVariables[variable.Name()]
+
 		renderedValueWithType, err := variables.ConvertType(renderedValue, variable)
 		if err != nil {
 			return nil, err
 		}
+
 		renderedVariables[variable.Name()] = renderedValueWithType
 	}
 
@@ -121,12 +126,12 @@ func GetVariables(opts *options.BoilerplateOptions, boilerplateConfig, rootBoile
 func GetValueForVariable(
 	variable variables.Variable,
 	variablesInConfig map[string]variables.Variable,
-	valuesForPreviousVariables map[string]interface{},
+	valuesForPreviousVariables map[string]any,
 	opts *options.BoilerplateOptions,
 	referenceDepth int,
-) (interface{}, error) {
+) (any, error) {
 	if referenceDepth > MaxReferenceDepth {
-		return nil, errors.WithStackTrace(CyclicalReference{VariableName: variable.Name(), ReferenceName: variable.Reference()})
+		return nil, pkgErrors.WithStackTrace(CyclicalReference{VariableName: variable.Name(), ReferenceName: variable.Reference()})
 	}
 
 	value, alreadyExists := valuesForPreviousVariables[variable.Name()]
@@ -135,15 +140,16 @@ func GetValueForVariable(
 	}
 
 	if variable.Reference() != "" {
-		value, alreadyExists := valuesForPreviousVariables[variable.Reference()]
-		if alreadyExists {
-			return value, nil
+		refValue, refExists := valuesForPreviousVariables[variable.Reference()]
+		if refExists {
+			return refValue, nil
 		}
 
 		reference, containsReference := variablesInConfig[variable.Reference()]
 		if !containsReference {
-			return nil, errors.WithStackTrace(MissingReference{VariableName: variable.Name(), ReferenceName: variable.Reference()})
+			return nil, pkgErrors.WithStackTrace(MissingReference{VariableName: variable.Name(), ReferenceName: variable.Reference()})
 		}
+
 		return GetValueForVariable(reference, variablesInConfig, valuesForPreviousVariables, opts, referenceDepth+1)
 	}
 
@@ -152,6 +158,7 @@ func GetValueForVariable(
 	if err != nil {
 		return value, err
 	}
+
 	var result *multierror.Error
 	// Run the value through any defined validations for the variable
 	for _, customValidation := range variable.Validations() {
@@ -159,29 +166,31 @@ func GetValueForVariable(
 		err := validation.Validate(value, customValidation.Validator)
 		result = multierror.Append(result, err)
 	}
+
 	return value, result.ErrorOrNil()
 }
 
 // Get a value for the given variable. The value can come from the user (if the non-interactive option isn't set), the
 // default value in the config, or a command line option.
-func getVariable(variable variables.Variable, opts *options.BoilerplateOptions) (interface{}, error) {
+func getVariable(variable variables.Variable, opts *options.BoilerplateOptions) (any, error) {
 	valueFromVars, valueSpecifiedInVars := getVariableFromVars(variable, opts)
 
-	if valueSpecifiedInVars {
+	switch {
+	case valueSpecifiedInVars:
 		util.Logger.Printf("Using value specified via command line options for variable '%s': %s", variable.FullName(), valueFromVars)
 		return valueFromVars, nil
-	} else if opts.NonInteractive && variable.Default() != nil {
+	case opts.NonInteractive && variable.Default() != nil:
 		util.Logger.Printf("Using default value for variable '%s': %v", variable.FullName(), variable.Default())
 		return variable.Default(), nil
-	} else if opts.NonInteractive {
-		return nil, errors.WithStackTrace(MissingVariableWithNonInteractiveMode(variable.FullName()))
-	} else {
-		return getVariableFromUser(variable, opts, variables.InvalidEntries{})
+	case opts.NonInteractive:
+		return nil, pkgErrors.WithStackTrace(MissingVariableWithNonInteractiveMode(variable.FullName()))
+	default:
+		return getVariableFromUser(variable, variables.InvalidEntries{})
 	}
 }
 
 // Return the value of the given variable from vars passed in as command line options
-func getVariableFromVars(variable variables.Variable, opts *options.BoilerplateOptions) (interface{}, bool) {
+func getVariableFromVars(variable variables.Variable, opts *options.BoilerplateOptions) (any, bool) {
 	for name, value := range opts.Vars {
 		if name == variable.Name() {
 			return value, true
@@ -192,7 +201,7 @@ func getVariableFromVars(variable variables.Variable, opts *options.BoilerplateO
 }
 
 // Get the value for the given variable by prompting the user
-func getVariableFromUser(variable variables.Variable, opts *options.BoilerplateOptions, invalidEntries variables.InvalidEntries) (interface{}, error) {
+func getVariableFromUser(variable variables.Variable, invalidEntries variables.InvalidEntries) (any, error) {
 	// Add a newline for legibility and padding
 	fmt.Println()
 
@@ -218,7 +227,8 @@ func getVariableFromUser(variable variables.Variable, opts *options.BoilerplateO
 				},
 			},
 		}
-		return getVariableFromUser(variable, opts, ie)
+
+		return getVariableFromUser(variable, ie)
 	}
 
 	if value == "" {
@@ -233,32 +243,38 @@ func getVariableFromUser(variable variables.Variable, opts *options.BoilerplateO
 func getUserInput(variable variables.Variable) (string, error) {
 	// Display rich prompts to the user, based on the type of variable we're asking for
 	value := ""
+
 	switch variable.Type() {
 	case variables.String, variables.Int, variables.Float, variables.Bool, variables.List, variables.Map:
 		msg := fmt.Sprintf("Enter a value [type %s]", variable.Type())
 		if variable.Default() != nil {
 			msg = fmt.Sprintf("%s (default: %v)", msg, variable.Default())
 		}
+
 		prompt := &survey.Input{
 			Message: msg,
 		}
+
 		err := survey.AskOne(prompt, &value)
 		if err != nil {
-			if err == terminal.InterruptErr {
+			if errors.Is(err, terminal.InterruptErr) {
 				log.Fatal("quit")
 			}
+
 			return value, err
 		}
 	case variables.Enum:
 		prompt := &survey.Select{
-			Message: fmt.Sprintf("Please select %s", variable.FullName()),
+			Message: "Please select " + variable.FullName(),
 			Options: variable.Options(),
 		}
+
 		err := survey.AskOne(prompt, &value)
 		if err != nil {
-			if err == terminal.InterruptErr {
+			if errors.Is(err, terminal.InterruptErr) {
 				log.Fatal("quit")
 			}
+
 			return value, err
 		}
 	default:
@@ -270,11 +286,12 @@ func getUserInput(variable variables.Variable) (string, error) {
 			log.Fatal(msg)
 		}
 	}
+
 	return value, nil
 }
 
 func validateUserInput(value string, variable variables.Variable) (map[string]bool, bool) {
-	var valueToValidate interface{}
+	var valueToValidate any
 	if value == "" {
 		valueToValidate = variable.Default()
 	} else {
@@ -283,14 +300,17 @@ func validateUserInput(value string, variable variables.Variable) (map[string]bo
 
 	m := make(map[string]bool)
 	hasValidationErrs := false
+
 	for _, customValidation := range variable.Validations() {
 		// Run the specific validation against the user-provided value and store it in the map
 		err := validation.Validate(valueToValidate, customValidation.Validator)
 		val := true
+
 		if err != nil {
 			hasValidationErrs = true
 			val = false
 		}
+
 		m[customValidation.DescriptionText()] = val
 	}
 	// Validate that the type can be parsed
@@ -304,13 +324,15 @@ func validateUserInput(value string, variable variables.Variable) (map[string]bo
 		hasValidationErrs = true
 		m["Value must be provided"] = false
 	}
+
 	return m, hasValidationErrs
 }
 
 // RenderValidationErrors displays in user-legible format the exact validation errors
 // that the user's last submission generated
-func renderValidationErrors(val interface{}, m map[string]bool) {
+func renderValidationErrors(val any, m map[string]bool) {
 	pterm.Warning.WithPrefix(pterm.Prefix{Text: "Invalid entry"}).Println(val)
+
 	for k, v := range m {
 		if v {
 			pterm.Success.Println(k)
@@ -332,8 +354,7 @@ func renderVariablePrompts(variable variables.Variable, invalidEntries variables
 	}
 }
 
-// Custom types
-// A KeyAndOrderPair is a composite of the user-defined order and the user's variable name
+// KeyAndOrderPair is a composite of the user-defined order and the user's variable name
 type KeyAndOrderPair struct {
 	Key   string
 	Order int

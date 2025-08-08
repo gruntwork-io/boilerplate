@@ -2,30 +2,33 @@ package variables
 
 import "github.com/gruntwork-io/boilerplate/errors"
 
-// A single skip_file entry, which is a file that (conditionally) should be excluded from the rendered output.
+// SkipFile represents a single skip_file entry, which is a file that (conditionally) should be excluded from the rendered output.
 type SkipFile struct {
 	Path    string
 	NotPath string
 	If      string
 }
 
-// Implement the go-yaml marshaler interface so that the config can be marshaled into yaml. We use a custom marshaler
+// MarshalYAML implements the go-yaml marshaler interface so that the config can be marshaled into yaml. We use a custom marshaler
 // instead of defining the fields as tags so that we skip the attributes that are empty.
-func (skipFile SkipFile) MarshalYAML() (interface{}, error) {
-	skipFileYml := map[string]interface{}{}
+func (skipFile SkipFile) MarshalYAML() (any, error) {
+	skipFileYml := map[string]any{}
 	if skipFile.Path != "" {
 		skipFileYml["path"] = skipFile.Path
 	}
+
 	if skipFile.NotPath != "" {
 		skipFileYml["not_path"] = skipFile.Path
 	}
+
 	if skipFile.If != "" {
 		skipFileYml["if"] = skipFile.If
 	}
+
 	return skipFileYml, nil
 }
 
-// Given a list of key:value pairs read from a Boilerplate YAML config file of the format:
+// UnmarshalSkipFilesFromBoilerplateConfigYaml given a list of key:value pairs read from a Boilerplate YAML config file of the format:
 //
 // skip_files:
 //   - path: <PATH>
@@ -34,7 +37,7 @@ func (skipFile SkipFile) MarshalYAML() (interface{}, error) {
 //   - not_path: <PATH>
 //
 // convert to a list of SkipFile structs.
-func UnmarshalSkipFilesFromBoilerplateConfigYaml(fields map[string]interface{}) ([]SkipFile, error) {
+func UnmarshalSkipFilesFromBoilerplateConfigYaml(fields map[string]any) ([]SkipFile, error) {
 	rawSkipFiles, err := unmarshalListOfFields(fields, "skip_files")
 	if err != nil || rawSkipFiles == nil {
 		return nil, err
@@ -61,11 +64,12 @@ func UnmarshalSkipFilesFromBoilerplateConfigYaml(fields map[string]interface{}) 
 // if: <SKIPIF>
 //
 // This method unmarshals the YAML data into a SkipFile struct
-func unmarshalSkipFileFromBoilerplateConfigYaml(fields map[string]interface{}) (*SkipFile, error) {
+func unmarshalSkipFileFromBoilerplateConfigYaml(fields map[string]any) (*SkipFile, error) {
 	pathPtr, err := unmarshalStringField(fields, "path", false, "")
 	if err != nil {
 		return nil, err
 	}
+
 	path := ""
 	if pathPtr != nil {
 		path = *pathPtr
@@ -75,6 +79,7 @@ func unmarshalSkipFileFromBoilerplateConfigYaml(fields map[string]interface{}) (
 	if err != nil {
 		return nil, err
 	}
+
 	notPath := ""
 	if notPathPtr != nil {
 		notPath = *notPathPtr
@@ -89,6 +94,7 @@ func unmarshalSkipFileFromBoilerplateConfigYaml(fields map[string]interface{}) (
 	if err != nil {
 		return nil, err
 	}
+
 	skipIf := ""
 	if skipIfPtr != nil {
 		skipIf = *skipIfPtr

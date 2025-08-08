@@ -1,11 +1,12 @@
-package variables
+package variables_test
 
 import (
-	"fmt"
+	"errors"
 	"testing"
 
-	"github.com/gruntwork-io/boilerplate/errors"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/gruntwork-io/boilerplate/variables"
 )
 
 func TestEnginesRequiresSupportedTemplateEngine(t *testing.T) {
@@ -18,12 +19,12 @@ func TestEnginesRequiresSupportedTemplateEngine(t *testing.T) {
 	}{
 		{
 			name:        "gotemplate",
-			typeStr:     string(GoTemplate),
+			typeStr:     string(variables.GoTemplate),
 			expectError: false,
 		},
 		{
 			name:        "jsonnet",
-			typeStr:     string(Jsonnet),
+			typeStr:     string(variables.Jsonnet),
 			expectError: false,
 		},
 		{
@@ -34,28 +35,26 @@ func TestEnginesRequiresSupportedTemplateEngine(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		// Capture range variable so it does not change across for loop iterations.
-		tc := tc
-
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			mockFields := map[string]interface{}{
-				"engines": []interface{}{
-					map[interface{}]interface{}{
-						"path":            fmt.Sprintf("foo.%s", tc.name),
+			mockFields := map[string]any{
+				"engines": []any{
+					map[any]any{
+						"path":            "foo." + tc.name,
 						"template_engine": tc.typeStr,
 					},
 				},
 			}
-			_, err := UnmarshalEnginesFromBoilerplateConfigYaml(mockFields)
+			_, err := variables.UnmarshalEnginesFromBoilerplateConfigYaml(mockFields)
 			if tc.expectError {
-				assert.Error(t, err)
+				require.Error(t, err)
 				underlyingErr := errors.Unwrap(err)
-				_, hasType := underlyingErr.(InvalidTemplateEngineErr)
-				assert.True(t, hasType)
+				var invalidTemplateEngineErr variables.InvalidTemplateEngineErr
+				hasType := errors.As(underlyingErr, &invalidTemplateEngineErr)
+				require.True(t, hasType)
 			} else {
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 		})
 	}

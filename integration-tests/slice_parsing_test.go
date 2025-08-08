@@ -1,7 +1,6 @@
-package integration_tests
+package integrationtests_test
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -18,9 +17,7 @@ func TestSliceParsing(t *testing.T) {
 
 	templateFolder := "../test-fixtures/regression-test/slice-parsing"
 
-	outputFolder, err := os.MkdirTemp("", "boilerplate-test-output")
-	require.NoError(t, err)
-	defer os.RemoveAll(outputFolder)
+	outputFolder := t.TempDir()
 
 	mapValue := `{"key1":"value1","key2":"value2","key3":"value3"}`
 
@@ -32,7 +29,7 @@ func TestSliceParsing(t *testing.T) {
 		"--output-folder",
 		outputFolder,
 		"--var",
-		fmt.Sprintf("MapValue=%s", mapValue),
+		"MapValue=" + mapValue,
 		"--non-interactive",
 	}
 

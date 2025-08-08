@@ -1,6 +1,7 @@
-//+build windows
+//go:build windows
+// +build windows
 
-package getter_helper
+package getterhelper
 
 import (
 	"io/ioutil"

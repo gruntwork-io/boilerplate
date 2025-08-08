@@ -1,3 +1,4 @@
+// Package templates provides functionality for processing and rendering templates.
 package templates
 
 import (
@@ -9,11 +10,8 @@ import (
 )
 
 type ProcessedEngine struct {
-	// List of paths relative to template folder that should be skipped
-	EvaluatedPaths []string
-
-	// The template engine to use.
 	TemplateEngine variables.TemplateEngineType
+	EvaluatedPaths []string
 }
 
 // processEngines will take the engines list and process them in the current boilerplate context. This is primarily
@@ -21,14 +19,16 @@ type ProcessedEngine struct {
 func processEngines(
 	engines []variables.Engine,
 	opts *options.BoilerplateOptions,
-	variables map[string]interface{},
+	variables map[string]any,
 ) ([]ProcessedEngine, error) {
 	output := []ProcessedEngine{}
+
 	for _, engine := range engines {
 		matchedPaths, err := renderGlobPath(opts, engine.Path, variables)
 		if err != nil {
 			return nil, err
 		}
+
 		debugLogForMatchedPaths(engine.Path, matchedPaths, "Engine", "Path")
 
 		processedEngine := ProcessedEngine{
@@ -37,6 +37,7 @@ func processEngines(
 		}
 		output = append(output, processedEngine)
 	}
+
 	return output, nil
 }
 
@@ -53,6 +54,6 @@ func determineTemplateEngine(processedEngines []ProcessedEngine, path string) va
 			return engine.TemplateEngine
 		}
 	}
-	return variables.DefaultTemplateEngine
 
+	return variables.DefaultTemplateEngine
 }

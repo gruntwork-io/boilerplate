@@ -1,32 +1,29 @@
+// Package util provides utility functions for common operations.
 package util
 
-import "fmt"
+import (
+	"fmt"
+	"maps"
+	"slices"
+)
 
-// Merge all the maps into one. Sadly, Go has no generics, so this is only defined for string to interface maps.
-func MergeMaps(maps ...map[string]any) map[string]any {
+// MergeMaps merges all the maps into one. Sadly, Go has no generics, so this is only defined for string to interface maps.
+func MergeMaps(m ...map[string]any) map[string]any {
 	out := map[string]any{}
 
-	for _, currMap := range maps {
-		for key, value := range currMap {
-			out[key] = value
-		}
+	for _, currMap := range m {
+		maps.Copy(out, currMap)
 	}
 
 	return out
 }
 
-// Return true if the given list of strings (haystack) contains the given string (needle)
+// ListContains returns true if the given list of strings (haystack) contains the given string (needle)
 func ListContains(needle string, haystack []string) bool {
-	for _, str := range haystack {
-		if needle == str {
-			return true
-		}
-	}
-
-	return false
+	return slices.Contains(haystack, needle)
 }
 
-// Convert a generic list to a list of strings
+// ToStringList converts a generic list to a list of strings
 func ToStringList(genericList []any) []string {
 	stringList := []string{}
 
@@ -37,7 +34,7 @@ func ToStringList(genericList []any) []string {
 	return stringList
 }
 
-// Convert a generic map to a map from string to string
+// ToStringMap converts a generic map to a map from string to string
 func ToStringMap(genericMap map[any]any) map[string]string {
 	stringMap := map[string]string{}
 
@@ -48,7 +45,7 @@ func ToStringMap(genericMap map[any]any) map[string]string {
 	return stringMap
 }
 
-// Convert a generic map to a map from string to interface
+// ToStringToGenericMap converts a generic map to a map from string to interface
 func ToStringToGenericMap(genericMap map[any]any) map[string]any {
 	stringToGenericMap := map[string]any{}
 
@@ -59,7 +56,7 @@ func ToStringToGenericMap(genericMap map[any]any) map[string]any {
 	return stringToGenericMap
 }
 
-// Convert a single value to its string representation
+// ToString converts a single value to its string representation
 func ToString(value any) string {
 	return fmt.Sprintf("%v", value)
 }

@@ -1,11 +1,11 @@
 //go:build aix || darwin || dragonfly || freebsd || (js && wasm) || linux || netbsd || openbsd || solaris
 // +build aix darwin dragonfly freebsd js,wasm linux netbsd openbsd solaris
 
-package render
+package render //nolint:testpackage
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -36,21 +36,21 @@ func TestRenderJsonnet(t *testing.T) {
 		t.Run(testCaseName, func(t *testing.T) {
 			t.Parallel()
 
-			variablesJson, err := ioutil.ReadFile(variablesFPath)
+			variablesJSON, err := os.ReadFile(variablesFPath)
 			require.NoError(t, err)
 
-			var variables map[string]interface{}
-			require.NoError(t, json.Unmarshal(variablesJson, &variables))
+			var variables map[string]any
+			require.NoError(t, json.Unmarshal(variablesJSON, &variables))
 
-			outputJson, err := RenderJsonnetTemplate(templateFPath, variables, testBoilerplateOptions)
+			outputJSON, err := RenderJsonnetTemplate(templateFPath, variables, testBoilerplateOptions)
 			require.NoError(t, err)
-			var output map[string]interface{}
-			require.NoError(t, json.Unmarshal([]byte(outputJson), &output))
+			var output map[string]any
+			require.NoError(t, json.Unmarshal([]byte(outputJSON), &output))
 
-			expectedOutputJson, err := ioutil.ReadFile(expectedFPath)
+			expectedOutputJSON, err := os.ReadFile(expectedFPath)
 			require.NoError(t, err)
-			var expectedOutput map[string]interface{}
-			require.NoError(t, json.Unmarshal(expectedOutputJson, &expectedOutput))
+			var expectedOutput map[string]any
+			require.NoError(t, json.Unmarshal(expectedOutputJSON, &expectedOutput))
 
 			assert.Equal(t, expectedOutput, output)
 		})

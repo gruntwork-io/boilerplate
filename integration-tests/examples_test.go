@@ -1,4 +1,4 @@
-package integration_tests
+package integrationtests_test
 
 import (
 	"fmt"
@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/gruntwork-io/terratest/modules/git"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/gruntwork-io/boilerplate/cli"
@@ -27,9 +26,7 @@ func TestExamples(t *testing.T) {
 	examplesExpectedOutputBasePath := "../test-fixtures/examples-expected-output"
 	examplesVarFilesBasePath := "../test-fixtures/examples-var-files"
 
-	outputBasePath, err := os.MkdirTemp("", "boilerplate-test-output")
-	require.NoError(t, err)
-	defer os.RemoveAll(outputBasePath)
+	outputBasePath := t.TempDir()
 
 	examples, err := os.ReadDir(examplesBasePath)
 	require.NoError(t, err)
@@ -44,6 +41,8 @@ func TestExamples(t *testing.T) {
 		}
 
 		t.Run(path.Base(example.Name()), func(t *testing.T) {
+			t.Parallel()
+
 			templateFolder := path.Join(examplesBasePath, example.Name())
 			outputFolder := path.Join(outputBasePath, example.Name())
 			varFile := path.Join(examplesVarFilesBasePath, example.Name(), "vars.yml")
@@ -73,23 +72,19 @@ func TestExamplesAsRemoteTemplate(t *testing.T) {
 	examplesExpectedOutputBasePath := "../test-fixtures/examples-expected-output"
 	examplesVarFilesBasePath := "../test-fixtures/examples-var-files"
 
-	outputBasePath, err := os.MkdirTemp("", "boilerplate-test-output")
-	require.NoError(t, err)
-	defer os.RemoveAll(outputBasePath)
+	outputBasePath := t.TempDir()
 
 	examples, err := os.ReadDir(examplesBasePath)
 	require.NoError(t, err)
 
 	// Insulate the following parallel tests in a group so that cleanup routines run after all tests are done.
 	t.Run("group", func(t *testing.T) {
+		t.Parallel()
 		if runtime.GOOS == "windows" { // skip clone test for windows because of invalid file name in git
 			t.Skip()
 			return
 		}
 		for _, example := range examples {
-			// Capture range variable to avoid it changing on each iteration during the tests
-			example := example
-
 			if !example.IsDir() {
 				continue
 			}
@@ -121,6 +116,7 @@ func TestExamplesAsRemoteTemplate(t *testing.T) {
 }
 
 func testExample(t *testing.T, templateFolder string, outputFolder string, varFile string, expectedOutputFolder string, missingKeyAction string) {
+	t.Helper()
 	app := cli.CreateBoilerplateCli()
 
 	ref := git.GetCurrentGitRef(t)
@@ -133,7 +129,7 @@ func testExample(t *testing.T, templateFolder string, outputFolder string, varFi
 		"--var-file",
 		varFile,
 		"--var",
-		fmt.Sprintf("RemoteBranch=%s", ref),
+		"RemoteBranch=" + ref,
 		"--non-interactive",
 		"--missing-key-action",
 		missingKeyAction,
@@ -145,7 +141,7 @@ func testExample(t *testing.T, templateFolder string, outputFolder string, varFi
 	}
 
 	err := app.Run(args)
-	assert.NoError(t, err, errors.PrintErrorWithStackTrace(err))
+	require.NoError(t, err, errors.PrintErrorWithStackTrace(err))
 	if expectedOutputFolder != "" {
 		assertDirectoriesEqual(t, expectedOutputFolder, outputFolder)
 	}
