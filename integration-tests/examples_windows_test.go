@@ -1,7 +1,7 @@
 //go:build windows
 // +build windows
 
-package integrationtests
+package integrationtests_test
 
 import (
 	"fmt"
