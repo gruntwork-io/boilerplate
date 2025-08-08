@@ -842,12 +842,15 @@ Boilerplate also includes several custom helpers that you can access that enhanc
    return str2;
    // boilerplate-snippet: foo
    ```
+
 * `include <PATH> <VARIABLES>`: Returns the contents of the file at `PATH` after rendering it through the templating
   engine with the provided variables, as a string (unlike `snippet`, which returns the contents of the file verbatim).
   Use `.` to pass the current variables to the included template. E.g:
-  ```
+
+  ```text
   {{ include "../source-template.snippet" . }}
   ```
+
 * `replaceOne OLD NEW`: Replace the first occurrence of `OLD` with `NEW`. This is a literal replace, not regex.
 * `replaceAll OLD NEW`: Replace all occurrences of `OLD` with `NEW`. This is a literal replace, not regex.
 * `roundInt FLOAT`: Round `FLOAT` to the nearest integer. E.g. 1.5 becomes 2.
@@ -875,7 +878,7 @@ Boilerplate also includes several custom helpers that you can access that enhanc
   form `ENV:KEY=VALUE` will be set as an environment variable for the command rather than an argument. **Security Note**: Shell commands will prompt for confirmation before execution. To run shell commands without confirmation, use the `--non-interactive` flag. To disable shell command execution entirely, use the `--no-shell` flag. For another way to execute commands, see [hooks](#hooks).
 * `templateFolder`: Return the value of the template working dir. This is the value of the `--template-url` command-line
   option if local template, or the download dir if remote template. Useful for building relative paths.
-* `templateUrl`: Return the value of the template URL as was provided in the `--template-url`.
+* `templateURL`: Return the value of the template URL as was provided in the `--template-url`.
 * `vars`: Return the dictionary of all input variables.
 * `outputFolder`: Return the value of the `--output-folder` command-line option. Useful for building relative paths.
 * `envWithDefault NAME DEFAULT`: Render the value of environment variable `NAME`. If that environment variable is empty or not

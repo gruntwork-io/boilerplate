@@ -22,32 +22,39 @@ type Dependency struct {
 	DontInheritVariables bool
 }
 
+// TemplateUrl provides backward compatibility for accessing TemplateURL with lowercase "url"
+//
+//nolint:staticcheck
+func (d Dependency) TemplateUrl() string {
+	return d.TemplateURL
+}
+
 // MarshalYAML implements the go-yaml marshaler interface so that the config can be marshaled into yaml. We use a custom marshaler
 // instead of defining the fields as tags so that we skip the attributes that are empty.
-func (dependency Dependency) MarshalYAML() (any, error) {
+func (d Dependency) MarshalYAML() (any, error) {
 	depYml := map[string]any{}
-	if dependency.Name != "" {
-		depYml["name"] = dependency.Name
+	if d.Name != "" {
+		depYml["name"] = d.Name
 	}
 
-	if dependency.TemplateURL != "" {
-		depYml["template-url"] = dependency.TemplateURL
+	if d.TemplateURL != "" {
+		depYml["template-url"] = d.TemplateURL
 	}
 
-	if dependency.OutputFolder != "" {
-		depYml["output-folder"] = dependency.OutputFolder
+	if d.OutputFolder != "" {
+		depYml["output-folder"] = d.OutputFolder
 	}
 
-	if dependency.Skip != "" {
-		depYml["skip"] = dependency.Skip
+	if d.Skip != "" {
+		depYml["skip"] = d.Skip
 	}
 
-	if len(dependency.Variables) > 0 {
+	if len(d.Variables) > 0 {
 		// Due to go type system, we can only pass through []interface{}, even though []Variable is technically
 		// polymorphic to that type. So we reconstruct the list using the right type before passing it in to the marshal
 		// function.
 		interfaceList := []any{}
-		for _, variable := range dependency.Variables {
+		for _, variable := range d.Variables {
 			interfaceList = append(interfaceList, variable)
 		}
 
@@ -59,16 +66,16 @@ func (dependency Dependency) MarshalYAML() (any, error) {
 		depYml["variables"] = varsYml
 	}
 
-	if len(dependency.VarFiles) > 0 {
-		depYml["var_files"] = dependency.VarFiles
+	if len(d.VarFiles) > 0 {
+		depYml["var_files"] = d.VarFiles
 	}
 
-	if len(dependency.ForEach) > 0 {
-		depYml["for_each"] = dependency.ForEach
+	if len(d.ForEach) > 0 {
+		depYml["for_each"] = d.ForEach
 	}
 
-	if len(dependency.ForEachReference) > 0 {
-		depYml["for_each_reference"] = dependency.ForEachReference
+	if len(d.ForEachReference) > 0 {
+		depYml["for_each_reference"] = d.ForEachReference
 	}
 
 	return depYml, nil

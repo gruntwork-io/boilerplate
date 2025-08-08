@@ -1,10 +1,10 @@
 package config
 
 import (
-	"maps"
 	"errors"
 	"fmt"
 	"log"
+	"maps"
 	"sort"
 
 	"github.com/AlecAivazis/survey/v2"

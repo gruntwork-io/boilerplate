@@ -1,4 +1,4 @@
-{{ .BoilerplateConfigDeps.docs.TemplateURL }}
+{{ .BoilerplateConfigDeps.docs.TemplateUrl }}
 {{ .BoilerplateConfigDeps.docs.OutputFolder }}
 {{ .BoilerplateConfigDeps.website.TemplateURL }}
 {{ .BoilerplateConfigDeps.website.OutputFolder }}

@@ -1,10 +1,10 @@
 package render
 
 import (
-	"maps"
 	"bufio"
 	"crypto/sha256"
 	"fmt"
+	"maps"
 	"math"
 	"os"
 	"path"
@@ -813,7 +813,33 @@ func boilerplateConfigDeps(opts *options.BoilerplateOptions) func(string, string
 		}
 
 		r := reflect.ValueOf(dep)
+
 		f := reflect.Indirect(r).FieldByName(property)
+
+		// If exact match fails, try case-insensitive match for backward compatibility
+		if !f.IsValid() {
+			switch property {
+			case "TemplateUrl":
+				f = reflect.Indirect(r).FieldByName("TemplateURL")
+			case "OutputFolder":
+				// OutputFolder is already correct, but keep for consistency
+				f = reflect.Indirect(r).FieldByName("OutputFolder")
+			default:
+				// Try case-insensitive search for other fields
+				t := reflect.Indirect(r).Type()
+				for i := 0; i < t.NumField(); i++ {
+					field := t.Field(i)
+					if strings.EqualFold(field.Name, property) {
+						f = reflect.Indirect(r).Field(i)
+						break
+					}
+				}
+			}
+		}
+
+		if !f.IsValid() {
+			return "", fmt.Errorf(`the property "%s" was not found on dependency "%s"`, property, name)
+		}
 
 		return f.String(), nil
 	}
