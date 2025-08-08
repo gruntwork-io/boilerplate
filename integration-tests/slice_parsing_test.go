@@ -1,4 +1,4 @@
-package integrationtests //nolint:testpackage
+package integrationtests_test
 
 import (
 	"os"

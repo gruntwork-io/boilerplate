@@ -3,7 +3,7 @@
 
 // The following tests should only be run on unix machines
 
-package integrationtests //nolint:testpackage
+package integrationtests_test
 
 import (
 	"fmt"
