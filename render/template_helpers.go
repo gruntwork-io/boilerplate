@@ -809,7 +809,8 @@ func boilerplateConfigDeps(opts *options.BoilerplateOptions) func(string, string
 		dep := deps[name]
 
 		if dep.Name == "" {
-			return "", fmt.Errorf(`the dependency "%s" was not found`, name)
+			//nolint:staticcheck
+			return "", fmt.Errorf(`The dependency "%s" was not found`, name)
 		}
 
 		r := reflect.ValueOf(dep)
@@ -838,7 +839,8 @@ func boilerplateConfigDeps(opts *options.BoilerplateOptions) func(string, string
 		}
 
 		if !f.IsValid() {
-			return "", fmt.Errorf(`the property "%s" was not found on dependency "%s"`, property, name)
+			//nolint:staticcheck
+			return "", fmt.Errorf(`The property "%s" was not found on dependency "%s"`, property, name)
 		}
 
 		return f.String(), nil
@@ -852,7 +854,8 @@ func boilerplateConfigVars(opts *options.BoilerplateOptions) func(string, string
 		myVar := vars[name]
 
 		if myVar.Name() == "" {
-			return "", fmt.Errorf(`the variable "%s" was not found`, name)
+			//nolint:staticcheck
+			return "", fmt.Errorf(`The variable "%s" was not found`, name)
 		}
 
 		r := reflect.ValueOf(myVar)
