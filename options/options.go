@@ -109,10 +109,10 @@ func ParseOptions(cliContext *cli.Context) (*BoilerplateOptions, error) {
 	return options, nil
 }
 
-// DetermineTemplateConfig decides what should be passed to TemplateUrl and TemplateFolder. This parses the templateUrl
+// DetermineTemplateConfig decides what should be passed to TemplateURL and TemplateFolder. This parses the templateUrl
 // and determines if it is a local path. If so, use that path directly instead of downloading it to a temp working dir.
 // We do this by setting the template folder, which will instruct the process routine to skip downloading the template.
-// Returns TemplateUrl, TemplateFolder, error
+// Returns TemplateURL, TemplateFolder, error
 func DetermineTemplateConfig(templateURL string) (string, string, error) {
 	url, err := getterhelper.ParseGetterURL(templateURL)
 	if err != nil {
@@ -120,7 +120,7 @@ func DetermineTemplateConfig(templateURL string) (string, string, error) {
 	}
 
 	if url.Scheme == "file" {
-		// Intentionally return as both TemplateUrl and TemplateFolder so that validation passes, but still skip
+		// Intentionally return as both TemplateURL and TemplateFolder so that validation passes, but still skip
 		// download.
 		return templateURL, templateURL, nil
 	}
