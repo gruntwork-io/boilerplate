@@ -412,7 +412,7 @@ const configDependencyMissingTemplateFolder = `dependencies:
     output-folder: /output/folder1
 `
 
-func TestParseBoilerplateConfigDependencyMissingTemplateUrl(t *testing.T) {
+func TestParseBoilerplateConfigDependencyMissingTemplateURL(t *testing.T) {
 	t.Parallel()
 
 	_, err := ParseBoilerplateConfig([]byte(configDependencyMissingTemplateFolder))
