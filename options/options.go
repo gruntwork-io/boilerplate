@@ -176,10 +176,11 @@ func ParseMissingConfigAction(str string) (MissingConfigAction, error) {
 	return MissingConfigAction(""), errors.WithStackTrace(InvalidMissingConfigAction(str))
 }
 
-// Custom error types
-
-var ErrTemplateURLOptionCannotBeEmpty = fmt.Errorf("the --%s option cannot be empty", OptTemplateURL)
-var ErrOutputFolderOptionCannotBeEmpty = fmt.Errorf("the --%s option cannot be empty", OptOutputFolder)
+//nolint:staticcheck
+var (
+	ErrTemplateURLOptionCannotBeEmpty  = fmt.Errorf("The --%s option cannot be empty", OptTemplateURL)
+	ErrOutputFolderOptionCannotBeEmpty = fmt.Errorf("The --%s option cannot be empty", OptOutputFolder)
+)
 
 type InvalidMissingKeyAction string
 
