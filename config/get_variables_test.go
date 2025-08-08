@@ -29,7 +29,7 @@ func TestGetVariableFromVarsNoMatch(t *testing.T) {
 
 	variable := variables.NewStringVariable("foo")
 	opts := &options.BoilerplateOptions{
-		Vars: map[string]interface{}{
+		Vars: map[string]any{
 			"key1": "value1",
 			"key2": "value2",
 			"key3": "value3",
@@ -45,7 +45,7 @@ func TestGetVariableFromVarsMatch(t *testing.T) {
 
 	variable := variables.NewStringVariable("foo")
 	opts := &options.BoilerplateOptions{
-		Vars: map[string]interface{}{
+		Vars: map[string]any{
 			"key1": "value1",
 			"foo":  "bar",
 			"key3": "value3",
@@ -64,7 +64,7 @@ func TestGetVariableFromVarsForDependencyNoMatch(t *testing.T) {
 
 	variable := variables.NewStringVariable("bar.foo")
 	opts := &options.BoilerplateOptions{
-		Vars: map[string]interface{}{
+		Vars: map[string]any{
 			"key1": "value1",
 			"foo":  "bar",
 			"key3": "value3",
@@ -80,7 +80,7 @@ func TestGetVariableFromVarsForDependencyMatch(t *testing.T) {
 
 	variable := variables.NewStringVariable("bar.foo")
 	opts := &options.BoilerplateOptions{
-		Vars: map[string]interface{}{
+		Vars: map[string]any{
 			"key1":    "value1",
 			"bar.foo": "bar",
 			"key3":    "value3",
@@ -112,7 +112,7 @@ func TestGetVariableInVarsNonInteractive(t *testing.T) {
 	variable := variables.NewStringVariable("foo")
 	opts := &options.BoilerplateOptions{
 		NonInteractive: true,
-		Vars: map[string]interface{}{
+		Vars: map[string]any{
 			"key1": "value1",
 			"foo":  "bar",
 			"key3": "value3",

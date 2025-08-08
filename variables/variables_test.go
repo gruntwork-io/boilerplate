@@ -39,8 +39,8 @@ func TestConvertType(t *testing.T) {
 	t.Parallel()
 
 	testCases := []struct {
-		value         interface{}
-		expectedValue interface{}
+		value         any
+		expectedValue any
 		testName      string
 		variableType  BoilerplateType
 		expectError   bool

@@ -19,7 +19,7 @@ type ProcessedEngine struct {
 func processEngines(
 	engines []variables.Engine,
 	opts *options.BoilerplateOptions,
-	variables map[string]interface{},
+	variables map[string]any,
 ) ([]ProcessedEngine, error) {
 	output := []ProcessedEngine{}
 

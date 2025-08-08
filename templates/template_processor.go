@@ -107,7 +107,7 @@ func ProcessTemplate(options, rootOpts *options.BoilerplateOptions, thisDep vari
 	return nil
 }
 
-func processPartials(partials []string, opts *options.BoilerplateOptions, vars map[string]interface{}) ([]string, error) {
+func processPartials(partials []string, opts *options.BoilerplateOptions, vars map[string]any) ([]string, error) {
 	renderedPartials := make([]string, 0, len(partials))
 
 	for _, partial := range partials {
@@ -123,7 +123,7 @@ func processPartials(partials []string, opts *options.BoilerplateOptions, vars m
 }
 
 // Process the given list of hooks, which are scripts that should be executed at the command-line
-func processHooks(hooks []variables.Hook, opts *options.BoilerplateOptions, vars map[string]interface{}) error {
+func processHooks(hooks []variables.Hook, opts *options.BoilerplateOptions, vars map[string]any) error {
 	if len(hooks) == 0 || opts.NoHooks {
 		if opts.NoHooks {
 			util.Logger.Printf("Hooks are disabled, skipping %d hook(s)", len(hooks))
@@ -188,7 +188,7 @@ func processHooks(hooks []variables.Hook, opts *options.BoilerplateOptions, vars
 }
 
 // renderHookDetails renders the hook details and returns a pre-rendered string representation
-func renderHookDetails(hook variables.Hook, opts *options.BoilerplateOptions, vars map[string]interface{}) (string, error) {
+func renderHookDetails(hook variables.Hook, opts *options.BoilerplateOptions, vars map[string]any) (string, error) {
 	base := config.BoilerplateConfigPath(opts.TemplateFolder)
 	render := func(s string) (string, error) {
 		return render.RenderTemplateFromString(base, s, vars, opts)
@@ -311,14 +311,14 @@ func generateHookKey(hookDetails string) string {
 func printHookDetails(hookDetails string) {
 	util.Logger.Printf("Hook details:")
 
-	lines := strings.Split(hookDetails, "\n")
-	for _, line := range lines {
+	lines := strings.SplitSeq(hookDetails, "\n")
+	for line := range lines {
 		util.Logger.Printf("  %s", line)
 	}
 }
 
 // Process the given hook, which is a script that should be execute at the command-line
-func processHook(hook variables.Hook, opts *options.BoilerplateOptions, vars map[string]interface{}) error {
+func processHook(hook variables.Hook, opts *options.BoilerplateOptions, vars map[string]any) error {
 	cmd, hookRenderErr := render.RenderTemplateFromString(config.BoilerplateConfigPath(opts.TemplateFolder), hook.Command, vars, opts)
 	if hookRenderErr != nil {
 		return hookRenderErr

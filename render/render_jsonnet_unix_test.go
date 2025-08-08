@@ -39,17 +39,17 @@ func TestRenderJsonnet(t *testing.T) {
 			variablesJSON, err := os.ReadFile(variablesFPath)
 			require.NoError(t, err)
 
-			var variables map[string]interface{}
+			var variables map[string]any
 			require.NoError(t, json.Unmarshal(variablesJSON, &variables))
 
 			outputJSON, err := RenderJsonnetTemplate(templateFPath, variables, testBoilerplateOptions)
 			require.NoError(t, err)
-			var output map[string]interface{}
+			var output map[string]any
 			require.NoError(t, json.Unmarshal([]byte(outputJSON), &output))
 
 			expectedOutputJSON, err := os.ReadFile(expectedFPath)
 			require.NoError(t, err)
-			var expectedOutput map[string]interface{}
+			var expectedOutput map[string]any
 			require.NoError(t, json.Unmarshal(expectedOutputJSON, &expectedOutput))
 
 			assert.Equal(t, expectedOutput, output)

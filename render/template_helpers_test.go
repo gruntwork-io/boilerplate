@@ -512,13 +512,13 @@ func TestTemplateIsDefined(t *testing.T) {
 func TestToYaml(t *testing.T) {
 	t.Parallel()
 	testCases := []struct {
-		input    interface{}
+		input    any
 		expected string
 	}{
 		{nil, "null\n"},
 		{"", "\"\"\n"},
-		{map[string]interface{}{"key": "val"}, "key: val\n"},
-		{map[string][]interface{}{"Key": {1, 2, 3}}, "Key:\n- 1\n- 2\n- 3\n"},
+		{map[string]any{"key": "val"}, "key: val\n"},
+		{map[string][]any{"Key": {1, 2, 3}}, "Key:\n- 1\n- 2\n- 3\n"},
 	}
 	for _, testCase := range testCases {
 		actual, err := toYaml(testCase.input)
@@ -530,7 +530,7 @@ func TestToYaml(t *testing.T) {
 func TestFromYaml(t *testing.T) {
 	t.Parallel()
 	testCases := []struct {
-		expected interface{}
+		expected any
 		name     string
 		input    string
 	}{
@@ -547,12 +547,12 @@ func TestFromYaml(t *testing.T) {
 		{
 			name:     "simple key-value with multiple types",
 			input:    "name: John\nage: 30\nactive: true\nheight: 5.9",
-			expected: map[interface{}]interface{}{"name": "John", "age": 30, "active": true, "height": 5.9},
+			expected: map[any]any{"name": "John", "age": 30, "active": true, "height": 5.9},
 		},
 		{
 			name:     "array",
 			input:    "- apple\n- banana\n- 42\n- true",
-			expected: []interface{}{"apple", "banana", 42, true},
+			expected: []any{"apple", "banana", 42, true},
 		},
 		{
 			name:  "nested object",

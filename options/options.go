@@ -24,7 +24,7 @@ const OptDisableDependencyPrompt = "disable-dependency-prompt"
 
 // BoilerplateOptions represents the command-line options for the boilerplate app
 type BoilerplateOptions struct {
-	Vars                    map[string]interface{}
+	Vars                    map[string]any
 	ShellCommandAnswers     map[string]bool
 	TemplateURL             string
 	TemplateFolder          string

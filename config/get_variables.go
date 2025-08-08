@@ -1,6 +1,7 @@
 package config
 
 import (
+	"maps"
 	"errors"
 	"fmt"
 	"log"
@@ -23,8 +24,8 @@ const MaxReferenceDepth = 20
 // GetVariables gets a value for each of the variables specified in boilerplateConfig, other than those already in existingVariables.
 // The value for a variable can come from the user (if the non-interactive option isn't set), the default value in the
 // config, or a command line option.
-func GetVariables(opts *options.BoilerplateOptions, boilerplateConfig, rootBoilerplateConfig *BoilerplateConfig, thisDep variables.Dependency) (map[string]interface{}, error) {
-	renderedVariables := map[string]interface{}{}
+func GetVariables(opts *options.BoilerplateOptions, boilerplateConfig, rootBoilerplateConfig *BoilerplateConfig, thisDep variables.Dependency) (map[string]any, error) {
+	renderedVariables := map[string]any{}
 
 	// Add a variable for all variables contained in the root config file. This will allow Golang template users
 	// to directly access these with an expression like "{{ .BoilerplateConfigVars.foo.Default }}"
@@ -41,7 +42,7 @@ func GetVariables(opts *options.BoilerplateOptions, boilerplateConfig, rootBoile
 	renderedVariables["BoilerplateConfigDeps"] = rootConfigDeps
 
 	// Add a variable for "the boilerplate template currently being processed".
-	thisTemplateProps := map[string]interface{}{}
+	thisTemplateProps := map[string]any{}
 	thisTemplateProps["Config"] = boilerplateConfig
 	thisTemplateProps["Options"] = opts
 	thisTemplateProps["CurrentDep"] = thisDep
@@ -50,12 +51,10 @@ func GetVariables(opts *options.BoilerplateOptions, boilerplateConfig, rootBoile
 	// The variables up to this point don't need any additional processing as they are builtin. User defined variables
 	// can reference and use Go template syntax, so we pass them through a rendering pipeline to ensure they are
 	// evaluated to values that can be used in the rest of the templates.
-	variablesToRender := map[string]interface{}{}
+	variablesToRender := map[string]any{}
 
 	// Collect the variable values that have been passed in from the command line.
-	for key, value := range opts.Vars {
-		variablesToRender[key] = value
-	}
+	maps.Copy(variablesToRender, opts.Vars)
 
 	// Collect the variable values that are defined in the config and get the value.
 	variablesInConfig := boilerplateConfig.GetVariablesMap()
@@ -127,10 +126,10 @@ func GetVariables(opts *options.BoilerplateOptions, boilerplateConfig, rootBoile
 func GetValueForVariable(
 	variable variables.Variable,
 	variablesInConfig map[string]variables.Variable,
-	valuesForPreviousVariables map[string]interface{},
+	valuesForPreviousVariables map[string]any,
 	opts *options.BoilerplateOptions,
 	referenceDepth int,
-) (interface{}, error) {
+) (any, error) {
 	if referenceDepth > MaxReferenceDepth {
 		return nil, pkgErrors.WithStackTrace(CyclicalReference{VariableName: variable.Name(), ReferenceName: variable.Reference()})
 	}
@@ -173,7 +172,7 @@ func GetValueForVariable(
 
 // Get a value for the given variable. The value can come from the user (if the non-interactive option isn't set), the
 // default value in the config, or a command line option.
-func getVariable(variable variables.Variable, opts *options.BoilerplateOptions) (interface{}, error) {
+func getVariable(variable variables.Variable, opts *options.BoilerplateOptions) (any, error) {
 	valueFromVars, valueSpecifiedInVars := getVariableFromVars(variable, opts)
 
 	switch {
@@ -191,7 +190,7 @@ func getVariable(variable variables.Variable, opts *options.BoilerplateOptions) 
 }
 
 // Return the value of the given variable from vars passed in as command line options
-func getVariableFromVars(variable variables.Variable, opts *options.BoilerplateOptions) (interface{}, bool) {
+func getVariableFromVars(variable variables.Variable, opts *options.BoilerplateOptions) (any, bool) {
 	for name, value := range opts.Vars {
 		if name == variable.Name() {
 			return value, true
@@ -202,7 +201,7 @@ func getVariableFromVars(variable variables.Variable, opts *options.BoilerplateO
 }
 
 // Get the value for the given variable by prompting the user
-func getVariableFromUser(variable variables.Variable, invalidEntries variables.InvalidEntries) (interface{}, error) {
+func getVariableFromUser(variable variables.Variable, invalidEntries variables.InvalidEntries) (any, error) {
 	// Add a newline for legibility and padding
 	fmt.Println()
 
@@ -292,7 +291,7 @@ func getUserInput(variable variables.Variable) (string, error) {
 }
 
 func validateUserInput(value string, variable variables.Variable) (map[string]bool, bool) {
-	var valueToValidate interface{}
+	var valueToValidate any
 	if value == "" {
 		valueToValidate = variable.Default()
 	} else {
@@ -331,7 +330,7 @@ func validateUserInput(value string, variable variables.Variable) (map[string]bo
 
 // RenderValidationErrors displays in user-legible format the exact validation errors
 // that the user's last submission generated
-func renderValidationErrors(val interface{}, m map[string]bool) {
+func renderValidationErrors(val any, m map[string]bool) {
 	pterm.Warning.WithPrefix(pterm.Prefix{Text: "Invalid entry"}).Println(val)
 
 	for k, v := range m {

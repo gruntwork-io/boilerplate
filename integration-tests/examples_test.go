@@ -85,9 +85,6 @@ func TestExamplesAsRemoteTemplate(t *testing.T) {
 			return
 		}
 		for _, example := range examples {
-			// Capture range variable to avoid it changing on each iteration during the tests
-			example := example
-
 			if !example.IsDir() {
 				continue
 			}

@@ -11,8 +11,8 @@ type SkipFile struct {
 
 // MarshalYAML implements the go-yaml marshaler interface so that the config can be marshaled into yaml. We use a custom marshaler
 // instead of defining the fields as tags so that we skip the attributes that are empty.
-func (skipFile SkipFile) MarshalYAML() (interface{}, error) {
-	skipFileYml := map[string]interface{}{}
+func (skipFile SkipFile) MarshalYAML() (any, error) {
+	skipFileYml := map[string]any{}
 	if skipFile.Path != "" {
 		skipFileYml["path"] = skipFile.Path
 	}
@@ -37,7 +37,7 @@ func (skipFile SkipFile) MarshalYAML() (interface{}, error) {
 //   - not_path: <PATH>
 //
 // convert to a list of SkipFile structs.
-func UnmarshalSkipFilesFromBoilerplateConfigYaml(fields map[string]interface{}) ([]SkipFile, error) {
+func UnmarshalSkipFilesFromBoilerplateConfigYaml(fields map[string]any) ([]SkipFile, error) {
 	rawSkipFiles, err := unmarshalListOfFields(fields, "skip_files")
 	if err != nil || rawSkipFiles == nil {
 		return nil, err
@@ -64,7 +64,7 @@ func UnmarshalSkipFilesFromBoilerplateConfigYaml(fields map[string]interface{}) 
 // if: <SKIPIF>
 //
 // This method unmarshals the YAML data into a SkipFile struct
-func unmarshalSkipFileFromBoilerplateConfigYaml(fields map[string]interface{}) (*SkipFile, error) {
+func unmarshalSkipFileFromBoilerplateConfigYaml(fields map[string]any) (*SkipFile, error) {
 	pathPtr, err := unmarshalStringField(fields, "path", false, "")
 	if err != nil {
 		return nil, err

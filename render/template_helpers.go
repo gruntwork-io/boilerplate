@@ -1,6 +1,7 @@
 package render
 
 import (
+	"maps"
 	"bufio"
 	"crypto/sha256"
 	"fmt"
@@ -69,7 +70,7 @@ func CreateTemplateHelpers(templatePath string, opts *options.BoilerplateOptions
 	sprigFuncs["trimPrefixSprig"] = sprigFuncs["trimPrefix"]
 	sprigFuncs["trimSuffixSprig"] = sprigFuncs["trimSuffix"]
 
-	boilerplateFuncs := map[string]interface{}{
+	boilerplateFuncs := map[string]any{
 		"roundInt": wrapFloatToIntFunction(round),
 		"ceilInt":  wrapFloatToFloatFunction(math.Ceil),
 		"floorInt": wrapFloatToFloatFunction(math.Floor),
@@ -103,7 +104,7 @@ func CreateTemplateHelpers(templatePath string, opts *options.BoilerplateOptions
 		"relPath":               relPath,
 		"boilerplateConfigDeps": boilerplateConfigDeps(opts),
 		"boilerplateConfigVars": boilerplateConfigVars(opts),
-		"vars":                  func() map[string]interface{} { return opts.Vars },
+		"vars":                  func() map[string]any { return opts.Vars },
 		"envWithDefault":        env,
 
 		// DEPRECATIONS
@@ -173,14 +174,10 @@ func CreateTemplateHelpers(templatePath string, opts *options.BoilerplateOptions
 		"slice": slice,
 	}
 
-	funcs := map[string]interface{}{}
-	for k, v := range sprigFuncs {
-		funcs[k] = v
-	}
+	funcs := map[string]any{}
+	maps.Copy(funcs, sprigFuncs)
 
-	for k, v := range boilerplateFuncs {
-		funcs[k] = v
-	}
+	maps.Copy(funcs, boilerplateFuncs)
 
 	return funcs
 }
@@ -200,7 +197,7 @@ func wrapWithTemplatePath(templatePath string, opts *options.BoilerplateOptions,
 }
 
 // This works exactly like wrapWithTemplatePath, but it is adapted to the function args for the include helper function.
-func wrapIncludeWithTemplatePath(templatePath string, opts *options.BoilerplateOptions) func(string, map[string]interface{}) (string, error) {
+func wrapIncludeWithTemplatePath(templatePath string, opts *options.BoilerplateOptions) func(string, map[string]any) (string, error) {
 	return func(path string, varData map[string]interface{}) (string, error) {
 		return include(templatePath, opts, path, varData)
 	}

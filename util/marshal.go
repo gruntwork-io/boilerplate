@@ -9,8 +9,8 @@ import (
 
 // MarshalListOfObjectsToYAML will marshal the list of objects to yaml by calling MarshalYAML on every item in the list
 // and return the results as a list. This is useful when building a custom YAML marshaler.
-func MarshalListOfObjectsToYAML(inputList []interface{}) ([]interface{}, error) {
-	output := []interface{}{}
+func MarshalListOfObjectsToYAML(inputList []any) ([]any, error) {
+	output := []any{}
 
 	for _, item := range inputList {
 		itemAsMarshaler, hasType := item.(yaml.Marshaler)
@@ -33,7 +33,7 @@ func MarshalListOfObjectsToYAML(inputList []interface{}) ([]interface{}, error) 
 
 // ObjectMarshalingErr is returned when there was an error marshaling the given object to yaml.
 type ObjectMarshalingErr struct {
-	object        interface{}
+	object        any
 	underlyingErr error
 }
 
@@ -43,7 +43,7 @@ func (err ObjectMarshalingErr) Error() string {
 
 // UnmarshalableObjectErr is returned when the given object does not implement Marshaler interface.
 type UnmarshalableObjectErr struct {
-	object interface{}
+	object any
 }
 
 func (err UnmarshalableObjectErr) Error() string {

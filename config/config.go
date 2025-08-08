@@ -47,8 +47,8 @@ func (config *BoilerplateConfig) GetVariablesMap() map[string]variables.Variable
 //  2. We need to provide Defaults for optional fields, such as "type"
 //  3. We want to validate the variable as part of the unmarshalling process so we never have invalid Variable or
 //     Dependency classes floating around
-func (config *BoilerplateConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	var fields map[string]interface{}
+func (config *BoilerplateConfig) UnmarshalYAML(unmarshal func(any) error) error {
+	var fields map[string]any
 	if err := unmarshal(&fields); err != nil {
 		return err
 	}
@@ -103,14 +103,14 @@ func (config *BoilerplateConfig) UnmarshalYAML(unmarshal func(interface{}) error
 
 // MarshalYAML implements the go-yaml marshaler interface so that the config can be marshaled into yaml. We use a custom marshaler
 // instead of defining the fields as tags so that we skip the attributes that are empty.
-func (config *BoilerplateConfig) MarshalYAML() (interface{}, error) {
-	configYml := map[string]interface{}{}
+func (config *BoilerplateConfig) MarshalYAML() (any, error) {
+	configYml := map[string]any{}
 
 	if len(config.Variables) > 0 {
 		// Due to go type system, we can only pass through []interface{}, even though []Variable is technically
 		// polymorphic to that type. So we reconstruct the list using the right type before passing it in to the marshal
 		// function.
-		interfaceList := []interface{}{}
+		interfaceList := []any{}
 		for _, variable := range config.Variables {
 			interfaceList = append(interfaceList, variable)
 		}
@@ -127,7 +127,7 @@ func (config *BoilerplateConfig) MarshalYAML() (interface{}, error) {
 		// Due to go type system, we can only pass through []interface{}, even though []Dependency is technically
 		// polymorphic to that type. So we reconstruct the list using the right type before passing it in to the marshal
 		// function.
-		interfaceList := []interface{}{}
+		interfaceList := []any{}
 		for _, dep := range config.Dependencies {
 			interfaceList = append(interfaceList, dep)
 		}
@@ -157,7 +157,7 @@ func (config *BoilerplateConfig) MarshalYAML() (interface{}, error) {
 		// Due to go type system, we can only pass through []interface{}, even though []SkipFile is technically
 		// polymorphic to that type. So we reconstruct the list using the right type before passing it in to the marshal
 		// function.
-		interfaceList := []interface{}{}
+		interfaceList := []any{}
 		for _, skipFile := range config.SkipFiles {
 			interfaceList = append(interfaceList, skipFile)
 		}
@@ -174,7 +174,7 @@ func (config *BoilerplateConfig) MarshalYAML() (interface{}, error) {
 		// Due to go type system, we can only pass through []interface{}, even though []Engine is technically
 		// polymorphic to that type. So we reconstruct the list using the right type before passing it in to the marshal
 		// function.
-		interfaceList := []interface{}{}
+		interfaceList := []any{}
 		for _, engine := range config.Engines {
 			interfaceList = append(interfaceList, engine)
 		}
