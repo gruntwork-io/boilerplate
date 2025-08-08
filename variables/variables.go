@@ -30,7 +30,7 @@ type Variable interface {
 	Order() int
 
 	// The default value for the variable, if any
-	Default() interface{}
+	Default() any
 
 	// The name of another variable from which this variable should take its value
 	Reference() string
@@ -45,7 +45,7 @@ type Variable interface {
 	WithDescription(string) Variable
 
 	// Return a copy of this variable but with the default set to the given value
-	WithDefault(interface{}) Variable
+	WithDefault(any) Variable
 
 	// Create a human-readable, string representation of the variable
 	String() string
@@ -54,7 +54,7 @@ type Variable interface {
 	ExampleValue() string
 
 	// A custom marshaling function to translate back to YAML, as expected by go-yaml.
-	MarshalYAML() (interface{}, error)
+	MarshalYAML() (any, error)
 
 	// Validations that should be run on the variable
 	Validations() []CustomValidationRule
@@ -62,7 +62,7 @@ type Variable interface {
 
 // A private implementation of the Variable interface that forces all users to use our public constructors
 type defaultVariable struct {
-	defaultValue interface{}
+	defaultValue any
 	name         string
 	description  string
 	reference    string
@@ -154,7 +154,7 @@ func (variable defaultVariable) Order() int {
 	return variable.order
 }
 
-func (variable defaultVariable) Default() interface{} {
+func (variable defaultVariable) Default() any {
 	return variable.defaultValue
 }
 
@@ -180,7 +180,7 @@ func (variable defaultVariable) WithDescription(description string) Variable {
 	return variable
 }
 
-func (variable defaultVariable) WithDefault(value interface{}) Variable {
+func (variable defaultVariable) WithDefault(value any) Variable {
 	variable.defaultValue = value
 	return variable
 }
@@ -211,8 +211,8 @@ func (variable defaultVariable) ExampleValue() string {
 }
 
 // Define a custom marshaler for YAML so that variables (and thus any struct using it) can be marshaled into YAML.
-func (variable defaultVariable) MarshalYAML() (interface{}, error) {
-	varYml := map[string]interface{}{}
+func (variable defaultVariable) MarshalYAML() (any, error) {
+	varYml := map[string]any{}
 	// We avoid a straight assignment to ensure that only fields that are actually set are rendered out.
 	if variable.Name() != "" {
 		varYml["name"] = variable.Name()

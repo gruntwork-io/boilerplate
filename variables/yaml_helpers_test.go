@@ -26,14 +26,14 @@ func TestParseVariablesFromVarFileContents(t *testing.T) {
 	t.Parallel()
 
 	testCases := []struct {
-		expectedVars        map[string]interface{}
+		expectedVars        map[string]any
 		fileContents        string
 		expectYamlTypeError bool
 	}{
-		{fileContents: "", expectYamlTypeError: false, expectedVars: map[string]interface{}{}},
-		{fileContents: yamlFileOneVar, expectYamlTypeError: false, expectedVars: map[string]interface{}{"key": "value"}},
-		{fileContents: yamlFileMultipleVars, expectYamlTypeError: false, expectedVars: map[string]interface{}{"key1": "value1", "key2": "value2", "key3": "value3"}},
-		{fileContents: "invalid yaml", expectYamlTypeError: true, expectedVars: map[string]interface{}{}},
+		{fileContents: "", expectYamlTypeError: false, expectedVars: map[string]any{}},
+		{fileContents: yamlFileOneVar, expectYamlTypeError: false, expectedVars: map[string]any{"key": "value"}},
+		{fileContents: yamlFileMultipleVars, expectYamlTypeError: false, expectedVars: map[string]any{"key1": "value1", "key2": "value2", "key3": "value3"}},
+		{fileContents: "invalid yaml", expectYamlTypeError: true, expectedVars: map[string]any{}},
 	}
 
 	for _, testCase := range testCases {
@@ -55,10 +55,10 @@ func TestParseVariablesFromKeyValuePairs(t *testing.T) {
 
 	testCases := []struct {
 		expectedError error
-		expectedVars  map[string]interface{}
+		expectedVars  map[string]any
 		keyValuePairs []string
 	}{
-		{keyValuePairs: []string{}, expectedError: nil, expectedVars: map[string]interface{}{}},
+		{keyValuePairs: []string{}, expectedError: nil, expectedVars: map[string]any{}},
 		{keyValuePairs: []string{"key=value"}, expectedError: nil, expectedVars: map[string]interface{}{"key": "value"}},
 		{keyValuePairs: []string{"key="}, expectedError: nil, expectedVars: map[string]interface{}{"key": nil}},
 		{keyValuePairs: []string{"key1=value1", "key2=value2", "key3=value3"}, expectedError: nil, expectedVars: map[string]interface{}{"key1": "value1", "key2": "value2", "key3": "value3"}},

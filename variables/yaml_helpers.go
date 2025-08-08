@@ -24,13 +24,13 @@ import (
 //
 // This method looks up the given fieldName in the map and unmarshals the data inside of it it into a map of the
 // key:value pairs.
-func unmarshalMapOfFields(fields map[string]any, fieldName string) (map[string]interface{}, error) {
+func unmarshalMapOfFields(fields map[string]any, fieldName string) (map[string]any, error) {
 	fieldAsYaml, containsField := fields[fieldName]
 	if !containsField || fieldAsYaml == nil {
 		return nil, nil
 	}
 
-	asYamlMap, isYamlMap := fieldAsYaml.(map[any]interface{})
+	asYamlMap, isYamlMap := fieldAsYaml.(map[any]any)
 	if !isYamlMap {
 		return nil, errors.WithStackTrace(InvalidTypeForField{FieldName: fieldName, ExpectedType: "map[string]any", ActualType: reflect.TypeOf(fieldAsYaml)})
 	}
@@ -126,7 +126,7 @@ func UnmarshalListOfStrings(fields map[string]any, fieldName string) ([]string, 
 //
 // This method takes looks up the given fieldName in the map and unmarshals the data inside of it it into a list of
 // maps, where each map contains the set of key:value pairs
-func unmarshalListOfFields(fields map[string]any, fieldName string) ([]map[string]interface{}, error) {
+func unmarshalListOfFields(fields map[string]any, fieldName string) ([]map[string]any, error) {
 	fieldAsYaml, containsField := fields[fieldName]
 	if !containsField || fieldAsYaml == nil {
 		return nil, nil
@@ -140,7 +140,7 @@ func unmarshalListOfFields(fields map[string]any, fieldName string) ([]map[strin
 	listOfFields := []map[string]any{}
 
 	for _, asYaml := range asYamlList {
-		asYamlMap, isYamlMap := asYaml.(map[any]interface{})
+		asYamlMap, isYamlMap := asYaml.(map[any]any)
 		if !isYamlMap {
 			return nil, errors.WithStackTrace(InvalidTypeForField{FieldName: fieldName, ExpectedType: "map[string]any", ActualType: reflect.TypeOf(asYaml)})
 		}

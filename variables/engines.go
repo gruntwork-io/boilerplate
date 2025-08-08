@@ -39,7 +39,7 @@ var availableTemplateEngines = []string{
 //     template_engine: <TEMPLATE_ENGINE>
 //
 // convert to a list of Engine structs.
-func UnmarshalEnginesFromBoilerplateConfigYaml(fields map[string]interface{}) ([]Engine, error) {
+func UnmarshalEnginesFromBoilerplateConfigYaml(fields map[string]any) ([]Engine, error) {
 	rawEngines, err := unmarshalListOfFields(fields, "engines")
 	if err != nil || rawEngines == nil {
 		return nil, err
@@ -65,7 +65,7 @@ func UnmarshalEnginesFromBoilerplateConfigYaml(fields map[string]interface{}) ([
 // template_engine: <TEMPLATE_ENGINE>
 //
 // This method unmarshals the YAML data into an Engine struct
-func unmarshalEngineFromBoilerplateConfigYaml(fields map[string]interface{}) (*Engine, error) {
+func unmarshalEngineFromBoilerplateConfigYaml(fields map[string]any) (*Engine, error) {
 	pathPtr, err := unmarshalStringField(fields, "path", true, "")
 	if err != nil {
 		return nil, err

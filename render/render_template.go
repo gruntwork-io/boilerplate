@@ -17,7 +17,7 @@ const MaxRenderAttempts = 15
 // RenderTemplateWithPartials renders the template at templatePath with the contents of the root template (the template
 // named by the user on the command line) as well as all of the partials matched by the provided globs using the Go
 // template engine, passing in the given variables as data.
-func RenderTemplateWithPartials(templatePath string, partials []string, variables map[string]interface{}, opts *options.BoilerplateOptions) (string, error) {
+func RenderTemplateWithPartials(templatePath string, partials []string, variables map[string]any, opts *options.BoilerplateOptions) (string, error) {
 	tmpl, err := getTemplate(templatePath, opts).ParseGlob(templatePath)
 	if err != nil {
 		return "", errors.WithStackTrace(err)
@@ -48,7 +48,7 @@ func RenderTemplateWithPartials(templatePath string, partials []string, variable
 
 // RenderTemplateFromString renders the template at templatePath, with contents templateContents, using the Go template engine, passing in the
 // given variables as data.
-func RenderTemplateFromString(templatePath string, templateContents string, variables map[string]interface{}, opts *options.BoilerplateOptions) (string, error) {
+func RenderTemplateFromString(templatePath string, templateContents string, variables map[string]any, opts *options.BoilerplateOptions) (string, error) {
 	tmpl := getTemplate(templatePath, opts)
 
 	parsedTemplate, err := tmpl.Parse(templateContents)
@@ -68,7 +68,7 @@ func getTemplate(templatePath string, opts *options.BoilerplateOptions) *templat
 }
 
 // executeTemplate executes a parsed template with a given set of variable inputs and return the output as a string
-func executeTemplate(tmpl *template.Template, variables map[string]interface{}) (string, error) {
+func executeTemplate(tmpl *template.Template, variables map[string]any) (string, error) {
 	var output bytes.Buffer
 	if err := tmpl.Execute(&output, variables); err != nil {
 		return "", errors.WithStackTrace(err)
@@ -94,8 +94,8 @@ func executeTemplate(tmpl *template.Template, variables map[string]interface{}) 
 // Instead, we do a single template render on each run and reject any that return with an error.
 func RenderVariables(
 	opts *options.BoilerplateOptions,
-	variablesToRender map[string]interface{},
-	alreadyRenderedVariables map[string]interface{},
+	variablesToRender map[string]any,
+	alreadyRenderedVariables map[string]any,
 ) (map[string]interface{}, error) {
 	// Force to use ExitWithError for missing key, because by design this algorithm depends on boilerplate error-ing if
 	// a variable can't be rendered due to a reference that hasn't been rendered yet. If OnMissingKey was invalid or

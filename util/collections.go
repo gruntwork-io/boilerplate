@@ -1,16 +1,18 @@
 // Package util provides utility functions for common operations.
 package util
 
-import "fmt"
+import (
+	"fmt"
+	"maps"
+	"slices"
+)
 
 // MergeMaps merges all the maps into one. Sadly, Go has no generics, so this is only defined for string to interface maps.
-func MergeMaps(maps ...map[string]any) map[string]any {
+func MergeMaps(m ...map[string]any) map[string]any {
 	out := map[string]any{}
 
-	for _, currMap := range maps {
-		for key, value := range currMap {
-			out[key] = value
-		}
+	for _, currMap := range m {
+		maps.Copy(out, currMap)
 	}
 
 	return out
@@ -18,13 +20,7 @@ func MergeMaps(maps ...map[string]any) map[string]any {
 
 // ListContains returns true if the given list of strings (haystack) contains the given string (needle)
 func ListContains(needle string, haystack []string) bool {
-	for _, str := range haystack {
-		if needle == str {
-			return true
-		}
-	}
-
-	return false
+	return slices.Contains(haystack, needle)
 }
 
 // ToStringList converts a generic list to a list of strings

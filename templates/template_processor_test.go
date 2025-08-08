@@ -22,13 +22,13 @@ func TestOutPath(t *testing.T) {
 		file           string
 		templateFolder string
 		outputFolder   string
-		variables      map[string]interface{}
+		variables      map[string]any
 		expected       string
 	}{
-		{file: "template-folder/foo.txt", templateFolder: "template-folder", outputFolder: "output-folder", variables: map[string]interface{}{}, expected: "output-folder/foo.txt"},
-		{file: "foo/bar/template-folder/foo.txt", templateFolder: "foo/bar/template-folder", outputFolder: "output-folder", variables: map[string]interface{}{}, expected: "output-folder/foo.txt"},
-		{file: "template-folder/foo.txt", templateFolder: pwd + "/template-folder", outputFolder: "output-folder", variables: map[string]interface{}{}, expected: "output-folder/foo.txt"},
-		{file: "template-folder/foo/bar/baz.txt", templateFolder: pwd + "/template-folder", outputFolder: "output-folder", variables: map[string]interface{}{}, expected: "output-folder/foo/bar/baz.txt"},
+		{file: "template-folder/foo.txt", templateFolder: "template-folder", outputFolder: "output-folder", variables: map[string]any{}, expected: "output-folder/foo.txt"},
+		{file: "foo/bar/template-folder/foo.txt", templateFolder: "foo/bar/template-folder", outputFolder: "output-folder", variables: map[string]any{}, expected: "output-folder/foo.txt"},
+		{file: "template-folder/foo.txt", templateFolder: pwd + "/template-folder", outputFolder: "output-folder", variables: map[string]any{}, expected: "output-folder/foo.txt"},
+		{file: "template-folder/foo/bar/baz.txt", templateFolder: pwd + "/template-folder", outputFolder: "output-folder", variables: map[string]any{}, expected: "output-folder/foo/bar/baz.txt"},
 		{file: "template-folder/{{.Foo}}.txt", templateFolder: pwd + "/template-folder", outputFolder: "output-folder", variables: map[string]interface{}{"Foo": "foo"}, expected: "output-folder/foo.txt"},
 		{file: "template-folder/{{.Foo | dasherize}}.txt", templateFolder: pwd + "/template-folder", outputFolder: "output-folder", variables: map[string]interface{}{"Foo": "Foo Bar Baz"}, expected: "output-folder/foo-bar-baz.txt"},
 	}

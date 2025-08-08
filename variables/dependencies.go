@@ -24,8 +24,8 @@ type Dependency struct {
 
 // MarshalYAML implements the go-yaml marshaler interface so that the config can be marshaled into yaml. We use a custom marshaler
 // instead of defining the fields as tags so that we skip the attributes that are empty.
-func (dependency Dependency) MarshalYAML() (interface{}, error) {
-	depYml := map[string]interface{}{}
+func (dependency Dependency) MarshalYAML() (any, error) {
+	depYml := map[string]any{}
 	if dependency.Name != "" {
 		depYml["name"] = dependency.Name
 	}
@@ -46,7 +46,7 @@ func (dependency Dependency) MarshalYAML() (interface{}, error) {
 		// Due to go type system, we can only pass through []interface{}, even though []Variable is technically
 		// polymorphic to that type. So we reconstruct the list using the right type before passing it in to the marshal
 		// function.
-		interfaceList := []interface{}{}
+		interfaceList := []any{}
 		for _, variable := range dependency.Variables {
 			interfaceList = append(interfaceList, variable)
 		}
@@ -102,7 +102,7 @@ func SplitIntoDependencyNameAndVariableName(uniqueVariableName string) (string, 
 //     output-folder: <OUTPUT_FOLDER>
 //
 // This method takes the data above and unmarshals it into a list of Dependency objects
-func UnmarshalDependenciesFromBoilerplateConfigYaml(fields map[string]interface{}) ([]Dependency, error) {
+func UnmarshalDependenciesFromBoilerplateConfigYaml(fields map[string]any) ([]Dependency, error) {
 	unmarshalledDependencies := []Dependency{}
 	dependencyNames := []string{}
 
@@ -136,7 +136,7 @@ func UnmarshalDependenciesFromBoilerplateConfigYaml(fields map[string]interface{
 // output-folder: <OUTPUT_FOLDER>
 //
 // This method takes the data above and unmarshals it into a Dependency object
-func UnmarshalDependencyFromBoilerplateConfigYaml(fields map[string]interface{}) (*Dependency, error) {
+func UnmarshalDependencyFromBoilerplateConfigYaml(fields map[string]any) (*Dependency, error) {
 	name, err := unmarshalStringField(fields, "name", true, "")
 	if err != nil {
 		return nil, err

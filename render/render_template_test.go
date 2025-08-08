@@ -55,15 +55,15 @@ func TestRenderTemplate(t *testing.T) {
 
 	testCases := []struct {
 		templateContents  string
-		variables         map[string]interface{}
+		variables         map[string]any
 		missingKeyAction  options.MissingKeyAction
 		expectedErrorText string
 		expectedOutput    string
 		skip              bool // flag to skip tests
 	}{
-		{templateContents: "", variables: map[string]interface{}{}, missingKeyAction: options.ExitWithError, expectedErrorText: "", expectedOutput: "", skip: false},
-		{templateContents: "plain text template", variables: map[string]interface{}{}, missingKeyAction: options.ExitWithError, expectedErrorText: "", expectedOutput: "plain text template", skip: false},
-		{templateContents: "variable lookup: {{.Foo}}", variables: map[string]interface{}{"Foo": "bar"}, missingKeyAction: options.ExitWithError, expectedErrorText: "", expectedOutput: "variable lookup: bar", skip: false},
+		{templateContents: "", variables: map[string]any{}, missingKeyAction: options.ExitWithError, expectedErrorText: "", expectedOutput: "", skip: false},
+		{templateContents: "plain text template", variables: map[string]any{}, missingKeyAction: options.ExitWithError, expectedErrorText: "", expectedOutput: "plain text template", skip: false},
+		{templateContents: "variable lookup: {{.Foo}}", variables: map[string]any{"Foo": "bar"}, missingKeyAction: options.ExitWithError, expectedErrorText: "", expectedOutput: "variable lookup: bar", skip: false},
 		{templateContents: "missing variable lookup, ExitWithError: {{.Foo}}", variables: map[string]interface{}{}, missingKeyAction: options.ExitWithError, expectedErrorText: "map has no entry for key \"Foo\"", expectedOutput: "", skip: false},
 		{templateContents: "missing variable lookup, Invalid: {{.Foo}}", variables: map[string]interface{}{}, missingKeyAction: options.Invalid, expectedErrorText: "", expectedOutput: "missing variable lookup, Invalid: <no value>", skip: false},
 		// Note: options.ZeroValue does not work correctly with Go templating when you pass in a map[string]interface{}. For some reason, it always prints <no value>.

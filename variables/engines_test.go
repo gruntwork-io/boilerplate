@@ -35,15 +35,12 @@ func TestEnginesRequiresSupportedTemplateEngine(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		// Capture range variable so it does not change across for loop iterations.
-		tc := tc
-
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			mockFields := map[string]interface{}{
-				"engines": []interface{}{
-					map[interface{}]interface{}{
+			mockFields := map[string]any{
+				"engines": []any{
+					map[any]any{
 						"path":            "foo." + tc.name,
 						"template_engine": tc.typeStr,
 					},

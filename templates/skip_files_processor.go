@@ -27,7 +27,7 @@ type ProcessedSkipFile struct {
 // processSkipFiles will take the skip_files list and process them in the current boilerplate context. This includes:
 // - Rendering the glob expression for the Path attribute.
 // - Rendering the if attribute using the provided variables.
-func processSkipFiles(skipFiles []variables.SkipFile, opts *options.BoilerplateOptions, variables map[string]interface{}) ([]ProcessedSkipFile, error) {
+func processSkipFiles(skipFiles []variables.SkipFile, opts *options.BoilerplateOptions, variables map[string]any) ([]ProcessedSkipFile, error) {
 	output := []ProcessedSkipFile{}
 
 	for _, skipFile := range skipFiles {
@@ -66,7 +66,7 @@ func processSkipFiles(skipFiles []variables.SkipFile, opts *options.BoilerplateO
 }
 
 // Return true if the if parameter of the given SkipFile evaluates to a "true" value
-func skipFileIfCondition(skipFile variables.SkipFile, opts *options.BoilerplateOptions, variables map[string]interface{}) (bool, error) {
+func skipFileIfCondition(skipFile variables.SkipFile, opts *options.BoilerplateOptions, variables map[string]any) (bool, error) {
 	// If the "if" attribute of skip_files was not specified, then default to true.
 	if skipFile.If == "" {
 		return true, nil
@@ -101,7 +101,7 @@ func debugLogForMatchedPaths(sourcePath string, paths []string, directiveName st
 
 // renderGlobPath will render the glob of the given path in the template folder and return the list of matched paths.
 // Note that the paths will be canonicalized to unix slashes regardless of OS.
-func renderGlobPath(opts *options.BoilerplateOptions, path string, variables map[string]interface{}) ([]string, error) {
+func renderGlobPath(opts *options.BoilerplateOptions, path string, variables map[string]any) ([]string, error) {
 	if path == "" {
 		return []string{}, nil
 	}

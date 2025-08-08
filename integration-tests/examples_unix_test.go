@@ -33,9 +33,6 @@ func TestExamplesShell(t *testing.T) {
 	t.Run("group", func(t *testing.T) {
 		t.Parallel()
 		for _, example := range shellExamples {
-			// Capture range variable to avoid it changing on each iteration during the tests
-			example := example
-
 			outputFolder := path.Join(outputBasePath, example)
 			varFile := path.Join(examplesVarFilesBasePath, example, "vars.yml")
 			expectedOutputFolder := path.Join(examplesExpectedOutputBasePath, example)

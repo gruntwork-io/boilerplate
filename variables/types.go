@@ -44,7 +44,7 @@ type InvalidEntries struct {
 }
 
 type ValidationIssue struct {
-	Value         interface{}
+	Value         any
 	ValidationMap map[string]bool
 }
 

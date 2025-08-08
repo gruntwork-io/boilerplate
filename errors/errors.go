@@ -21,7 +21,7 @@ func WithStackTrace(err error) error {
 // WithStackTraceAndPrefix wraps the given error in an Error type that contains the stack trace and has the given message prepended as part of
 // the error message. If the given error already has a stack trace, it is used directly. If the given error is nil,
 // return nil.
-func WithStackTraceAndPrefix(err error, message string, args ...interface{}) error {
+func WithStackTraceAndPrefix(err error, message string, args ...any) error {
 	if err == nil {
 		return nil
 	}
