@@ -155,6 +155,7 @@ Learn more about boilerplate in the following sections:
 1. [Dependencies](#dependencies)
 1. [Hooks](#hooks)
 1. [Skip Files](#skip-files)
+1. [Skip Templating](#skip-files)
 1. [Templates](#templates)
 1. [Validations](#validations)
 1. [Variable Ordering](#variable-ordering)
@@ -312,6 +313,9 @@ skip_files:
   - path: subfolder/README.md
     if: {{ not .ShowLogo }}
 
+skip_templating:
+  - path: subfolder/helm-charts/*
+
 engines:
   - path: subfolder/foo.json.jsonnet
     template_engine: jsonnet
@@ -391,6 +395,16 @@ be excluded. You can conditionally skip the file using the `if` field, which sho
 values `"true"` or `"false"`.
 
 See the [Skip Files](#skip-files) section for more info.
+
+**Skip Templating**: Use *skip_templating* to specify files in the template folder that should not be parsed by the templating engine but will be copied to the `output-folder` with the same path and file name . The `path` field
+is the relative path from the template folder root (where the `boilerplate.yml` file is defined) of the file that should
+be copied without rendering. You can conditionally skip the templating of the file using the `if` field, which should either be a YAML boolean value
+(`true` or `false`), or Go templating syntax (which can use the boilerplate variables) that evaluates to the string
+values `"true"` or `"false"`.
+
+See the [Skip Files](#skip-files) section for more info on the configuration as the syntax is the same.
+
+If a file is listed in both `skip_files` and `skip_templating`, the file will be skipped entirely.
 
 **Engines**: Use *engines* to specify files in the template folder that should be rendered with an alternative
 templating engine. The `path` field is the relative path from the template folder root (where the `boilerplate.yml` file
@@ -601,11 +615,11 @@ Note the following:
 
 #### Skip Files
 
-You can specify files that should be excluded from the rendered output using the `skip_files` section in
-`boilerplate.yml`. This is most useful when you have templates that need to conditionally exclude files from the
-rendered folder list.
+You can specify files that should be excluded from the rendered output using the `skip_files`, or copied without rendering using the `skip_templating` sections in
+`boilerplate.yml`. `skip_files` is most useful when you have templates that need to conditionally exclude files from the
+rendered folder list. `skip_templating` is useful when you want to copy files without rendering them, such as files that contain syntax similar to the go templating syntax - such as helm charts.
 
-The `skip_files` section is a list of objects with the fields `path`, `not_path`, and `if`, where one of `path` or
+The `skip_files` and `skip_templating` sections are a list of objects with the fields `path`, `not_path`, and `if`, where one of `path` or
 `not_path` is required. When `path` is set, all files that match the `path` attribute will be skipped, while when
 `not_path` is set, all files that DO NOT match the `not_path` attribute are skipped (in other words, only paths that
 match `not_path` are kept).
@@ -623,6 +637,9 @@ Consider the following boilerplate template folder:
 .
 ├── boilerplate.yml
 ├── BOILERPLATE_README.md
+├── helm-charts
+    ├── Chart.yaml
+    └── values.yaml
 └── docs
     ├── README_WITH_ENCRYPTION.md
     └── README_WITHOUT_ENCRYPTION.md
@@ -653,11 +670,25 @@ This will:
 - Skip rendering `docs/README_WITH_ENCRYPTION.md` if `UseEncryption` is set to `false`.
 - If `DocsOnly` is set to `true`, only render the `docs` folder.
 
+Also suppose that you wanted to conditionally select which helm chart file to simly be copied, while rendering the variables. You can use `skip_templating`
+to implement this:
+
+```yaml
+skip_templating:
+  - path: "*/Chart.yaml"
+```
+
+This will:
+
+- Copy `helm-charts/Chart.yaml` to the `output-folder` without processing the file.
+
 For a more concise specification, you can use glob syntax in the `path` to match multiple paths in one entry:
 
 ```yaml
 skip_files:
   - path: "docs/**/*"
+skip_templating:
+  - path: "helm-charts/*"
 ```
 
 

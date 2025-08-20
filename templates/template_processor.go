@@ -624,8 +624,12 @@ func processTemplateFolder(
 ) error {
 	util.Logger.Printf("Processing templates in %s and outputting generated files to %s", opts.TemplateFolder, opts.OutputFolder)
 
-	// Process and render skip files and engines before walking so we only do the rendering operation once.
+	// Process and render skip files, templates and engines before walking so we only do the rendering operation once.
 	processedSkipFiles, err := processSkipFiles(config.SkipFiles, opts, variables)
+	if err != nil {
+		return err
+	}
+	processedSkipTemplating, err := processSkipFiles(config.SkipTemplating, opts, variables)
 	if err != nil {
 		return err
 	}
@@ -643,7 +647,8 @@ func processTemplateFolder(
 			return createOutputDir(path, opts, variables)
 		} else {
 			engine := determineTemplateEngine(processedEngines, path)
-			return processFile(path, opts, variables, partials, engine)
+			skipTemplating := shouldSkipPath(path, opts, processedSkipTemplating)
+			return processFile(path, opts, variables, partials, skipTemplating, engine)
 		}
 	})
 }
@@ -655,8 +660,13 @@ func processFile(
 	opts *options.BoilerplateOptions,
 	variables map[string]interface{},
 	partials []string,
+	skipTemplating bool,
 	engine variables.TemplateEngineType,
 ) error {
+	if skipTemplating {
+		util.Logger.Printf("Skipping templating of %s", path)
+		return copyFile(path, opts, variables)
+	}
 	isText, err := util.IsTextFile(path)
 	if err != nil {
 		return err
