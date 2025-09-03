@@ -162,6 +162,7 @@ Learn more about boilerplate in the following sections:
 1. [Template helpers](#template-helpers)
 1. [Deprecated helpers](#deprecated-helpers)
 1. [Partials](#partials)
+1. [Advanced use cases](#advanced-use-cases)
 
 #### Boilerplate command line options
 
@@ -1119,6 +1120,33 @@ partials:
   - "{{ .TemplatesRoot }}/html/*.html"
   - "{{ .TemplatesRoot }}/css/*.css"
 ```
+
+## Advanced use cases
+
+### Dynamic file naming
+
+Boilerplate supports using variables and template helpers directly in filenames. This allows you to dynamically generate file names based on the variables you define in your `boilerplate.yml` file.
+
+For example, with the following variable definition:
+
+```yaml
+variables:
+  - name: Singular
+    description: The singular form the noun, e.g. BigWidget
+```
+
+You can create a template file named `{{ .Singular | snakeCase }}_entity.go` which will generate a file like `big_widget_entity.go` when the Singular variable is set to "BigWidget".
+
+Another example:
+
+```yaml
+variables:
+  - name: RootTerragruntFileName
+    type: string
+    default: "root.hcl"
+```
+
+With this variable, you can have a template file named `{{ .RootTerragruntFileName }}` which will generate a file named according to the value of RootTerragruntFileName.
 
 ## Alternative project generators
 
