@@ -150,3 +150,51 @@ func testExample(t *testing.T, templateFolder string, outputFolder string, varFi
 		assertDirectoriesEqual(t, expectedOutputFolder, outputFolder)
 	}
 }
+func TestExampleWithManifest(t *testing.T) {
+	t.Parallel()
+
+	templateFolder := "../examples/for-learning-and-testing/website"
+	varFile := "../test-fixtures/examples-var-files/website/vars.yml"
+	
+	outputFolder, err := os.MkdirTemp("", "boilerplate-manifest-test")
+	require.NoError(t, err)
+	defer os.RemoveAll(outputFolder)
+
+	// Change to output directory to test manifest file creation
+	originalDir, err := os.Getwd()
+	require.NoError(t, err)
+	defer os.Chdir(originalDir)
+	
+	err = os.Chdir(outputFolder)
+	require.NoError(t, err)
+
+	app := cli.CreateBoilerplateCli()
+	args := []string{
+		"boilerplate",
+		"--template-url", path.Join(originalDir, templateFolder),
+		"--output-folder", "output",
+		"--var-file", path.Join(originalDir, varFile),
+		"--output-manifest",
+		"--non-interactive",
+	}
+
+	err = app.Run(args)
+	require.NoError(t, err)
+
+	// Check manifest file was created in output directory
+	manifestPath := "output/boilerplate-manifest.json"
+	require.FileExists(t, manifestPath)
+
+	// Read and verify manifest content
+	manifestContent, err := os.ReadFile(manifestPath)
+	require.NoError(t, err)
+	
+	manifestStr := string(manifestContent)
+	// Verify versioned manifest structure
+	assert.Contains(t, manifestStr, "latest_version")
+	assert.Contains(t, manifestStr, "versions")
+	assert.Contains(t, manifestStr, "index.html")
+	assert.Contains(t, manifestStr, "logo.png")
+	assert.Contains(t, manifestStr, "template_url")
+	assert.Contains(t, manifestStr, "boilerplate_version")
+}

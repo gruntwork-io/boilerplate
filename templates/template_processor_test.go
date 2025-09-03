@@ -93,6 +93,97 @@ func TestCloneOptionsForDependency(t *testing.T) {
 	}
 }
 
+func TestProcessTemplateReturnsFiles(t *testing.T) {
+	t.Parallel()
+
+	// Create a temporary directory for the test
+	templateDir, err := os.MkdirTemp("", "template-test")
+	require.NoError(t, err)
+	defer os.RemoveAll(templateDir)
+
+	// Create a temporary output directory
+	outputDir, err := os.MkdirTemp("", "output-test")
+	require.NoError(t, err)
+	defer os.RemoveAll(outputDir)
+
+	// Create a simple template file
+	templateFile := filepath.Join(templateDir, "test.txt")
+	err = os.WriteFile(templateFile, []byte("This is a test!"), 0644)
+	require.NoError(t, err)
+
+	// Create an empty boilerplate.yml file
+	boilerplateYml := filepath.Join(templateDir, "boilerplate.yml")
+	err = os.WriteFile(boilerplateYml, []byte{}, 0644)
+	require.NoError(t, err)
+
+	// Set up options
+	opts := &options.BoilerplateOptions{
+		TemplateFolder:  templateDir,
+		OutputFolder:    outputDir,
+		NonInteractive:  true,
+		OnMissingKey:    options.ExitWithError,
+		OnMissingConfig: options.Exit,
+	}
+
+	// Call ProcessTemplate
+	files, err := ProcessTemplate(opts, opts, variables.Dependency{})
+	require.NoError(t, err)
+	require.NotNil(t, files)
+
+	// Verify the files list contains the expected file
+	require.Len(t, files, 1)
+	assert.Equal(t, "test.txt", files[0])
+
+	// Verify the file content
+	content, err := os.ReadFile(filepath.Join(outputDir, "test.txt"))
+	require.NoError(t, err)
+	assert.Equal(t, "This is a test!", string(content))
+}
+
+func TestProcessTemplate(t *testing.T) {
+	t.Parallel()
+
+	// Create a temporary directory for the test
+	templateDir, err := os.MkdirTemp("", "template-test")
+	require.NoError(t, err)
+	defer os.RemoveAll(templateDir)
+
+	// Create a temporary output directory
+	outputDir, err := os.MkdirTemp("", "output-test")
+	require.NoError(t, err)
+	defer os.RemoveAll(outputDir)
+
+	// Create a simple template file
+	templateFile := filepath.Join(templateDir, "test.txt")
+	err = os.WriteFile(templateFile, []byte("This is a test!"), 0644)
+	require.NoError(t, err)
+
+	// Create an empty boilerplate.yml file
+	boilerplateYml := filepath.Join(templateDir, "boilerplate.yml")
+	err = os.WriteFile(boilerplateYml, []byte{}, 0644)
+	require.NoError(t, err)
+
+	// Set up options
+	opts := &options.BoilerplateOptions{
+		TemplateFolder:  templateDir,
+		OutputFolder:    outputDir,
+		NonInteractive:  true,
+		OnMissingKey:    options.ExitWithError,
+		OnMissingConfig: options.Exit,
+	}
+
+	// Call ProcessTemplate function
+	files, err := ProcessTemplate(opts, opts, variables.Dependency{})
+	require.NoError(t, err)
+	require.Len(t, files, 1)
+	assert.Equal(t, "test.txt", files[0])
+
+	// Verify the file content
+	content, err := os.ReadFile(filepath.Join(outputDir, "test.txt"))
+	require.NoError(t, err)
+	assert.Equal(t, "This is a test!", string(content))
+}
+
 func TestCloneVariablesForDependency(t *testing.T) {
 	t.Parallel()
 

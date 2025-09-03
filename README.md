@@ -134,13 +134,14 @@ You can find older versions on the [Releases Page](https://github.com/gruntwork-
    you to run arbitrary scripts.
 1. **Cross-platform**: Boilerplate is easy to install (it's a standalone binary) and works on all major platforms (Mac,
    Linux, Windows).
+1. **Versioned file manifest**: Optionally generate a versioned JSON manifest that tracks all created files across multiple template generations. Each time boilerplate runs with `--output-manifest`, it adds a new version entry to the existing manifest file (or creates one if none exists), preserving the history of all previous generations for integration with other tools.
 
 ## Working with boilerplate
 
 When you run Boilerplate, it performs the following steps:
 
 1. Read the `boilerplate.yml` file in the folder specified by the `--template-url` option to find all defined
-   varaibles.
+   variables.
 1. Gather values for the variables from any `--var` and `--var-file` options that were passed in and prompting the user
    for the rest (unless the `--non-interactive` flag is specified).
 1. Copy each file from `--template-url` to `--output-folder`, running each non-binary file through the Go
@@ -186,6 +187,7 @@ The `boilerplate` binary supports the following options:
 * `--no-shell`: If this flag is set, no `shell` helpers will execute. They will instead return the text "replace-me".
 * `--disable-dependency-prompt` (optional): Do not prompt for confirmation to include dependencies. Has the same effect as
   --non-interactive, without disabling variable prompts. Default: `false`.
+* `--output-manifest` (optional): Write a versioned JSON manifest of all generated files to `boilerplate-manifest.json` in the output directory. If a manifest file already exists, a new version entry will be added to track the current generation alongside previous ones.
 * `--help`: Show the help text and exit.
 * `--version`: Show the version and exit.
 
@@ -213,6 +215,12 @@ Generate a project in ~/output from the templates in this repo's `include` examp
 
 ```
 boilerplate --template-url "git@github.com:gruntwork-io/boilerplate.git//examples/for-learning-and-testing/include?ref=main" --output-folder ~/output --var-file vars.yml
+```
+
+Generate a project and create a versioned manifest file listing all generated files:
+
+```
+boilerplate --template-url ~/templates --output-folder ~/output --output-manifest
 ```
 
 
