@@ -7,12 +7,11 @@ import (
 	"github.com/gruntwork-io/boilerplate/util"
 )
 
-// A single engine entry, which specifies which template engine should be used to render the given files grabbed by the
+// Engine represents a single engine entry, which specifies which template engine should be used to render the given files grabbed by the
 // glob. Currently only the following template engines are supported:
 //
 // - Go template (default)
 // - Jsonnet
-//
 type Engine struct {
 	Path           string             `yaml:"path"`
 	TemplateEngine TemplateEngineType `yaml:"template_engine"`
@@ -33,14 +32,14 @@ var availableTemplateEngines = []string{
 	string(Jsonnet),
 }
 
-// Given a list of key:value pairs read from a Boilerplate YAML config file of the format:
+// UnmarshalEnginesFromBoilerplateConfigYaml given a list of key:value pairs read from a Boilerplate YAML config file of the format:
 //
 // engines:
 //   - path: <PATH>
 //     template_engine: <TEMPLATE_ENGINE>
 //
 // convert to a list of Engine structs.
-func UnmarshalEnginesFromBoilerplateConfigYaml(fields map[string]interface{}) ([]Engine, error) {
+func UnmarshalEnginesFromBoilerplateConfigYaml(fields map[string]any) ([]Engine, error) {
 	rawEngines, err := unmarshalListOfFields(fields, "engines")
 	if err != nil || rawEngines == nil {
 		return nil, err
@@ -66,7 +65,7 @@ func UnmarshalEnginesFromBoilerplateConfigYaml(fields map[string]interface{}) ([
 // template_engine: <TEMPLATE_ENGINE>
 //
 // This method unmarshals the YAML data into an Engine struct
-func unmarshalEngineFromBoilerplateConfigYaml(fields map[string]interface{}) (*Engine, error) {
+func unmarshalEngineFromBoilerplateConfigYaml(fields map[string]any) (*Engine, error) {
 	pathPtr, err := unmarshalStringField(fields, "path", true, "")
 	if err != nil {
 		return nil, err
@@ -84,14 +83,14 @@ func unmarshalEngineFromBoilerplateConfigYaml(fields map[string]interface{}) (*E
 	maybeTemplateEngine := *templateEnginePtr
 
 	// Validate the template engine conforms to enum.
-	if util.ListContains(maybeTemplateEngine, availableTemplateEngines) == false {
+	if !util.ListContains(maybeTemplateEngine, availableTemplateEngines) {
 		return nil, errors.WithStackTrace(InvalidTemplateEngineErr(maybeTemplateEngine))
 	}
 
 	return &Engine{Path: path, TemplateEngine: TemplateEngineType(maybeTemplateEngine)}, nil
 }
 
-// Custom errors
+// InvalidTemplateEngineErr represents custom errors
 type InvalidTemplateEngineErr string
 
 func (err InvalidTemplateEngineErr) Error() string {

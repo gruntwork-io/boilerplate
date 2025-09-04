@@ -24,18 +24,19 @@ import (
 //
 // This method looks up the given fieldName in the map and unmarshals the data inside of it it into a map of the
 // key:value pairs.
-func unmarshalMapOfFields(fields map[string]any, fieldName string) (map[string]interface{}, error) {
+func unmarshalMapOfFields(fields map[string]any, fieldName string) (map[string]any, error) {
 	fieldAsYaml, containsField := fields[fieldName]
 	if !containsField || fieldAsYaml == nil {
 		return nil, nil
 	}
 
-	asYamlMap, isYamlMap := fieldAsYaml.(map[any]interface{})
+	asYamlMap, isYamlMap := fieldAsYaml.(map[any]any)
 	if !isYamlMap {
 		return nil, errors.WithStackTrace(InvalidTypeForField{FieldName: fieldName, ExpectedType: "map[string]any", ActualType: reflect.TypeOf(fieldAsYaml)})
 	}
 
 	stringMap := map[string]any{}
+
 	for key, value := range asYamlMap {
 		if keyAsString, isString := key.(string); isString {
 			stringMap[keyAsString] = value
@@ -62,6 +63,7 @@ func unmarshalMapOfStrings(fields map[string]any, fieldName string) (map[string]
 	if err != nil {
 		return nil, err
 	}
+
 	if len(rawMap) == 0 {
 		return nil, nil
 	}
@@ -75,7 +77,7 @@ func unmarshalMapOfStrings(fields map[string]any, fieldName string) (map[string]
 	return stringMap, nil
 }
 
-// Given a map of key:value pairs read from a Boilerplate YAML config file of the format:
+// UnmarshalListOfStrings given a map of key:value pairs read from a Boilerplate YAML config file of the format:
 //
 // fieldName:
 //   - value1
@@ -124,7 +126,7 @@ func UnmarshalListOfStrings(fields map[string]any, fieldName string) ([]string, 
 //
 // This method takes looks up the given fieldName in the map and unmarshals the data inside of it it into a list of
 // maps, where each map contains the set of key:value pairs
-func unmarshalListOfFields(fields map[string]any, fieldName string) ([]map[string]interface{}, error) {
+func unmarshalListOfFields(fields map[string]any, fieldName string) ([]map[string]any, error) {
 	fieldAsYaml, containsField := fields[fieldName]
 	if !containsField || fieldAsYaml == nil {
 		return nil, nil
@@ -138,7 +140,7 @@ func unmarshalListOfFields(fields map[string]any, fieldName string) ([]map[strin
 	listOfFields := []map[string]any{}
 
 	for _, asYaml := range asYamlList {
-		asYamlMap, isYamlMap := asYaml.(map[any]interface{})
+		asYamlMap, isYamlMap := asYaml.(map[any]any)
 		if !isYamlMap {
 			return nil, errors.WithStackTrace(InvalidTypeForField{FieldName: fieldName, ExpectedType: "map[string]any", ActualType: reflect.TypeOf(asYaml)})
 		}
@@ -191,10 +193,11 @@ type CustomValidationRule struct {
 type CustomValidationRuleCollection []CustomValidationRule
 
 func (c CustomValidationRuleCollection) GetValidators() []validation.Rule {
-	var validatorsToReturn []validation.Rule
+	validatorsToReturn := make([]validation.Rule, 0, len(c))
 	for _, rule := range c {
 		validatorsToReturn = append(validatorsToReturn, rule.Validator)
 	}
+
 	return validatorsToReturn
 }
 
@@ -208,6 +211,7 @@ func parseRuleString(ruleString string) []string {
 	ruleString = strings.ReplaceAll(ruleString, "]", "")
 	ruleString = strings.ReplaceAll(ruleString, "[", "")
 	ruleString = strings.ToLower(ruleString)
+
 	return strings.Split(ruleString, " ")
 }
 
@@ -219,7 +223,6 @@ func ConvertValidationStringtoRules(ruleString string) ([]CustomValidationRule, 
 	rules := parseRuleString(ruleString)
 
 	for _, rule := range rules {
-
 		var cvr CustomValidationRule
 
 		switch {
@@ -228,14 +231,17 @@ func ConvertValidationStringtoRules(ruleString string) ([]CustomValidationRule, 
 			valSlice := strings.Split(valString, "-")
 			minStr := valSlice[0]
 			maxStr := valSlice[1]
+
 			min, minErr := strconv.Atoi(strings.TrimSpace(minStr))
 			if minErr != nil {
 				return validationRules, minErr
 			}
+
 			max, maxErr := strconv.Atoi(strings.TrimSpace(maxStr))
 			if maxErr != nil {
 				return validationRules, maxErr
 			}
+
 			cvr = CustomValidationRule{
 				Validator: validation.Length(min, max),
 				Message:   fmt.Sprintf("Must be between %d and %d characters long", min, max),
@@ -317,18 +323,19 @@ func unmarshalValidationsField(fields map[string]any) ([]CustomValidationRule, e
 func unmarshalTypeField(fields map[string]any, context string) (BoilerplateType, error) {
 	variableTypeAsString, err := unmarshalStringField(fields, "type", false, context)
 	if err != nil {
-		return BOILERPLATE_TYPE_DEFAULT, err
+		return boilerplateTypeDefault, err
 	}
 
 	if variableTypeAsString != nil {
 		variableType, err := ParseBoilerplateType(*variableTypeAsString)
 		if err != nil {
-			return BOILERPLATE_TYPE_DEFAULT, err
+			return boilerplateTypeDefault, err
 		}
+
 		return *variableType, nil
 	}
 
-	return BOILERPLATE_TYPE_DEFAULT, nil
+	return boilerplateTypeDefault, nil
 }
 
 func unmarshalIntField(fields map[string]any, fieldName string, requiredField bool, context string) (*int, error) {
@@ -419,6 +426,7 @@ func parseVariablesFromEnvironmentVariables() (map[string]any, error) {
 
 		if strings.HasPrefix(key, "BOILERPLATE_") {
 			key = strings.TrimPrefix(key, "BOILERPLATE_")
+
 			parsedValue, err := ParseYamlString(value)
 			if err != nil {
 				return vars, err
@@ -457,7 +465,7 @@ func parseVariablesFromKeyValuePairs(varsList []string) (map[string]any, error) 
 	return vars, nil
 }
 
-// Parse a YAML string into a Go type
+// ParseYamlString parses a YAML string into a Go type
 func ParseYamlString(str string) (any, error) {
 	var parsedValue any
 
@@ -484,19 +492,21 @@ func parseVariablesFromVarFiles(varFileList []string) (map[string]any, error) {
 		if err != nil {
 			return vars, err
 		}
+
 		vars = util.MergeMaps(vars, varsInFile)
 	}
 
 	return vars, nil
 }
 
-// Parse the variables in the given YAML file into a map of variable name to variable value. Along the way, each value
+// ParseVariablesFromVarFile parses the variables in the given YAML file into a map of variable name to variable value. Along the way, each value
 // is parsed as YAML.
 func ParseVariablesFromVarFile(varFilePath string) (map[string]any, error) {
 	bytes, err := os.ReadFile(varFilePath)
 	if err != nil {
 		return map[string]any{}, errors.WithStackTrace(err)
 	}
+
 	return parseVariablesFromVarFileContents(bytes)
 }
 
@@ -522,7 +532,7 @@ func parseVariablesFromVarFileContents(varFileContents []byte) (map[string]any, 
 	return vars, nil
 }
 
-// Parse variables passed in via command line options, either as a list of NAME=VALUE variable pairs in varsList, or a
+// ParseVars parses variables passed in via command line options, either as a list of NAME=VALUE variable pairs in varsList, or a
 // list of paths to YAML files that define NAME: VALUE pairs. Return a map of the NAME: VALUE pairs. Along the way,
 // each VALUE is parsed as YAML.
 func ParseVars(varsList []string, varFileList []string) (map[string]any, error) {
@@ -546,24 +556,28 @@ func ParseVars(varsList []string, varFileList []string) (map[string]any, error) 
 	return util.MergeMaps(varsFromEnv, varsFromVarsList, varsFromVarFiles), nil
 }
 
-// convertYAMLToStringMap modifies an input with type map[any]interface{} to map[string]interface{} so that it may be
+// ConvertYAMLToStringMap modifies an input with type map[any]interface{} to map[string]interface{} so that it may be
 // properly marshalled in to JSON.
 // See: https://github.com/go-yaml/yaml/issues/139
 func ConvertYAMLToStringMap(yamlMapOrList any) (interface{}, error) {
 	switch mapOrList := yamlMapOrList.(type) {
 	case map[any]interface{}:
 		outputMap := map[string]any{}
+
 		for k, v := range mapOrList {
 			strK, ok := k.(string)
 			if !ok {
 				return nil, YAMLConversionErr{k}
 			}
+
 			res, err := ConvertYAMLToStringMap(v)
 			if err != nil {
 				return nil, err
 			}
+
 			outputMap[strK] = res
 		}
+
 		return outputMap, nil
 	// catch cases where there is a map[any]interface{} nested in a map[string]any
 	case map[string]any:
@@ -572,8 +586,10 @@ func ConvertYAMLToStringMap(yamlMapOrList any) (interface{}, error) {
 			if err != nil {
 				return nil, err
 			}
+
 			mapOrList[k] = res
 		}
+
 		return mapOrList, nil
 	case []any:
 		for index, value := range mapOrList {
@@ -581,9 +597,11 @@ func ConvertYAMLToStringMap(yamlMapOrList any) (interface{}, error) {
 			if err != nil {
 				return nil, err
 			}
+
 			mapOrList[index] = res
 		}
 	}
+
 	return yamlMapOrList, nil
 }
 
@@ -600,7 +618,7 @@ func (err YAMLConversionErr) Error() string {
 type ValidationsMissing string
 
 func (err ValidationsMissing) Error() string {
-	return fmt.Sprintf("%s does not specify any validations. You must specify at least one validation.", string(err))
+	return string(err) + " does not specify any validations. You must specify at least one validation."
 }
 
 type OptionsMissing string
@@ -619,6 +637,7 @@ func (err InvalidVariableValue) Error() string {
 	if err.Variable.Type() == Enum {
 		message = fmt.Sprintf("%s. Value must be one of: %s.", message, err.Variable.Options())
 	}
+
 	return message
 }
 
@@ -646,13 +665,13 @@ func (err InvalidTypeForField) Error() string {
 type VariableNameCannotBeEmpty string
 
 func (varSyntax VariableNameCannotBeEmpty) Error() string {
-	return fmt.Sprintf("Variable name cannot be empty. Expected NAME=VALUE but got %s", string(varSyntax))
+	return "Variable name cannot be empty. Expected NAME=VALUE but got " + string(varSyntax)
 }
 
 type InvalidVarSyntax string
 
 func (varSyntax InvalidVarSyntax) Error() string {
-	return fmt.Sprintf("Invalid syntax for variable. Expected NAME=VALUE but got %s", string(varSyntax))
+	return "Invalid syntax for variable. Expected NAME=VALUE but got " + string(varSyntax)
 }
 
 type RequiredFieldMissing string
@@ -666,13 +685,13 @@ type MutexRequiredFieldErr struct {
 }
 
 func (err MutexRequiredFieldErr) Error() string {
-	return fmt.Sprintf("Exactly one of the following fields must be set: %s", strings.Join(err.fields, ","))
+	return "Exactly one of the following fields must be set: " + strings.Join(err.fields, ",")
 }
 
 type UnrecognizedBoilerplateType BoilerplateType
 
 func (err UnrecognizedBoilerplateType) Error() string {
-	return fmt.Sprintf("Unrecognized type: %s", BoilerplateType(err).String())
+	return "Unrecognized type: " + BoilerplateType(err).String()
 }
 
 type UndefinedOrderForFieldErr struct {
@@ -680,5 +699,5 @@ type UndefinedOrderForFieldErr struct {
 }
 
 func (err UndefinedOrderForFieldErr) Error() string {
-	return fmt.Sprintf("No order value defined for field: %s", err.fieldName)
+	return "No order value defined for field: " + err.fieldName
 }

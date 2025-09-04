@@ -1,0 +1,144 @@
+# This file is generated using `make update-local-lint` to track the linting used in Terragrunt. Do not edit manually.
+version: "2"
+run:
+  go: "1.24"
+  issues-exit-code: 1
+  tests: true
+output:
+  formats:
+    text:
+      path: stdout
+      print-linter-name: true
+      print-issued-lines: true
+linters:
+  enable:
+    - asasalint
+    - asciicheck
+    - bidichk
+    - bodyclose
+    - contextcheck
+    - dupl
+    - durationcheck
+    - errchkjson
+    - errorlint
+    - exhaustive
+    - fatcontext
+    - gocheckcompilerdirectives
+    - gochecksumtype
+    - goconst
+    - gocritic
+    - gosmopolitan
+    - loggercheck
+    - makezero
+    - misspell
+    - mnd
+    - musttag
+    - nilerr
+    - nilnesserr
+    - noctx
+    - paralleltest
+    - perfsprint
+    - prealloc
+    - protogetter
+    - reassign
+    - rowserrcheck
+    - spancheck
+    - sqlclosecheck
+    - staticcheck
+    - testableexamples
+    - testifylint
+    - testpackage
+    - thelper
+    - tparallel
+    - unconvert
+    - unparam
+    - usetesting
+    - wastedassign
+    - wsl
+    - zerologlint
+  disable:
+    - depguard
+    - exhaustruct
+    - gocyclo
+    - gosec
+    - nolintlint
+    - recvcheck
+    - varnamelen
+    - wrapcheck
+  settings:
+    dupl:
+      threshold: 120
+    errcheck:
+      check-type-assertions: false
+      check-blank: false
+      exclude-functions:
+        - (*os.File).Close
+    errorlint:
+      errorf: true
+      asserts: true
+      comparison: true
+    goconst:
+      min-len: 3
+      min-occurrences: 5
+    gocritic:
+      disabled-checks:
+        - regexpMust
+        - rangeValCopy
+        - appendAssign
+        - hugeParam
+      enabled-tags:
+        - performance
+      disabled-tags:
+        - experimental
+    govet:
+      enable:
+        - fieldalignment
+    nakedret:
+      max-func-lines: 20
+    staticcheck:
+      checks:
+        - all
+        - -SA9005
+        - -QF1008
+        - -ST1001
+    unparam:
+      check-exported: false
+  exclusions:
+    generated: lax
+    rules:
+      - linters:
+          - dupl
+          - errcheck
+          - gocyclo
+          - lll
+          - mnd
+          - unparam
+          - wsl
+        path: _test\.go
+    paths:
+      - docs
+      - _ci
+      - .github
+      - .circleci
+      - third_party$
+      - builtin$
+      - examples$
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+formatters:
+  enable:
+    - goimports
+  settings:
+    gofmt:
+      simplify: true
+  exclusions:
+    generated: lax
+    paths:
+      - docs
+      - _ci
+      - .github
+      - .circleci
+      - third_party$
+      - builtin$
+      - examples$

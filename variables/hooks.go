@@ -4,44 +4,49 @@ import (
 	"github.com/gruntwork-io/boilerplate/util"
 )
 
-// A single hook, which is a command that is executed by boilerplate
+// Hook represents a single hook, which is a command that is executed by boilerplate
 type Hook struct {
-	Command    string
-	Args       []string
 	Env        map[string]string
+	Command    string
 	Skip       string
 	WorkingDir string
+	Args       []string
 }
 
-// All the scripts to execute as boilerplate hooks
+// Hooks represents all the scripts to execute as boilerplate hooks
 type Hooks struct {
 	BeforeHooks []Hook
 	AfterHooks  []Hook
 }
 
-// Implement the go-yaml marshaler interface so that the config can be marshaled into yaml. We use a custom marshaler
+// MarshalYAML implements the go-yaml marshaler interface so that the config can be marshaled into yaml. We use a custom marshaler
 // instead of defining the fields as tags so that we skip the attributes that are empty.
-func (hook Hook) MarshalYAML() (interface{}, error) {
-	hookYml := map[string]interface{}{}
+func (hook Hook) MarshalYAML() (any, error) {
+	hookYml := map[string]any{}
 	if hook.Command != "" {
 		hookYml["command"] = hook.Command
 	}
+
 	if hook.Skip != "" {
 		hookYml["skip"] = hook.Skip
 	}
+
 	if len(hook.Args) > 0 {
 		hookYml["args"] = hook.Args
 	}
+
 	if len(hook.Env) > 0 {
 		hookYml["env"] = hook.Env
 	}
+
 	if len(hook.WorkingDir) > 0 {
 		hookYml["dir"] = hook.WorkingDir
 	}
+
 	return hookYml, nil
 }
-func (hooks Hooks) MarshalYAML() (interface{}, error) {
-	hooksYml := map[string]interface{}{}
+func (hooks Hooks) MarshalYAML() (any, error) {
+	hooksYml := map[string]any{}
 	// Due to go type system, we can only pass through []interface{}, even though []Hook is technically
 	// polymorphic to that type. So we reconstruct the list using the right type before passing it in to the marshal
 	// function.
@@ -50,27 +55,33 @@ func (hooks Hooks) MarshalYAML() (interface{}, error) {
 		for _, hook := range hooks.BeforeHooks {
 			interfaceList = append(interfaceList, hook)
 		}
+
 		beforeYml, err := util.MarshalListOfObjectsToYAML(interfaceList)
 		if err != nil {
 			return nil, err
 		}
+
 		hooksYml["before"] = beforeYml
 	}
+
 	if len(hooks.AfterHooks) > 0 {
 		interfaceList := []interface{}{}
 		for _, hook := range hooks.AfterHooks {
 			interfaceList = append(interfaceList, hook)
 		}
+
 		afterYml, err := util.MarshalListOfObjectsToYAML(interfaceList)
 		if err != nil {
 			return nil, err
 		}
+
 		hooksYml["after"] = afterYml
 	}
+
 	return hooksYml, nil
 }
 
-// Given a map of key:value pairs read from a Boilerplate YAML config file of the format:
+// UnmarshalHooksFromBoilerplateConfigYaml given a map of key:value pairs read from a Boilerplate YAML config file of the format:
 //
 // hooks:
 //
@@ -143,6 +154,7 @@ func unmarshalHooksFromBoilerplateConfigYaml(fields map[string]interface{}, hook
 		if err != nil {
 			return nil, err
 		}
+
 		hooks = append(hooks, *hook)
 	}
 
@@ -177,10 +189,12 @@ func unmarshalHookFromBoilerplateConfigYaml(fields map[string]interface{}, hookN
 	}
 
 	var workingDir string
+
 	dir, err := unmarshalStringField(fields, "dir", false, hookName)
 	if err != nil {
 		return nil, err
 	}
+
 	if dir != nil {
 		workingDir = *dir
 	}
@@ -189,6 +203,7 @@ func unmarshalHookFromBoilerplateConfigYaml(fields map[string]interface{}, hookN
 	if err != nil {
 		return nil, err
 	}
+
 	var skip string
 	if skipPtr != nil {
 		skip = *skipPtr

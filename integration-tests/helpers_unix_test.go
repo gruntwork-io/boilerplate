@@ -1,6 +1,8 @@
+//go:build aix || darwin || dragonfly || freebsd || (js && wasm) || linux || netbsd || openbsd || solaris
 // +build aix darwin dragonfly freebsd js,wasm linux netbsd openbsd solaris
 
-package integration_tests
+// Package integrationtests provides integration tests for the boilerplate tool.
+package integrationtests_test
 
 import (
 	"strings"
@@ -15,6 +17,7 @@ import (
 // takes a lot of code. Why waste time on that when this functionality is already nicely implemented in the Unix/Linux
 // "diff" command? We shell out to that command at test time.
 func assertDirectoriesEqual(t *testing.T, folderWithExpectedContents string, folderWithActualContents string) {
+	t.Helper()
 	// Copy the folder contents to a temp dir for testing purposes without .keep-dir files, which are used to ensure the
 	// directory exists in git.
 	tmpFolder, err := files.CopyFolderToTemp(folderWithExpectedContents, "boilerplate-assert-direq-", func(path string) bool {

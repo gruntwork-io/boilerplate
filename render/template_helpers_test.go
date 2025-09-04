@@ -1,4 +1,4 @@
-package render
+package render //nolint:testpackage
 
 import (
 	"bufio"
@@ -10,35 +10,36 @@ import (
 	"testing"
 	"text/template"
 
-	"github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
+const windowsOS = "windows"
+
 func TestExtractSnippetName(t *testing.T) {
 	t.Parallel()
 
 	testCases := []struct {
 		line            string
-		containsSnippet bool
 		snippetName     string
+		containsSnippet bool
 	}{
-		{"", false, ""},
-		{"foo", false, ""},
-		{"boilerplate", false, ""},
-		{"boilerplate-snippet", false, ""},
-		{"boilerplate-snippet:", false, ""},
-		{"boilerplate-snippet: ", false, ""},
-		{"boilerplate-snippet: foo", true, "foo"},
-		{"boilerplate-snippet:foo", true, "foo"},
-		{"boilerplate-snippet:\t\tfoo        ", true, "foo"},
-		{"<!-- boilerplate-snippet: foo -->", true, "foo"},
-		{"// boilerplate-snippet: foo", true, "foo"},
-		{"/* boilerplate-snippet: foo */", true, "foo"},
-		{"boilerplate-snippet: foo bar", true, "foo"},
-		{"boilerplate-snippet:foo-bar-baz", true, "foo-bar-baz"},
+		{line: "", containsSnippet: false, snippetName: ""},
+		{line: "foo", containsSnippet: false, snippetName: ""},
+		{line: "boilerplate", containsSnippet: false, snippetName: ""},
+		{line: "boilerplate-snippet", containsSnippet: false, snippetName: ""},
+		{line: "boilerplate-snippet:", containsSnippet: false, snippetName: ""},
+		{line: "boilerplate-snippet: ", containsSnippet: false, snippetName: ""},
+		{line: "boilerplate-snippet: foo", containsSnippet: true, snippetName: "foo"},
+		{line: "boilerplate-snippet:foo", containsSnippet: true, snippetName: "foo"},
+		{line: "boilerplate-snippet:\t\tfoo        ", containsSnippet: true, snippetName: "foo"},
+		{line: "<!-- boilerplate-snippet: foo -->", containsSnippet: true, snippetName: "foo"},
+		{line: "// boilerplate-snippet: foo", containsSnippet: true, snippetName: "foo"},
+		{line: "/* boilerplate-snippet: foo */", containsSnippet: true, snippetName: "foo"},
+		{line: "boilerplate-snippet: foo bar", containsSnippet: true, snippetName: "foo"},
+		{line: "boilerplate-snippet:foo-bar-baz", containsSnippet: true, snippetName: "foo-bar-baz"},
 	}
 
 	for _, testCase := range testCases {
@@ -48,43 +49,43 @@ func TestExtractSnippetName(t *testing.T) {
 	}
 }
 
-const MULTILINE_SNIPPET_NOT_TERMINATED = `
+const multilineSnippetNotTerminated = `
 foo
 boilerplate-snippet: foo
 bar blah
 boilerplate-snippet: bar
 `
 
-const BODY_TEXT_ONE_LINE = "line1"
+const bodyTextOneLine = "line1"
 
-const BODY_TEXT_MULTILINE = `
+const bodyTextMultiline = `
 line1
 line2
 line3
 `
 
-var FULL_FILE_ONE_LINE_SNIPPET = fmt.Sprintf(
+var fullFileOneLineSnippet = fmt.Sprintf(
 	`
 boilerplate-snippet: foo
 %s
 boilerplate-snippet: foo
-`, BODY_TEXT_ONE_LINE)
+`, bodyTextOneLine)
 
-var FULL_FILE_MULTILINE_SNIPPET = fmt.Sprintf(
+var fullFileMultilineSnippet = fmt.Sprintf(
 	`
 boilerplate-snippet: foo
 %s
 boilerplate-snippet: foo
-`, BODY_TEXT_MULTILINE)
+`, bodyTextMultiline)
 
-var FULL_FILE_MULTILINE_SNIPPET_IN_HTML_COMMENTS = fmt.Sprintf(
+var fullFileMultilineSnippetInHTMLComments = fmt.Sprintf(
 	`
 <!-- boilerplate-snippet: foo -->
 %s
 <-- boilerplate-snippet: foo -->
-`, BODY_TEXT_MULTILINE)
+`, bodyTextMultiline)
 
-var PARTIAL_FILE_MULTILINE_SNIPPET_IN_C_COMMENTS = fmt.Sprintf(
+var partialFileMultilineSnippetInCComments = fmt.Sprintf(
 	`
 other text
 this should be ignored
@@ -95,9 +96,9 @@ this should be ignored
 
 this should also
 be completely ignored
-`, BODY_TEXT_MULTILINE)
+`, bodyTextMultiline)
 
-var PARTIAL_FILE_ONE_LINE_SNIPPET_IN_MISMATCHED_COMMENTS = fmt.Sprintf(
+var partialFileOneLineSnippetInMismatchedComments = fmt.Sprintf(
 	`
 other text
 this should be ignored
@@ -108,9 +109,9 @@ this should be ignored
 
 this should also
 be completely ignored
-`, BODY_TEXT_ONE_LINE)
+`, bodyTextOneLine)
 
-var PARTIAL_FILE_MUTLIPLE_SNIPPETS = fmt.Sprintf(
+var partialFileMultipleSnippets = fmt.Sprintf(
 	`
 other text
 this should be ignored
@@ -127,9 +128,9 @@ boilerplate-snippet: baz
 this should also
 be completely ignored
 boilerplate-snippet: baz
-`, BODY_TEXT_ONE_LINE)
+`, bodyTextOneLine)
 
-var PARTIAL_FILE_EMBEDDED_SNIPPETS = fmt.Sprintf(
+var partialFileEmbeddedSnippets = fmt.Sprintf(
 	`
 other text
 this should be ignored
@@ -148,7 +149,7 @@ boilerplate-snippet: baz
 this should also
 be completely ignored
 boilerplate-snippet: baz
-`, BODY_TEXT_ONE_LINE)
+`, bodyTextOneLine)
 
 func TestReadSnippetFromScanner(t *testing.T) {
 	t.Parallel()
@@ -159,18 +160,18 @@ func TestReadSnippetFromScanner(t *testing.T) {
 		expectedErr         error
 		expectedSnippetText string
 	}{
-		{"", "foo", SnippetNotFound("foo"), ""},
-		{"abcdef", "foo", SnippetNotFound("foo"), ""},
-		{"boilerplate-snippet: bar", "foo", SnippetNotFound("foo"), ""},
-		{"boilerplate-snippet: foo", "foo", SnippetNotTerminated("foo"), ""},
-		{MULTILINE_SNIPPET_NOT_TERMINATED, "foo", SnippetNotTerminated("foo"), ""},
-		{FULL_FILE_ONE_LINE_SNIPPET, "foo", nil, BODY_TEXT_ONE_LINE},
-		{FULL_FILE_MULTILINE_SNIPPET, "foo", nil, BODY_TEXT_MULTILINE},
-		{FULL_FILE_MULTILINE_SNIPPET_IN_HTML_COMMENTS, "foo", nil, BODY_TEXT_MULTILINE},
-		{PARTIAL_FILE_MULTILINE_SNIPPET_IN_C_COMMENTS, "foo", nil, BODY_TEXT_MULTILINE},
-		{PARTIAL_FILE_ONE_LINE_SNIPPET_IN_MISMATCHED_COMMENTS, "foo", nil, BODY_TEXT_ONE_LINE},
-		{PARTIAL_FILE_MUTLIPLE_SNIPPETS, "foo", nil, BODY_TEXT_ONE_LINE},
-		{PARTIAL_FILE_EMBEDDED_SNIPPETS, "foo", nil, BODY_TEXT_ONE_LINE},
+		{text: "", snippetName: "foo", expectedErr: SnippetNotFound("foo"), expectedSnippetText: ""},
+		{text: "abcdef", snippetName: "foo", expectedErr: SnippetNotFound("foo"), expectedSnippetText: ""},
+		{text: "boilerplate-snippet: bar", snippetName: "foo", expectedErr: SnippetNotFound("foo"), expectedSnippetText: ""},
+		{text: "boilerplate-snippet: foo", snippetName: "foo", expectedErr: SnippetNotTerminated("foo"), expectedSnippetText: ""},
+		{text: multilineSnippetNotTerminated, snippetName: "foo", expectedErr: SnippetNotTerminated("foo"), expectedSnippetText: ""},
+		{text: fullFileOneLineSnippet, snippetName: "foo", expectedErr: nil, expectedSnippetText: bodyTextOneLine},
+		{text: fullFileMultilineSnippet, snippetName: "foo", expectedErr: nil, expectedSnippetText: bodyTextMultiline},
+		{text: fullFileMultilineSnippetInHTMLComments, snippetName: "foo", expectedErr: nil, expectedSnippetText: bodyTextMultiline},
+		{text: partialFileMultilineSnippetInCComments, snippetName: "foo", expectedErr: nil, expectedSnippetText: bodyTextMultiline},
+		{text: partialFileOneLineSnippetInMismatchedComments, snippetName: "foo", expectedErr: nil, expectedSnippetText: bodyTextOneLine},
+		{text: partialFileMultipleSnippets, snippetName: "foo", expectedErr: nil, expectedSnippetText: bodyTextOneLine},
+		{text: partialFileEmbeddedSnippets, snippetName: "foo", expectedErr: nil, expectedSnippetText: bodyTextOneLine},
 	}
 
 	for _, testCase := range testCases {
@@ -178,11 +179,11 @@ func TestReadSnippetFromScanner(t *testing.T) {
 		snippetText, err := readSnippetFromScanner(scanner, testCase.snippetName)
 
 		if testCase.expectedErr == nil {
-			assert.Nil(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, testCase.expectedSnippetText, snippetText)
 		} else {
-			assert.NotNil(t, err)
-			assert.True(t, errors.IsError(err, testCase.expectedErr), "Expected %s error but got %s", reflect.TypeOf(testCase.expectedErr), reflect.TypeOf(err))
+			require.Error(t, err)
+			require.ErrorIs(t, err, testCase.expectedErr, "Expected %s error but got %s", reflect.TypeOf(testCase.expectedErr), reflect.TypeOf(err))
 		}
 	}
 }
@@ -205,12 +206,14 @@ func TestPathRelativeToTemplate(t *testing.T) {
 		{"/foo/bar/template.txt", "./foo", filepath.ToSlash("/foo/bar/foo"), false},
 		{"/foo/bar/template.txt", "/foo", filepath.ToSlash("/foo"), false},
 		{"/foo/bar/template.txt", "/foo/bar/baz", filepath.ToSlash("/foo/bar/baz"), false},
-		{"/usr/bin", "../foo", "/usr/foo", runtime.GOOS == "windows"}, // Note, we are testing with a real file path here to ensure directories are handled correctly
+		{"/usr/bin", "../foo", "/usr/foo", runtime.GOOS == windowsOS}, // Note, we are testing with a real file path here to ensure directories are handled correctly
 	}
 
 	for _, testCase := range testCases {
 		tt := testCase
 		t.Run(tt.templatePath, func(t *testing.T) {
+			t.Parallel()
+
 			if tt.skip {
 				t.Skip()
 				return
@@ -238,7 +241,7 @@ func TestWrapWithTemplatePath(t *testing.T) {
 	})
 
 	returnedPath, err := wrappedFunc()
-	assert.Nil(t, err)
+	require.NoError(t, err)
 	assert.Equal(t, expectedPath, returnedPath)
 	assert.Equal(t, expectedPath, actualPath)
 	assert.Equal(t, expectedOpts, actualOpts)
@@ -447,14 +450,14 @@ func TestShellSuccess(t *testing.T) {
 	var err error
 	var eol string
 	opts := testutil.CreateTestOptionsForShell(true, false)
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == windowsOS {
 		eol = "\r\n"
 		output, err = shell(".", opts, "cmd.exe", "/C", "echo", "hi")
 	} else {
 		eol = "\n"
 		output, err = shell(".", opts, "echo", "hi")
 	}
-	assert.Nil(t, err, "Unexpected error: %v", err)
+	require.NoError(t, err, "Unexpected error: %v", err)
 	assert.Equal(t, "hi"+eol, output)
 }
 
@@ -463,8 +466,8 @@ func TestShellError(t *testing.T) {
 
 	opts := testutil.CreateTestOptionsForShell(true, false)
 	_, err := shell(".", opts, "not-a-real-command")
-	if assert.NotNil(t, err) {
-		if runtime.GOOS == "windows" {
+	if assert.Error(t, err) {
+		if runtime.GOOS == windowsOS {
 			assert.Contains(t, err.Error(), "executable file not found in %PATH%", "Unexpected error message: %s", err.Error())
 		} else {
 			assert.Contains(t, err.Error(), "executable file not found in $PATH", "Unexpected error message: %s", err.Error())
@@ -478,8 +481,8 @@ func TestShellDisabled(t *testing.T) {
 
 	opts := testutil.CreateTestOptionsForShell(true, true)
 	output, err := shell(".", opts, "echo", "hi")
-	assert.Nil(t, err, "Unexpected error: %v", err)
-	assert.Equal(t, SHELL_DISABLED_PLACEHOLDER, output)
+	require.NoError(t, err, "Unexpected error: %v", err)
+	assert.Equal(t, shellDisabledPlaceholder, output)
 }
 
 // TestTemplateIsDefined tests that the templateIsDefined function correctly
@@ -509,13 +512,13 @@ func TestTemplateIsDefined(t *testing.T) {
 func TestToYaml(t *testing.T) {
 	t.Parallel()
 	testCases := []struct {
-		input    interface{}
+		input    any
 		expected string
 	}{
 		{nil, "null\n"},
 		{"", "\"\"\n"},
-		{map[string]interface{}{"key": "val"}, "key: val\n"},
-		{map[string][]interface{}{"Key": {1, 2, 3}}, "Key:\n- 1\n- 2\n- 3\n"},
+		{map[string]any{"key": "val"}, "key: val\n"},
+		{map[string][]any{"Key": {1, 2, 3}}, "Key:\n- 1\n- 2\n- 3\n"},
 	}
 	for _, testCase := range testCases {
 		actual, err := toYaml(testCase.input)
@@ -527,9 +530,9 @@ func TestToYaml(t *testing.T) {
 func TestFromYaml(t *testing.T) {
 	t.Parallel()
 	testCases := []struct {
+		expected any
 		name     string
 		input    string
-		expected interface{}
 	}{
 		{
 			name:     "empty string",
@@ -544,12 +547,12 @@ func TestFromYaml(t *testing.T) {
 		{
 			name:     "simple key-value with multiple types",
 			input:    "name: John\nage: 30\nactive: true\nheight: 5.9",
-			expected: map[interface{}]interface{}{"name": "John", "age": 30, "active": true, "height": 5.9},
+			expected: map[any]any{"name": "John", "age": 30, "active": true, "height": 5.9},
 		},
 		{
 			name:     "array",
 			input:    "- apple\n- banana\n- 42\n- true",
-			expected: []interface{}{"apple", "banana", 42, true},
+			expected: []any{"apple", "banana", 42, true},
 		},
 		{
 			name:  "nested object",
@@ -599,6 +602,8 @@ users:
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
+
 			actual, err := fromYaml(testCase.input)
 			require.NoError(t, err)
 			assert.Equal(t, testCase.expected, actual)

@@ -1,21 +1,22 @@
-package variables
+package variables //nolint:testpackage
 
 import (
+	"errors"
 	"reflect"
 	"testing"
 
 	"gopkg.in/yaml.v2"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/gruntwork-io/boilerplate/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-const YAML_FILE_ONE_VAR = `
+const yamlFileOneVar = `
 key: value
 `
 
-const YAML_FILE_MULTIPLE_VARS = `
+const yamlFileMultipleVars = `
 key1: value1
 key2: value2
 key3: value3
@@ -25,25 +26,25 @@ func TestParseVariablesFromVarFileContents(t *testing.T) {
 	t.Parallel()
 
 	testCases := []struct {
+		expectedVars        map[string]any
 		fileContents        string
 		expectYamlTypeError bool
-		expectedVars        map[string]interface{}
 	}{
-		{"", false, map[string]interface{}{}},
-		{YAML_FILE_ONE_VAR, false, map[string]interface{}{"key": "value"}},
-		{YAML_FILE_MULTIPLE_VARS, false, map[string]interface{}{"key1": "value1", "key2": "value2", "key3": "value3"}},
-		{"invalid yaml", true, map[string]interface{}{}},
+		{fileContents: "", expectYamlTypeError: false, expectedVars: map[string]any{}},
+		{fileContents: yamlFileOneVar, expectYamlTypeError: false, expectedVars: map[string]any{"key": "value"}},
+		{fileContents: yamlFileMultipleVars, expectYamlTypeError: false, expectedVars: map[string]any{"key1": "value1", "key2": "value2", "key3": "value3"}},
+		{fileContents: "invalid yaml", expectYamlTypeError: true, expectedVars: map[string]any{}},
 	}
 
 	for _, testCase := range testCases {
 		actualVars, err := parseVariablesFromVarFileContents([]byte(testCase.fileContents))
 		if testCase.expectYamlTypeError {
-			assert.NotNil(t, err)
-			unwrapped := errors.Unwrap(err)
-			_, isYamlTypeError := unwrapped.(*yaml.TypeError)
-			assert.True(t, isYamlTypeError, "Expected a YAML type error for an invalid yaml file but got %s", reflect.TypeOf(unwrapped))
+			require.Error(t, err)
+			typeError := &yaml.TypeError{}
+			isYamlTypeError := errors.As(err, &typeError)
+			assert.True(t, isYamlTypeError, "Expected a YAML type error for an invalid yaml file but got %s", reflect.TypeOf(err))
 		} else {
-			assert.Nil(t, err, "Got unexpected error: %v", err)
+			require.NoError(t, err, "Got unexpected error: %v", err)
 			assert.Equal(t, testCase.expectedVars, actualVars)
 		}
 	}
@@ -53,28 +54,28 @@ func TestParseVariablesFromKeyValuePairs(t *testing.T) {
 	t.Parallel()
 
 	testCases := []struct {
-		keyValuePairs []string
 		expectedError error
-		expectedVars  map[string]interface{}
+		expectedVars  map[string]any
+		keyValuePairs []string
 	}{
-		{[]string{}, nil, map[string]interface{}{}},
-		{[]string{"key=value"}, nil, map[string]interface{}{"key": "value"}},
-		{[]string{"key="}, nil, map[string]interface{}{"key": nil}},
-		{[]string{"key1=value1", "key2=value2", "key3=value3"}, nil, map[string]interface{}{"key1": "value1", "key2": "value2", "key3": "value3"}},
-		{[]string{"key1=left=right"}, nil, map[string]interface{}{"key1": "left=right"}},
-		{[]string{"invalidsyntax"}, InvalidVarSyntax("invalidsyntax"), map[string]interface{}{}},
-		{[]string{"="}, VariableNameCannotBeEmpty("="), map[string]interface{}{}},
-		{[]string{"=foo"}, VariableNameCannotBeEmpty("=foo"), map[string]interface{}{}},
+		{keyValuePairs: []string{}, expectedError: nil, expectedVars: map[string]any{}},
+		{keyValuePairs: []string{"key=value"}, expectedError: nil, expectedVars: map[string]interface{}{"key": "value"}},
+		{keyValuePairs: []string{"key="}, expectedError: nil, expectedVars: map[string]interface{}{"key": nil}},
+		{keyValuePairs: []string{"key1=value1", "key2=value2", "key3=value3"}, expectedError: nil, expectedVars: map[string]interface{}{"key1": "value1", "key2": "value2", "key3": "value3"}},
+		{keyValuePairs: []string{"key1=left=right"}, expectedError: nil, expectedVars: map[string]interface{}{"key1": "left=right"}},
+		{keyValuePairs: []string{"invalidsyntax"}, expectedError: InvalidVarSyntax("invalidsyntax"), expectedVars: map[string]interface{}{}},
+		{keyValuePairs: []string{"="}, expectedError: VariableNameCannotBeEmpty("="), expectedVars: map[string]interface{}{}},
+		{keyValuePairs: []string{"=foo"}, expectedError: VariableNameCannotBeEmpty("=foo"), expectedVars: map[string]interface{}{}},
 	}
 
 	for _, testCase := range testCases {
 		actualVars, err := parseVariablesFromKeyValuePairs(testCase.keyValuePairs)
 		if testCase.expectedError == nil {
-			assert.Nil(t, err)
+			require.NoError(t, err)
 			assert.Equal(t, testCase.expectedVars, actualVars)
 		} else {
-			assert.NotNil(t, err)
-			assert.True(t, errors.IsError(err, testCase.expectedError), "Expected an error of type '%s' with value '%s' but got an error of type '%s' with value '%s'", reflect.TypeOf(testCase.expectedError), testCase.expectedError.Error(), reflect.TypeOf(err), err.Error())
+			require.Error(t, err)
+			assert.ErrorIs(t, err, testCase.expectedError, "Expected an error of type '%s' with value '%s' but got an error of type '%s' with value '%s'", reflect.TypeOf(testCase.expectedError), testCase.expectedError.Error(), reflect.TypeOf(err), err.Error())
 		}
 	}
 }
@@ -125,7 +126,7 @@ func TestConvert(t *testing.T) {
 
 	for _, testCase := range testCases {
 		actual, err := ConvertYAMLToStringMap(testCase.input)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.IsType(t, testCase.expectedType, actual)
 	}
 }
@@ -134,8 +135,8 @@ func TestConvertNested(t *testing.T) {
 	t.Parallel()
 
 	testCases := []struct {
-		name  string
 		input interface{}
+		name  string
 	}{
 		{
 			name: "map nested in map",
@@ -157,9 +158,11 @@ func TestConvertNested(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
+
 			result, err := ConvertYAMLToStringMap(testCase.input)
-			assert.NoError(t, err)
-			
+			require.NoError(t, err)
+
 			// Check that conversion actually happened - MUST work, not optional
 			switch v := result.(type) {
 			case map[string]interface{}:

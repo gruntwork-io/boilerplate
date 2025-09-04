@@ -13,7 +13,7 @@ import (
 
 	"github.com/gruntwork-io/boilerplate/config"
 	"github.com/gruntwork-io/boilerplate/errors"
-	getter_helper "github.com/gruntwork-io/boilerplate/getter-helper"
+	"github.com/gruntwork-io/boilerplate/getterhelper"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/render"
 	"github.com/gruntwork-io/boilerplate/util"
@@ -23,7 +23,9 @@ import (
 // The name of the variable that contains the current value of the loop in each iteration of for_each
 const eachVarName = "__each__"
 
-// Process the boilerplate template specified in the given options and use the existing variables. This function will
+const defaultDirPerm = 0o777
+
+// ProcessTemplate processes the boilerplate template specified in the given options and use the existing variables. This function will
 // download remote templates to a temporary working directory, which is cleaned up at the end of the function. This
 // function will load any missing variables (either from command line options or by prompting the user), execute all the
 // dependent boilerplate templates, and then execute this template. Note that we pass in rootOptions so that template
@@ -32,31 +34,37 @@ func ProcessTemplate(options, rootOpts *options.BoilerplateOptions, thisDep vari
 	// If TemplateFolder is already set, use that directly as it is a local template. Otherwise, download to a temporary
 	// working directory.
 	if options.TemplateFolder == "" {
-		workingDir, templateFolder, err := getter_helper.DownloadTemplatesToTemporaryFolder(options.TemplateUrl)
+		workingDir, templateFolder, downloadErr := getterhelper.DownloadTemplatesToTemporaryFolder(options.TemplateURL)
 		defer func() {
 			util.Logger.Printf("Cleaning up working directory.")
-			os.RemoveAll(workingDir)
+
+			if rmErr := os.RemoveAll(workingDir); rmErr != nil {
+				util.Logger.Printf("Failed to clean up working directory %s: %v", workingDir, rmErr)
+			}
 		}()
-		if err != nil {
-			return err
+
+		if downloadErr != nil {
+			return downloadErr
 		}
 
 		// Set the TemplateFolder of the options to the download dir
 		options.TemplateFolder = templateFolder
 	}
 
-	rootBoilerplateConfig, err := config.LoadBoilerplateConfig(rootOpts)
-	if err != nil {
-		return err
+	rootBoilerplateConfig, rootCfgErr := config.LoadBoilerplateConfig(rootOpts)
+	if rootCfgErr != nil {
+		return rootCfgErr
 	}
+
 	if err := config.EnforceRequiredVersion(rootBoilerplateConfig); err != nil {
 		return err
 	}
 
-	boilerplateConfig, err := config.LoadBoilerplateConfig(options)
-	if err != nil {
-		return err
+	boilerplateConfig, cfgErr := config.LoadBoilerplateConfig(options)
+	if cfgErr != nil {
+		return cfgErr
 	}
+
 	if err := config.EnforceRequiredVersion(boilerplateConfig); err != nil {
 		return err
 	}
@@ -66,7 +74,7 @@ func ProcessTemplate(options, rootOpts *options.BoilerplateOptions, thisDep vari
 		return err
 	}
 
-	err = os.MkdirAll(options.OutputFolder, 0o777)
+	err = os.MkdirAll(options.OutputFolder, defaultDirPerm)
 	if err != nil {
 		return errors.WithStackTrace(err)
 	}
@@ -99,24 +107,28 @@ func ProcessTemplate(options, rootOpts *options.BoilerplateOptions, thisDep vari
 	return nil
 }
 
-func processPartials(partials []string, opts *options.BoilerplateOptions, vars map[string]interface{}) ([]string, error) {
-	var renderedPartials []string
+func processPartials(partials []string, opts *options.BoilerplateOptions, vars map[string]any) ([]string, error) {
+	renderedPartials := make([]string, 0, len(partials))
+
 	for _, partial := range partials {
 		renderedPartial, err := render.RenderTemplateFromString(config.BoilerplateConfigPath(opts.TemplateFolder), partial, vars, opts)
 		if err != nil {
 			return []string{}, err
 		}
+
 		renderedPartials = append(renderedPartials, renderedPartial)
 	}
+
 	return renderedPartials, nil
 }
 
 // Process the given list of hooks, which are scripts that should be executed at the command-line
-func processHooks(hooks []variables.Hook, opts *options.BoilerplateOptions, vars map[string]interface{}) error {
+func processHooks(hooks []variables.Hook, opts *options.BoilerplateOptions, vars map[string]any) error {
 	if len(hooks) == 0 || opts.NoHooks {
 		if opts.NoHooks {
 			util.Logger.Printf("Hooks are disabled, skipping %d hook(s)", len(hooks))
 		}
+
 		return nil
 	}
 
@@ -129,9 +141,11 @@ func processHooks(hooks []variables.Hook, opts *options.BoilerplateOptions, vars
 			if skip {
 				util.Logger.Printf("Skipping hook with command '%s'", hook.Command)
 			}
+
 			if err != nil {
 				return err
 			}
+
 			continue
 		}
 
@@ -143,23 +157,22 @@ func processHooks(hooks []variables.Hook, opts *options.BoilerplateOptions, vars
 		hookKey := generateHookKey(hookDetails)
 
 		// Check previous confirmation
-		shouldExecute, shouldSetExecuteAll := handlePreviousHookConfirmation(hookKey, hookAnswers, executeAll)
+		shouldExecute := handlePreviousHookConfirmation(hookKey, hookAnswers, executeAll)
 		if !shouldExecute {
 			continue
-		}
-		if shouldSetExecuteAll {
-			executeAll = true
 		}
 
 		// Handle user confirmation if needed (skip if non-interactive)
 		if !executeAll && !hookAnswers[hookKey] && !opts.NonInteractive {
-			shouldExecute, shouldSetExecuteAll, err = handleHookUserConfirmation(hookDetails, hookKey, hookAnswers)
+			shouldExecute, shouldSetExecuteAll, err := handleHookUserConfirmation(hookDetails, hookKey, hookAnswers)
 			if err != nil {
 				return err
 			}
+
 			if !shouldExecute {
 				continue
 			}
+
 			if shouldSetExecuteAll {
 				executeAll = true
 			}
@@ -175,73 +188,84 @@ func processHooks(hooks []variables.Hook, opts *options.BoilerplateOptions, vars
 }
 
 // renderHookDetails renders the hook details and returns a pre-rendered string representation
-func renderHookDetails(hook variables.Hook, opts *options.BoilerplateOptions, vars map[string]interface{}) (string, error) {
+func renderHookDetails(hook variables.Hook, opts *options.BoilerplateOptions, vars map[string]any) (string, error) {
 	base := config.BoilerplateConfigPath(opts.TemplateFolder)
 	render := func(s string) (string, error) {
 		return render.RenderTemplateFromString(base, s, vars, opts)
 	}
 
-	cmd, err := render(hook.Command)
-	if err != nil {
-		return "", err
+	cmd, renderErr := render(hook.Command)
+	if renderErr != nil {
+		return "", renderErr
 	}
 
 	args := make([]string, len(hook.Args))
+
 	for i, a := range hook.Args {
-		if args[i], err = render(a); err != nil {
-			return "", err
+		if args[i], renderErr = render(a); renderErr != nil {
+			return "", renderErr
 		}
 	}
 
 	env := make([]string, 0, len(hook.Env))
+
 	for k, v := range hook.Env {
-		key, err := render(k)
-		if err != nil {
-			return "", err
+		key, renderErr := render(k)
+		if renderErr != nil {
+			return "", renderErr
 		}
-		val, err := render(v)
-		if err != nil {
-			return "", err
+
+		val, renderErr := render(v)
+		if renderErr != nil {
+			return "", renderErr
 		}
+
 		env = append(env, fmt.Sprintf("%s=%s", key, val))
 	}
 
 	wd := opts.TemplateFolder
+
 	if hook.WorkingDir != "" {
-		if wd, err = render(hook.WorkingDir); err != nil {
-			return "", err
+		var wdErr error
+		if wd, wdErr = render(hook.WorkingDir); wdErr != nil {
+			return "", wdErr
 		}
 	}
 
 	// Create a user-friendly string representation for the hook details
 	var details []string
-	details = append(details, fmt.Sprintf("Command: %s", cmd))
+
+	details = append(details, "Command: "+cmd)
 	if len(args) > 0 {
 		details = append(details, fmt.Sprintf("Arguments: %v", args))
 	}
+
 	if len(env) > 0 {
 		details = append(details, fmt.Sprintf("Environment: %v", env))
 	}
-	details = append(details, fmt.Sprintf("Working Directory: %s", wd))
+
+	details = append(details, "Working Directory: "+wd)
 
 	hookDetails := strings.Join(details, "\n")
+
 	return hookDetails, nil
 }
 
 // handlePreviousHookConfirmation checks if a hook was previously confirmed or declined
-func handlePreviousHookConfirmation(hookKey string, hookAnswers map[string]bool, executeAll bool) (bool, bool) {
+func handlePreviousHookConfirmation(hookKey string, hookAnswers map[string]bool, executeAll bool) bool {
 	confirmed, seen := hookAnswers[hookKey]
 	if !seen && !executeAll {
-		return true, false
+		return true
 	}
 
 	if seen && !confirmed {
 		util.Logger.Printf("Skipping hook (previously declined)")
-		return false, false
+		return false
 	}
 
 	util.Logger.Printf("Executing hook (%s)", "previously confirmed or all confirmed")
-	return true, false
+
+	return true
 }
 
 // handleHookUserConfirmation prompts the user for confirmation and handles the response
@@ -256,15 +280,21 @@ func handleHookUserConfirmation(hookDetails string, hookKey string, hookAnswers 
 	switch resp {
 	case util.UserResponseYes:
 		hookAnswers[hookKey] = true
+
 		util.Logger.Printf("Executing hook (user confirmed)")
+
 		return true, false, nil // should execute, don't set executeAll
 	case util.UserResponseAll:
 		hookAnswers[hookKey] = true
+
 		util.Logger.Printf("Executing hook (user confirmed all)")
+
 		return true, true, nil // should execute, set executeAll
 	case util.UserResponseNo:
 		hookAnswers[hookKey] = false
+
 		util.Logger.Printf("Skipping hook (user declined)")
+
 		return false, false, nil // don't execute, don't set executeAll
 	}
 
@@ -280,49 +310,61 @@ func generateHookKey(hookDetails string) string {
 // printHookDetails prints the details of a hook that will be executed
 func printHookDetails(hookDetails string) {
 	util.Logger.Printf("Hook details:")
-	lines := strings.Split(hookDetails, "\n")
-	for _, line := range lines {
+
+	lines := strings.SplitSeq(hookDetails, "\n")
+	for line := range lines {
 		util.Logger.Printf("  %s", line)
 	}
 }
 
 // Process the given hook, which is a script that should be execute at the command-line
-func processHook(hook variables.Hook, opts *options.BoilerplateOptions, vars map[string]interface{}) error {
-	cmd, err := render.RenderTemplateFromString(config.BoilerplateConfigPath(opts.TemplateFolder), hook.Command, vars, opts)
-	if err != nil {
-		return err
+func processHook(hook variables.Hook, opts *options.BoilerplateOptions, vars map[string]any) error {
+	cmd, hookRenderErr := render.RenderTemplateFromString(config.BoilerplateConfigPath(opts.TemplateFolder), hook.Command, vars, opts)
+	if hookRenderErr != nil {
+		return hookRenderErr
 	}
 
 	args := []string{}
+
 	for _, arg := range hook.Args {
-		renderedArg, err := render.RenderTemplateFromString(config.BoilerplateConfigPath(opts.TemplateFolder), arg, vars, opts)
-		if err != nil {
-			return err
+		renderedArg, hookRenderErr := render.RenderTemplateFromString(config.BoilerplateConfigPath(opts.TemplateFolder), arg, vars, opts)
+		if hookRenderErr != nil {
+			return hookRenderErr
 		}
+
 		args = append(args, renderedArg)
 	}
 
 	envVars := []string{}
+
 	for key, value := range hook.Env {
-		renderedKey, err := render.RenderTemplateFromString(config.BoilerplateConfigPath(opts.TemplateFolder), key, vars, opts)
-		if err != nil {
-			return err
+		renderedKey, hookRenderErr := render.RenderTemplateFromString(config.BoilerplateConfigPath(opts.TemplateFolder), key, vars, opts)
+		if hookRenderErr != nil {
+			return hookRenderErr
 		}
 
-		renderedValue, err := render.RenderTemplateFromString(config.BoilerplateConfigPath(opts.TemplateFolder), value, vars, opts)
-		if err != nil {
-			return err
+		renderedValue, hookRenderErr := render.RenderTemplateFromString(config.BoilerplateConfigPath(opts.TemplateFolder), value, vars, opts)
+		if hookRenderErr != nil {
+			return hookRenderErr
 		}
 
 		envVars = append(envVars, fmt.Sprintf("%s=%s", renderedKey, renderedValue))
 	}
 
 	workingDir := opts.TemplateFolder
+
 	if hook.WorkingDir != "" {
-		workingDir, err = render.RenderTemplateFromString(config.BoilerplateConfigPath(opts.TemplateFolder), hook.WorkingDir, vars, opts)
-		if err != nil {
-			return err
+		renderedWd, wdErr := render.RenderTemplateFromString(
+			config.BoilerplateConfigPath(opts.TemplateFolder),
+			hook.WorkingDir,
+			vars,
+			opts,
+		)
+		if wdErr != nil {
+			return wdErr
 		}
+
+		workingDir = renderedWd
 	}
 
 	return util.RunShellCommand(workingDir, envVars, cmd, args...)
@@ -340,6 +382,7 @@ func shouldSkipHook(hook variables.Hook, opts *options.BoilerplateOptions, vars 
 	}
 
 	util.Logger.Printf("Skip attribute for hook with command '%s' evaluated to '%s'", hook.Command, rendered)
+
 	return rendered == "true", nil
 }
 
@@ -380,15 +423,18 @@ func processDependency(
 			}
 
 			util.Logger.Printf("Processing dependency %s, with template folder %s and output folder %s", dependency.Name, dependencyOptions.TemplateFolder, dependencyOptions.OutputFolder)
+
 			return ProcessTemplate(dependencyOptions, opts, dependency)
 		}
 
 		forEach := dependency.ForEach
+
 		if len(dependency.ForEachReference) > 0 {
 			renderedReference, err := render.RenderTemplateFromString(opts.TemplateFolder, dependency.ForEachReference, originalVars, opts)
 			if err != nil {
 				return err
 			}
+
 			value, err := variables.UnmarshalListOfStrings(originalVars, renderedReference)
 			if err != nil {
 				return err
@@ -423,33 +469,36 @@ func cloneOptionsForDependency(
 	variablesInConfig map[string]variables.Variable,
 	variables map[string]interface{},
 ) (*options.BoilerplateOptions, error) {
-	renderedTemplateUrl, err := render.RenderTemplateFromString(originalOpts.TemplateFolder, dependency.TemplateUrl, variables, originalOpts)
+	renderedTemplateURL, err := render.RenderTemplateFromString(originalOpts.TemplateFolder, dependency.TemplateURL, variables, originalOpts)
 	if err != nil {
 		return nil, err
 	}
+
 	renderedOutputFolder, err := render.RenderTemplateFromString(originalOpts.TemplateFolder, dependency.OutputFolder, variables, originalOpts)
 	if err != nil {
 		return nil, err
 	}
 
-	templateUrl, templateFolder, err := options.DetermineTemplateConfig(renderedTemplateUrl)
+	templateURL, templateFolder, err := options.DetermineTemplateConfig(renderedTemplateURL)
 	if err != nil {
 		return nil, err
 	}
 	// If local, make sure to return relative path in context of original template folder
 	if templateFolder != "" {
-		templateFolder = render.PathRelativeToTemplate(originalOpts.TemplateFolder, renderedTemplateUrl)
+		templateFolder = render.PathRelativeToTemplate(originalOpts.TemplateFolder, renderedTemplateURL)
 	}
 
 	// Output folder should be local path relative to original output folder, or absolute path
 	outputFolder := render.PathRelativeToTemplate(originalOpts.OutputFolder, renderedOutputFolder)
 
 	renderedVarFiles := []string{}
+
 	for _, varFilePath := range dependency.VarFiles {
 		renderedVarFilePath, err := render.RenderTemplateFromString(originalOpts.TemplateFolder, varFilePath, variables, originalOpts)
 		if err != nil {
 			return nil, err
 		}
+
 		renderedVarFiles = append(renderedVarFiles, renderedVarFilePath)
 	}
 
@@ -459,7 +508,7 @@ func cloneOptionsForDependency(
 	}
 
 	return &options.BoilerplateOptions{
-		TemplateUrl:             templateUrl,
+		TemplateURL:             templateURL,
 		TemplateFolder:          templateFolder,
 		OutputFolder:            outputFolder,
 		NonInteractive:          originalOpts.NonInteractive,
@@ -493,7 +542,7 @@ func cloneVariablesForDependency(
 		NonInteractive: true,
 		OnMissingKey:   options.ExitWithError,
 
-		TemplateUrl:             opts.TemplateUrl,
+		TemplateURL:             opts.TemplateURL,
 		TemplateFolder:          opts.TemplateFolder,
 		OutputFolder:            opts.OutputFolder,
 		Vars:                    opts.Vars,
@@ -512,6 +561,7 @@ func cloneVariablesForDependency(
 	// We also filter out any dependency namespaced variables, as those are only passed in from the CLI and will be
 	// handled later.
 	newVariables := map[string]interface{}{}
+
 	if !dependency.DontInheritVariables {
 		for key, value := range originalVariables {
 			dependencyName, _ := variables.SplitIntoDependencyNameAndVariableName(key)
@@ -544,8 +594,10 @@ func cloneVariablesForDependency(
 			if err != nil {
 				return nil, err
 			}
+
 			varValue = renderedValue
 		}
+
 		newVariables[variable.Name()] = varValue
 		// Update currentVariables to include the newly processed variable
 		currentVariables = util.MergeMaps(currentVariables, map[string]interface{}{
@@ -588,6 +640,7 @@ func shouldProcessDependency(dependency variables.Dependency, opts *options.Boil
 	if err != nil {
 		return false, err
 	}
+
 	if shouldSkip {
 		return false, nil
 	}
@@ -611,6 +664,7 @@ func shouldSkipDependency(dependency variables.Dependency, opts *options.Boilerp
 	}
 
 	util.Logger.Printf("Skip attribute for dependency %s evaluated to '%s'", dependency.Name, rendered)
+
 	return rendered == "true", nil
 }
 
@@ -629,6 +683,7 @@ func processTemplateFolder(
 	if err != nil {
 		return err
 	}
+
 	processedEngines, err := processEngines(config.Engines, opts, variables)
 	if err != nil {
 		return err
@@ -636,12 +691,14 @@ func processTemplateFolder(
 
 	return filepath.Walk(opts.TemplateFolder, func(path string, info os.FileInfo, err error) error {
 		path = filepath.ToSlash(path)
-		if shouldSkipPath(path, opts, processedSkipFiles) {
+
+		switch {
+		case shouldSkipPath(path, opts, processedSkipFiles):
 			util.Logger.Printf("Skipping %s", path)
 			return nil
-		} else if util.IsDir(path) {
+		case util.IsDir(path):
 			return createOutputDir(path, opts, variables)
-		} else {
+		default:
 			engine := determineTemplateEngine(processedEngines, path)
 			return processFile(path, opts, variables, partials, engine)
 		}
@@ -677,7 +734,8 @@ func createOutputDir(dir string, opts *options.BoilerplateOptions, variables map
 	}
 
 	util.Logger.Printf("Creating folder %s", destination)
-	return os.MkdirAll(destination, 0o777)
+
+	return os.MkdirAll(destination, defaultDirPerm)
 }
 
 // Compute the path where the given file, which is in templateFolder, should be copied in outputFolder. If the file
@@ -695,6 +753,7 @@ func outPath(file string, opts *options.BoilerplateOptions, variables map[string
 	if err != nil {
 		return "", errors.WithStackTrace(err)
 	}
+
 	interpolatedFilePath, err := render.RenderTemplateFromString(file, urlDecodedFile, variables, opts)
 	if err != nil {
 		return "", errors.WithStackTrace(err)
@@ -721,6 +780,7 @@ func copyFile(file string, opts *options.BoilerplateOptions, variables map[strin
 	}
 
 	util.Logger.Printf("Copying %s to %s", file, destination)
+
 	return util.CopyFile(file, destination)
 }
 
@@ -739,6 +799,7 @@ func processTemplate(
 	}
 
 	var out string
+
 	switch engine {
 	case variables.GoTemplate:
 		out, err = render.RenderTemplateWithPartials(templatePath, partials, vars, opts)
@@ -776,7 +837,7 @@ func shouldSkipPath(path string, opts *options.BoilerplateOptions, processedSkip
 		return true
 	}
 	// not in any == not in all
-	if anyNotPathEffective(processedSkipFiles) && pathInAnySkipNotPath(canonicalPath, processedSkipFiles) == false {
+	if anyNotPathEffective(processedSkipFiles) && !pathInAnySkipNotPath(canonicalPath, processedSkipFiles) {
 		return true
 	}
 
@@ -792,6 +853,7 @@ func pathInAnySkipPath(canonicalPath string, skipFileList []ProcessedSkipFile) b
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -803,6 +865,7 @@ func anyNotPathEffective(skipFileList []ProcessedSkipFile) bool {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -812,7 +875,7 @@ func anyNotPathEffective(skipFileList []ProcessedSkipFile) bool {
 // the directory to copy over the exact file.
 func pathInAnySkipNotPath(canonicalPath string, skipFileList []ProcessedSkipFile) bool {
 	for _, skipFile := range skipFileList {
-		if skipFile.RenderedSkipIf == false || len(skipFile.EvaluatedNotPaths) == 0 {
+		if !skipFile.RenderedSkipIf || len(skipFile.EvaluatedNotPaths) == 0 {
 			continue
 		}
 
@@ -827,5 +890,6 @@ func pathInAnySkipNotPath(canonicalPath string, skipFileList []ProcessedSkipFile
 			}
 		}
 	}
+
 	return false
 }

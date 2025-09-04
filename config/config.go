@@ -1,9 +1,10 @@
+// Package config provides functionality for loading and parsing boilerplate configuration files.
 package config
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net/url"
+	"os"
 	"path"
 	"strings"
 
@@ -17,9 +18,9 @@ import (
 	"github.com/gruntwork-io/boilerplate/variables"
 )
 
-const BOILERPLATE_CONFIG_FILE = "boilerplate.yml"
+const BoilerplateConfigFile = "boilerplate.yml"
 
-// The contents of a boilerplate.yml config file
+// BoilerplateConfig represents the contents of a boilerplate.yml config file.
 type BoilerplateConfig struct {
 	RequiredVersion *string
 	Variables       []variables.Variable
@@ -36,17 +37,18 @@ func (config *BoilerplateConfig) GetVariablesMap() map[string]variables.Variable
 	for _, variable := range config.Variables {
 		out[variable.Name()] = variable
 	}
+
 	return out
 }
 
-// Implement the go-yaml unmarshal interface for BoilerplateConfig. We can't let go-yaml handle this itself because:
+// UnmarshalYAML implements the go-yaml unmarshal interface for BoilerplateConfig. We can't let go-yaml handle this itself because:
 //
-// 1. Variable is an interface
-// 2. We need to provide Defaults for optional fields, such as "type"
-// 3. We want to validate the variable as part of the unmarshalling process so we never have invalid Variable or
-//    Dependency classes floating around
-func (config *BoilerplateConfig) UnmarshalYAML(unmarshal func(interface{}) error) error {
-	var fields map[string]interface{}
+//  1. Variable is an interface
+//  2. We need to provide Defaults for optional fields, such as "type"
+//  3. We want to validate the variable as part of the unmarshalling process so we never have invalid Variable or
+//     Dependency classes floating around
+func (config *BoilerplateConfig) UnmarshalYAML(unmarshal func(any) error) error {
+	var fields map[string]any
 	if err := unmarshal(&fields); err != nil {
 		return err
 	}
@@ -95,104 +97,123 @@ func (config *BoilerplateConfig) UnmarshalYAML(unmarshal func(interface{}) error
 		SkipFiles:       skipFiles,
 		Engines:         engines,
 	}
+
 	return nil
 }
 
-// Implement the go-yaml marshaler interface so that the config can be marshaled into yaml. We use a custom marshaler
+// MarshalYAML implements the go-yaml marshaler interface so that the config can be marshaled into yaml. We use a custom marshaler
 // instead of defining the fields as tags so that we skip the attributes that are empty.
-func (config *BoilerplateConfig) MarshalYAML() (interface{}, error) {
-	configYml := map[string]interface{}{}
+func (config *BoilerplateConfig) MarshalYAML() (any, error) {
+	configYml := map[string]any{}
+
 	if len(config.Variables) > 0 {
 		// Due to go type system, we can only pass through []interface{}, even though []Variable is technically
 		// polymorphic to that type. So we reconstruct the list using the right type before passing it in to the marshal
 		// function.
-		interfaceList := []interface{}{}
+		interfaceList := []any{}
 		for _, variable := range config.Variables {
 			interfaceList = append(interfaceList, variable)
 		}
+
 		varsYml, err := util.MarshalListOfObjectsToYAML(interfaceList)
 		if err != nil {
 			return nil, err
 		}
+
 		configYml["variables"] = varsYml
 	}
+
 	if len(config.Dependencies) > 0 {
 		// Due to go type system, we can only pass through []interface{}, even though []Dependency is technically
 		// polymorphic to that type. So we reconstruct the list using the right type before passing it in to the marshal
 		// function.
-		interfaceList := []interface{}{}
+		interfaceList := []any{}
 		for _, dep := range config.Dependencies {
 			interfaceList = append(interfaceList, dep)
 		}
+
 		depsYml, err := util.MarshalListOfObjectsToYAML(interfaceList)
 		if err != nil {
 			return nil, err
 		}
+
 		configYml["dependencies"] = depsYml
 	}
+
 	if len(config.Hooks.BeforeHooks) > 0 || len(config.Hooks.AfterHooks) > 0 {
 		hooksYml, err := config.Hooks.MarshalYAML()
 		if err != nil {
 			return nil, err
 		}
+
 		configYml["hooks"] = hooksYml
 	}
+
 	if len(config.Partials) > 0 {
 		configYml["partials"] = config.Partials
 	}
+
 	if len(config.SkipFiles) > 0 {
 		// Due to go type system, we can only pass through []interface{}, even though []SkipFile is technically
 		// polymorphic to that type. So we reconstruct the list using the right type before passing it in to the marshal
 		// function.
-		interfaceList := []interface{}{}
+		interfaceList := []any{}
 		for _, skipFile := range config.SkipFiles {
 			interfaceList = append(interfaceList, skipFile)
 		}
+
 		skipFilesYml, err := util.MarshalListOfObjectsToYAML(interfaceList)
 		if err != nil {
 			return nil, err
 		}
+
 		configYml["skip_files"] = skipFilesYml
 	}
+
 	if len(config.Engines) > 0 {
 		// Due to go type system, we can only pass through []interface{}, even though []Engine is technically
 		// polymorphic to that type. So we reconstruct the list using the right type before passing it in to the marshal
 		// function.
-		interfaceList := []interface{}{}
+		interfaceList := []any{}
 		for _, engine := range config.Engines {
 			interfaceList = append(interfaceList, engine)
 		}
+
 		enginesYml, err := util.MarshalListOfObjectsToYAML(interfaceList)
 		if err != nil {
 			return nil, err
 		}
+
 		configYml["engines"] = enginesYml
 	}
+
 	return configYml, nil
 }
 
-// Load the boilerplate.yml config contents for the folder specified in the given options
+// LoadBoilerplateConfig loads the boilerplate.yml config contents for the folder specified in the given options.
 func LoadBoilerplateConfig(opts *options.BoilerplateOptions) (*BoilerplateConfig, error) {
 	configPath := BoilerplateConfigPath(opts.TemplateFolder)
 
-	if util.PathExists(configPath) {
+	switch {
+	case util.PathExists(configPath):
 		util.Logger.Printf("Loading boilerplate config from %s", configPath)
-		bytes, err := ioutil.ReadFile(configPath)
+
+		bytes, err := os.ReadFile(configPath)
 		if err != nil {
 			return nil, errors.WithStackTrace(err)
 		}
 
 		return ParseBoilerplateConfig(bytes)
-	} else if opts.OnMissingConfig == options.Ignore {
+	case opts.OnMissingConfig == options.Ignore:
 		util.Logger.Printf("Warning: boilerplate config file not found at %s. The %s flag is set, so ignoring. Note that no variables will be available while generating.", configPath, options.OptMissingConfigAction)
 		return &BoilerplateConfig{}, nil
-	} else {
+	default:
 		// If the template URL is similar to a git URL, surface in error message that there may be a misspelling/typo.
 		return nil, errors.WithStackTrace(BoilerplateConfigNotFound(configPath))
 	}
 }
 
-// Parse the given configContents as a boilerplate.yml config file
+// ParseBoilerplateConfig parses the given configContents as a boilerplate.yml config file.
 func ParseBoilerplateConfig(configContents []byte) (*BoilerplateConfig, error) {
 	boilerplateConfig := &BoilerplateConfig{}
 
@@ -213,9 +234,9 @@ func ParseBoilerplateConfig(configContents []byte) (*BoilerplateConfig, error) {
 	return boilerplateConfig, nil
 }
 
-// Return the default path for a boilerplate.yml config file in the given folder
+// BoilerplateConfigPath returns the default path for a boilerplate.yml config file in the given folder.
 func BoilerplateConfigPath(templateFolder string) string {
-	return path.Join(templateFolder, BOILERPLATE_CONFIG_FILE)
+	return path.Join(templateFolder, BoilerplateConfigFile)
 }
 
 // EnforceRequiredVersion enforces any required_version string that is configured on the boilerplate config by checking
@@ -225,6 +246,7 @@ func EnforceRequiredVersion(boilerplateConfig *BoilerplateConfig) error {
 	if boilerplateConfig == nil || boilerplateConfig.RequiredVersion == nil {
 		return nil
 	}
+
 	constraint := *boilerplateConfig.RequiredVersion
 
 	// Base case: if using a development version, then bypass required version check
@@ -238,6 +260,7 @@ func EnforceRequiredVersion(boilerplateConfig *BoilerplateConfig) error {
 	if err != nil {
 		return errors.WithStackTrace(err)
 	}
+
 	versionConstraint, err := goversion.NewConstraint(constraint)
 	if err != nil {
 		return errors.WithStackTrace(err)
@@ -246,6 +269,7 @@ func EnforceRequiredVersion(boilerplateConfig *BoilerplateConfig) error {
 	if !versionConstraint.Check(boilerplateVersion) {
 		return errors.WithStackTrace(InvalidBoilerplateVersion{CurrentVersion: boilerplateVersion, VersionConstraints: versionConstraint})
 	}
+
 	return nil
 }
 
@@ -267,6 +291,7 @@ func maybeGitURL(templateURL string) bool {
 	if err != nil {
 		return false
 	}
+
 	return parsed.Scheme != "" || parsed.Hostname() != "" || parsed.RawQuery != ""
 }
 
@@ -275,7 +300,7 @@ func maybeGitURL(templateURL string) bool {
 type BoilerplateConfigNotFound string
 
 func (err BoilerplateConfigNotFound) Error() string {
-	errMsg := fmt.Sprintf("Could not find %s in %s and the %s flag is set to %s", BOILERPLATE_CONFIG_FILE, string(err), options.OptMissingConfigAction, options.Exit)
+	errMsg := fmt.Sprintf("Could not find %s in %s and the %s flag is set to %s", BoilerplateConfigFile, string(err), options.OptMissingConfigAction, options.Exit)
 
 	configPath := string(err)
 	if maybeGitURL(configPath) {
