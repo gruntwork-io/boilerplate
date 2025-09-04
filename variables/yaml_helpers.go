@@ -1,8 +1,10 @@
 package variables
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
@@ -490,14 +492,22 @@ func parseVariablesFromVarFiles(varFileList []string) (map[string]any, error) {
 	return vars, nil
 }
 
-// Parse the variables in the given YAML file into a map of variable name to variable value. Along the way, each value
-// is parsed as YAML.
+// Parse the variables in the given YAML or JSON file into a map of variable name to variable value. 
+// The parsing format is determined by the file extension (.json for JSON, everything else for YAML).
 func ParseVariablesFromVarFile(varFilePath string) (map[string]any, error) {
 	bytes, err := os.ReadFile(varFilePath)
 	if err != nil {
 		return map[string]any{}, errors.WithStackTrace(err)
 	}
-	return parseVariablesFromVarFileContents(bytes)
+
+	// Determine format based on file extension
+	ext := strings.ToLower(filepath.Ext(varFilePath))
+	if ext == ".json" {
+		return parseVariablesFromJsonFileContents(bytes)
+	} else {
+		// Default to YAML for .yml, .yaml, or any other extension
+		return parseVariablesFromVarFileContents(bytes)
+	}
 }
 
 // Parse the variables in the given YAML contents into a map of variable name to variable value. Along the way, each
@@ -522,8 +532,29 @@ func parseVariablesFromVarFileContents(varFileContents []byte) (map[string]any, 
 	return vars, nil
 }
 
+// Parse the variables in the given JSON contents into a map of variable name to variable value.
+func parseVariablesFromJsonFileContents(jsonFileContents []byte) (map[string]any, error) {
+	vars := make(map[string]any)
+
+	if err := json.Unmarshal(jsonFileContents, &vars); err != nil {
+		return vars, errors.WithStackTrace(err)
+	}
+
+	converted, err := ConvertYAMLToStringMap(vars)
+	if err != nil {
+		return nil, errors.WithStackTrace(err)
+	}
+
+	vars, ok := converted.(map[string]any)
+	if !ok {
+		return nil, YAMLConversionErr{converted}
+	}
+
+	return vars, nil
+}
+
 // Parse variables passed in via command line options, either as a list of NAME=VALUE variable pairs in varsList, or a
-// list of paths to YAML files that define NAME: VALUE pairs. Return a map of the NAME: VALUE pairs. Along the way,
+// list of paths to YAML or JSON files that define NAME: VALUE pairs. Return a map of the NAME: VALUE pairs. Along the way,
 // each VALUE is parsed as YAML.
 func ParseVars(varsList []string, varFileList []string) (map[string]any, error) {
 	variables := map[string]any{}
