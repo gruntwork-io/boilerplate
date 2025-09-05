@@ -1,0 +1,84 @@
+name: Integration Tests
+
+on:
+  workflow_call:
+
+jobs:
+  integration_test:
+    name: Integration Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu]
+    env:
+      MISE_PROFILE: cicd
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Use mise to install dependencies
+        uses: jdx/mise-action@v2
+        with:
+          version: 2025.8.16
+          experimental: true
+        env:
+          # Adding token here to reduce the likelihood of hitting rate limit issues.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: go-cache-paths
+        run: |
+          echo "go-build=$(go env GOCACHE)" >> "$GITHUB_OUTPUT"
+          echo "go-mod=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
+        shell: bash
+
+      - name: Go Build Cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.go-cache-paths.outputs.go-build }}
+          key: ${{ runner.os }}-go-build-${{ hashFiles('**/go.sum') }}-${{ matrix.os }}-amd64
+
+      - name: Go Mod Cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.go-cache-paths.outputs.go-mod }}
+          key: ${{ runner.os }}-go-mod-${{ hashFiles('**/go.sum') }}-${{ matrix.os }}-amd64
+
+      - name: Download Build Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: boilerplate_linux_amd64
+          path: bin/
+
+      - name: Make binary executable
+        run: chmod +x bin/boilerplate_linux_amd64
+
+      - name: Install go-junit-report
+        run: go install github.com/jstemmer/go-junit-report/v2@latest
+
+      - name: Run Integration Tests
+        id: run-integration-tests
+        run: |
+          set -o pipefail
+          go test -v ./integration-tests/... -timeout 45m | tee >(go-junit-report -set-exit-code > integration-result.xml)
+        shell: bash
+        env:
+          # Adding token here to reduce the likelihood of hitting rate limit issues.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BOILERPLATE_BINARY: ${{ github.workspace }}/bin/boilerplate_linux_amd64
+
+      - name: Upload Integration Report (${{ matrix.os }})
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-report-${{ matrix.os }}
+          path: integration-result.xml
+
+      - name: Display Integration Test Results (${{ matrix.os }})
+        uses: mikepenz/action-junit-report@v5
+        if: always()
+        with:
+          report_paths: integration-result.xml
+          detailed_summary: 'true'
+          include_time_in_summary: 'true'
+          group_suite: 'true'
