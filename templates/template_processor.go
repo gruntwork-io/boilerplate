@@ -35,6 +35,7 @@ func ProcessTemplate(options, rootOpts *options.BoilerplateOptions, thisDep vari
 	// working directory.
 	if options.TemplateFolder == "" {
 		workingDir, templateFolder, downloadErr := getterhelper.DownloadTemplatesToTemporaryFolder(options.TemplateURL)
+
 		defer func() {
 			util.Logger.Printf("Cleaning up working directory.")
 

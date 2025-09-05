@@ -112,8 +112,8 @@ func renderGlobPath(opts *options.BoilerplateOptions, path string, variables map
 	}
 
 	globPath := filepath.Join(opts.TemplateFolder, rendered)
-	rawMatchedPaths, err := zglob.Glob(globPath)
 
+	rawMatchedPaths, err := zglob.Glob(globPath)
 	if err != nil {
 		// TODO: logger-debug - switch to debug
 		util.Logger.Printf("ERROR: could not glob %s", globPath)

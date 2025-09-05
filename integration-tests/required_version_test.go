@@ -36,7 +36,9 @@ func TestRequiredVersionOverTest(t *testing.T) {
 	require.Error(t, err)
 
 	errUnwrapped := errors.Unwrap(err)
+
 	var invalidBoilerplateVersion config.InvalidBoilerplateVersion
+
 	isInvalidVersionErr := errors.As(errUnwrapped, &invalidBoilerplateVersion)
 	require.True(t, isInvalidVersionErr)
 }
@@ -55,6 +57,7 @@ func TestRequiredVersionUnderTest(t *testing.T) {
 
 func runRequiredVersionExample(t *testing.T, templateFolder string) error {
 	t.Helper()
+
 	app := cli.CreateBoilerplateCli()
 
 	outputPath := t.TempDir()
@@ -67,5 +70,6 @@ func runRequiredVersionExample(t *testing.T, templateFolder string) error {
 		outputPath,
 		"--non-interactive",
 	}
+
 	return app.Run(args)
 }

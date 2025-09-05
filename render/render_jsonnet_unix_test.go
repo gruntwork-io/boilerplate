@@ -44,11 +44,13 @@ func TestRenderJsonnet(t *testing.T) {
 
 			outputJSON, err := RenderJsonnetTemplate(templateFPath, variables, testBoilerplateOptions)
 			require.NoError(t, err)
+
 			var output map[string]any
 			require.NoError(t, json.Unmarshal([]byte(outputJSON), &output))
 
 			expectedOutputJSON, err := os.ReadFile(expectedFPath)
 			require.NoError(t, err)
+
 			var expectedOutput map[string]any
 			require.NoError(t, json.Unmarshal(expectedOutputJSON, &expectedOutput))
 

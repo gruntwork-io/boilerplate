@@ -39,6 +39,7 @@ func TestIsTextFile(t *testing.T) {
 	for _, testCase := range testCases {
 		t.Run(testCase.file, func(t *testing.T) {
 			t.Parallel()
+
 			actual, err := util.IsTextFile("../test-fixtures/util-test/is-text-file/" + testCase.file)
 
 			require.NoError(t, err)

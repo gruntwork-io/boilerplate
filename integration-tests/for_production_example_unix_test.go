@@ -23,6 +23,7 @@ func TestForProductionTerragruntArchitectureBoilerplateExample(t *testing.T) {
 
 	templateFolder, err := filepath.Abs(filepath.Join(forProductionExamplePath, "blueprints", "reference-architecture"))
 	require.NoError(t, err)
+
 	outputFolder := filepath.Join(outputBasePath, "infrastructure-live")
 	varFile, err := filepath.Abs(filepath.Join(forProductionExamplePath, "sample_reference_architecture_vars.yml"))
 	require.NoError(t, err)
@@ -32,6 +33,7 @@ func TestForProductionTerragruntArchitectureBoilerplateExample(t *testing.T) {
 	// Make sure it rendered valid terragrunt outputs by running terragrunt validate in each of the relevant folders.
 	t.Run("group", func(t *testing.T) {
 		t.Parallel()
+
 		for _, account := range []string{"dev", "stage", "prod"} {
 			opts := &terraform.Options{
 				TerraformBinary: "terragrunt",

@@ -32,6 +32,7 @@ func TestExamplesShell(t *testing.T) {
 	// Insulate the following parallel tests in a group so that cleanup routines run after all tests are done.
 	t.Run("group", func(t *testing.T) {
 		t.Parallel()
+
 		for _, example := range shellExamples {
 			outputFolder := path.Join(outputBasePath, example)
 			varFile := path.Join(examplesVarFilesBasePath, example, "vars.yml")
@@ -39,6 +40,7 @@ func TestExamplesShell(t *testing.T) {
 
 			t.Run(example, func(t *testing.T) {
 				t.Parallel()
+
 				templateFolder := path.Join(examplesBasePath, example)
 				for _, missingKeyAction := range options.AllMissingKeyActions {
 					t.Run(fmt.Sprintf("%s-missing-key-%s", example, string(missingKeyAction)), func(t *testing.T) {
@@ -51,6 +53,7 @@ func TestExamplesShell(t *testing.T) {
 
 			t.Run(example+"-remote", func(t *testing.T) {
 				t.Parallel()
+
 				templateFolder := fmt.Sprintf("git@github.com:gruntwork-io/boilerplate.git//examples/for-learning-and-testing/%s?ref=%s", example, branchName)
 				testExample(t, templateFolder, outputFolder, varFile, expectedOutputFolder, string(options.ExitWithError))
 			})
@@ -93,12 +96,14 @@ func TestSpecialFileNames(t *testing.T) {
 			// run init logic
 			err = tc.initLogic(testDir)
 			require.NoError(t, err)
+
 			examplesVarFilesBasePath := "../test-fixtures/examples-var-files"
 
 			example := tc.path
 			outputFolder := path.Join(outputBasePath, example)
 			err = os.MkdirAll(outputFolder, 0777)
 			require.NoError(t, err)
+
 			varFile := path.Join(examplesVarFilesBasePath, example, "vars.yml")
 			expectedOutputFolder := path.Join("../test-fixtures/examples-expected-output-unix", example)
 

@@ -48,6 +48,7 @@ func TestRenderTemplate(t *testing.T) {
 
 	defaultOutputDir := "/output"
 	defaultTemplateDir := "/templates"
+
 	if runtime.GOOS == windowsOS {
 		defaultOutputDir = "C:\\output"
 		defaultTemplateDir = "C:\\templates"
@@ -108,8 +109,10 @@ func TestRenderTemplate(t *testing.T) {
 				t.Skip("Skipping test because of skip flag")
 				return
 			}
+
 			opts := testutil.CreateTestOptionsWithOutput("/templates", defaultOutputDir)
 			opts.OnMissingKey = tc.missingKeyAction
+
 			actualOutput, err := RenderTemplateFromString(pwd+"/template.txt", tc.templateContents, tc.variables, opts)
 			if tc.expectedErrorText == "" {
 				assert.NoError(t, err, "template = %s, variables = %s, missingKeyAction = %s, err = %v", tc.templateContents, tc.variables, tc.missingKeyAction, err)

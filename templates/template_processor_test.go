@@ -91,7 +91,6 @@ func TestCloneOptionsForDependency(t *testing.T) {
 			require.NoError(t, err, "Dependency: %s", tt.dependency)
 			assert.Equal(t, tt.expectedOpts, *actualOptions, "Dependency: %s", tt.dependency)
 		})
-
 	}
 }
 
@@ -147,7 +146,6 @@ func TestCloneVariablesForDependency(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, tt.expectedVariables, actualVariables, "Dependency: %s", tt.dependency)
 		})
-
 	}
 }
 

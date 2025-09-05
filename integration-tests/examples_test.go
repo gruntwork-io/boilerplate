@@ -35,6 +35,7 @@ func TestExamples(t *testing.T) {
 		if !example.IsDir() {
 			continue
 		}
+
 		if strings.Contains(example.Name(), "shell") {
 			// This is captured in TestExamplesShell
 			continue
@@ -80,18 +81,22 @@ func TestExamplesAsRemoteTemplate(t *testing.T) {
 	// Insulate the following parallel tests in a group so that cleanup routines run after all tests are done.
 	t.Run("group", func(t *testing.T) {
 		t.Parallel()
+
 		if runtime.GOOS == "windows" { // skip clone test for windows because of invalid file name in git
 			t.Skip()
 			return
 		}
+
 		for _, example := range examples {
 			if !example.IsDir() {
 				continue
 			}
+
 			if strings.Contains(example.Name(), "shell") {
 				// This is captured in TestExamplesShell
 				continue
 			}
+
 			if strings.Contains(example.Name(), "unix") {
 				// unix specific case
 				continue
@@ -104,6 +109,7 @@ func TestExamplesAsRemoteTemplate(t *testing.T) {
 
 			t.Run(path.Base(example.Name()), func(t *testing.T) {
 				t.Parallel()
+
 				templateFolder := fmt.Sprintf("git@github.com:gruntwork-io/boilerplate.git//examples/for-learning-and-testing/%s?ref=%s", example.Name(), branchName)
 				outputFolder := path.Join(outputBasePath, example.Name())
 				varFile := path.Join(examplesVarFilesBasePath, example.Name(), "vars.yml")
@@ -112,11 +118,11 @@ func TestExamplesAsRemoteTemplate(t *testing.T) {
 			})
 		}
 	})
-
 }
 
 func testExample(t *testing.T, templateFolder string, outputFolder string, varFile string, expectedOutputFolder string, missingKeyAction string) {
 	t.Helper()
+
 	app := cli.CreateBoilerplateCli()
 
 	ref := git.GetCurrentGitRef(t)
@@ -142,6 +148,7 @@ func testExample(t *testing.T, templateFolder string, outputFolder string, varFi
 
 	err := app.Run(args)
 	require.NoError(t, err, errors.PrintErrorWithStackTrace(err))
+
 	if expectedOutputFolder != "" {
 		assertDirectoriesEqual(t, expectedOutputFolder, outputFolder)
 	}
