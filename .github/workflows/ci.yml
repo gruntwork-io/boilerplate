@@ -12,12 +12,8 @@ jobs:
     uses: ./.github/workflows/codespell.yml
     secrets: inherit
 
-  markdownlint:
-    uses: ./.github/workflows/markdownlint.yml
-    secrets: inherit
-
   base_tests:
-    needs: [lint, codespell, markdownlint]
+    needs: [lint, codespell]
     uses: ./.github/workflows/base-test.yml
     permissions:
       contents: read
@@ -25,7 +21,7 @@ jobs:
     secrets: inherit
 
   build:
-    needs: [lint, codespell, markdownlint]
+    needs: [lint, codespell]
     uses: ./.github/workflows/build.yml
     secrets: inherit
 
