@@ -140,7 +140,7 @@ You can find older versions on the [Releases Page](https://github.com/gruntwork-
 When you run Boilerplate, it performs the following steps:
 
 1. Read the `boilerplate.yml` file in the folder specified by the `--template-url` option to find all defined
-   varaibles.
+   variables.
 1. Gather values for the variables from any `--var` and `--var-file` options that were passed in and prompting the user
    for the rest (unless the `--non-interactive` flag is specified).
 1. Copy each file from `--template-url` to `--output-folder`, running each non-binary file through the Go
@@ -289,7 +289,7 @@ variables:
     description: Enter the welcome text used by the website dependency
 
   - name: ShowLogo
-    description: Should the webiste show the logo (true or false)?
+    description: Should the website show the logo (true or false)?
     type: bool
     default: true
 
@@ -688,7 +688,7 @@ Here's an example prompt for a variable with validations that shows how invalid 
 
 ![Example Boilerplate real-time validation](./docs/bp-validation.png)
 
-Here's an example demonstating how to specify validations when defining your variables:
+Here's an example demonstrating how to specify validations when defining your variables:
 
 ```yaml
 variables:

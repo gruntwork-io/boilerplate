@@ -105,7 +105,7 @@ func RenderVariables(
 	// the leaf variables are handled by the time it gets to this function in the `alreadyRenderedVariables` map that is
 	// passed in.
 	//
-	// NOTE: here, I am copying by value, not by reference by deferencing the pointer when assigning to optsForRender.
+	// NOTE: here, I am copying by value, not by reference by dereferencing the pointer when assigning to optsForRender.
 	// This ensures that opts (whatever caller passed in) doesn't change in this routine.
 	optsForRender := *opts
 	optsForRender.OnMissingKey = options.ExitWithError
