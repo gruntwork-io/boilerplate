@@ -184,7 +184,7 @@ func TestForEachReferenceRendersAsTemplate(t *testing.T) {
 
 	opts := testutil.CreateTestOptionsWithOutput(templateFolder, tempDir)
 
-	err = processDependency(dependency, opts, nil, variables)
+	err = processDependency(t.Context(), dependency, opts, nil, variables)
 	require.NoError(t, err)
 
 	// Should create directories "a" and "b" from template1 list

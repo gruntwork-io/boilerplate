@@ -91,7 +91,7 @@ func ProcessTemplateWithContext(ctx context.Context, options, rootOpts *options.
 		return err
 	}
 
-	err = processDependenciesWithContext(ctx, boilerplateConfig.Dependencies, options, boilerplateConfig.GetVariablesMap(), vars)
+	err = processDependencies(ctx, boilerplateConfig.Dependencies, options, boilerplateConfig.GetVariablesMap(), vars)
 	if err != nil {
 		return err
 	}
@@ -394,16 +394,16 @@ func shouldSkipHook(ctx context.Context, hook variables.Hook, opts *options.Boil
 	return rendered == "true", nil
 }
 
-// processDependenciesWithContext executes the boilerplate templates in the given list of dependencies
-func processDependenciesWithContext(
+// processDependencies executes the boilerplate templates in the given list of dependencies
+func processDependencies(
 	ctx context.Context,
 	dependencies []variables.Dependency,
 	opts *options.BoilerplateOptions,
 	variablesInConfig map[string]variables.Variable,
-	variables map[string]interface{},
+	variables map[string]any,
 ) error {
 	for _, dependency := range dependencies {
-		err := processDependencyWithContext(ctx, dependency, opts, variablesInConfig, variables)
+		err := processDependency(ctx, dependency, opts, variablesInConfig, variables)
 		if err != nil {
 			return err
 		}
@@ -412,18 +412,8 @@ func processDependenciesWithContext(
 	return nil
 }
 
-// Execute the boilerplate template in the given dependency
+// processDependency is like processDependency but accepts a context for cancellation and timeouts.
 func processDependency(
-	dependency variables.Dependency,
-	opts *options.BoilerplateOptions,
-	variablesInConfig map[string]variables.Variable,
-	originalVars map[string]interface{},
-) error {
-	return processDependencyWithContext(context.Background(), dependency, opts, variablesInConfig, originalVars)
-}
-
-// processDependencyWithContext is like processDependency but accepts a context for cancellation and timeouts.
-func processDependencyWithContext(
 	ctx context.Context,
 	dependency variables.Dependency,
 	opts *options.BoilerplateOptions,
@@ -488,7 +478,7 @@ func cloneOptionsForDependency(
 	dependency variables.Dependency,
 	originalOpts *options.BoilerplateOptions,
 	variablesInConfig map[string]variables.Variable,
-	variables map[string]interface{},
+	variables map[string]any,
 ) (*options.BoilerplateOptions, error) {
 	renderedTemplateURL, err := render.RenderTemplateFromStringWithContext(ctx, originalOpts.TemplateFolder, dependency.TemplateURL, variables, originalOpts)
 	if err != nil {
@@ -555,7 +545,7 @@ func cloneVariablesForDependency(
 	opts *options.BoilerplateOptions,
 	dependency variables.Dependency,
 	variablesInConfig map[string]variables.Variable,
-	originalVariables map[string]interface{},
+	originalVariables map[string]any,
 	renderedVarFiles []string,
 ) (map[string]interface{}, error) {
 	// Clone the opts so that we attempt to get the value for the variable, and we can error on any variable that is set
@@ -582,7 +572,7 @@ func cloneVariablesForDependency(
 	// variables.
 	// We also filter out any dependency namespaced variables, as those are only passed in from the CLI and will be
 	// handled later.
-	newVariables := map[string]interface{}{}
+	newVariables := map[string]any{}
 
 	if !dependency.DontInheritVariables {
 		for key, value := range originalVariables {
@@ -622,7 +612,7 @@ func cloneVariablesForDependency(
 
 		newVariables[variable.Name()] = varValue
 		// Update currentVariables to include the newly processed variable
-		currentVariables = util.MergeMaps(currentVariables, map[string]interface{}{
+		currentVariables = util.MergeMaps(currentVariables, map[string]any{
 			variable.Name(): varValue,
 		})
 	}
@@ -657,7 +647,12 @@ func cloneVariablesForDependency(
 
 // Prompt the user to verify if the given dependency should be executed and return true if they confirm. If
 // options.NonInteractive or options.DisableDependencyPrompt are set to true, this function always returns true.
-func shouldProcessDependency(ctx context.Context, dependency variables.Dependency, opts *options.BoilerplateOptions, variables map[string]interface{}) (bool, error) {
+func shouldProcessDependency(
+	ctx context.Context,
+	dependency variables.Dependency,
+	opts *options.BoilerplateOptions,
+	variables map[string]any,
+) (bool, error) {
 	shouldSkip, err := shouldSkipDependency(ctx, dependency, opts, variables)
 	if err != nil {
 		return false, err
