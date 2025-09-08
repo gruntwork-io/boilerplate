@@ -1,4 +1,5 @@
-//go:build aix || darwin || dragonfly || freebsd || (js && wasm) || linux || netbsd || openbsd || solaris
+//go:build aws && (aix || darwin || dragonfly || freebsd || (js && wasm) || linux || netbsd || openbsd || solaris)
+// +build aws
 // +build aix darwin dragonfly freebsd js,wasm linux netbsd openbsd solaris
 
 package integrationtests_test
@@ -19,7 +20,6 @@ func TestForProductionTerragruntArchitectureBoilerplateExample(t *testing.T) {
 	forProductionExamplePath := "../examples/for-production/terragrunt-architecture-catalog"
 
 	outputBasePath := t.TempDir()
-	// defer os.RemoveAll(outputBasePath)
 
 	templateFolder, err := filepath.Abs(filepath.Join(forProductionExamplePath, "blueprints", "reference-architecture"))
 	require.NoError(t, err)

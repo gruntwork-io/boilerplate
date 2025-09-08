@@ -1151,6 +1151,41 @@ variables:
 
 With this variable, you can have a template file named `{{ .RootTerragruntFileName }}` which will generate a file named according to the value of RootTerragruntFileName.
 
+## Running tests
+
+To run all tests:
+
+```bash
+go test ./...
+```
+
+This will run all tests except AWS-dependent integration tests, which are excluded by default since they require AWS credentials.
+
+### Running AWS-dependent tests
+
+Some integration tests require AWS credentials and are tagged with the `aws` build tag. To run these tests:
+
+1. Set up AWS credentials (e.g., using AWS CLI or environment variables):
+
+   ```bash
+   export AWS_ACCESS_KEY_ID=your_access_key
+   export AWS_SECRET_ACCESS_KEY=your_secret_key
+   ```
+
+2. Run tests with the `aws` build tag:
+
+   ```bash
+   go test -tags=aws ./...
+   ```
+
+   Or run only the AWS integration tests:
+
+   ```bash
+   go test -tags=aws ./integration-tests/...
+   ```
+
+These AWS tests validate Terragrunt configurations by running `terragrunt validate-all`, which requires valid AWS credentials to access AWS provider APIs.
+
 ## Alternative project generators
 
 Before creating Boilerplate, we tried a number of other project generators, but none of them met all of our

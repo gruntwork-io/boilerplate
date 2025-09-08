@@ -11,8 +11,6 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu, macos]
-    env:
-      MISE_PROFILE: cicd
 
     steps:
       - name: Checkout code

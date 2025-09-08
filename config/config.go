@@ -239,9 +239,28 @@ func BoilerplateConfigPath(templateFolder string) string {
 	return path.Join(templateFolder, BoilerplateConfigFile)
 }
 
+// VersionProvider is an interface for providing version information.
+// This allows for dependency injection in tests.
+type VersionProvider interface {
+	GetVersion() string
+}
+
+// DefaultVersionProvider uses the standard go-commons version package.
+type DefaultVersionProvider struct{}
+
+func (p DefaultVersionProvider) GetVersion() string {
+	return version.GetVersion()
+}
+
 // EnforceRequiredVersion enforces any required_version string that is configured on the boilerplate config by checking
 // against the current version of the CLI.
 func EnforceRequiredVersion(boilerplateConfig *BoilerplateConfig) error {
+	return EnforceRequiredVersionWithProvider(boilerplateConfig, DefaultVersionProvider{})
+}
+
+// EnforceRequiredVersionWithProvider enforces any required_version string that is configured on the boilerplate config by checking
+// against the version provided by the VersionProvider. This allows for dependency injection in tests.
+func EnforceRequiredVersionWithProvider(boilerplateConfig *BoilerplateConfig, versionProvider VersionProvider) error {
 	// Base case: if required_version is not set, then there is no version to enforce.
 	if boilerplateConfig == nil || boilerplateConfig.RequiredVersion == nil {
 		return nil
@@ -250,7 +269,7 @@ func EnforceRequiredVersion(boilerplateConfig *BoilerplateConfig) error {
 	constraint := *boilerplateConfig.RequiredVersion
 
 	// Base case: if using a development version, then bypass required version check
-	currentVersion := version.GetVersion()
+	currentVersion := versionProvider.GetVersion()
 	if currentVersion == "" {
 		return nil
 	}
