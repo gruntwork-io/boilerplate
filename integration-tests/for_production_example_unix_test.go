@@ -14,7 +14,7 @@ import (
 	"github.com/gruntwork-io/boilerplate/options"
 )
 
-func TestForProductionTerragruntArchitectureBoilerplateExample(t *testing.T) {
+func TestAWSForProductionTerragruntArchitectureBoilerplateExample(t *testing.T) {
 	t.Parallel()
 
 	forProductionExamplePath := "../examples/for-production/terragrunt-architecture-catalog"

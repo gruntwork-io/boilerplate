@@ -24,11 +24,3 @@ jobs:
     needs: [lint, codespell]
     uses: ./.github/workflows/build.yml
     secrets: inherit
-
-  integration_tests:
-    needs: [base_tests, build]
-    uses: ./.github/workflows/integration-test.yml
-    permissions:
-      contents: read
-      checks: write
-    secrets: inherit

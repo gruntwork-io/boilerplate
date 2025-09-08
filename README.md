@@ -1163,7 +1163,7 @@ This will run all tests except AWS-dependent integration tests, which are exclud
 
 ### Running AWS-dependent tests
 
-Some integration tests require AWS credentials and are tagged with the `aws` build tag. To run these tests:
+Some integration tests require AWS credentials and are tagged with the `aws` build tag. These tests are also prefixed with `TestAWS` for easy targeting. To run these tests:
 
 1. Set up AWS credentials (e.g., using AWS CLI or environment variables):
 
@@ -1172,16 +1172,16 @@ Some integration tests require AWS credentials and are tagged with the `aws` bui
    export AWS_SECRET_ACCESS_KEY=your_secret_key
    ```
 
-2. Run tests with the `aws` build tag:
+2. Run tests with the `aws` build tag enabled:
 
    ```bash
    go test -tags=aws ./...
    ```
 
-   Or run only the AWS integration tests:
+   Or target AWS tests specifically by name:
 
    ```bash
-   go test -tags=aws ./integration-tests/...
+   go test -tags=aws -run '^TestAWS' ./...
    ```
 
 These AWS tests validate Terragrunt configurations by running `terragrunt validate-all`, which requires valid AWS credentials to access AWS provider APIs.
