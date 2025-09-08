@@ -2,6 +2,7 @@
 package templates
 
 import (
+	"context"
 	"path/filepath"
 
 	"github.com/gruntwork-io/boilerplate/options"
@@ -17,6 +18,7 @@ type ProcessedEngine struct {
 // processEngines will take the engines list and process them in the current boilerplate context. This is primarily
 // rendering the glob expression for the Path attribute.
 func processEngines(
+	ctx context.Context,
 	engines []variables.Engine,
 	opts *options.BoilerplateOptions,
 	variables map[string]any,
@@ -24,7 +26,7 @@ func processEngines(
 	output := []ProcessedEngine{}
 
 	for _, engine := range engines {
-		matchedPaths, err := renderGlobPath(opts, engine.Path, variables)
+		matchedPaths, err := renderGlobPath(ctx, opts, engine.Path, variables)
 		if err != nil {
 			return nil, err
 		}

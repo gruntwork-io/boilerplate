@@ -113,7 +113,7 @@ func TestRenderTemplate(t *testing.T) {
 			opts := testutil.CreateTestOptionsWithOutput("/templates", defaultOutputDir)
 			opts.OnMissingKey = tc.missingKeyAction
 
-			actualOutput, err := RenderTemplateFromString(pwd+"/template.txt", tc.templateContents, tc.variables, opts)
+			actualOutput, err := RenderTemplateFromStringWithContext(t.Context(), pwd+"/template.txt", tc.templateContents, tc.variables, opts)
 			if tc.expectedErrorText == "" {
 				assert.NoError(t, err, "template = %s, variables = %s, missingKeyAction = %s, err = %v", tc.templateContents, tc.variables, tc.missingKeyAction, err)
 				assert.Equal(t, tc.expectedOutput, actualOutput, "template = %s, variables = %s, missingKeyAction = %s", tc.templateContents, tc.variables, tc.missingKeyAction)

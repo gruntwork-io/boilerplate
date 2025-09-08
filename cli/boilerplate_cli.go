@@ -2,6 +2,7 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/gruntwork-io/go-commons/entrypoint"
@@ -120,8 +121,10 @@ func runApp(cliContext *cli.Context) error {
 		return err
 	}
 
+	ctx := context.Background()
+
 	// The root boilerplate.yml is not itself a dependency, so we pass an empty Dependency.
 	emptyDep := variables.Dependency{}
 
-	return templates.ProcessTemplate(opts, opts, emptyDep)
+	return templates.ProcessTemplateWithContext(ctx, opts, opts, emptyDep)
 }

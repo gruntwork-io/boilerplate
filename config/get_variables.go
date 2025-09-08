@@ -1,6 +1,7 @@
 package config
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -25,6 +26,15 @@ const MaxReferenceDepth = 20
 // The value for a variable can come from the user (if the non-interactive option isn't set), the default value in the
 // config, or a command line option.
 func GetVariables(opts *options.BoilerplateOptions, boilerplateConfig, rootBoilerplateConfig *BoilerplateConfig, thisDep variables.Dependency) (map[string]any, error) {
+	return GetVariablesWithContext(context.Background(), opts, boilerplateConfig, rootBoilerplateConfig, thisDep)
+}
+
+// GetVariablesWithContext collects variables from the user, variable defaults in the boilerplate.yml config, command line options, and environment
+// variables. Variables in Boilerplate can can be used in both the Boilerplate config itself and in the templates.
+//
+// The value for a variable can come from the user (if the non-interactive option isn't set), the default value in the
+// config, or a command line option.
+func GetVariablesWithContext(ctx context.Context, opts *options.BoilerplateOptions, boilerplateConfig, rootBoilerplateConfig *BoilerplateConfig, thisDep variables.Dependency) (map[string]any, error) {
 	renderedVariables := map[string]any{}
 
 	// Add a variable for all variables contained in the root config file. This will allow Golang template users
@@ -103,7 +113,7 @@ func GetVariables(opts *options.BoilerplateOptions, boilerplateConfig, rootBoile
 
 	// Pass all the user provided variables through a rendering pipeline to ensure they are evaluated down to
 	// primitives.
-	newlyRenderedVariables, err := render.RenderVariables(opts, variablesToRender, renderedVariables)
+	newlyRenderedVariables, err := render.RenderVariablesWithContext(ctx, opts, variablesToRender, renderedVariables)
 	if err != nil {
 		return nil, err
 	}
