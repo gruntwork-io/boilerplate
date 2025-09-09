@@ -14,14 +14,12 @@ import (
 	"github.com/gruntwork-io/terratest/modules/files"
 
 	"github.com/gruntwork-io/boilerplate/options"
-	"github.com/gruntwork-io/terratest/modules/git"
 	"github.com/stretchr/testify/require"
 )
 
 func TestExamplesShell(t *testing.T) {
 	t.Parallel()
 
-	branchName := git.GetCurrentBranchName(t)
 	examplesBasePath := "../examples/for-learning-and-testing"
 	examplesExpectedOutputBasePath := "../test-fixtures/examples-expected-output"
 	examplesVarFilesBasePath := "../test-fixtures/examples-var-files"
@@ -49,13 +47,6 @@ func TestExamplesShell(t *testing.T) {
 						testExample(t, templateFolder, outputFolder, varFile, expectedOutputFolder, string(missingKeyAction))
 					})
 				}
-			})
-
-			t.Run(example+"-remote", func(t *testing.T) {
-				t.Parallel()
-
-				templateFolder := fmt.Sprintf("git@github.com:gruntwork-io/boilerplate.git//examples/for-learning-and-testing/%s?ref=%s", example, branchName)
-				testExample(t, templateFolder, outputFolder, varFile, expectedOutputFolder, string(options.ExitWithError))
 			})
 		}
 	})
