@@ -47,6 +47,7 @@ func TestRequiredVersionOverTest(t *testing.T) {
 	require.Error(t, err)
 
 	var invalidBoilerplateVersion config.InvalidBoilerplateVersion
+
 	isInvalidVersionErr := errors.As(err, &invalidBoilerplateVersion)
 	require.True(t, isInvalidVersionErr)
 }
