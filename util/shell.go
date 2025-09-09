@@ -1,6 +1,7 @@
 package util
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"strings"
@@ -10,11 +11,16 @@ import (
 
 // RunShellCommandAndGetOutput runs the given shell command with the given environment variables and arguments in the given working directory
 func RunShellCommandAndGetOutput(workingDir string, envVars []string, argslist ...string) (string, error) {
+	return RunShellCommandAndGetOutputWithContext(context.Background(), workingDir, envVars, argslist...)
+}
+
+// RunShellCommandAndGetOutputWithContext runs the given shell command with the given environment variables and arguments in the given working directory
+func RunShellCommandAndGetOutputWithContext(ctx context.Context, workingDir string, envVars []string, argslist ...string) (string, error) {
 	command := argslist[0]
 	args := argslist[1:]
 	Logger.Printf("Running command: %s %s", command, strings.Join(args, " "))
 
-	cmd := exec.Command(command, args...)
+	cmd := exec.CommandContext(ctx, command, args...)
 
 	cmd.Stdin = os.Stdin
 	cmd.Stderr = os.Stderr
@@ -32,9 +38,14 @@ func RunShellCommandAndGetOutput(workingDir string, envVars []string, argslist .
 
 // RunShellCommand runs the given shell command with the given environment variables and arguments in the given working directory
 func RunShellCommand(workingDir string, envVars []string, command string, args ...string) error {
+	return RunShellCommandWithContext(context.Background(), workingDir, envVars, command, args...)
+}
+
+// RunShellCommandWithContext runs the given shell command with the given environment variables and arguments in the given working directory
+func RunShellCommandWithContext(ctx context.Context, workingDir string, envVars []string, command string, args ...string) error {
 	Logger.Printf("Running command: %s %s", command, strings.Join(args, " "))
 
-	cmd := exec.Command(command, args...)
+	cmd := exec.CommandContext(ctx, command, args...)
 
 	cmd.Stdin = os.Stdin
 	cmd.Stderr = os.Stderr

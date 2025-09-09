@@ -38,6 +38,7 @@ func TestEnvVarExample(t *testing.T) {
 	assert.Equal(t, "default-value", strings.TrimSpace(string(content)))
 
 	t.Setenv("BOILERPLATE_ValueFromEnvVar", "env-var-value")
+
 	err = app.Run(args)
 	require.NoError(t, err, errors.PrintErrorWithStackTrace(err))
 

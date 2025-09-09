@@ -1,0 +1,2 @@
+[codespell]
+skip = template_helpers_test.go

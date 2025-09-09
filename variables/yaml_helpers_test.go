@@ -40,6 +40,7 @@ func TestParseVariablesFromVarFileContents(t *testing.T) {
 		actualVars, err := parseVariablesFromVarFileContents([]byte(testCase.fileContents))
 		if testCase.expectYamlTypeError {
 			require.Error(t, err)
+
 			typeError := &yaml.TypeError{}
 			isYamlTypeError := errors.As(err, &typeError)
 			assert.True(t, isYamlTypeError, "Expected a YAML type error for an invalid yaml file but got %s", reflect.TypeOf(err))

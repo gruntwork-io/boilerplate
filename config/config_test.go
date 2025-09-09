@@ -750,8 +750,10 @@ func TestMarshalBoilerplateConfig(t *testing.T) {
 
 func formatYAMLBytes(t *testing.T, ymlData []byte) []byte {
 	t.Helper()
+
 	ymlBuffer := bytes.NewBuffer(ymlData)
 	formattedYml, err := yamlfmt.Format(ymlBuffer)
 	require.NoError(t, err)
+
 	return formattedYml
 }

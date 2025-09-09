@@ -1,6 +1,6 @@
 module github.com/gruntwork-io/boilerplate
 
-go 1.24.4
+go 1.25
 
 require (
 	github.com/AlecAivazis/survey/v2 v2.3.7
@@ -31,6 +31,7 @@ require (
 	github.com/gabriel-vasile/mimetype v1.4.6
 	github.com/google/go-cmp v0.6.0
 	golang.org/x/exp v0.0.0-20241009180824-f66d83c29e7c
+	golang.org/x/text v0.23.0
 )
 
 require (
@@ -116,7 +117,6 @@ require (
 	golang.org/x/net v0.38.0 // indirect
 	golang.org/x/oauth2 v0.27.0 // indirect
 	golang.org/x/sync v0.12.0 // indirect
-	golang.org/x/text v0.23.0 // indirect
 	golang.org/x/time v0.7.0 // indirect
 	google.golang.org/api v0.200.0 // indirect
 	google.golang.org/genproto v0.0.0-20241007155032-5fefd90f89a9 // indirect

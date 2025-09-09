@@ -291,6 +291,7 @@ func TestValidateUserInput(t *testing.T) {
 	v = variables.NewIntVariable("foo")
 	m, hasValidationErrs = validateUserInput("bar", v)
 	assert.True(t, hasValidationErrs)
+
 	key := maps.Keys(m)[0]
 	assert.Contains(t, key, "Value must be of type int")
 }

@@ -1,5 +1,8 @@
 [tools]
-go = "1.24.4"
-golangci-lint = "2.1.6"
-"go:golang.org/x/tools/gopls" = "v0.18.1"
-"go:golang.org/x/tools/cmd/goimports" = "v0.35.0"
+go = "1.25.1"
+golangci-lint = "2.4.0"
+"go:golang.org/x/tools/gopls" = "v0.20.0"
+"go:golang.org/x/tools/cmd/goimports" = "v0.36.0"
+go-junit-report = "2.1.0"
+opentofu = "1.10.6"
+terragrunt = "0.87.0"

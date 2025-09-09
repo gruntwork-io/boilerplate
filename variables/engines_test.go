@@ -46,11 +46,14 @@ func TestEnginesRequiresSupportedTemplateEngine(t *testing.T) {
 					},
 				},
 			}
+
 			_, err := variables.UnmarshalEnginesFromBoilerplateConfigYaml(mockFields)
 			if tc.expectError {
 				require.Error(t, err)
 				underlyingErr := errors.Unwrap(err)
+
 				var invalidTemplateEngineErr variables.InvalidTemplateEngineErr
+
 				hasType := errors.As(underlyingErr, &invalidTemplateEngineErr)
 				require.True(t, hasType)
 			} else {

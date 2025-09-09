@@ -41,7 +41,6 @@ func PromptUserForInput(prompt string) (string, error) {
 // PromptUserForYesNo prompts the user for a yes/no response and returns true if they entered yes.
 func PromptUserForYesNo(prompt string) (bool, error) {
 	resp, err := PromptUserForInput(prompt + " (y/n) ")
-
 	if err != nil {
 		return false, errors.WithStackTrace(err)
 	}
@@ -58,7 +57,6 @@ func PromptUserForYesNo(prompt string) (bool, error) {
 // Returns: UserResponseYes, UserResponseNo, or UserResponseAll.
 func PromptUserForYesNoAll(prompt string) (UserResponse, error) {
 	resp, err := PromptUserForInput(prompt + " (y/a/n) ")
-
 	if err != nil {
 		return UserResponseNo, errors.WithStackTrace(err)
 	}
