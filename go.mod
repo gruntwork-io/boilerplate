@@ -11,7 +11,7 @@ require (
 	github.com/google/go-jsonnet v0.20.0
 	github.com/gruntwork-io/go-commons v0.17.2
 	github.com/gruntwork-io/terratest v0.47.2
-	github.com/hashicorp/go-getter v1.7.6
+	github.com/hashicorp/go-getter v1.7.9
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/go-version v1.7.0
 	github.com/huandu/xstrings v1.5.0 // indirect
@@ -90,7 +90,6 @@ require (
 	github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
-	github.com/mitchellh/go-testing-interface v1.14.1 // indirect
 	github.com/mitchellh/go-wordwrap v1.0.1 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 // indirect
