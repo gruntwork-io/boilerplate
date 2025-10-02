@@ -41,7 +41,7 @@ func TestOutPath(t *testing.T) {
 			OnMissingKey:    options.ExitWithError,
 			OnMissingConfig: options.Exit,
 		}
-		actual, err := outPath(testCase.file, &opts, testCase.variables)
+		actual, err := outPath(t.Context(), testCase.file, &opts, testCase.variables)
 		require.NoError(t, err, "Got unexpected error (file = %s, templateFolder = %s, outputFolder = %s, and variables = %s): %v", testCase.file, testCase.templateFolder, testCase.outputFolder, testCase.variables, err)
 		assert.Equal(t, filepath.FromSlash(testCase.expected), filepath.FromSlash(actual), "(file = %s, templateFolder = %s, outputFolder = %s, and variables = %s)", testCase.file, testCase.templateFolder, testCase.outputFolder, testCase.variables)
 	}
@@ -87,11 +87,10 @@ func TestCloneOptionsForDependency(t *testing.T) {
 		t.Run(tt.dependency.Name, func(t *testing.T) {
 			t.Parallel()
 
-			actualOptions, err := cloneOptionsForDependency(tt.dependency, &tt.opts, nil, tt.variables)
+			actualOptions, err := cloneOptionsForDependency(t.Context(), tt.dependency, &tt.opts, nil, tt.variables)
 			require.NoError(t, err, "Dependency: %s", tt.dependency)
 			assert.Equal(t, tt.expectedOpts, *actualOptions, "Dependency: %s", tt.dependency)
 		})
-
 	}
 }
 
@@ -143,11 +142,10 @@ func TestCloneVariablesForDependency(t *testing.T) {
 
 			opts := testutil.CreateTestOptionsWithOutput("/template/path/", "/output/path/")
 			opts.Vars = tt.optsVars
-			actualVariables, err := cloneVariablesForDependency(opts, tt.dependency, nil, tt.variables, nil)
+			actualVariables, err := cloneVariablesForDependency(t.Context(), opts, tt.dependency, nil, tt.variables, nil)
 			require.NoError(t, err)
 			assert.Equal(t, tt.expectedVariables, actualVariables, "Dependency: %s", tt.dependency)
 		})
-
 	}
 }
 
@@ -186,7 +184,7 @@ func TestForEachReferenceRendersAsTemplate(t *testing.T) {
 
 	opts := testutil.CreateTestOptionsWithOutput(templateFolder, tempDir)
 
-	err = processDependency(dependency, opts, nil, variables)
+	err = processDependency(t.Context(), dependency, opts, nil, variables)
 	require.NoError(t, err)
 
 	// Should create directories "a" and "b" from template1 list

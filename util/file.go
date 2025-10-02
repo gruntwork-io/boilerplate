@@ -1,6 +1,7 @@
 package util
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -61,7 +62,12 @@ func CommandInstalled(command string) bool {
 
 // RunCommandAndGetOutput runs the given command and returns its stdout and stderr as a string
 func RunCommandAndGetOutput(command string, args ...string) (string, error) {
-	cmd := exec.Command(command, args...)
+	return RunCommandAndGetOutputWithContext(context.Background(), command, args...)
+}
+
+// RunCommandAndGetOutputWithContext runs the given command and returns its stdout and stderr as a string
+func RunCommandAndGetOutputWithContext(ctx context.Context, command string, args ...string) (string, error) {
+	cmd := exec.CommandContext(ctx, command, args...)
 
 	bytes, err := cmd.Output()
 	if err != nil {

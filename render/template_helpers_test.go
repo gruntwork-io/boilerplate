@@ -3,6 +3,7 @@ package render //nolint:testpackage
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"fmt"
 	"path/filepath"
 	"reflect"
@@ -218,6 +219,7 @@ func TestPathRelativeToTemplate(t *testing.T) {
 				t.Skip()
 				return
 			}
+
 			actual := PathRelativeToTemplate(tt.templatePath, tt.path)
 			assert.Equal(t, tt.expected, filepath.ToSlash(actual))
 		})
@@ -230,15 +232,21 @@ func TestWrapWithTemplatePath(t *testing.T) {
 	expectedPath := "/foo/bar/template.txt"
 	expectedOpts := &options.BoilerplateOptions{NonInteractive: true}
 
-	var actualPath string
-	var actualOpts *options.BoilerplateOptions
+	var (
+		actualPath string
+		actualOpts *options.BoilerplateOptions
+	)
 
-	wrappedFunc := wrapWithTemplatePath(expectedPath, expectedOpts, func(templatePath string, opts *options.BoilerplateOptions, args ...string) (string, error) {
-		actualPath = templatePath
-		actualOpts = opts
+	wrappedFunc := wrapWithTemplatePath(
+		t.Context(),
+		expectedPath,
+		expectedOpts,
+		func(ctx context.Context, templatePath string, opts *options.BoilerplateOptions, args ...string) (string, error) {
+			actualPath = templatePath
+			actualOpts = opts
 
-		return templatePath, nil
-	})
+			return templatePath, nil
+		})
 
 	returnedPath, err := wrappedFunc()
 	require.NoError(t, err)
@@ -446,17 +454,23 @@ func TestLowerFirst(t *testing.T) {
 
 func TestShellSuccess(t *testing.T) {
 	t.Parallel()
-	var output string
-	var err error
-	var eol string
+
+	var (
+		output string
+		err    error
+		eol    string
+	)
+
 	opts := testutil.CreateTestOptionsForShell(true, false)
+
 	if runtime.GOOS == windowsOS {
 		eol = "\r\n"
-		output, err = shell(".", opts, "cmd.exe", "/C", "echo", "hi")
+		output, err = shell(t.Context(), ".", opts, "cmd.exe", "/C", "echo", "hi")
 	} else {
 		eol = "\n"
-		output, err = shell(".", opts, "echo", "hi")
+		output, err = shell(t.Context(), ".", opts, "echo", "hi")
 	}
+
 	require.NoError(t, err, "Unexpected error: %v", err)
 	assert.Equal(t, "hi"+eol, output)
 }
@@ -465,14 +479,14 @@ func TestShellError(t *testing.T) {
 	t.Parallel()
 
 	opts := testutil.CreateTestOptionsForShell(true, false)
-	_, err := shell(".", opts, "not-a-real-command")
+
+	_, err := shell(t.Context(), ".", opts, "not-a-real-command")
 	if assert.Error(t, err) {
 		if runtime.GOOS == windowsOS {
 			assert.Contains(t, err.Error(), "executable file not found in %PATH%", "Unexpected error message: %s", err.Error())
 		} else {
 			assert.Contains(t, err.Error(), "executable file not found in $PATH", "Unexpected error message: %s", err.Error())
 		}
-
 	}
 }
 
@@ -480,7 +494,7 @@ func TestShellDisabled(t *testing.T) {
 	t.Parallel()
 
 	opts := testutil.CreateTestOptionsForShell(true, true)
-	output, err := shell(".", opts, "echo", "hi")
+	output, err := shell(t.Context(), ".", opts, "echo", "hi")
 	require.NoError(t, err, "Unexpected error: %v", err)
 	assert.Equal(t, shellDisabledPlaceholder, output)
 }
@@ -511,6 +525,7 @@ func TestTemplateIsDefined(t *testing.T) {
 // TestToYaml tests that a given value can be correctly encoded to YAML
 func TestToYaml(t *testing.T) {
 	t.Parallel()
+
 	testCases := []struct {
 		input    any
 		expected string
@@ -529,6 +544,7 @@ func TestToYaml(t *testing.T) {
 
 func TestFromYaml(t *testing.T) {
 	t.Parallel()
+
 	testCases := []struct {
 		expected any
 		name     string

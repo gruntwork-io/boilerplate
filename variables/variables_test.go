@@ -32,7 +32,6 @@ func TestParseStringAsList(t *testing.T) {
 			assert.Equal(t, testCase.expectedList, actualList, "For string '%s'", testCase.str)
 		})
 	}
-
 }
 
 func TestConvertType(t *testing.T) {
@@ -86,6 +85,7 @@ func TestConvertType(t *testing.T) {
 			t.Parallel()
 
 			var variable Variable
+
 			switch testCase.variableType {
 			case String:
 				variable = NewStringVariable("test-var")
@@ -142,5 +142,4 @@ func TestParseStringAsMap(t *testing.T) {
 			assert.Equal(t, testCase.expectedMap, actualMap, "For string '%s'", testCase.str)
 		})
 	}
-
 }

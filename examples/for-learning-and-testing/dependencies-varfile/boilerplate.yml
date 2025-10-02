@@ -13,7 +13,7 @@ variables:
     description: Enter the welcome text used by the website dependency
 
   - name: ShowLogo
-    description: Should the webiste show the logo (true or false)?
+    description: Should the website show the logo (true or false)?
     type: bool
     default: true
 

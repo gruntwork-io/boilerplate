@@ -21,12 +21,15 @@ func TestDownloadTemplatesToTempDir(t *testing.T) {
 
 	pwd, err := os.Getwd()
 	require.NoError(t, err)
+
 	examplePath := filepath.Join(pwd, "..", "examples", "for-learning-and-testing", "variables")
 
 	branch := git.GetCurrentBranchName(t)
-	templateURL := "git@github.com:gruntwork-io/boilerplate.git//examples/for-learning-and-testing/variables?ref=" + branch
+	templateURL := "git::https://github.com/gruntwork-io/boilerplate.git//examples/for-learning-and-testing/variables?ref=" + branch
+
 	workingDir, workPath, err := getterhelper.DownloadTemplatesToTemporaryFolder(templateURL)
 	defer os.RemoveAll(workingDir)
+
 	require.NoError(t, err, errors.PrintErrorWithStackTrace(err))
 
 	// Run diff to make sure there are no differences

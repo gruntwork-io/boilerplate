@@ -2,6 +2,7 @@ package render
 
 import (
 	"bufio"
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"maps"
@@ -53,10 +54,10 @@ var camelCaseRegex = regexp.MustCompile(
 // TemplateHelper represents all boilerplate template helpers. They get the path of the template they are rendering as
 // the first arg, the Boilerplate Options as the second arg, and then any arguments the user passed when calling the
 // helper.
-type TemplateHelper func(templatePath string, opts *options.BoilerplateOptions, args ...string) (string, error)
+type TemplateHelper func(ctx context.Context, templatePath string, opts *options.BoilerplateOptions, args ...string) (string, error)
 
 // CreateTemplateHelpers creates a map of custom template helpers exposed by boilerplate
-func CreateTemplateHelpers(templatePath string, opts *options.BoilerplateOptions, tmpl *template.Template) template.FuncMap {
+func CreateTemplateHelpers(ctx context.Context, templatePath string, opts *options.BoilerplateOptions, tmpl *template.Template) template.FuncMap {
 	sprigFuncs := sprig.FuncMap()
 	// We rename a few sprig functions that overlap with boilerplate implementations. See DEPRECATED note on boilerplate
 	// functions below for more details.
@@ -91,9 +92,9 @@ func CreateTemplateHelpers(templatePath string, opts *options.BoilerplateOptions
 		"numRange":   slice,
 		"keysSorted": keys,
 
-		"snippet":    wrapWithTemplatePath(templatePath, opts, snippet),
-		"include":    wrapIncludeWithTemplatePath(templatePath, opts),
-		"shell":      wrapWithTemplatePath(templatePath, opts, shell),
+		"snippet":    wrapWithTemplatePath(ctx, templatePath, opts, snippet),
+		"include":    wrapIncludeWithTemplatePath(ctx, templatePath, opts),
+		"shell":      wrapWithTemplatePath(ctx, templatePath, opts, shell),
 		"pathExists": util.PathExists,
 
 		"templateIsDefined": wrapIsDefinedWithTemplate(tmpl),
@@ -190,16 +191,16 @@ func CreateTemplateHelpers(templatePath string, opts *options.BoilerplateOptions
 // issue, this function can be used to wrap boilerplate template helpers to make the path of the template itself
 // available as the first argument and the BoilerplateOptions as the second argument. The helper can use that path to
 // relativize other paths, if necessary.
-func wrapWithTemplatePath(templatePath string, opts *options.BoilerplateOptions, helper TemplateHelper) func(...string) (string, error) {
+func wrapWithTemplatePath(ctx context.Context, templatePath string, opts *options.BoilerplateOptions, helper TemplateHelper) func(...string) (string, error) {
 	return func(args ...string) (string, error) {
-		return helper(templatePath, opts, args...)
+		return helper(ctx, templatePath, opts, args...)
 	}
 }
 
 // This works exactly like wrapWithTemplatePath, but it is adapted to the function args for the include helper function.
-func wrapIncludeWithTemplatePath(templatePath string, opts *options.BoilerplateOptions) func(string, map[string]any) (string, error) {
+func wrapIncludeWithTemplatePath(ctx context.Context, templatePath string, opts *options.BoilerplateOptions) func(string, map[string]any) (string, error) {
 	return func(path string, varData map[string]interface{}) (string, error) {
-		return include(templatePath, opts, path, varData)
+		return include(ctx, templatePath, opts, path, varData)
 	}
 }
 
@@ -230,7 +231,7 @@ func templateIsDefined(tmpl *template.Template, name string) bool {
 // It returns the contents of PATH, relative to TEMPLATE_PATH, as a string. If SNIPPET_NAME is specified, only the
 // contents of that snippet with that name will be returned. A snippet is any text in the file surrounded by a line on
 // each side of the format "boilerplate-snippet: NAME" (typically using the comment syntax for the language).
-func snippet(templatePath string, opts *options.BoilerplateOptions, args ...string) (string, error) {
+func snippet(ctx context.Context, templatePath string, opts *options.BoilerplateOptions, args ...string) (string, error) {
 	const snippetArgsWithName = 2
 
 	switch len(args) {
@@ -249,13 +250,13 @@ func snippet(templatePath string, opts *options.BoilerplateOptions, args ...stri
 //
 // This helper returns the contents of PATH, relative to TEMPLAT_PATH, but rendered through the boilerplate templating
 // engine with the given variables.
-func include(templatePath string, opts *options.BoilerplateOptions, path string, varData map[string]interface{}) (string, error) {
+func include(ctx context.Context, templatePath string, opts *options.BoilerplateOptions, path string, varData map[string]interface{}) (string, error) {
 	templateContents, err := readFile(templatePath, path)
 	if err != nil {
 		return "", err
 	}
 
-	return RenderTemplateFromString(templatePath, templateContents, varData, opts)
+	return RenderTemplateFromStringWithContext(ctx, templatePath, templateContents, varData, opts)
 }
 
 // PathRelativeToTemplate returns the given filePath relative to the given templatePath. If filePath is already an absolute path, returns it
@@ -666,7 +667,7 @@ func printShellCommandDetails(args []string, envVars []string, workingDir string
 
 // Run the given shell command specified in args in the working dir specified by templatePath and return stdout as a
 // string.
-func shell(templatePath string, opts *options.BoilerplateOptions, rawArgs ...string) (string, error) {
+func shell(ctx context.Context, templatePath string, opts *options.BoilerplateOptions, rawArgs ...string) (string, error) {
 	if opts.NoShell {
 		util.Logger.Printf("Shell helpers are disabled. Will not execute shell command '%v'. Returning placeholder value '%s'.", rawArgs, shellDisabledPlaceholder)
 		return shellDisabledPlaceholder, nil
@@ -686,7 +687,7 @@ func shell(templatePath string, opts *options.BoilerplateOptions, rawArgs ...str
 
 		util.Logger.Printf("Executing shell command (non-interactive mode)")
 
-		return util.RunShellCommandAndGetOutput(workingDir, envVars, args...)
+		return util.RunShellCommandAndGetOutputWithContext(ctx, workingDir, envVars, args...)
 	}
 
 	// Check previous confirmation
@@ -698,7 +699,7 @@ func shell(templatePath string, opts *options.BoilerplateOptions, rawArgs ...str
 
 		util.Logger.Printf("Executing shell command (%s)", "previously confirmed or all confirmed")
 
-		return util.RunShellCommandAndGetOutput(workingDir, envVars, args...)
+		return util.RunShellCommandAndGetOutputWithContext(ctx, workingDir, envVars, args...)
 	}
 
 	// Handle user confirmation
@@ -727,7 +728,7 @@ func shell(templatePath string, opts *options.BoilerplateOptions, rawArgs ...str
 		return shellDisabledPlaceholder, nil
 	}
 
-	return util.RunShellCommandAndGetOutput(workingDir, envVars, args...)
+	return util.RunShellCommandAndGetOutputWithContext(ctx, workingDir, envVars, args...)
 }
 
 // To pass env vars to the shell helper, we use the format ENV:KEY=VALUE. This method goes through the given list of

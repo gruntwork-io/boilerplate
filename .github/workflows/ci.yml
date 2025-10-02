@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+
+jobs:
+  lint:
+    uses: ./.github/workflows/lint.yml
+    secrets: inherit
+
+  codespell:
+    uses: ./.github/workflows/codespell.yml
+    secrets: inherit
+
+  base_tests:
+    needs: [lint, codespell]
+    uses: ./.github/workflows/base-test.yml
+    permissions:
+      contents: read
+      checks: write
+    secrets: inherit
+
+  build:
+    needs: [lint, codespell]
+    uses: ./.github/workflows/build.yml
+    secrets: inherit

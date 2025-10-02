@@ -2,6 +2,7 @@ package render
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"path"
 	"reflect"
@@ -18,7 +19,14 @@ const MaxRenderAttempts = 15
 // named by the user on the command line) as well as all of the partials matched by the provided globs using the Go
 // template engine, passing in the given variables as data.
 func RenderTemplateWithPartials(templatePath string, partials []string, variables map[string]any, opts *options.BoilerplateOptions) (string, error) {
-	tmpl, err := getTemplate(templatePath, opts).ParseGlob(templatePath)
+	return RenderTemplateWithPartialsWithContext(context.Background(), templatePath, partials, variables, opts)
+}
+
+// RenderTemplateWithPartialsWithContext renders the template at templatePath with the contents of the root template (the template
+// named by the user on the command line) as well as all of the partials matched by the provided globs using the Go
+// template engine, passing in the given variables as data.
+func RenderTemplateWithPartialsWithContext(ctx context.Context, templatePath string, partials []string, variables map[string]any, opts *options.BoilerplateOptions) (string, error) {
+	tmpl, err := getTemplate(ctx, templatePath, opts).ParseGlob(templatePath)
 	if err != nil {
 		return "", errors.WithStackTrace(err)
 	}
@@ -31,7 +39,7 @@ func RenderTemplateWithPartials(templatePath string, partials []string, variable
 		// relative to the path passed in by the user
 		relativePath := PathRelativeToTemplate(opts.TemplateFolder, globOfPartials)
 
-		parsedTemplate, err := getTemplate(templatePath, opts).ParseGlob(relativePath)
+		parsedTemplate, err := getTemplate(ctx, templatePath, opts).ParseGlob(relativePath)
 		if err != nil {
 			return "", errors.WithStackTrace(err)
 		}
@@ -49,7 +57,20 @@ func RenderTemplateWithPartials(templatePath string, partials []string, variable
 // RenderTemplateFromString renders the template at templatePath, with contents templateContents, using the Go template engine, passing in the
 // given variables as data.
 func RenderTemplateFromString(templatePath string, templateContents string, variables map[string]any, opts *options.BoilerplateOptions) (string, error) {
-	tmpl := getTemplate(templatePath, opts)
+	tmpl := getTemplate(context.Background(), templatePath, opts)
+
+	parsedTemplate, err := tmpl.Parse(templateContents)
+	if err != nil {
+		return "", errors.WithStackTrace(err)
+	}
+
+	return executeTemplate(parsedTemplate, variables)
+}
+
+// RenderTemplateFromStringWithContext renders the template at templatePath, with contents templateContents, using the Go template engine, passing in the
+// given variables as data.
+func RenderTemplateFromStringWithContext(ctx context.Context, templatePath string, templateContents string, variables map[string]any, opts *options.BoilerplateOptions) (string, error) {
+	tmpl := getTemplate(ctx, templatePath, opts)
 
 	parsedTemplate, err := tmpl.Parse(templateContents)
 	if err != nil {
@@ -60,11 +81,11 @@ func RenderTemplateFromString(templatePath string, templateContents string, vari
 }
 
 // getTemplate returns new template initialized with options and helper functions
-func getTemplate(templatePath string, opts *options.BoilerplateOptions) *template.Template {
+func getTemplate(ctx context.Context, templatePath string, opts *options.BoilerplateOptions) *template.Template {
 	tmpl := template.New(path.Base(templatePath))
 	option := "missingkey=" + string(opts.OnMissingKey)
 
-	return tmpl.Funcs(CreateTemplateHelpers(templatePath, opts, tmpl)).Option(option)
+	return tmpl.Funcs(CreateTemplateHelpers(ctx, templatePath, opts, tmpl)).Option(option)
 }
 
 // executeTemplate executes a parsed template with a given set of variable inputs and return the output as a string
@@ -97,6 +118,30 @@ func RenderVariables(
 	variablesToRender map[string]any,
 	alreadyRenderedVariables map[string]any,
 ) (map[string]interface{}, error) {
+	return RenderVariablesWithContext(context.Background(), opts, variablesToRender, alreadyRenderedVariables)
+}
+
+// RenderVariablesWithContext will render each of the variables that need to be rendered by running it through the go templating
+// syntax. Variable values are allowed to use Go templating syntax (e.g. to reference other variables), so this function
+// loops over each variable value, renders each one, and returns a new map of rendered variables.
+//
+// This function supports nested variables references, but uses a heuristic based approach. Ideally, we can parse the Go
+// template and build up a graph of variable dependencies to assist with the rendering process, but this takes a lot of
+// effort to get right and maintain.
+//
+// Instead, we opt for a simpler approach of rendering with multiple trials. In this approach, we continuously attempt
+// to render the template on the variable until all of them render without errors, or we reach the maximum trials. To
+// support this, we ignore the missing key configuration during this evaluation pass and always rely on the template
+// erroring for missing variables. Otherwise, all the variables will render on the first pass.
+//
+// Note that this is NOT a multi pass algorithm - that is, we do NOT attempt to render the template multiple times.
+// Instead, we do a single template render on each run and reject any that return with an error.
+func RenderVariablesWithContext(
+	ctx context.Context,
+	opts *options.BoilerplateOptions,
+	variablesToRender map[string]any,
+	alreadyRenderedVariables map[string]any,
+) (map[string]interface{}, error) {
 	// Force to use ExitWithError for missing key, because by design this algorithm depends on boilerplate error-ing if
 	// a variable can't be rendered due to a reference that hasn't been rendered yet. If OnMissingKey was invalid or
 	// zero, then boilerplate will automatically render all references to `"<no-value>"` or `""` in the first pass.
@@ -105,7 +150,7 @@ func RenderVariables(
 	// the leaf variables are handled by the time it gets to this function in the `alreadyRenderedVariables` map that is
 	// passed in.
 	//
-	// NOTE: here, I am copying by value, not by reference by deferencing the pointer when assigning to optsForRender.
+	// NOTE: here, I am copying by value, not by reference by dereferencing the pointer when assigning to optsForRender.
 	// This ensures that opts (whatever caller passed in) doesn't change in this routine.
 	optsForRender := *opts
 	optsForRender.OnMissingKey = options.ExitWithError
@@ -127,7 +172,7 @@ func RenderVariables(
 			return nil, errors.WithStackTrace(MaxRenderAttemptsErr{})
 		}
 
-		attemptRenderOutput, err := attemptRenderVariables(&optsForRender, unrenderedVariables, renderedVariables, variablesToRender)
+		attemptRenderOutput, err := attemptRenderVariables(ctx, &optsForRender, unrenderedVariables, renderedVariables, variablesToRender)
 		unrenderedVariables = attemptRenderOutput.unrenderedVariables
 		renderedVariables = attemptRenderOutput.renderedVariables
 		rendered = attemptRenderOutput.variablesWereRendered
@@ -148,6 +193,7 @@ func RenderVariables(
 // - the updated map of rendered variables
 // - a boolean indicating whether any new variables were rendered
 func attemptRenderVariables(
+	ctx context.Context,
 	opts *options.BoilerplateOptions,
 	unrenderedVariables []string,
 	renderedVariables map[string]interface{},
@@ -159,7 +205,7 @@ func attemptRenderVariables(
 	var allRenderErr error
 
 	for _, variableName := range unrenderedVariables {
-		rendered, err := attemptRenderVariable(opts, variables[variableName], renderedVariables)
+		rendered, err := attemptRenderVariable(ctx, opts, variables[variableName], renderedVariables)
 		if err != nil {
 			newUnrenderedVariables = append(newUnrenderedVariables, variableName)
 			allRenderErr = multierror.Append(allRenderErr, err)
@@ -182,17 +228,17 @@ func attemptRenderVariables(
 // references.
 // NOTE: This function is not responsible for converting the output type to the expected type configured on the
 // boilerplate config, and will always use string as the primitive output.
-func attemptRenderVariable(opts *options.BoilerplateOptions, variable interface{}, renderedVariables map[string]interface{}) (interface{}, error) {
+func attemptRenderVariable(ctx context.Context, opts *options.BoilerplateOptions, variable any, renderedVariables map[string]any) (any, error) {
 	valueType := reflect.ValueOf(variable)
 
 	switch valueType.Kind() { //nolint:exhaustive // TODO: Add missing reflect.Kind cases for exhaustive coverage
 	case reflect.String:
-		return RenderTemplateFromString(opts.TemplateFolder, variable.(string), renderedVariables, opts)
+		return RenderTemplateFromStringWithContext(ctx, opts.TemplateFolder, variable.(string), renderedVariables, opts)
 	case reflect.Slice:
-		values := []interface{}{}
+		values := []any{}
 
 		for i := 0; i < valueType.Len(); i++ {
-			rendered, err := attemptRenderVariable(opts, valueType.Index(i).Interface(), renderedVariables)
+			rendered, err := attemptRenderVariable(ctx, opts, valueType.Index(i).Interface(), renderedVariables)
 			if err != nil {
 				return nil, err
 			}
@@ -202,15 +248,15 @@ func attemptRenderVariable(opts *options.BoilerplateOptions, variable interface{
 
 		return values, nil
 	case reflect.Map:
-		values := map[string]interface{}{}
+		values := map[string]any{}
 
 		for _, key := range valueType.MapKeys() {
-			renderedKey, err := attemptRenderVariable(opts, key.Interface(), renderedVariables)
+			renderedKey, err := attemptRenderVariable(ctx, opts, key.Interface(), renderedVariables)
 			if err != nil {
 				return nil, err
 			}
 
-			renderedValue, err := attemptRenderVariable(opts, valueType.MapIndex(key).Interface(), renderedVariables)
+			renderedValue, err := attemptRenderVariable(ctx, opts, valueType.MapIndex(key).Interface(), renderedVariables)
 			if err != nil {
 				return nil, err
 			}
