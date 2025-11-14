@@ -113,9 +113,19 @@ for full documentation.
 
 ## Install
 
+### Pre-built binaries
+
 Download the latest binary for your OS [here](https://github.com/gruntwork-io/boilerplate/releases/latest).
 
 You can find older versions on the [Releases Page](https://github.com/gruntwork-io/boilerplate/releases).
+
+### Mise
+
+If you use [mise](https://mise.jdx.dev/), you can install Boilerplate by running:
+
+```
+mise use --global boilerplate
+```
 
 ## Features
 
