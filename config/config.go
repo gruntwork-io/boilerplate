@@ -128,8 +128,8 @@ func (config *BoilerplateConfig) MarshalYAML() (any, error) {
 		// polymorphic to that type. So we reconstruct the list using the right type before passing it in to the marshal
 		// function.
 		interfaceList := []any{}
-		for _, dep := range config.Dependencies {
-			interfaceList = append(interfaceList, dep)
+		for i := range config.Dependencies {
+			interfaceList = append(interfaceList, &config.Dependencies[i])
 		}
 
 		depsYml, err := util.MarshalListOfObjectsToYAML(interfaceList)

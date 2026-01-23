@@ -31,12 +31,12 @@ const defaultDirPerm = 0o777
 // function will load any missing variables (either from command line options or by prompting the user), execute all the
 // dependent boilerplate templates, and then execute this template. Note that we pass in rootOptions so that template
 // dependencies can inspect properties of the root template.
-func ProcessTemplate(options, rootOpts *options.BoilerplateOptions, thisDep variables.Dependency) error {
+func ProcessTemplate(options, rootOpts *options.BoilerplateOptions, thisDep *variables.Dependency) error {
 	return ProcessTemplateWithContext(context.Background(), options, rootOpts, thisDep)
 }
 
 // ProcessTemplateWithContext is like ProcessTemplate but accepts a context for cancellation and timeouts.
-func ProcessTemplateWithContext(ctx context.Context, options, rootOpts *options.BoilerplateOptions, thisDep variables.Dependency) error {
+func ProcessTemplateWithContext(ctx context.Context, options, rootOpts *options.BoilerplateOptions, thisDep *variables.Dependency) error {
 	// If TemplateFolder is already set, use that directly as it is a local template. Otherwise, download to a temporary
 	// working directory.
 	if options.TemplateFolder == "" {
@@ -142,7 +142,9 @@ func processHooks(ctx context.Context, hooks []variables.Hook, opts *options.Boi
 	executeAll := opts.NonInteractive // Auto-confirm all if non-interactive
 	hookAnswers := make(map[string]bool)
 
-	for _, hook := range hooks {
+	for i := range hooks {
+		hook := &hooks[i]
+
 		skip, err := shouldSkipHook(ctx, hook, opts, vars)
 		if err != nil || skip {
 			if skip {
@@ -195,7 +197,7 @@ func processHooks(ctx context.Context, hooks []variables.Hook, opts *options.Boi
 }
 
 // renderHookDetails renders the hook details and returns a pre-rendered string representation
-func renderHookDetails(ctx context.Context, hook variables.Hook, opts *options.BoilerplateOptions, vars map[string]any) (string, error) {
+func renderHookDetails(ctx context.Context, hook *variables.Hook, opts *options.BoilerplateOptions, vars map[string]any) (string, error) {
 	base := config.BoilerplateConfigPath(opts.TemplateFolder)
 	render := func(s string) (string, error) {
 		return render.RenderTemplateFromStringWithContext(ctx, base, s, vars, opts)
@@ -325,7 +327,7 @@ func printHookDetails(hookDetails string) {
 }
 
 // processHook processes the given hook, which is a script that should be execute at the command-line
-func processHook(ctx context.Context, hook variables.Hook, opts *options.BoilerplateOptions, vars map[string]any) error {
+func processHook(ctx context.Context, hook *variables.Hook, opts *options.BoilerplateOptions, vars map[string]any) error {
 	cmd, hookRenderErr := render.RenderTemplateFromStringWithContext(ctx, config.BoilerplateConfigPath(opts.TemplateFolder), hook.Command, vars, opts)
 	if hookRenderErr != nil {
 		return hookRenderErr
@@ -379,7 +381,7 @@ func processHook(ctx context.Context, hook variables.Hook, opts *options.Boilerp
 }
 
 // Return true if the "skip" condition of this hook evaluates to true
-func shouldSkipHook(ctx context.Context, hook variables.Hook, opts *options.BoilerplateOptions, vars map[string]interface{}) (bool, error) {
+func shouldSkipHook(ctx context.Context, hook *variables.Hook, opts *options.BoilerplateOptions, vars map[string]interface{}) (bool, error) {
 	if hook.Skip == "" {
 		return false, nil
 	}
@@ -402,8 +404,8 @@ func processDependencies(
 	variablesInConfig map[string]variables.Variable,
 	variables map[string]any,
 ) error {
-	for _, dependency := range dependencies {
-		err := processDependency(ctx, dependency, opts, variablesInConfig, variables)
+	for i := range dependencies {
+		err := processDependency(ctx, &dependencies[i], opts, variablesInConfig, variables)
 		if err != nil {
 			return err
 		}
@@ -415,7 +417,7 @@ func processDependencies(
 // processDependency is like processDependency but accepts a context for cancellation and timeouts.
 func processDependency(
 	ctx context.Context,
-	dependency variables.Dependency,
+	dependency *variables.Dependency,
 	opts *options.BoilerplateOptions,
 	variablesInConfig map[string]variables.Variable,
 	originalVars map[string]any,
@@ -475,7 +477,7 @@ func processDependency(
 // the original passed in, except for the template folder, output folder, and command-line vars.
 func cloneOptionsForDependency(
 	ctx context.Context,
-	dependency variables.Dependency,
+	dependency *variables.Dependency,
 	originalOpts *options.BoilerplateOptions,
 	variablesInConfig map[string]variables.Variable,
 	variables map[string]any,
@@ -543,7 +545,7 @@ func cloneOptionsForDependency(
 func cloneVariablesForDependency(
 	ctx context.Context,
 	opts *options.BoilerplateOptions,
-	dependency variables.Dependency,
+	dependency *variables.Dependency,
 	variablesInConfig map[string]variables.Variable,
 	originalVariables map[string]any,
 	renderedVarFiles []string,
@@ -649,7 +651,7 @@ func cloneVariablesForDependency(
 // options.NonInteractive or options.DisableDependencyPrompt are set to true, this function always returns true.
 func shouldProcessDependency(
 	ctx context.Context,
-	dependency variables.Dependency,
+	dependency *variables.Dependency,
 	opts *options.BoilerplateOptions,
 	variables map[string]any,
 ) (bool, error) {
@@ -670,7 +672,7 @@ func shouldProcessDependency(
 }
 
 // Return true if the skip parameter of the given dependency evaluates to a "true" value
-func shouldSkipDependency(ctx context.Context, dependency variables.Dependency, opts *options.BoilerplateOptions, variables map[string]interface{}) (bool, error) {
+func shouldSkipDependency(ctx context.Context, dependency *variables.Dependency, opts *options.BoilerplateOptions, variables map[string]interface{}) (bool, error) {
 	if dependency.Skip == "" {
 		return false, nil
 	}

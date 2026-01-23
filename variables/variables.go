@@ -74,7 +74,7 @@ type defaultVariable struct {
 
 // NewStringVariable creates a new variable that holds a string
 func NewStringVariable(name string) Variable {
-	return defaultVariable{
+	return &defaultVariable{
 		name:         name,
 		variableType: String,
 	}
@@ -82,7 +82,7 @@ func NewStringVariable(name string) Variable {
 
 // NewIntVariable creates a new variable that holds an int
 func NewIntVariable(name string) Variable {
-	return defaultVariable{
+	return &defaultVariable{
 		name:         name,
 		variableType: Int,
 	}
@@ -90,7 +90,7 @@ func NewIntVariable(name string) Variable {
 
 // NewFloatVariable creates a new variable that holds a float
 func NewFloatVariable(name string) Variable {
-	return defaultVariable{
+	return &defaultVariable{
 		name:         name,
 		variableType: Float,
 	}
@@ -98,7 +98,7 @@ func NewFloatVariable(name string) Variable {
 
 // NewBoolVariable creates a new variable that holds a bool
 func NewBoolVariable(name string) Variable {
-	return defaultVariable{
+	return &defaultVariable{
 		name:         name,
 		variableType: Bool,
 	}
@@ -106,7 +106,7 @@ func NewBoolVariable(name string) Variable {
 
 // NewListVariable creates a new variable that holds a list of strings
 func NewListVariable(name string) Variable {
-	return defaultVariable{
+	return &defaultVariable{
 		name:         name,
 		variableType: List,
 	}
@@ -114,7 +114,7 @@ func NewListVariable(name string) Variable {
 
 // NewMapVariable creates a new variable that holds a map of string to string
 func NewMapVariable(name string) Variable {
-	return defaultVariable{
+	return &defaultVariable{
 		name:         name,
 		variableType: Map,
 	}
@@ -122,18 +122,18 @@ func NewMapVariable(name string) Variable {
 
 // NewEnumVariable creates a new variable that holds an enum with the given possible values
 func NewEnumVariable(name string, options []string) Variable {
-	return defaultVariable{
+	return &defaultVariable{
 		name:         name,
 		variableType: Enum,
 		options:      options,
 	}
 }
 
-func (variable defaultVariable) Name() string {
+func (variable *defaultVariable) Name() string {
 	return variable.name
 }
 
-func (variable defaultVariable) FullName() string {
+func (variable *defaultVariable) FullName() string {
 	dependencyName, variableName := SplitIntoDependencyNameAndVariableName(variable.Name())
 	if dependencyName == "" {
 		return variableName
@@ -142,54 +142,54 @@ func (variable defaultVariable) FullName() string {
 	}
 }
 
-func (variable defaultVariable) Description() string {
+func (variable *defaultVariable) Description() string {
 	return variable.description
 }
 
-func (variable defaultVariable) Type() BoilerplateType {
+func (variable *defaultVariable) Type() BoilerplateType {
 	return variable.variableType
 }
 
-func (variable defaultVariable) Order() int {
+func (variable *defaultVariable) Order() int {
 	return variable.order
 }
 
-func (variable defaultVariable) Default() any {
+func (variable *defaultVariable) Default() any {
 	return variable.defaultValue
 }
 
-func (variable defaultVariable) Reference() string {
+func (variable *defaultVariable) Reference() string {
 	return variable.reference
 }
 
-func (variable defaultVariable) Options() []string {
+func (variable *defaultVariable) Options() []string {
 	return variable.options
 }
 
-func (variable defaultVariable) Validations() []CustomValidationRule {
+func (variable *defaultVariable) Validations() []CustomValidationRule {
 	return variable.validations
 }
 
-func (variable defaultVariable) WithName(name string) Variable {
+func (variable *defaultVariable) WithName(name string) Variable {
 	variable.name = name
 	return variable
 }
 
-func (variable defaultVariable) WithDescription(description string) Variable {
+func (variable *defaultVariable) WithDescription(description string) Variable {
 	variable.description = description
 	return variable
 }
 
-func (variable defaultVariable) WithDefault(value any) Variable {
+func (variable *defaultVariable) WithDefault(value any) Variable {
 	variable.defaultValue = value
 	return variable
 }
 
-func (variable defaultVariable) String() string {
+func (variable *defaultVariable) String() string {
 	return fmt.Sprintf("Variable {Name: '%s', Description: '%s', Type: '%v', Default: '%v', Options: '%v', Reference: '%v'}", variable.Name(), variable.Description(), variable.Type(), variable.Default(), variable.Options(), variable.Reference())
 }
 
-func (variable defaultVariable) ExampleValue() string {
+func (variable *defaultVariable) ExampleValue() string {
 	switch variable.Type() {
 	case String:
 		return "foo"
@@ -211,7 +211,7 @@ func (variable defaultVariable) ExampleValue() string {
 }
 
 // Define a custom marshaler for YAML so that variables (and thus any struct using it) can be marshaled into YAML.
-func (variable defaultVariable) MarshalYAML() (any, error) {
+func (variable *defaultVariable) MarshalYAML() (any, error) {
 	varYml := map[string]any{}
 	// We avoid a straight assignment to ensure that only fields that are actually set are rendered out.
 	if variable.Name() != "" {
@@ -344,7 +344,7 @@ func parseStringAsList(str string) ([]string, error) {
 		return goOut, nil
 	}
 
-	return nil, errors.WithStackTrace(FormatNotJSONOrGo{
+	return nil, errors.WithStackTrace(&FormatNotJSONOrGo{
 		ExpectedJSONFormat: `["value1", "value2", "value3"]`,
 		ExpectedGoFormat:   `[value1 value2 value3]`,
 		ActualFormat:       str,
@@ -400,7 +400,7 @@ func parseStringAsMap(str string) (map[string]string, error) {
 		return goOut, nil
 	}
 
-	return nil, errors.WithStackTrace(FormatNotJSONOrGo{
+	return nil, errors.WithStackTrace(&FormatNotJSONOrGo{
 		ExpectedJSONFormat: `{"key1": "value1", "key2": "value2", "key3": "value3"}`,
 		ExpectedGoFormat:   `map[key1:value1 key2:value2 key3:value3]`,
 		ActualFormat:       str,
@@ -562,7 +562,7 @@ func UnmarshalVariableFromBoilerplateConfigYaml(fields map[string]interface{}) (
 
 	variable.defaultValue = fields["default"]
 
-	return variable, nil
+	return &variable, nil
 }
 
 // Custom error types
@@ -585,6 +585,6 @@ type FormatNotJSONOrGo struct {
 	ActualFormat       string
 }
 
-func (err FormatNotJSONOrGo) Error() string {
+func (err *FormatNotJSONOrGo) Error() string {
 	return fmt.Sprintf("Expected a string in JSON format (e.g., %s) or Go format (e.g., %s), but got: %s. JSON parsing error: %v. Go parsing error: %v.", err.ExpectedJSONFormat, err.ExpectedGoFormat, err.ActualFormat, err.JSONErr, err.GoErr)
 }

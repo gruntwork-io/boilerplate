@@ -21,7 +21,7 @@ type Hooks struct {
 
 // MarshalYAML implements the go-yaml marshaler interface so that the config can be marshaled into yaml. We use a custom marshaler
 // instead of defining the fields as tags so that we skip the attributes that are empty.
-func (hook Hook) MarshalYAML() (any, error) {
+func (hook *Hook) MarshalYAML() (any, error) {
 	hookYml := map[string]any{}
 	if hook.Command != "" {
 		hookYml["command"] = hook.Command
@@ -52,8 +52,8 @@ func (hooks Hooks) MarshalYAML() (any, error) {
 	// function.
 	if len(hooks.BeforeHooks) > 0 {
 		interfaceList := []interface{}{}
-		for _, hook := range hooks.BeforeHooks {
-			interfaceList = append(interfaceList, hook)
+		for i := range hooks.BeforeHooks {
+			interfaceList = append(interfaceList, &hooks.BeforeHooks[i])
 		}
 
 		beforeYml, err := util.MarshalListOfObjectsToYAML(interfaceList)
@@ -66,8 +66,8 @@ func (hooks Hooks) MarshalYAML() (any, error) {
 
 	if len(hooks.AfterHooks) > 0 {
 		interfaceList := []interface{}{}
-		for _, hook := range hooks.AfterHooks {
-			interfaceList = append(interfaceList, hook)
+		for i := range hooks.AfterHooks {
+			interfaceList = append(interfaceList, &hooks.AfterHooks[i])
 		}
 
 		afterYml, err := util.MarshalListOfObjectsToYAML(interfaceList)
