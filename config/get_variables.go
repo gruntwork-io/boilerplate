@@ -25,7 +25,7 @@ const MaxReferenceDepth = 20
 // GetVariables gets a value for each of the variables specified in boilerplateConfig, other than those already in existingVariables.
 // The value for a variable can come from the user (if the non-interactive option isn't set), the default value in the
 // config, or a command line option.
-func GetVariables(opts *options.BoilerplateOptions, boilerplateConfig, rootBoilerplateConfig *BoilerplateConfig, thisDep variables.Dependency) (map[string]any, error) {
+func GetVariables(opts *options.BoilerplateOptions, boilerplateConfig, rootBoilerplateConfig *BoilerplateConfig, thisDep *variables.Dependency) (map[string]any, error) {
 	return GetVariablesWithContext(context.Background(), opts, boilerplateConfig, rootBoilerplateConfig, thisDep)
 }
 
@@ -34,7 +34,7 @@ func GetVariables(opts *options.BoilerplateOptions, boilerplateConfig, rootBoile
 //
 // The value for a variable can come from the user (if the non-interactive option isn't set), the default value in the
 // config, or a command line option.
-func GetVariablesWithContext(ctx context.Context, opts *options.BoilerplateOptions, boilerplateConfig, rootBoilerplateConfig *BoilerplateConfig, thisDep variables.Dependency) (map[string]any, error) {
+func GetVariablesWithContext(ctx context.Context, opts *options.BoilerplateOptions, boilerplateConfig, rootBoilerplateConfig *BoilerplateConfig, thisDep *variables.Dependency) (map[string]any, error) {
 	renderedVariables := map[string]any{}
 
 	// Add a variable for all variables contained in the root config file. This will allow Golang template users
@@ -44,8 +44,10 @@ func GetVariablesWithContext(ctx context.Context, opts *options.BoilerplateOptio
 
 	// Add a variable for all dependencies contained in the root config file. This will allow Golang template users
 	// to directly access these with an expression like "{{ .BoilerplateConfigDeps.foo.OutputFolder }}"
-	rootConfigDeps := map[string]variables.Dependency{}
-	for _, dep := range rootBoilerplateConfig.Dependencies {
+	rootConfigDeps := map[string]*variables.Dependency{}
+
+	for i := range rootBoilerplateConfig.Dependencies {
+		dep := &rootBoilerplateConfig.Dependencies[i]
 		rootConfigDeps[dep.Name] = dep
 	}
 

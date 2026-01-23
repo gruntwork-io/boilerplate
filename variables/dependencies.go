@@ -25,13 +25,13 @@ type Dependency struct {
 // TemplateUrl provides backward compatibility for accessing TemplateURL with lowercase "url"
 //
 //nolint:staticcheck
-func (d Dependency) TemplateUrl() string {
+func (d *Dependency) TemplateUrl() string {
 	return d.TemplateURL
 }
 
 // MarshalYAML implements the go-yaml marshaler interface so that the config can be marshaled into yaml. We use a custom marshaler
 // instead of defining the fields as tags so that we skip the attributes that are empty.
-func (d Dependency) MarshalYAML() (any, error) {
+func (d *Dependency) MarshalYAML() (any, error) {
 	depYml := map[string]any{}
 	if d.Name != "" {
 		depYml["name"] = d.Name

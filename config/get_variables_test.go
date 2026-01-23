@@ -152,12 +152,12 @@ func TestGetVariablesNoVariables(t *testing.T) {
 	opts := &options.BoilerplateOptions{NonInteractive: true}
 	boilerplateConfig := &BoilerplateConfig{}
 	rootBoilerplateConfig := &BoilerplateConfig{}
-	dependency := variables.Dependency{}
+	dependency := &variables.Dependency{}
 
 	actual, err := GetVariables(opts, boilerplateConfig, rootBoilerplateConfig, dependency)
 	expected := map[string]interface{}{
 		"BoilerplateConfigVars": map[string]variables.Variable{},
-		"BoilerplateConfigDeps": map[string]variables.Dependency{},
+		"BoilerplateConfigDeps": map[string]*variables.Dependency{},
 		"This": map[string]interface{}{
 			"Config":     boilerplateConfig,
 			"Options":    opts,
@@ -179,7 +179,7 @@ func TestGetVariablesNoMatchNonInteractive(t *testing.T) {
 		},
 	}
 	rootBoilerplateConfig := &BoilerplateConfig{}
-	dependency := variables.Dependency{}
+	dependency := &variables.Dependency{}
 
 	_, err := GetVariables(opts, boilerplateConfig, rootBoilerplateConfig, dependency)
 
@@ -206,13 +206,13 @@ func TestGetVariablesMatchFromVars(t *testing.T) {
 
 	rootBoilerplateConfig := &BoilerplateConfig{}
 
-	dependency := variables.Dependency{}
+	dependency := &variables.Dependency{}
 
 	actual, err := GetVariables(opts, boilerplateConfig, rootBoilerplateConfig, dependency)
 	expected := map[string]interface{}{
 		"foo":                   "bar",
 		"BoilerplateConfigVars": map[string]variables.Variable{},
-		"BoilerplateConfigDeps": map[string]variables.Dependency{},
+		"BoilerplateConfigDeps": map[string]*variables.Dependency{},
 		"This": map[string]interface{}{
 			"Config":     boilerplateConfig,
 			"Options":    opts,
@@ -246,7 +246,7 @@ func TestGetVariablesMatchFromVarsAndDefaults(t *testing.T) {
 
 	rootBoilerplateConfig := &BoilerplateConfig{}
 
-	dependency := variables.Dependency{}
+	dependency := &variables.Dependency{}
 
 	actual, err := GetVariables(opts, boilerplateConfig, rootBoilerplateConfig, dependency)
 	expected := map[string]interface{}{
@@ -254,7 +254,7 @@ func TestGetVariablesMatchFromVarsAndDefaults(t *testing.T) {
 		"key2":                  "value2",
 		"key3":                  "value3",
 		"BoilerplateConfigVars": map[string]variables.Variable{},
-		"BoilerplateConfigDeps": map[string]variables.Dependency{},
+		"BoilerplateConfigDeps": map[string]*variables.Dependency{},
 		"This": map[string]interface{}{
 			"Config":     boilerplateConfig,
 			"Options":    opts,

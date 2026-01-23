@@ -126,5 +126,5 @@ func runApp(cliContext *cli.Context) error {
 	// The root boilerplate.yml is not itself a dependency, so we pass an empty Dependency.
 	emptyDep := variables.Dependency{}
 
-	return templates.ProcessTemplateWithContext(ctx, opts, opts, emptyDep)
+	return templates.ProcessTemplateWithContext(ctx, opts, opts, &emptyDep)
 }
