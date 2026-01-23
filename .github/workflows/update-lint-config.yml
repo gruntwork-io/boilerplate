@@ -1,0 +1,42 @@
+name: Update Lint Config
+
+on:
+  schedule:
+    # Run every Monday at 00:00 UTC
+    - cron: '0 0 * * 1'
+  workflow_dispatch:
+
+jobs:
+  update-lint-config:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v5
+
+    - name: Update lint config from upstream
+      run: make update-lint-config
+
+    - name: Check for changes
+      id: check
+      run: |
+        if git diff --quiet .golangci.yml; then
+          echo "changed=false" >> "$GITHUB_OUTPUT"
+        else
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Create Pull Request
+      if: steps.check.outputs.changed == 'true'
+      uses: peter-evans/create-pull-request@v7
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        commit-message: "chore: update golangci-lint config from upstream"
+        title: "chore: update golangci-lint config from upstream"
+        body: |
+          This PR updates the golangci-lint configuration from the upstream Terragrunt repository.
+
+          Source: https://github.com/gruntwork-io/terragrunt/blob/main/.golangci.yml
+
+          This is an automated PR created by the update-lint-config workflow.
+        branch: update-lint-config
+        delete-branch: true
