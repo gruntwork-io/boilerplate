@@ -139,8 +139,8 @@ jobs:
     description: Test signing binaries
     <<: *env
     macos:
-      xcode: 15.3.0
-    resource_class: macos.m1.medium.gen1
+      xcode: 15.4.0
+    resource_class: m4pro.medium
     steps:
       - checkout
       - attach_workspace:
@@ -173,8 +173,8 @@ jobs:
   deploy:
     <<: *env
     macos:
-      xcode: 15.3.0
-    resource_class: macos.m1.medium.gen1
+      xcode: 15.4.0
+    resource_class: m4pro.medium
     steps:
       - checkout
       - attach_workspace:
