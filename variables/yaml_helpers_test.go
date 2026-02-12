@@ -213,21 +213,28 @@ func TestParserulestring(t *testing.T) {
 			Want:  []string{"length-1-3", "required", "url", "email", "alpha", "digit", "alphanumeric", "countrycode2"},
 		},
 		{
-			// Note that Regex patterns without spaces work through the string path,
-			// but patterns containing spaces would be split into multiple tokens.
-			// The YAML list path (unmarshalValidationsField) handles spaces correctly.
+			// Regex patterns without spaces work through the string path.
 			Input: "[required regex(^[A-Z]{2}-\\d{4}$)]",
 			Want:  []string{"required", "regex(^[A-Z]{2}-\\d{4}$)"},
 		},
 	}
 
 	for _, tc := range testCases {
-		got := parseRuleString(tc.Input)
+		got, err := parseRuleString(tc.Input)
+		require.NoError(t, err)
 		if !cmp.Equal(got, tc.Want) {
 			t.Logf("Got %v for input %s but wanted %v\n", got, tc.Input, tc.Want)
 			t.Fail()
 		}
 	}
+}
+
+func TestParserulestring_RegexWithSpacesErrors(t *testing.T) {
+	t.Parallel()
+
+	_, err := parseRuleString("[required regex(^[a-z ]+$)]")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "regex pattern appears to contain a space")
 }
 
 // TestConvertValidationStringtoRules_Regex tests the public ConvertValidationStringtoRules API,
@@ -304,6 +311,13 @@ func TestConvertValidationStringtoRules_Regex(t *testing.T) {
 		// regex should reject invalid input
 		err = rules[1].Validator.Validate("Hello123")
 		assert.Error(t, err)
+	})
+
+	t.Run("regex with spaces in string format returns error", func(t *testing.T) {
+		t.Parallel()
+		_, err := ConvertValidationStringtoRules("[required regex(^[a-z ]+$)]")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "regex pattern appears to contain a space")
 	})
 }
 

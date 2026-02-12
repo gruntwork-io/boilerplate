@@ -208,10 +208,10 @@ func (c CustomValidationRule) DescriptionText() string {
 
 // parseRuleString converts a space-delimited string of validation rules into a slice of
 // normalized rule strings. Used by ConvertValidationStringtoRules for its public API.
-// Note: because this splits on spaces, regex patterns containing spaces will be broken
-// into multiple tokens. The YAML list path in unmarshalValidationsField avoids this
-// by processing each list element individually.
-func parseRuleString(ruleString string) []string {
+// Because this splits on spaces, regex patterns containing spaces cannot be represented
+// in a space-delimited string. If a split regex pattern is detected, an error is returned
+// advising the user to use the YAML list format instead.
+func parseRuleString(ruleString string) ([]string, error) {
 	// Only strip the outer wrapping brackets from the YAML list format (e.g., "[required url]"),
 	// not brackets inside regex character classes (e.g., "regex(^[a-z]+$)")
 	ruleString = strings.TrimSpace(ruleString)
@@ -224,7 +224,15 @@ func parseRuleString(ruleString string) []string {
 		parts[i] = normalizeRuleString(part)
 	}
 
-	return parts
+	// Detect regex patterns that were broken by the space split: a token starting with
+	// "regex(" but not ending with ")" means the pattern contained a space.
+	for _, part := range parts {
+		if strings.HasPrefix(part, "regex(") && !strings.HasSuffix(part, ")") {
+			return nil, fmt.Errorf("regex pattern appears to contain a space, which is not supported in string-format validations; use the YAML list format instead:\n  validations:\n    - \"regex(...)\"")
+		}
+	}
+
+	return parts, nil
 }
 
 // convertSingleValidationRule converts a single validation rule string into a CustomValidationRule.
@@ -322,7 +330,10 @@ func normalizeRuleString(rule string) string {
 func ConvertValidationStringtoRules(ruleString string) ([]CustomValidationRule, error) {
 	var validationRules []CustomValidationRule
 
-	rules := parseRuleString(ruleString)
+	rules, err := parseRuleString(ruleString)
+	if err != nil {
+		return nil, err
+	}
 
 	for _, rule := range rules {
 		cvr, err := convertSingleValidationRule(rule)
