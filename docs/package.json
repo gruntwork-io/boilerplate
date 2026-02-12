@@ -1,0 +1,17 @@
+{
+  "name": "boilerplate-docs",
+  "type": "module",
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview"
+  },
+  "dependencies": {
+    "@astrojs/starlight": "^0.37.3",
+    "@vercel/analytics": "^1.5.0",
+    "astro": "^5.16.11",
+    "sharp": "^0.34.2"
+  }
+}

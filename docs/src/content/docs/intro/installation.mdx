@@ -1,0 +1,98 @@
+---
+title: Installation
+sidebar:
+  order: 2
+description: How to install Boilerplate on your machine.
+---
+
+import { Tabs, TabItem, Aside } from '@astrojs/starlight/components';
+
+## Pre-built Binaries
+
+The easiest way to install Boilerplate is to download a pre-built binary from the
+[GitHub Releases](https://github.com/gruntwork-io/boilerplate/releases) page.
+
+<Tabs>
+  <TabItem label="macOS">
+    **Apple Silicon (M1/M2/M3/M4):**
+
+    ```bash
+    curl -Lo boilerplate https://github.com/gruntwork-io/boilerplate/releases/latest/download/boilerplate_darwin_arm64
+    chmod +x boilerplate
+    sudo mv boilerplate /usr/local/bin/
+    ```
+
+    **Intel:**
+
+    ```bash
+    curl -Lo boilerplate https://github.com/gruntwork-io/boilerplate/releases/latest/download/boilerplate_darwin_amd64
+    chmod +x boilerplate
+    sudo mv boilerplate /usr/local/bin/
+    ```
+  </TabItem>
+  <TabItem label="Linux">
+    ```bash
+    # x86_64
+    curl -Lo boilerplate https://github.com/gruntwork-io/boilerplate/releases/latest/download/boilerplate_linux_amd64
+
+    # ARM64
+    curl -Lo boilerplate https://github.com/gruntwork-io/boilerplate/releases/latest/download/boilerplate_linux_arm64
+    ```
+
+    Then install it:
+
+    ```bash
+    chmod +x boilerplate
+    sudo mv boilerplate /usr/local/bin/
+    ```
+  </TabItem>
+  <TabItem label="Windows">
+    1. Download [`boilerplate_windows_amd64.exe`](https://github.com/gruntwork-io/boilerplate/releases/latest/download/boilerplate_windows_amd64.exe) from the latest release (or `boilerplate_windows_386.exe` for 32-bit systems).
+
+    2. Rename the file to `boilerplate.exe`.
+
+    3. Move it to a directory on your `PATH`, for example:
+
+       ```powershell
+       mkdir -Force "$env:LOCALAPPDATA\Boilerplate"
+       Move-Item boilerplate.exe "$env:LOCALAPPDATA\Boilerplate\boilerplate.exe"
+       ```
+
+    4. Add that directory to your `PATH` if it isn't already:
+
+       ```powershell
+       [Environment]::SetEnvironmentVariable("Path", "$env:Path;$env:LOCALAPPDATA\Boilerplate", "User")
+       ```
+
+    5. Restart your terminal for the `PATH` change to take effect.
+  </TabItem>
+</Tabs>
+
+## Build from Source
+
+If you prefer to build from source, you'll need [Go](https://golang.org/) 1.21 or later:
+
+```bash
+git clone https://github.com/gruntwork-io/boilerplate.git
+cd boilerplate
+go build -o boilerplate .
+sudo mv boilerplate /usr/local/bin/
+```
+
+## Verify Installation
+
+After installing, verify that Boilerplate is available:
+
+```bash
+boilerplate --version
+```
+
+You should see the version number printed to the console.
+
+<Aside type="tip">
+If you get a "command not found" error, make sure the binary is in a directory that's on your `PATH`.
+</Aside>
+
+## Next Steps
+
+Now that Boilerplate is installed, [create your first template](/intro/your-first-template/).

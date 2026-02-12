@@ -1,0 +1,403 @@
+/* Import Inter font from Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600;700&display=swap');
+
+/* Boilerplate Brand Colors and Custom Styles */
+
+/* Smooth scrolling for in-page links */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Respect user preference for reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+:root {
+  /* Typography - Inter font */
+  --sl-font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  /* Boilerplate brand colors - blue (#1B46DD) and cyan (#77E2EF) */
+  --sl-hue-accent: 228;
+  --sl-color-accent-low: #e8ecfc;
+  --sl-color-accent: #1B46DD;
+  --sl-color-accent-high: #0f2e99;
+
+  /* Light theme colors - high contrast for readability */
+  --sl-color-white: #18181b;
+  --sl-color-gray-1: #27272a;
+  --sl-color-gray-2: #3f3f46;
+  --sl-color-gray-3: #52525b;
+  --sl-color-gray-4: #71717a;
+  --sl-color-gray-5: #a1a1aa;
+  --sl-color-gray-6: #e4e4e7;
+  --sl-color-gray-7: #fafafa;
+  --sl-color-black: #ffffff;
+
+  /* Override text colors for better contrast */
+  --sl-color-text: #27272a;
+  --sl-color-text-accent: #1B46DD;
+
+  /* Background colors */
+  --sl-color-bg: #ffffff;
+  --sl-color-bg-nav: #fafafa;
+  --sl-color-bg-sidebar: #fafafa;
+
+  /* Content settings */
+  --sl-content-width: 50rem;
+  --sl-sidebar-width: 20rem;
+
+  /* Typography */
+  --sl-line-height: 1.7;
+  --sl-line-height-headings: 1.3;
+}
+
+/* Dark mode colors */
+:root[data-theme='dark'] {
+  --sl-color-accent-low: #172554;
+  --sl-color-accent: #5B8AF5;
+  --sl-color-accent-high: #93b4fc;
+
+  /* Dark theme colors with better border contrast */
+  --sl-color-white: #fafafa;
+  --sl-color-gray-1: #e4e4e7;
+  --sl-color-gray-2: #a1a1aa;
+  --sl-color-gray-3: #71717a;
+  --sl-color-gray-4: #52525b;
+  --sl-color-gray-5: #52525b;
+  --sl-color-gray-6: #3f3f46;
+  --sl-color-gray-7: #27272a;
+  --sl-color-black: #09090b;
+
+  /* Override text colors for dark mode */
+  --sl-color-text: #e4e4e7;
+  --sl-color-text-accent: #93b4fc;
+
+  /* Background colors */
+  --sl-color-bg: #18181b;
+  --sl-color-bg-nav: #1a1a1d;
+  --sl-color-bg-sidebar: #1a1a1d;
+
+  /* Improved hairline/border colors for dark mode */
+  --sl-color-hairline-light: #52525b;
+  --sl-color-hairline: #52525b;
+  --sl-color-hairline-shade: #52525b;
+}
+
+/* ============================================
+   HEADER & NAVIGATION
+   ============================================ */
+
+header.header {
+  border-bottom: 1px solid var(--sl-color-gray-6);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+:root[data-theme='dark'] header.header {
+  border-bottom: 1px solid #52525b;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.5);
+}
+
+/* Site logo styling */
+.site-title {
+  transition: opacity 0.2s ease;
+}
+
+.site-title:hover {
+  opacity: 0.8;
+}
+
+.site-title img {
+  height: 2rem;
+  width: auto;
+}
+
+/* ============================================
+   SIDEBAR
+   ============================================ */
+
+.sidebar {
+  border-right: 1px solid var(--sl-color-gray-6);
+}
+
+:root[data-theme='dark'] .sidebar {
+  border-right: 1px solid #52525b;
+}
+
+/* Sidebar links styling */
+.sidebar a {
+  border-radius: 0.5rem;
+  transition: all 0.15s ease;
+  font-weight: 450;
+}
+
+.sidebar a:hover {
+  background-color: var(--sl-color-gray-6);
+  color: var(--sl-color-white);
+}
+
+.sidebar a[aria-current='page'] {
+  background-color: var(--sl-color-accent-low);
+  color: var(--sl-color-accent);
+  font-weight: 600;
+}
+
+:root[data-theme='dark'] .sidebar a:hover {
+  background-color: var(--sl-color-gray-6);
+}
+
+:root[data-theme='dark'] .sidebar a[aria-current='page'] {
+  background-color: var(--sl-color-accent-low);
+  color: var(--sl-color-accent-high);
+}
+
+/* ============================================
+   TYPOGRAPHY & CONTENT
+   ============================================ */
+
+/* Improve body text readability */
+.sl-markdown-content {
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--sl-color-text);
+}
+
+/* Headings */
+.sl-markdown-content h1,
+.sl-markdown-content h2,
+.sl-markdown-content h3,
+.sl-markdown-content h4 {
+  color: var(--sl-color-white);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+/* Links - Boilerplate blue */
+.sl-markdown-content a {
+  color: var(--sl-color-accent);
+  text-decoration: none;
+  transition: color 0.15s ease;
+  font-weight: 500;
+}
+
+/* Bold links get full bold weight */
+.sl-markdown-content strong a,
+.sl-markdown-content a strong {
+  font-weight: 700;
+}
+
+.sl-markdown-content a:hover {
+  color: var(--sl-color-accent);
+  text-decoration: underline;
+}
+
+:root[data-theme='dark'] .sl-markdown-content a {
+  color: var(--sl-color-accent-high);
+}
+
+:root[data-theme='dark'] .sl-markdown-content a:hover {
+  color: #b3ccfd;
+}
+
+/* Code within links - better contrast */
+.sl-markdown-content a code {
+  color: var(--sl-color-accent);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.15s ease;
+}
+
+:root[data-theme='dark'] .sl-markdown-content a code {
+  color: var(--sl-color-accent-high);
+}
+
+/* ============================================
+   TABLES
+   ============================================ */
+
+.sl-markdown-content table {
+  display: block;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  width: fit-content;
+  max-width: 100%;
+  border-radius: 0.5rem;
+  border: 1px solid var(--sl-color-gray-6);
+  white-space: nowrap;
+}
+
+.sl-markdown-content thead {
+  display: table-header-group;
+  background-color: var(--sl-color-gray-7);
+}
+
+.sl-markdown-content tbody {
+  display: table-row-group;
+}
+
+.sl-markdown-content tr {
+  display: table-row;
+}
+
+.sl-markdown-content tbody tr {
+  border-bottom: 1px solid var(--sl-color-gray-6);
+}
+
+.sl-markdown-content tbody tr:last-child {
+  border-bottom: none;
+}
+
+.sl-markdown-content th,
+.sl-markdown-content td {
+  display: table-cell;
+  padding: 0.75rem 1rem;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.sl-markdown-content th {
+  font-weight: 600;
+  color: var(--sl-color-white);
+}
+
+/* Better table borders in dark mode */
+:root[data-theme='dark'] .sl-markdown-content table {
+  border-color: #52525b;
+}
+
+:root[data-theme='dark'] .sl-markdown-content tbody tr {
+  border-bottom-color: #52525b;
+}
+
+:root[data-theme='dark'] .sl-markdown-content thead {
+  background-color: #27272a;
+}
+
+/* ============================================
+   CALLOUTS/ADMONITIONS
+   ============================================ */
+
+.starlight-aside {
+  border-radius: 0.5rem;
+  border-left-width: 3px;
+}
+
+/* ============================================
+   TABLE OF CONTENTS
+   ============================================ */
+
+.right-sidebar a {
+  color: var(--sl-color-gray-3);
+  font-weight: 450;
+}
+
+.right-sidebar a:hover,
+.right-sidebar a[aria-current='true'] {
+  color: var(--sl-color-accent);
+}
+
+/* ============================================
+   PAGINATION
+   ============================================ */
+
+.pagination-links a {
+  border: 1px solid var(--sl-color-gray-6);
+  border-radius: 0.5rem;
+  transition: all 0.15s ease;
+}
+
+.pagination-links a:hover {
+  border-color: var(--sl-color-accent);
+  box-shadow: 0 4px 12px rgba(27, 70, 221, 0.15);
+}
+
+:root[data-theme='dark'] .pagination-links a {
+  border-color: #52525b;
+}
+
+:root[data-theme='dark'] .pagination-links a:hover {
+  box-shadow: 0 4px 12px rgba(91, 138, 245, 0.15);
+}
+
+/* ============================================
+   SEARCH
+   ============================================ */
+
+button[data-open-modal] {
+  border-radius: 0.5rem;
+  transition: all 0.15s ease;
+}
+
+button[data-open-modal]:hover {
+  border-color: var(--sl-color-gray-4);
+}
+
+/* ============================================
+   MOBILE RESPONSIVENESS
+   ============================================ */
+
+@media (max-width: 50rem) {
+  :root {
+    --sl-content-width: 100%;
+  }
+}
+
+/* ============================================
+   CUSTOM STYLES
+   ============================================ */
+
+/* Remove content margin */
+.main-pane .sl-container {
+  margin-inline: 10px;
+}
+
+/* Brand header - Boilerplate deep navy, stays the same in both light and dark mode */
+.header {
+  background-color: #160C56;
+
+  .social-icons svg {
+    fill: #eee;
+  }
+
+  .social-icons::after {
+    border-inline-end: 1px solid #eee;
+  }
+
+  starlight-theme-select label {
+    color: #eee;
+  }
+}
+
+/* Force the white logo in the header since header background is always dark.
+   .light\:sl-hidden = the white logo (hidden in light mode by default)
+   .dark\:sl-hidden = the blue logo (hidden in dark mode by default)
+   We always want the white logo visible and the blue logo hidden in the header. */
+.site-title .light\:sl-hidden {
+  display: initial !important;
+}
+
+.site-title .dark\:sl-hidden {
+  display: none !important;
+}
+
+/* Search input styling for dark header — force light text/borders in both themes */
+.header button[data-open-modal] {
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: #d4d4d8 !important;
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.header button[data-open-modal]:hover {
+  border-color: rgba(255, 255, 255, 0.4) !important;
+  background-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+.header button[data-open-modal] kbd {
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: #a1a1aa !important;
+}
+
+.header button[data-open-modal] svg {
+  color: #d4d4d8 !important;
+}

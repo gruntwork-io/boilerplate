@@ -1,0 +1,60 @@
+---
+title: Overview
+sidebar:
+  order: 1
+description: Learn what Boilerplate is and how it helps you generate files from templates.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+## What is Boilerplate?
+
+Boilerplate is a standalone CLI tool for generating files and folders from customizable templates. It reads a
+configuration file (`boilerplate.yml`), prompts for variable values (or reads them from CLI flags and files), and
+renders Go templates into an output directory.
+
+### Use Cases
+
+- **Scaffolding new projects** — Generate an entire project structure from a template with variables for names, configurations, and options.
+- **Generating configuration files** — Create environment-specific config files by filling in variables like hostnames, ports, and feature flags.
+- **Embedding code in documentation** — Use the `snippet` helper to include code from source files, keeping examples always up-to-date.
+- **Automating repetitive tasks** — Run Boilerplate in CI/CD pipelines with `--non-interactive` mode to automate file generation.
+
+### How It Works
+
+1. You create a **template directory** containing template files and a `boilerplate.yml` configuration file.
+2. You run `boilerplate --template-url <template> --output-folder <output>`.
+3. Boilerplate reads the config, prompts for (or accepts) variable values, and renders all template files into the output folder.
+
+```
+my-template/
+├── boilerplate.yml        # Configuration: variables, dependencies, hooks
+├── README.md              # Template file with {{.Variables}}
+├── main.go                # Another template file
+└── configs/
+    └── app.yml            # Nested templates work too
+```
+
+### Key Concepts
+
+| Concept | Description |
+|---------|-------------|
+| **Template** | A directory of files with Go template syntax and a `boilerplate.yml` |
+| **Variable** | A named value (string, int, bool, list, map, enum) provided by the user |
+| **Dependency** | Another template that runs as part of the current template |
+| **Hook** | A shell command that runs before or after template rendering |
+| **Partial** | A reusable template fragment that can be included in multiple files |
+
+### Interactive vs Non-Interactive
+
+By default, Boilerplate runs in **interactive mode**, prompting the user for each variable value. For automation and CI/CD, use `--non-interactive` mode where all variables must be provided via `--var` flags or `--var-file` files.
+
+<Aside type="tip">
+In non-interactive mode, any variable without a provided value or default will cause an error, ensuring you never accidentally deploy with missing configuration.
+</Aside>
+
+## Next Steps
+
+- [Install Boilerplate](/intro/installation/) to get started
+- [Create your first template](/intro/your-first-template/) with a hands-on tutorial
+- Read the [boilerplate.yml reference](/configuration/boilerplate-yml/) for full configuration details

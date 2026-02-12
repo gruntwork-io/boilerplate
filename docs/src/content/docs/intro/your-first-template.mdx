@@ -1,0 +1,135 @@
+---
+title: Your First Template
+sidebar:
+  order: 3
+description: A hands-on tutorial for creating your first Boilerplate template.
+---
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+This tutorial walks you through creating a simple Boilerplate template from scratch.
+
+## What You'll Build
+
+A project template that generates a Go project with:
+- A customizable project name and description
+- An optional `Dockerfile`
+- A `README.md`
+
+## Tutorial
+
+<Steps>
+
+1. **Create the template directory**
+
+   ```bash
+   mkdir -p my-go-template
+   cd my-go-template
+   ```
+
+2. **Create `boilerplate.yml`**
+
+   This is the configuration file that defines your template's variables:
+
+   ```yaml
+   # boilerplate.yml
+   variables:
+     - name: ProjectName
+       description: Name of the Go project
+       type: string
+       validations:
+         - required
+
+     - name: Description
+       description: A short project description
+       type: string
+
+     - name: IncludeDocker
+       description: Include Dockerfile?
+       type: bool
+       default: false
+
+   skip_files:
+     - path: Dockerfile
+       if: "{{ not .IncludeDocker }}"
+   ```
+
+3. **Create `README.md`**
+
+   `````markdown
+   # {{ .ProjectName }}
+
+   {{ .Description }}
+
+   ## Getting Started
+
+   ```bash
+   go run main.go
+   ```
+   `````
+
+4. **Create `main.go`**
+
+   ```go
+   package main
+
+   import "fmt"
+
+   func main() {
+       fmt.Println("Hello from {{ .ProjectName }}!")
+   }
+   ```
+
+5. **Create `Dockerfile`**
+
+   ```dockerfile
+   FROM golang:1.21-alpine
+   WORKDIR /app
+   COPY . .
+   RUN go build -o /{{ .ProjectName | dasherize }} .
+   CMD ["/{{ .ProjectName | dasherize }}"]
+   ```
+
+6. **Run the template**
+
+   ```bash
+   boilerplate \
+     --template-url ./my-go-template \
+     --output-folder ./my-project \
+     --var Description="Boilerplate is kind of cool" \
+     --var IncludeDocker=true
+   ```
+
+7. Answer the prompts for the `ProjectName` variable.
+
+7. **Check the output**
+
+   ```bash
+   ls my-project/
+   # Dockerfile  README.md  main.go
+   ```
+
+   The files will have all `{{ .ProjectName }}` references replaced with whatever value you entered.
+
+</Steps>
+
+## What Happened
+
+When you ran the command, Boilerplate:
+
+1. Read `boilerplate.yml` to discover variables and settings
+2. Used the `--var` flags to fill in variable values
+3. Prompted you for any missing values, in this case the value of the `ProjectName` variable
+3. Rendered each file through the Go template engine, replacing `{{ .ProjectName }}`, `{{ .Description }}`, etc.
+4. Evaluated the `skip_files` condition — since `IncludeDocker` was `true`, the `Dockerfile` was included
+5. Wrote the rendered files to the output folder
+
+<Aside type="tip">
+Try running the same command but with `--var IncludeDocker=true` — the `Dockerfile` will now be included in the output.
+</Aside>
+
+## Next Steps
+
+- Learn about all [variable types and validations](/configuration/variables/)
+- Chain templates together with [dependencies](/configuration/dependencies/)
+- Explore the full [Go template syntax](/template-syntax/go-templates/)

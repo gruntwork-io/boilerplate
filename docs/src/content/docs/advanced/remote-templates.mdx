@@ -1,0 +1,83 @@
+---
+title: Remote Templates
+sidebar:
+  order: 1
+description: Use templates from Git repositories and other remote sources.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Boilerplate supports fetching templates from remote sources using [HashiCorp go-getter](https://github.com/hashicorp/go-getter)
+URLs. This lets you share templates across teams and organizations.
+
+## Git URLs
+
+### SSH
+
+```bash
+boilerplate \
+  --template-url "git@github.com:myorg/templates.git//go-service?ref=v1.0.0" \
+  --output-folder ./output
+```
+
+### HTTPS
+
+```bash
+boilerplate \
+  --template-url "github.com/myorg/templates//go-service?ref=main" \
+  --output-folder ./output
+```
+
+## URL Format
+
+```
+<source>//<subdirectory>?ref=<branch-or-tag>
+```
+
+| Part | Description |
+|------|-------------|
+| `source` | Git repository URL (SSH or HTTPS) |
+| `//` | Separator between repo URL and subdirectory |
+| `subdirectory` | Path within the repository to the template |
+| `?ref=` | Git ref (branch, tag, or commit SHA) |
+
+## Examples
+
+```bash
+# Specific tag
+git@github.com:myorg/templates.git//microservice?ref=v2.1.0
+
+# Branch
+git@github.com:myorg/templates.git//microservice?ref=main
+
+# Commit SHA
+git@github.com:myorg/templates.git//microservice?ref=abc123
+
+# Root of repository
+git@github.com:myorg/single-template.git
+```
+
+<Aside type="tip">
+Always pin to a specific tag or commit SHA in production pipelines to ensure reproducible builds.
+</Aside>
+
+## Supported Sources
+
+Go-getter supports many sources beyond Git:
+
+- **Git** — `git::https://...` or `git@...`
+- **HTTP/HTTPS** — Direct file downloads
+- **S3** — `s3::https://s3.amazonaws.com/bucket/path`
+- **GCS** — `gcs::https://www.googleapis.com/storage/v1/bucket/path`
+- **Local files** — Absolute or relative paths
+
+## Dependencies with Remote URLs
+
+Dependencies can also reference remote templates:
+
+```yaml
+dependencies:
+  - name: shared-lib
+    template-url: "git@github.com:myorg/templates.git//shared-lib?ref=v1.0.0"
+    output-folder: ./lib
+```

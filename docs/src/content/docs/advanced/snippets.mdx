@@ -1,0 +1,100 @@
+---
+title: Code Snippets
+sidebar:
+  order: 4
+description: Embed code from source files into your templates.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+The `snippet` helper lets you include code from source files in your templates. This is particularly useful for
+documentation — your code examples stay in sync with actual source files.
+
+## Basic Usage
+
+Include the entire contents of a file:
+
+```text
+{{ snippet "../src/main.go" }}
+```
+
+The path is relative to the template directory.
+
+## Named Snippets
+
+Extract a specific section by marking it in the source file with comments:
+
+### Source file (`src/handler.go`)
+
+```go
+package main
+
+// boilerplate-snippet: handler
+func handleRequest(w http.ResponseWriter, r *http.Request) {
+    w.Write([]byte("Hello, World!"))
+}
+// boilerplate-snippet: handler
+
+// boilerplate-snippet: middleware
+func loggingMiddleware(next http.Handler) http.Handler {
+    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        log.Printf("%s %s", r.Method, r.URL.Path)
+        next.ServeHTTP(w, r)
+    })
+}
+// boilerplate-snippet: middleware
+```
+
+### Template file
+
+```text
+Here's the request handler:
+
+{{ snippet "../src/handler.go" "handler" }}
+
+And the middleware:
+
+{{ snippet "../src/handler.go" "middleware" }}
+```
+
+## Snippet Markers
+
+The marker format is a comment containing `boilerplate-snippet: <name>`:
+
+```go
+// boilerplate-snippet: my-section    (Go, JavaScript, C, etc.)
+```
+
+```python
+# boilerplate-snippet: my-section     (Python, Ruby, YAML, etc.)
+```
+
+```html
+<!-- boilerplate-snippet: my-section --> (HTML, XML)
+```
+
+<Aside type="note">
+The snippet markers themselves are **not** included in the output — only the content between the opening and closing markers.
+</Aside>
+
+## Use Case: Living Documentation
+
+Combine `snippet` with Boilerplate to keep documentation examples always up-to-date:
+
+```text
+## API Handler
+
+The main handler processes incoming requests:
+
+```go
+{{ snippet "../src/api/handler.go" "main-handler" }}
+```
+
+Run the server:
+
+```bash
+go run cmd/server/main.go --port {{ .Port }}
+```
+```
+
+Every time you regenerate the docs, the code examples reflect the current state of your source code.
