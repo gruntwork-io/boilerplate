@@ -60,13 +60,13 @@ func TestParseVariablesFromKeyValuePairs(t *testing.T) {
 		keyValuePairs []string
 	}{
 		{keyValuePairs: []string{}, expectedError: nil, expectedVars: map[string]any{}},
-		{keyValuePairs: []string{"key=value"}, expectedError: nil, expectedVars: map[string]interface{}{"key": "value"}},
-		{keyValuePairs: []string{"key="}, expectedError: nil, expectedVars: map[string]interface{}{"key": nil}},
-		{keyValuePairs: []string{"key1=value1", "key2=value2", "key3=value3"}, expectedError: nil, expectedVars: map[string]interface{}{"key1": "value1", "key2": "value2", "key3": "value3"}},
-		{keyValuePairs: []string{"key1=left=right"}, expectedError: nil, expectedVars: map[string]interface{}{"key1": "left=right"}},
-		{keyValuePairs: []string{"invalidsyntax"}, expectedError: InvalidVarSyntax("invalidsyntax"), expectedVars: map[string]interface{}{}},
-		{keyValuePairs: []string{"="}, expectedError: VariableNameCannotBeEmpty("="), expectedVars: map[string]interface{}{}},
-		{keyValuePairs: []string{"=foo"}, expectedError: VariableNameCannotBeEmpty("=foo"), expectedVars: map[string]interface{}{}},
+		{keyValuePairs: []string{"key=value"}, expectedError: nil, expectedVars: map[string]any{"key": "value"}},
+		{keyValuePairs: []string{"key="}, expectedError: nil, expectedVars: map[string]any{"key": nil}},
+		{keyValuePairs: []string{"key1=value1", "key2=value2", "key3=value3"}, expectedError: nil, expectedVars: map[string]any{"key1": "value1", "key2": "value2", "key3": "value3"}},
+		{keyValuePairs: []string{"key1=left=right"}, expectedError: nil, expectedVars: map[string]any{"key1": "left=right"}},
+		{keyValuePairs: []string{"invalidsyntax"}, expectedError: InvalidVarSyntax("invalidsyntax"), expectedVars: map[string]any{}},
+		{keyValuePairs: []string{"="}, expectedError: VariableNameCannotBeEmpty("="), expectedVars: map[string]any{}},
+		{keyValuePairs: []string{"=foo"}, expectedError: VariableNameCannotBeEmpty("=foo"), expectedVars: map[string]any{}},
 	}
 
 	for _, testCase := range testCases {
@@ -85,43 +85,43 @@ func TestConvert(t *testing.T) {
 	t.Parallel()
 
 	testCases := []struct {
-		input        interface{}
-		expectedType interface{}
+		input        any
+		expectedType any
 	}{
 		{
 			input:        "",
 			expectedType: "string",
 		},
 		{
-			input: map[interface{}]interface{}{
+			input: map[any]any{
 				"key1": "value1",
 				"key2": "value2",
 			},
-			expectedType: map[string]interface{}{},
+			expectedType: map[string]any{},
 		},
 		{
-			input: map[string]interface{}{
+			input: map[string]any{
 				"key1": "value1",
 			},
-			expectedType: map[string]interface{}{},
+			expectedType: map[string]any{},
 		},
 		{
-			input: []interface{}{
-				map[interface{}]interface{}{
+			input: []any{
+				map[any]any{
 					"key1": "value1",
 				},
 				"",
 			},
-			expectedType: []interface{}{},
+			expectedType: []any{},
 		},
 		{
-			input: map[string]interface{}{
+			input: map[string]any{
 				"key3": 42,
-				"key1": map[string]interface{}{
+				"key1": map[string]any{
 					"key2": "value2",
 				},
 			},
-			expectedType: map[string]interface{}{},
+			expectedType: map[string]any{},
 		},
 	}
 
@@ -136,21 +136,21 @@ func TestConvertNested(t *testing.T) {
 	t.Parallel()
 
 	testCases := []struct {
-		input interface{}
+		input any
 		name  string
 	}{
 		{
 			name: "map nested in map",
-			input: map[string]interface{}{
-				"key1": map[interface{}]interface{}{
+			input: map[string]any{
+				"key1": map[any]any{
 					"nested": "value",
 				},
 			},
 		},
 		{
 			name: "map nested in list",
-			input: []interface{}{
-				map[interface{}]interface{}{
+			input: []any{
+				map[any]any{
 					"nested": "value",
 				},
 			},
@@ -166,16 +166,16 @@ func TestConvertNested(t *testing.T) {
 
 			// Check that conversion actually happened - MUST work, not optional
 			switch v := result.(type) {
-			case map[string]interface{}:
+			case map[string]any:
 				for _, value := range v {
-					nestedMap, ok := value.(map[string]interface{})
-					assert.True(t, ok, "Expected nested map[string]interface{}, got %T", value)
+					nestedMap, ok := value.(map[string]any)
+					assert.True(t, ok, "Expected nested map[string]any, got %T", value)
 					assert.Equal(t, "value", nestedMap["nested"])
 				}
-			case []interface{}:
+			case []any:
 				for _, item := range v {
-					nestedMap, ok := item.(map[string]interface{})
-					assert.True(t, ok, "Expected nested map[string]interface{}, got %T", item)
+					nestedMap, ok := item.(map[string]any)
+					assert.True(t, ok, "Expected nested map[string]any, got %T", item)
 					assert.Equal(t, "value", nestedMap["nested"])
 				}
 			}
@@ -213,6 +213,9 @@ func TestParserulestring(t *testing.T) {
 			Want:  []string{"length-1-3", "required", "url", "email", "alpha", "digit", "alphanumeric", "countrycode2"},
 		},
 		{
+			// Note that Regex patterns without spaces work through the string path,
+			// but patterns containing spaces would be split into multiple tokens.
+			// The YAML list path (unmarshalValidationsField) handles spaces correctly.
 			Input: "[required regex(^[A-Z]{2}-\\d{4}$)]",
 			Want:  []string{"required", "regex(^[A-Z]{2}-\\d{4}$)"},
 		},
@@ -227,6 +230,10 @@ func TestParserulestring(t *testing.T) {
 	}
 }
 
+// TestConvertValidationStringtoRules_Regex tests the public ConvertValidationStringtoRules API,
+// which uses parseRuleString + convertSingleValidationRule. This function has no production
+// callers (the production path goes through unmarshalValidationsField), but these tests verify
+// the string-parsing pipeline independently.
 func TestConvertValidationStringtoRules_Regex(t *testing.T) {
 	t.Parallel()
 
@@ -297,5 +304,158 @@ func TestConvertValidationStringtoRules_Regex(t *testing.T) {
 		// regex should reject invalid input
 		err = rules[1].Validator.Validate("Hello123")
 		assert.Error(t, err)
+	})
+}
+
+func TestUnmarshalValidationsField_RegexWithSpaces(t *testing.T) {
+	t.Parallel()
+
+	t.Run("regex pattern with spaces via YAML list", func(t *testing.T) {
+		t.Parallel()
+		// Simulate what YAML parsing produces for:
+		//   validations:
+		//     - required
+		//     - "regex(^[a-z ]+$)"
+		fields := map[string]any{
+			"validations": []interface{}{
+				"required",
+				"regex(^[a-z ]+$)",
+			},
+		}
+
+		rules, err := unmarshalValidationsField(fields)
+		require.NoError(t, err)
+		require.Len(t, rules, 2)
+
+		assert.Equal(t, "Must not be empty", rules[0].Message)
+		assert.Equal(t, "Must match pattern: ^[a-z ]+$", rules[1].Message)
+
+		// Should accept string with spaces
+		err = rules[1].Validator.Validate("hello world")
+		assert.NoError(t, err)
+
+		// Should reject digits
+		err = rules[1].Validator.Validate("hello123")
+		assert.Error(t, err)
+	})
+
+}
+
+func TestUnmarshalValidationsField(t *testing.T) {
+	t.Parallel()
+
+	t.Run("nil validations returns nil", func(t *testing.T) {
+		t.Parallel()
+		fields := map[string]any{}
+
+		rules, err := unmarshalValidationsField(fields)
+		require.NoError(t, err)
+		assert.Nil(t, rules)
+	})
+
+	t.Run("required as scalar", func(t *testing.T) {
+		t.Parallel()
+		fields := map[string]any{
+			"validations": "required",
+		}
+
+		rules, err := unmarshalValidationsField(fields)
+		require.NoError(t, err)
+		require.Len(t, rules, 1)
+		assert.Equal(t, "Must not be empty", rules[0].Message)
+
+		err = rules[0].Validator.Validate("")
+		assert.Error(t, err)
+
+		err = rules[0].Validator.Validate("something")
+		assert.NoError(t, err)
+	})
+
+	t.Run("email as scalar", func(t *testing.T) {
+		t.Parallel()
+		fields := map[string]any{
+			"validations": "email",
+		}
+
+		rules, err := unmarshalValidationsField(fields)
+		require.NoError(t, err)
+		require.Len(t, rules, 1)
+		assert.Equal(t, "Must be a valid email address", rules[0].Message)
+
+		err = rules[0].Validator.Validate("user@example.com")
+		assert.NoError(t, err)
+
+		err = rules[0].Validator.Validate("not-an-email")
+		assert.Error(t, err)
+	})
+
+	t.Run("regex as scalar preserves case", func(t *testing.T) {
+		t.Parallel()
+		fields := map[string]any{
+			"validations": "regex(^[A-Z]+$)",
+		}
+
+		rules, err := unmarshalValidationsField(fields)
+		require.NoError(t, err)
+		require.Len(t, rules, 1)
+
+		err = rules[0].Validator.Validate("HELLO")
+		assert.NoError(t, err)
+
+		err = rules[0].Validator.Validate("hello")
+		assert.Error(t, err)
+	})
+
+	t.Run("regex in list preserves case", func(t *testing.T) {
+		t.Parallel()
+		fields := map[string]any{
+			"validations": []interface{}{
+				"regex(^[A-Z]{2}-\\d{4}$)",
+			},
+		}
+
+		rules, err := unmarshalValidationsField(fields)
+		require.NoError(t, err)
+		require.Len(t, rules, 1)
+
+		err = rules[0].Validator.Validate("AB-1234")
+		assert.NoError(t, err)
+
+		err = rules[0].Validator.Validate("ab-1234")
+		assert.Error(t, err)
+	})
+
+	t.Run("scalar string is case-insensitive for non-regex rules", func(t *testing.T) {
+		t.Parallel()
+		fields := map[string]any{
+			"validations": "Required",
+		}
+
+		rules, err := unmarshalValidationsField(fields)
+		require.NoError(t, err)
+		require.Len(t, rules, 1)
+		assert.Equal(t, "Must not be empty", rules[0].Message)
+	})
+
+	t.Run("unrecognized scalar returns no rules", func(t *testing.T) {
+		t.Parallel()
+		fields := map[string]any{
+			"validations": "notarealrule",
+		}
+
+		rules, err := unmarshalValidationsField(fields)
+		require.NoError(t, err)
+		assert.Nil(t, rules)
+	})
+
+	t.Run("unsupported type returns error", func(t *testing.T) {
+		t.Parallel()
+		fields := map[string]any{
+			"validations": 42,
+		}
+
+		_, err := unmarshalValidationsField(fields)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "must be a list or string")
 	})
 }

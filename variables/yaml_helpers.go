@@ -206,8 +206,11 @@ func (c CustomValidationRule) DescriptionText() string {
 	return c.Message
 }
 
-// parseRuleString converts the string representation of the validations field, as parsed from YAML,
-// into a slice of strings that ConvertValidationStringtoRules can easily iterate over
+// parseRuleString converts a space-delimited string of validation rules into a slice of
+// normalized rule strings. Used by ConvertValidationStringtoRules for its public API.
+// Note: because this splits on spaces, regex patterns containing spaces will be broken
+// into multiple tokens. The YAML list path in unmarshalValidationsField avoids this
+// by processing each list element individually.
 func parseRuleString(ruleString string) []string {
 	// Only strip the outer wrapping brackets from the YAML list format (e.g., "[required url]"),
 	// not brackets inside regex character classes (e.g., "regex(^[a-z]+$)")
@@ -218,13 +221,100 @@ func parseRuleString(ruleString string) []string {
 
 	parts := strings.Split(ruleString, " ")
 	for i, part := range parts {
-		// Preserve original case for regex patterns, since they are case-sensitive
-		if !strings.HasPrefix(part, "regex(") && !strings.HasPrefix(strings.ToLower(part), "regex(") {
-			parts[i] = strings.ToLower(part)
-		}
+		parts[i] = normalizeRuleString(part)
 	}
 
 	return parts
+}
+
+// convertSingleValidationRule converts a single validation rule string into a CustomValidationRule.
+// The rule string should already be normalized (lowercased for non-regex rules).
+func convertSingleValidationRule(rule string) (CustomValidationRule, error) {
+	switch {
+	case strings.HasPrefix(rule, "length-"):
+		valString := strings.TrimLeft(rule, "length-")
+		valSlice := strings.Split(valString, "-")
+		minStr := valSlice[0]
+		maxStr := valSlice[1]
+
+		min, minErr := strconv.Atoi(strings.TrimSpace(minStr))
+		if minErr != nil {
+			return CustomValidationRule{}, minErr
+		}
+
+		max, maxErr := strconv.Atoi(strings.TrimSpace(maxStr))
+		if maxErr != nil {
+			return CustomValidationRule{}, maxErr
+		}
+
+		return CustomValidationRule{
+			Validator: validation.Length(min, max),
+			Message:   fmt.Sprintf("Must be between %d and %d characters long", min, max),
+		}, nil
+	case rule == "required":
+		return CustomValidationRule{
+			Validator: validation.Required,
+			Message:   "Must not be empty",
+		}, nil
+	case rule == "url":
+		return CustomValidationRule{
+			Validator: is.URL,
+			Message:   "Must be a valid URL",
+		}, nil
+	case rule == "email":
+		return CustomValidationRule{
+			Validator: is.Email,
+			Message:   "Must be a valid email address",
+		}, nil
+	case rule == "alpha":
+		return CustomValidationRule{
+			Validator: is.Alpha,
+			Message:   "Must contain English letters only",
+		}, nil
+	case rule == "digit":
+		return CustomValidationRule{
+			Validator: is.Digit,
+			Message:   "Must contain digits only",
+		}, nil
+	case rule == "alphanumeric":
+		return CustomValidationRule{
+			Validator: is.Alphanumeric,
+			Message:   "Can contain English letters and digits only",
+		}, nil
+	case rule == "countrycode2":
+		return CustomValidationRule{
+			Validator: is.CountryCode2,
+			Message:   "Must be a valid ISO3166 Alpha 2 Country code",
+		}, nil
+	case rule == "semver":
+		return CustomValidationRule{
+			Validator: is.Semver,
+			Message:   "Must be a valid semantic version",
+		}, nil
+	case strings.HasPrefix(rule, "regex(") && strings.HasSuffix(rule, ")"):
+		pattern := strings.TrimSuffix(strings.TrimPrefix(rule, "regex("), ")")
+		compiledRegex, err := regexp.Compile(pattern)
+		if err != nil {
+			return CustomValidationRule{}, fmt.Errorf("invalid regex pattern in validation 'regex(%s)': %w", pattern, err)
+		}
+		return CustomValidationRule{
+			Validator: validation.Match(compiledRegex),
+			Message:   fmt.Sprintf("Must match pattern: %s", pattern),
+		}, nil
+	default:
+		return CustomValidationRule{}, nil
+	}
+}
+
+// normalizeRuleString normalizes a single validation rule string by lowercasing it,
+// except for regex patterns which preserve their original case.
+// e.g. "Required" becomes "required" but "regex(^[A-Z]+$)" remains "regex(^[A-Z]+$)"
+func normalizeRuleString(rule string) string {
+	rule = strings.TrimSpace(rule)
+	if strings.HasPrefix(rule, "regex(") || strings.HasPrefix(strings.ToLower(rule), "regex(") {
+		return rule
+	}
+	return strings.ToLower(rule)
 }
 
 // ConvertValidationStringtoRules takes the string representation of the variable's validations and parses it
@@ -235,79 +325,9 @@ func ConvertValidationStringtoRules(ruleString string) ([]CustomValidationRule, 
 	rules := parseRuleString(ruleString)
 
 	for _, rule := range rules {
-		var cvr CustomValidationRule
-
-		switch {
-		case strings.HasPrefix(rule, "length-"):
-			valString := strings.TrimLeft(rule, "length-")
-			valSlice := strings.Split(valString, "-")
-			minStr := valSlice[0]
-			maxStr := valSlice[1]
-
-			min, minErr := strconv.Atoi(strings.TrimSpace(minStr))
-			if minErr != nil {
-				return validationRules, minErr
-			}
-
-			max, maxErr := strconv.Atoi(strings.TrimSpace(maxStr))
-			if maxErr != nil {
-				return validationRules, maxErr
-			}
-
-			cvr = CustomValidationRule{
-				Validator: validation.Length(min, max),
-				Message:   fmt.Sprintf("Must be between %d and %d characters long", min, max),
-			}
-		case rule == "required":
-			cvr = CustomValidationRule{
-				Validator: validation.Required,
-				Message:   "Must not be empty",
-			}
-		case rule == "url":
-			cvr = CustomValidationRule{
-				Validator: is.URL,
-				Message:   "Must be a valid URL",
-			}
-		case rule == "email":
-			cvr = CustomValidationRule{
-				Validator: is.Email,
-				Message:   "Must be a valid email address",
-			}
-		case rule == "alpha":
-			cvr = CustomValidationRule{
-				Validator: is.Alpha,
-				Message:   "Must contain English letters only",
-			}
-		case rule == "digit":
-			cvr = CustomValidationRule{
-				Validator: is.Digit,
-				Message:   "Must contain digits only",
-			}
-		case rule == "alphanumeric":
-			cvr = CustomValidationRule{
-				Validator: is.Alphanumeric,
-				Message:   "Can contain English letters and digits only",
-			}
-		case rule == "countrycode2":
-			cvr = CustomValidationRule{
-				Validator: is.CountryCode2,
-				Message:   "Must be a valid ISO3166 Alpha 2 Country code",
-			}
-		case rule == "semver":
-			cvr = CustomValidationRule{
-				Validator: is.Semver,
-				Message:   "Must be a valid semantic version",
-			}
-		case strings.HasPrefix(rule, "regex(") && strings.HasSuffix(rule, ")"):
-			pattern := strings.TrimSuffix(strings.TrimPrefix(rule, "regex("), ")")
-			compiledRegex, err := regexp.Compile(pattern)
-			if err != nil {
-				return nil, fmt.Errorf("invalid regex pattern in validation 'regex(%s)': %w", pattern, err)
-			}
-			cvr = CustomValidationRule{
-				Validator: validation.Match(compiledRegex),
-				Message:   fmt.Sprintf("Must match pattern: %s", pattern),
-			}
+		cvr, err := convertSingleValidationRule(rule)
+		if err != nil {
+			return validationRules, err
 		}
 
 		if cvr != (CustomValidationRule{}) {
@@ -318,21 +338,53 @@ func ConvertValidationStringtoRules(ruleString string) ([]CustomValidationRule, 
 	return validationRules, nil
 }
 
-// Given a list of validations read from a Boilerplate YAML config file of the format:
+// unmarshalValidationsField looks up the validations specified in the map and converts them to
+// CustomValidationRules that provide real-time feedback on the validity of user entries.
+// It handles two YAML formats:
 //
-// This method looks up the validations specified in the map and applies them to the specified fields so that users prompted for input
-// get real-time feedback on the validity of their entries
+//	validations:           # a single rule as a scalar string
+//	  required
+//
+//	validations:           # a list of rules
+//	  - required
+//	  - regex(^[a-z ]+$)
+//
 func unmarshalValidationsField(fields map[string]any) ([]CustomValidationRule, error) {
 	validations := fields["validations"]
-
-	validationsAsString := fmt.Sprintf("%v", validations)
-
-	rules, err := ConvertValidationStringtoRules(validationsAsString)
-	if err != nil {
-		return []CustomValidationRule{}, err
+	if validations == nil {
+		return nil, nil
 	}
 
-	return rules, nil
+	switch v := validations.(type) {
+	case []interface{}:
+		// List of rules (e.g., ["required", "regex(^[a-z ]+$)"])
+		// Process each element individually to preserve spaces and brackets in patterns
+		var allRules []CustomValidationRule
+		for _, item := range v {
+			rule := normalizeRuleString(fmt.Sprintf("%v", item))
+			cvr, err := convertSingleValidationRule(rule)
+			if err != nil {
+				return nil, err
+			}
+			if cvr != (CustomValidationRule{}) {
+				allRules = append(allRules, cvr)
+			}
+		}
+		return allRules, nil
+	case string:
+		// Single rule as a scalar string (e.g., "required")
+		rule := normalizeRuleString(v)
+		cvr, err := convertSingleValidationRule(rule)
+		if err != nil {
+			return nil, err
+		}
+		if cvr != (CustomValidationRule{}) {
+			return []CustomValidationRule{cvr}, nil
+		}
+		return nil, nil
+	default:
+		return nil, fmt.Errorf("validations field must be a list or string, got %T", validations)
+	}
 }
 
 // Given a map of key:value pairs read from a Boilerplate YAML config file of the format:
