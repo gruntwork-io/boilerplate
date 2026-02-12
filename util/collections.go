@@ -25,7 +25,7 @@ func ListContains(needle string, haystack []string) bool {
 
 // ToStringList converts a generic list to a list of strings
 func ToStringList(genericList []any) []string {
-	stringList := []string{}
+	stringList := make([]string, 0, len(genericList))
 
 	for _, value := range genericList {
 		stringList = append(stringList, ToString(value))
