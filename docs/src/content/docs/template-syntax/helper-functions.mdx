@@ -7,7 +7,26 @@ description: Built-in and Sprig template helper functions.
 
 import { Aside } from '@astrojs/starlight/components';
 
-Boilerplate provides a rich set of helper functions available in all template files.
+Boilerplate provides a rich set of helper functions available in all template files. Helper functions transform values using the pipe (`|`) operator.
+
+## Quick Example
+
+Given a variable `ProjectName` with the value `"My Cool App"`:
+
+```text
+{{ .ProjectName | lower }}          → my cool app
+{{ .ProjectName | snakecase }}      → my_cool_app
+{{ .ProjectName | kebabcase }}      → my-cool-app
+{{ .ProjectName | dasherize }}      → my-cool-app
+{{ .ProjectName | camelcase }}      → MyCoolApp
+{{ .ProjectName | camelCaseLower }} → myCoolApp
+```
+
+You can also chain multiple helpers together:
+
+```text
+{{ .ProjectName | lower | replace " " "-" }} → my-cool-app
+```
 
 ## String Functions
 
@@ -100,11 +119,25 @@ Include and render another template file with the current variables:
 
 ### `shell`
 
-Run a shell command and insert its output:
+Run a shell command and insert its output. This is useful for dynamically fetching values at render time — for example, looking up an AWS account ID, reading a secret, or grabbing the current git commit — and interpolating the result directly into your generated files.
 
 ```text
 Git SHA: {{ shell "git" "rev-parse" "HEAD" }}
 ```
+
+More examples:
+
+```text
+AWS Account ID: {{ shell "aws" "sts" "get-caller-identity" "--query" "Account" "--output" "text" }}
+
+Current date: {{ shell "date" "+%Y-%m-%d" }}
+
+Resolved IP: {{ shell "dig" "+short" "example.com" }}
+```
+
+<Aside type="tip">
+Each argument to `shell` is a separate string, just like `exec.Command` in Go. So `shell "git" "rev-parse" "HEAD"` is correct, not `shell "git rev-parse HEAD"`.
+</Aside>
 
 <Aside type="caution">
 The `shell` helper can be disabled with `--no-shell`, in which case it returns the string `"replace-me"`.

@@ -33,6 +33,89 @@ dependencies:
 | `for_each` | No | A list of values — the dependency is rendered once per item |
 | `for_each_reference` | No | Name of a list variable — the dependency is rendered once per item in that list |
 
+## Full Example
+
+Suppose you have a `fullstack-app` template that composes a Go backend and a React frontend from separate, reusable templates:
+
+```
+templates/
+├── fullstack-app/
+│   └── boilerplate.yml       # Parent template
+├── go-service/
+│   ├── boilerplate.yml
+│   ├── main.go
+│   └── Dockerfile
+└── react-app/
+    ├── boilerplate.yml
+    ├── package.json
+    └── src/
+        └── App.tsx
+```
+
+**`fullstack-app/boilerplate.yml`** — the parent template that ties everything together:
+
+```yaml
+variables:
+  - name: ProjectName
+    description: Name of the project
+    type: string
+
+  - name: IncludeDocker
+    description: Include Docker configuration?
+    type: bool
+    default: true
+
+dependencies:
+  - name: backend
+    template-url: ../go-service
+    output-folder: ./backend
+    variables:
+      - name: ServiceName
+        default: "{{ .ProjectName }}-api"
+      - name: Port
+        default: "8080"
+
+  - name: frontend
+    template-url: ../react-app
+    output-folder: ./frontend
+    variables:
+      - name: AppName
+        default: "{{ .ProjectName }}-web"
+      - name: ApiUrl
+        default: "http://localhost:8080"
+
+  - name: docker
+    template-url: ../docker-compose
+    output-folder: .
+    skip: "{{ not .IncludeDocker }}"
+```
+
+Running this generates a complete project in one command:
+
+```bash
+boilerplate \
+  --template-url ./templates/fullstack-app \
+  --output-folder ./my-project \
+  --var ProjectName="Acme" \
+  --var IncludeDocker=true
+```
+
+The output:
+
+```
+my-project/
+├── backend/
+│   ├── main.go              # Rendered from go-service template
+│   └── Dockerfile
+├── frontend/
+│   ├── package.json          # Rendered from react-app template
+│   └── src/
+│       └── App.tsx
+└── docker-compose.yml        # Rendered from docker-compose template
+```
+
+Each child template is self-contained — `go-service` and `react-app` can also be used independently. The parent simply orchestrates them and passes the right variables down.
+
 ## Variable Inheritance
 
 By default, child templates inherit all variables from the parent. You can override specific values:

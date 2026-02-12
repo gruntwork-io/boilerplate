@@ -352,9 +352,9 @@ button[data-open-modal]:hover {
   margin-inline: 10px;
 }
 
-/* Brand header - Boilerplate deep navy, stays the same in both light and dark mode */
+/* Brand header - Boilerplate dark teal, stays the same in both light and dark mode */
 .header {
-  background-color: #160C56;
+  background-color: #0B3D4A;
 
   .social-icons svg {
     fill: #eee;

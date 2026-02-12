@@ -41,7 +41,18 @@ Feature is disabled.
 {{ end }}
 ```
 
-Available comparison functions: `eq`, `ne`, `lt`, `le`, `gt`, `ge`.
+Available comparison functions:
+
+| Function | Meaning | Equivalent |
+|----------|---------|------------|
+| `eq` | equal | `==` |
+| `ne` | not equal | `!=` |
+| `lt` | less than | `<` |
+| `le` | less than or equal | `<=` |
+| `gt` | greater than | `>` |
+| `ge` | greater than or equal | `>=` |
+
+Go templates use function-call syntax rather than infix operators, so `eq .Port 8080` means `.Port == 8080`. You can also pass multiple arguments: `eq .Env "dev" "development"` returns `true` if `.Env` equals either value.
 
 ## Loops
 

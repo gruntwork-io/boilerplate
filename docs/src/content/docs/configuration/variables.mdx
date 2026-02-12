@@ -185,12 +185,99 @@ variables:
 
 ## Providing Values
 
-Variables can be provided in multiple ways, with this precedence (highest to lowest):
+Variables can be provided in multiple ways. When the same variable is set in more than one place, the highest-precedence source wins:
 
-1. `--var` CLI flags
+1. `--var` CLI flags (highest)
 2. Dependency-level `var_files`
 3. `--var-file` CLI files
 4. Dependency variable defaults
 5. Root variable defaults in `boilerplate.yml`
 6. Environment variables (`BOILERPLATE_VAR_<NAME>`)
-7. Interactive prompts
+7. Interactive prompts (lowest)
+
+### `--var` flags
+
+Pass individual values directly on the command line:
+
+```bash
+boilerplate \
+  --template-url ./my-template \
+  --output-folder ./output \
+  --var ProjectName="My App" \
+  --var Port=8080 \
+  --var 'Tags=["web", "api"]'
+```
+
+For complex types (lists, maps), use YAML syntax wrapped in quotes.
+
+To set a variable for a specific dependency, prefix it with the dependency name:
+
+```bash
+--var 'backend.Port=9090'
+```
+
+### `--var-file` files
+
+Load multiple variables at once from a YAML file:
+
+```bash
+boilerplate \
+  --template-url ./my-template \
+  --output-folder ./output \
+  --var-file vars/common.yml \
+  --var-file vars/production.yml
+```
+
+The YAML file is a flat key-value map:
+
+```yaml
+# vars/production.yml
+ProjectName: "My App"
+Port: 8080
+Environment: production
+Tags:
+  - web
+  - api
+Config:
+  host: "prod.example.com"
+  port: "443"
+```
+
+You can pass `--var-file` multiple times. Later files override earlier ones, so environment-specific files can override shared defaults.
+
+### Dependency-level `var_files`
+
+Inside `boilerplate.yml`, a dependency can specify its own var files:
+
+```yaml
+dependencies:
+  - name: backend
+    template-url: ../go-service
+    output-folder: ./backend
+    var_files:
+      - ../vars/backend-defaults.yml
+```
+
+These take precedence over CLI-level `--var-file` values for that dependency.
+
+### Environment variables
+
+Set variables via environment variables using the `BOILERPLATE_VAR_` prefix:
+
+```bash
+export BOILERPLATE_VAR_ProjectName="My App"
+export BOILERPLATE_VAR_Port=8080
+
+boilerplate \
+  --template-url ./my-template \
+  --output-folder ./output \
+  --non-interactive
+```
+
+<Aside type="note">
+Environment variables have lower precedence than `--var`, `--var-file`, and defaults in `boilerplate.yml`. They are most useful as fallbacks in CI/CD environments.
+</Aside>
+
+### Interactive prompts
+
+In interactive mode (the default), Boilerplate prompts for any variable that hasn't been provided by any of the above methods. In `--non-interactive` mode, a missing variable with no default causes an error.
