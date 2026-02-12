@@ -222,6 +222,7 @@ func TestParserulestring(t *testing.T) {
 	for _, tc := range testCases {
 		got, err := parseRuleString(tc.Input)
 		require.NoError(t, err)
+
 		if !cmp.Equal(got, tc.Want) {
 			t.Logf("Got %v for input %s but wanted %v\n", got, tc.Input, tc.Want)
 			t.Fail()
@@ -246,6 +247,7 @@ func TestConvertValidationStringtoRules_Regex(t *testing.T) {
 
 	t.Run("lowercase alphanumeric pattern passes", func(t *testing.T) {
 		t.Parallel()
+
 		rules, err := ConvertValidationStringtoRules("[regex(^[a-z0-9]+$)]")
 		require.NoError(t, err)
 		require.Len(t, rules, 1)
@@ -256,6 +258,7 @@ func TestConvertValidationStringtoRules_Regex(t *testing.T) {
 
 	t.Run("lowercase alphanumeric pattern rejects uppercase", func(t *testing.T) {
 		t.Parallel()
+
 		rules, err := ConvertValidationStringtoRules("[regex(^[a-z0-9]+$)]")
 		require.NoError(t, err)
 		require.Len(t, rules, 1)
@@ -266,6 +269,7 @@ func TestConvertValidationStringtoRules_Regex(t *testing.T) {
 
 	t.Run("case-sensitive pattern passes", func(t *testing.T) {
 		t.Parallel()
+
 		rules, err := ConvertValidationStringtoRules(`[regex(^[A-Z]{2}-\d{4}$)]`)
 		require.NoError(t, err)
 		require.Len(t, rules, 1)
@@ -276,6 +280,7 @@ func TestConvertValidationStringtoRules_Regex(t *testing.T) {
 
 	t.Run("case-sensitive pattern rejects wrong case", func(t *testing.T) {
 		t.Parallel()
+
 		rules, err := ConvertValidationStringtoRules(`[regex(^[A-Z]{2}-\d{4}$)]`)
 		require.NoError(t, err)
 		require.Len(t, rules, 1)
@@ -286,6 +291,7 @@ func TestConvertValidationStringtoRules_Regex(t *testing.T) {
 
 	t.Run("invalid regex returns error", func(t *testing.T) {
 		t.Parallel()
+
 		_, err := ConvertValidationStringtoRules("[regex(invalid[)]")
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "invalid regex pattern")
@@ -293,6 +299,7 @@ func TestConvertValidationStringtoRules_Regex(t *testing.T) {
 
 	t.Run("regex works alongside other validations", func(t *testing.T) {
 		t.Parallel()
+
 		rules, err := ConvertValidationStringtoRules("[required regex(^[a-z]+$)]")
 		require.NoError(t, err)
 		require.Len(t, rules, 2)
@@ -302,11 +309,11 @@ func TestConvertValidationStringtoRules_Regex(t *testing.T) {
 
 		// required should reject empty string
 		err = rules[0].Validator.Validate("")
-		assert.Error(t, err)
+		require.Error(t, err)
 
 		// regex should accept valid input
 		err = rules[1].Validator.Validate("hello")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// regex should reject invalid input
 		err = rules[1].Validator.Validate("Hello123")
@@ -315,6 +322,7 @@ func TestConvertValidationStringtoRules_Regex(t *testing.T) {
 
 	t.Run("regex with spaces in string format returns error", func(t *testing.T) {
 		t.Parallel()
+
 		_, err := ConvertValidationStringtoRules("[required regex(^[a-z ]+$)]")
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "regex pattern appears to contain a space")
@@ -326,6 +334,7 @@ func TestUnmarshalValidationsField_RegexWithSpaces(t *testing.T) {
 
 	t.Run("regex pattern with spaces via YAML list", func(t *testing.T) {
 		t.Parallel()
+
 		// Simulate what YAML parsing produces for:
 		//   validations:
 		//     - required
@@ -346,13 +355,12 @@ func TestUnmarshalValidationsField_RegexWithSpaces(t *testing.T) {
 
 		// Should accept string with spaces
 		err = rules[1].Validator.Validate("hello world")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		// Should reject digits
 		err = rules[1].Validator.Validate("hello123")
-		assert.Error(t, err)
+		require.Error(t, err)
 	})
-
 }
 
 func TestUnmarshalValidationsField(t *testing.T) {
@@ -360,6 +368,7 @@ func TestUnmarshalValidationsField(t *testing.T) {
 
 	t.Run("nil validations returns nil", func(t *testing.T) {
 		t.Parallel()
+
 		fields := map[string]any{}
 
 		rules, err := unmarshalValidationsField(fields)
@@ -369,6 +378,7 @@ func TestUnmarshalValidationsField(t *testing.T) {
 
 	t.Run("required as scalar", func(t *testing.T) {
 		t.Parallel()
+
 		fields := map[string]any{
 			"validations": "required",
 		}
@@ -379,14 +389,15 @@ func TestUnmarshalValidationsField(t *testing.T) {
 		assert.Equal(t, "Must not be empty", rules[0].Message)
 
 		err = rules[0].Validator.Validate("")
-		assert.Error(t, err)
+		require.Error(t, err)
 
 		err = rules[0].Validator.Validate("something")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	})
 
 	t.Run("email as scalar", func(t *testing.T) {
 		t.Parallel()
+
 		fields := map[string]any{
 			"validations": "email",
 		}
@@ -397,14 +408,15 @@ func TestUnmarshalValidationsField(t *testing.T) {
 		assert.Equal(t, "Must be a valid email address", rules[0].Message)
 
 		err = rules[0].Validator.Validate("user@example.com")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		err = rules[0].Validator.Validate("not-an-email")
-		assert.Error(t, err)
+		require.Error(t, err)
 	})
 
 	t.Run("regex as scalar preserves case", func(t *testing.T) {
 		t.Parallel()
+
 		fields := map[string]any{
 			"validations": "regex(^[A-Z]+$)",
 		}
@@ -414,14 +426,15 @@ func TestUnmarshalValidationsField(t *testing.T) {
 		require.Len(t, rules, 1)
 
 		err = rules[0].Validator.Validate("HELLO")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		err = rules[0].Validator.Validate("hello")
-		assert.Error(t, err)
+		require.Error(t, err)
 	})
 
 	t.Run("regex in list preserves case", func(t *testing.T) {
 		t.Parallel()
+
 		fields := map[string]any{
 			"validations": []interface{}{
 				"regex(^[A-Z]{2}-\\d{4}$)",
@@ -433,14 +446,15 @@ func TestUnmarshalValidationsField(t *testing.T) {
 		require.Len(t, rules, 1)
 
 		err = rules[0].Validator.Validate("AB-1234")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		err = rules[0].Validator.Validate("ab-1234")
-		assert.Error(t, err)
+		require.Error(t, err)
 	})
 
 	t.Run("scalar string is case-insensitive for non-regex rules", func(t *testing.T) {
 		t.Parallel()
+
 		fields := map[string]any{
 			"validations": "Required",
 		}
@@ -453,6 +467,7 @@ func TestUnmarshalValidationsField(t *testing.T) {
 
 	t.Run("unrecognized scalar returns no rules", func(t *testing.T) {
 		t.Parallel()
+
 		fields := map[string]any{
 			"validations": "notarealrule",
 		}
@@ -464,6 +479,7 @@ func TestUnmarshalValidationsField(t *testing.T) {
 
 	t.Run("unsupported type returns error", func(t *testing.T) {
 		t.Parallel()
+
 		fields := map[string]any{
 			"validations": 42,
 		}

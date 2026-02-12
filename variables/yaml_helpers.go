@@ -1,6 +1,7 @@
 package variables
 
 import (
+	stderrors "errors"
 	"fmt"
 	"os"
 	"reflect"
@@ -228,7 +229,7 @@ func parseRuleString(ruleString string) ([]string, error) {
 	// "regex(" but not ending with ")" means the pattern contained a space.
 	for _, part := range parts {
 		if strings.HasPrefix(part, "regex(") && !strings.HasSuffix(part, ")") {
-			return nil, fmt.Errorf("regex pattern appears to contain a space, which is not supported in string-format validations; use the YAML list format instead:\n  validations:\n    - \"regex(...)\"")
+			return nil, stderrors.New("regex pattern appears to contain a space, which is not supported in string-format validations; use the YAML list format instead:\n  validations:\n    - \"regex(...)\"")
 		}
 	}
 
@@ -301,13 +302,15 @@ func convertSingleValidationRule(rule string) (CustomValidationRule, error) {
 		}, nil
 	case strings.HasPrefix(rule, "regex(") && strings.HasSuffix(rule, ")"):
 		pattern := strings.TrimSuffix(strings.TrimPrefix(rule, "regex("), ")")
+
 		compiledRegex, err := regexp.Compile(pattern)
 		if err != nil {
 			return CustomValidationRule{}, fmt.Errorf("invalid regex pattern in validation 'regex(%s)': %w", pattern, err)
 		}
+
 		return CustomValidationRule{
 			Validator: validation.Match(compiledRegex),
-			Message:   fmt.Sprintf("Must match pattern: %s", pattern),
+			Message:   "Must match pattern: " + pattern,
 		}, nil
 	default:
 		return CustomValidationRule{}, nil
@@ -322,6 +325,7 @@ func normalizeRuleString(rule string) string {
 	if strings.HasPrefix(rule, "regex(") || strings.HasPrefix(strings.ToLower(rule), "regex(") {
 		return rule
 	}
+
 	return strings.ToLower(rule)
 }
 
@@ -359,7 +363,6 @@ func ConvertValidationStringtoRules(ruleString string) ([]CustomValidationRule, 
 //	validations:           # a list of rules
 //	  - required
 //	  - regex(^[a-z ]+$)
-//
 func unmarshalValidationsField(fields map[string]any) ([]CustomValidationRule, error) {
 	validations := fields["validations"]
 	if validations == nil {
@@ -371,27 +374,34 @@ func unmarshalValidationsField(fields map[string]any) ([]CustomValidationRule, e
 		// List of rules (e.g., ["required", "regex(^[a-z ]+$)"])
 		// Process each element individually to preserve spaces and brackets in patterns
 		var allRules []CustomValidationRule
+
 		for _, item := range v {
 			rule := normalizeRuleString(fmt.Sprintf("%v", item))
+
 			cvr, err := convertSingleValidationRule(rule)
 			if err != nil {
 				return nil, err
 			}
+
 			if cvr != (CustomValidationRule{}) {
 				allRules = append(allRules, cvr)
 			}
 		}
+
 		return allRules, nil
 	case string:
 		// Single rule as a scalar string (e.g., "required")
 		rule := normalizeRuleString(v)
+
 		cvr, err := convertSingleValidationRule(rule)
 		if err != nil {
 			return nil, err
 		}
+
 		if cvr != (CustomValidationRule{}) {
 			return []CustomValidationRule{cvr}, nil
 		}
+
 		return nil, nil
 	default:
 		return nil, fmt.Errorf("validations field must be a list or string, got %T", validations)
