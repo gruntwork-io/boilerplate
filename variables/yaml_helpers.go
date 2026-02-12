@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -208,11 +209,22 @@ func (c CustomValidationRule) DescriptionText() string {
 // parseRuleString converts the string representation of the validations field, as parsed from YAML,
 // into a slice of strings that ConvertValidationStringtoRules can easily iterate over
 func parseRuleString(ruleString string) []string {
-	ruleString = strings.ReplaceAll(ruleString, "]", "")
-	ruleString = strings.ReplaceAll(ruleString, "[", "")
-	ruleString = strings.ToLower(ruleString)
+	// Only strip the outer wrapping brackets from the YAML list format (e.g., "[required url]"),
+	// not brackets inside regex character classes (e.g., "regex(^[a-z]+$)")
+	ruleString = strings.TrimSpace(ruleString)
+	if strings.HasPrefix(ruleString, "[") && strings.HasSuffix(ruleString, "]") {
+		ruleString = ruleString[1 : len(ruleString)-1]
+	}
 
-	return strings.Split(ruleString, " ")
+	parts := strings.Split(ruleString, " ")
+	for i, part := range parts {
+		// Preserve original case for regex patterns, since they are case-sensitive
+		if !strings.HasPrefix(part, "regex(") && !strings.HasPrefix(strings.ToLower(part), "regex(") {
+			parts[i] = strings.ToLower(part)
+		}
+	}
+
+	return parts
 }
 
 // ConvertValidationStringtoRules takes the string representation of the variable's validations and parses it
@@ -285,6 +297,16 @@ func ConvertValidationStringtoRules(ruleString string) ([]CustomValidationRule, 
 			cvr = CustomValidationRule{
 				Validator: is.Semver,
 				Message:   "Must be a valid semantic version",
+			}
+		case strings.HasPrefix(rule, "regex(") && strings.HasSuffix(rule, ")"):
+			pattern := strings.TrimSuffix(strings.TrimPrefix(rule, "regex("), ")")
+			compiledRegex, err := regexp.Compile(pattern)
+			if err != nil {
+				return nil, fmt.Errorf("invalid regex pattern in validation 'regex(%s)': %w", pattern, err)
+			}
+			cvr = CustomValidationRule{
+				Validator: validation.Match(compiledRegex),
+				Message:   fmt.Sprintf("Must match pattern: %s", pattern),
 			}
 		}
 

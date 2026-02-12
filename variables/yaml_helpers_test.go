@@ -212,6 +212,10 @@ func TestParserulestring(t *testing.T) {
 			Input: "[LENGTH-1-3 REQUIRED URL EMAIL ALPHA DIGIT ALPHANUMERIC COUNTRYCODE2]",
 			Want:  []string{"length-1-3", "required", "url", "email", "alpha", "digit", "alphanumeric", "countrycode2"},
 		},
+		{
+			Input: "[required regex(^[A-Z]{2}-\\d{4}$)]",
+			Want:  []string{"required", "regex(^[A-Z]{2}-\\d{4}$)"},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -221,4 +225,77 @@ func TestParserulestring(t *testing.T) {
 			t.Fail()
 		}
 	}
+}
+
+func TestConvertValidationStringtoRules_Regex(t *testing.T) {
+	t.Parallel()
+
+	t.Run("lowercase alphanumeric pattern passes", func(t *testing.T) {
+		t.Parallel()
+		rules, err := ConvertValidationStringtoRules("[regex(^[a-z0-9]+$)]")
+		require.NoError(t, err)
+		require.Len(t, rules, 1)
+
+		err = rules[0].Validator.Validate("hello123")
+		assert.NoError(t, err)
+	})
+
+	t.Run("lowercase alphanumeric pattern rejects uppercase", func(t *testing.T) {
+		t.Parallel()
+		rules, err := ConvertValidationStringtoRules("[regex(^[a-z0-9]+$)]")
+		require.NoError(t, err)
+		require.Len(t, rules, 1)
+
+		err = rules[0].Validator.Validate("Hello!")
+		assert.Error(t, err)
+	})
+
+	t.Run("case-sensitive pattern passes", func(t *testing.T) {
+		t.Parallel()
+		rules, err := ConvertValidationStringtoRules(`[regex(^[A-Z]{2}-\d{4}$)]`)
+		require.NoError(t, err)
+		require.Len(t, rules, 1)
+
+		err = rules[0].Validator.Validate("AB-1234")
+		assert.NoError(t, err)
+	})
+
+	t.Run("case-sensitive pattern rejects wrong case", func(t *testing.T) {
+		t.Parallel()
+		rules, err := ConvertValidationStringtoRules(`[regex(^[A-Z]{2}-\d{4}$)]`)
+		require.NoError(t, err)
+		require.Len(t, rules, 1)
+
+		err = rules[0].Validator.Validate("ab-1234")
+		assert.Error(t, err)
+	})
+
+	t.Run("invalid regex returns error", func(t *testing.T) {
+		t.Parallel()
+		_, err := ConvertValidationStringtoRules("[regex(invalid[)]")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid regex pattern")
+	})
+
+	t.Run("regex works alongside other validations", func(t *testing.T) {
+		t.Parallel()
+		rules, err := ConvertValidationStringtoRules("[required regex(^[a-z]+$)]")
+		require.NoError(t, err)
+		require.Len(t, rules, 2)
+
+		assert.Equal(t, "Must not be empty", rules[0].Message)
+		assert.Equal(t, "Must match pattern: ^[a-z]+$", rules[1].Message)
+
+		// required should reject empty string
+		err = rules[0].Validator.Validate("")
+		assert.Error(t, err)
+
+		// regex should accept valid input
+		err = rules[1].Validator.Validate("hello")
+		assert.NoError(t, err)
+
+		// regex should reject invalid input
+		err = rules[1].Validator.Validate("Hello123")
+		assert.Error(t, err)
+	})
 }
