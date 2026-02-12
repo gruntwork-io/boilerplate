@@ -81,7 +81,7 @@ func GetVariablesWithContext(ctx context.Context, opts *options.BoilerplateOptio
 	// process for our Ref Arch customers
 
 	// Create a slice of KeyOrderPairs, which we'll be able to sort according to order value
-	keyAndOrderPairs := []KeyAndOrderPair{}
+	keyAndOrderPairs := make([]KeyAndOrderPair, 0, len(variablesInConfig))
 
 	// Pair the keys for each variable to its user-defined presentation order
 	for key, variable := range variablesInConfig {
@@ -292,6 +292,7 @@ func getUserInput(variable variables.Variable) (string, error) {
 	default:
 		if variable.Default() == nil {
 			fmt.Println()
+
 			msg := fmt.Sprintf("Variable %s of type '%s' does not support manual input and has no default value.\n"+
 				"Please update the variable in the boilerplate.yml file to include a default value or provide a value via the command line using the --var option.",
 				pterm.Green(variable.FullName()), variable.Type())

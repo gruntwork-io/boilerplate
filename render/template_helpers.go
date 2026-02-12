@@ -505,7 +505,7 @@ func camelCase(str string) string {
 	words := whitespaceRegex.Split(collapsed, -1)
 
 	// Capitalize each word, preserving the rest of the word as-is
-	capitalized := []string{}
+	capitalized := make([]string, 0, len(words))
 	for _, word := range words {
 		capitalized = append(capitalized, upperFirst(word))
 	}

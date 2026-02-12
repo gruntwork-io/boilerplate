@@ -53,7 +53,7 @@ func (d *Dependency) MarshalYAML() (any, error) {
 		// Due to go type system, we can only pass through []interface{}, even though []Variable is technically
 		// polymorphic to that type. So we reconstruct the list using the right type before passing it in to the marshal
 		// function.
-		interfaceList := []any{}
+		interfaceList := make([]any, 0, len(d.Variables))
 		for _, variable := range d.Variables {
 			interfaceList = append(interfaceList, variable)
 		}
