@@ -218,6 +218,15 @@ func TestParserulestring(t *testing.T) {
 			Input: "regex(^[a-z ]+$)",
 			Want:  "regex(^[a-z ]+$)",
 		},
+		{
+			// length() is lowercased like other non-regex rules
+			Input: "LENGTH(5, 22)",
+			Want:  "length(5, 22)",
+		},
+		{
+			Input: "length(1,3)",
+			Want:  "length(1,3)",
+		},
 	}
 
 	for _, tc := range testCases {
@@ -301,6 +310,70 @@ func TestConvertSingleValidationRule_Regex(t *testing.T) {
 
 		err = rule.Validator.Validate("Hello123")
 		assert.Error(t, err)
+	})
+}
+
+func TestConvertSingleValidationRule_Length(t *testing.T) {
+	t.Parallel()
+
+	t.Run("length with spaces around args", func(t *testing.T) {
+		t.Parallel()
+
+		rule, err := normalizeAndConvert("length(5, 22)")
+		require.NoError(t, err)
+		assert.Equal(t, "Must be between 5 and 22 characters long", rule.Message)
+
+		err = rule.Validator.Validate("hello")
+		assert.NoError(t, err)
+
+		err = rule.Validator.Validate("hi")
+		assert.Error(t, err)
+	})
+
+	t.Run("length without spaces around args", func(t *testing.T) {
+		t.Parallel()
+
+		rule, err := normalizeAndConvert("length(1,3)")
+		require.NoError(t, err)
+		assert.Equal(t, "Must be between 1 and 3 characters long", rule.Message)
+
+		err = rule.Validator.Validate("ab")
+		assert.NoError(t, err)
+
+		err = rule.Validator.Validate("abcd")
+		assert.Error(t, err)
+	})
+
+	t.Run("length is case-insensitive", func(t *testing.T) {
+		t.Parallel()
+
+		rule, err := normalizeAndConvert("LENGTH(10, 30)")
+		require.NoError(t, err)
+		assert.Equal(t, "Must be between 10 and 30 characters long", rule.Message)
+	})
+
+	t.Run("length missing comma returns error", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := normalizeAndConvert("length(5)")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "expected length(min, max)")
+	})
+
+	t.Run("length non-numeric min returns error", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := normalizeAndConvert("length(abc, 10)")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid min")
+	})
+
+	t.Run("length non-numeric max returns error", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := normalizeAndConvert("length(5, xyz)")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid max")
 	})
 }
 

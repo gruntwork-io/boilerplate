@@ -210,26 +210,6 @@ func (c CustomValidationRule) DescriptionText() string {
 // The rule string should already be normalized (lowercased for non-regex rules).
 func convertSingleValidationRule(rule string) (CustomValidationRule, error) {
 	switch {
-	case strings.HasPrefix(rule, "length-"):
-		valString := strings.TrimPrefix(rule, "length-")
-		valSlice := strings.Split(valString, "-")
-		minStr := valSlice[0]
-		maxStr := valSlice[1]
-
-		min, minErr := strconv.Atoi(strings.TrimSpace(minStr))
-		if minErr != nil {
-			return CustomValidationRule{}, minErr
-		}
-
-		max, maxErr := strconv.Atoi(strings.TrimSpace(maxStr))
-		if maxErr != nil {
-			return CustomValidationRule{}, maxErr
-		}
-
-		return CustomValidationRule{
-			Validator: validation.Length(min, max),
-			Message:   fmt.Sprintf("Must be between %d and %d characters long", min, max),
-		}, nil
 	case rule == "required":
 		return CustomValidationRule{
 			Validator: validation.Required,
@@ -269,6 +249,31 @@ func convertSingleValidationRule(rule string) (CustomValidationRule, error) {
 		return CustomValidationRule{
 			Validator: is.Semver,
 			Message:   "Must be a valid semantic version",
+		}, nil
+	case strings.HasPrefix(rule, "length(") && strings.HasSuffix(rule, ")"):
+		inner := strings.TrimSuffix(strings.TrimPrefix(rule, "length("), ")")
+		parts := strings.SplitN(inner, ",", 2)
+		if len(parts) != 2 {
+			return CustomValidationRule{}, fmt.Errorf("invalid length validation %q: expected length(min, max)", rule)
+		}
+
+		min, minErr := strconv.Atoi(strings.TrimSpace(parts[0]))
+		if minErr != nil {
+			return CustomValidationRule{}, fmt.Errorf("invalid min in length validation %q: %w", rule, minErr)
+		}
+
+		max, maxErr := strconv.Atoi(strings.TrimSpace(parts[1]))
+		if maxErr != nil {
+			return CustomValidationRule{}, fmt.Errorf("invalid max in length validation %q: %w", rule, maxErr)
+		}
+
+		if min > max {
+			return CustomValidationRule{}, fmt.Errorf("invalid length validation %q: min must be less than max", rule)
+		}
+
+		return CustomValidationRule{
+			Validator: validation.Length(min, max),
+			Message:   fmt.Sprintf("Must be between %d and %d characters long", min, max),
 		}, nil
 	case strings.HasPrefix(rule, "regex(") && strings.HasSuffix(rule, ")"):
 		pattern := strings.TrimSuffix(strings.TrimPrefix(rule, "regex("), ")")
