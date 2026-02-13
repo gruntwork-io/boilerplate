@@ -1,7 +1,8 @@
-# This file is generated using `make update-local-lint` to track the linting used in Terragrunt. Do not edit manually.
+# This file is generated from https://github.com/gruntwork-io/terragrunt/blob/main/.golangci.yml
+# It is automatically updated weekly via the update-lint-config workflow. Do not edit manually.
 version: "2"
 run:
-  go: "1.25"
+  go: "1.26"
   issues-exit-code: 1
   tests: true
 output:
@@ -56,15 +57,6 @@ linters:
     - wastedassign
     - wsl_v5
     - zerologlint
-  disable:
-    - depguard
-    - exhaustruct
-    - gocyclo
-    - gosec
-    - nolintlint
-    - recvcheck
-    - varnamelen
-    - wrapcheck
   settings:
     dupl:
       threshold: 120
@@ -81,11 +73,6 @@ linters:
       min-len: 3
       min-occurrences: 5
     gocritic:
-      disabled-checks:
-        - regexpMust
-        - rangeValCopy
-        - appendAssign
-        - hugeParam
       enabled-tags:
         - performance
       disabled-tags:
@@ -93,6 +80,8 @@ linters:
     govet:
       enable:
         - fieldalignment
+        - printf
+        - unusedwrite
     nakedret:
       max-func-lines: 20
     staticcheck:
@@ -118,6 +107,10 @@ linters:
           - unparam
           - wsl
         path: _test\.go
+      # We end up with duplicated content in this package to save us from duplicating code in other packages.
+      - linters:
+          - dupl
+        path: cli/flags/shared
     paths:
       - docs
       - _ci

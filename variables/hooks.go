@@ -51,7 +51,7 @@ func (hooks Hooks) MarshalYAML() (any, error) {
 	// polymorphic to that type. So we reconstruct the list using the right type before passing it in to the marshal
 	// function.
 	if len(hooks.BeforeHooks) > 0 {
-		interfaceList := []interface{}{}
+		interfaceList := make([]interface{}, 0, len(hooks.BeforeHooks))
 		for i := range hooks.BeforeHooks {
 			interfaceList = append(interfaceList, &hooks.BeforeHooks[i])
 		}
