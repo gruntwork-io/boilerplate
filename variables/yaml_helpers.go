@@ -211,7 +211,7 @@ func (c CustomValidationRule) DescriptionText() string {
 func convertSingleValidationRule(rule string) (CustomValidationRule, error) {
 	switch {
 	case strings.HasPrefix(rule, "length-"):
-		valString := strings.TrimLeft(rule, "length-")
+		valString := strings.TrimPrefix(rule, "length-")
 		valSlice := strings.Split(valString, "-")
 		minStr := valSlice[0]
 		maxStr := valSlice[1]
