@@ -317,6 +317,8 @@ func unmarshalValidationsField(fields map[string]any) ([]CustomValidationRule, e
 	}
 
 	switch v := validations.(type) {
+	// We use []any (rather than []string) because Go's YAML libraries unmarshal
+	// sequences into []any, not []string, when the target type is any/interface{}.
 	case []any:
 		// List of rules (e.g., ["required", "regex(^[a-z ]+$)"])
 		// Process each element individually to preserve spaces and brackets in patterns

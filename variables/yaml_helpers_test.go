@@ -416,7 +416,7 @@ func TestUnmarshalValidationsField(t *testing.T) {
 
 		rules, err := unmarshalValidationsField(fields)
 		require.NoError(t, err)
-		assert.Nil(t, rules)
+		assert.Empty(t, rules)
 	})
 
 	t.Run("scalar string returns error", func(t *testing.T) {
