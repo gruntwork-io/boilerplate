@@ -162,3 +162,26 @@ Template is at: {{ templateFolder }}
 Output goes to: {{ outputFolder }}
 Git branch: {{ envWithDefault "BRANCH" "main" }}
 ```
+
+## Deprecated Helpers
+
+These older function names still work for backwards compatibility but should be replaced with their modern equivalents:
+
+| Deprecated | Use Instead |
+|-----------|-------------|
+| `downcase` | `lower` (Sprig) |
+| `upcase` | `upper` (Sprig) |
+| `capitalize` | `title` (Sprig) |
+| `snakeCase` | `snakecase` (Sprig) |
+| `camelCase` | `camelcase` (Sprig) |
+| `round` | `roundInt` |
+| `ceil` | `ceilInt` |
+| `floor` | `floorInt` |
+| `env` | `envWithDefault` |
+| `keys` | `keysSorted` |
+| `replace` | `replaceOne` or Sprig's `replace` |
+| `slice` | Sprig's `list` |
+
+<Aside type="note">
+The deprecated `round`, `ceil`, `floor`, `env`, `keys`, `replace`, and `slice` functions have different behavior than the Sprig functions with the same names. The Boilerplate-specific versions (e.g., `roundInt`, `keysSorted`) were created to avoid these conflicts.
+</Aside>

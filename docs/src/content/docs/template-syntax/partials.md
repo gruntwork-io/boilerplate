@@ -60,3 +60,15 @@ Use the `templateIsDefined` helper to conditionally include a partial:
 # Default Header
 {{ end }}
 ```
+
+## Dynamic Partial Paths
+
+Partial glob paths in `boilerplate.yml` support Go template syntax with the convenience variables `templateFolder` and `outputFolder`:
+
+```yaml
+partials:
+  - "{{ templateFolder }}/../shared-partials/*.html"
+  - "{{ outputFolder }}/generated-partials/*.tmpl"
+```
+
+This is useful when your partials live outside the template directory and you need to reference them relative to the template or output location.
