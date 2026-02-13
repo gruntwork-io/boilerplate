@@ -451,6 +451,21 @@ func TestUnmarshalValidationsField(t *testing.T) {
 		require.Error(t, err)
 	})
 
+	t.Run("non-string item in list returns error", func(t *testing.T) {
+		t.Parallel()
+
+		fields := map[string]any{
+			"validations": []any{
+				"required",
+				42,
+			},
+		}
+
+		_, err := unmarshalValidationsField(fields)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "must be a string, got int")
+	})
+
 	t.Run("unsupported type returns error", func(t *testing.T) {
 		t.Parallel()
 

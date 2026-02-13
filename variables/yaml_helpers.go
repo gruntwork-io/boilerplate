@@ -325,8 +325,19 @@ func unmarshalValidationsField(fields map[string]any) ([]CustomValidationRule, e
 		// Process each element individually to preserve spaces and brackets in patterns
 		allRules := make([]CustomValidationRule, 0, len(v))
 
-		for _, item := range v {
-			rule := normalizeRuleString(fmt.Sprintf("%v", item))
+		for i, item := range v {
+			var ruleStr string
+
+			switch val := item.(type) {
+			case string:
+				ruleStr = val
+			case fmt.Stringer:
+				ruleStr = val.String()
+			default:
+				return nil, fmt.Errorf("validation rule at index %d must be a string, got %T", i, item)
+			}
+
+			rule := normalizeRuleString(ruleStr)
 
 			cvr, err := convertSingleValidationRule(rule)
 			if err != nil {
@@ -343,7 +354,7 @@ func unmarshalValidationsField(fields map[string]any) ([]CustomValidationRule, e
 		return nil, fmt.Errorf("the 'validations' field must be a YAML list, not a string (%q). "+
 			"Please use the list format instead:\n  validations:\n    - %q", v, v)
 	default:
-		return nil, fmt.Errorf("validations field must be a list or string, got %T", validations)
+		return nil, fmt.Errorf("validations field must be a list of strings, got %T", validations)
 	}
 }
 
