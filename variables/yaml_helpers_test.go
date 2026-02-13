@@ -299,6 +299,16 @@ func TestConvertSingleValidationRule_Regex(t *testing.T) {
 		assert.Contains(t, err.Error(), "invalid regex pattern")
 	})
 
+
+	t.Run("invalid regex #2 returns error", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := normalizeAndConvert(`regex (^[A-Z]{2}-\d{4}$)`)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "unrecognized validation rule")
+	})
+
+
 	t.Run("regex with spaces works as single rule", func(t *testing.T) {
 		t.Parallel()
 

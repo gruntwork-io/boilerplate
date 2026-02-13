@@ -209,6 +209,9 @@ func (c CustomValidationRule) DescriptionText() string {
 // convertSingleValidationRule converts a single validation rule string into a CustomValidationRule.
 // The rule string should already be normalized (lowercased for non-regex rules).
 func convertSingleValidationRule(rule string) (CustomValidationRule, error) {
+	
+	rule = strings.TrimSpace(rule)
+	
 	switch {
 	case rule == "required":
 		return CustomValidationRule{
@@ -288,7 +291,10 @@ func convertSingleValidationRule(rule string) (CustomValidationRule, error) {
 			Message:   "Must match pattern: " + pattern,
 		}, nil
 	default:
-		return CustomValidationRule{}, nil
+		if rule == "" {
+			return CustomValidationRule{}, nil
+		}
+		return CustomValidationRule{}, fmt.Errorf("unrecognized validation rule %q", rule)
 	}
 }
 
