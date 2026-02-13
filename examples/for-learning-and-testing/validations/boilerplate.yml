@@ -10,7 +10,7 @@ variables:
     description: The ISO3166 Alpha 2 code for the country you operate in 
     validations: 
       - required
-      - CountryCode2
+      - countrycode2
     default: US
 
 

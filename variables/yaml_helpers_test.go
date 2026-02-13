@@ -197,36 +197,18 @@ func TestParserulestring(t *testing.T) {
 			Want:  "required",
 		},
 		{
-			Input: "REQUIRED",
-			Want:  "required",
-		},
-		{
+			// Only whitespace is trimmed; casing is preserved
 			Input: "  alphanumeric  ",
 			Want:  "alphanumeric",
 		},
 		{
-			Input: "CountryCode2",
-			Want:  "countrycode2",
+			// Casing is preserved as-is
+			Input: "REQUIRED",
+			Want:  "REQUIRED",
 		},
 		{
-			// Regex patterns preserve case inside the quoted string
 			Input: `regex("^[A-Z]{2}-\d{4}$")`,
 			Want:  `regex("^[A-Z]{2}-\d{4}$")`,
-		},
-		{
-			// Regex patterns with spaces work (handled via YAML list in production)
-			Input: `regex("^[a-z ]+$")`,
-			Want:  `regex("^[a-z ]+$")`,
-		},
-		{
-			// REGEX keyword is normalized to lowercase, pattern preserved
-			Input: `REGEX("^[A-Z]+$")`,
-			Want:  `regex("^[A-Z]+$")`,
-		},
-		{
-			// length() is lowercased like other non-regex rules
-			Input: "LENGTH(5, 22)",
-			Want:  "length(5, 22)",
 		},
 		{
 			Input: "length(1,3)",
@@ -357,12 +339,12 @@ func TestConvertSingleValidationRule_Length(t *testing.T) {
 		assert.Error(t, err)
 	})
 
-	t.Run("length is case-insensitive", func(t *testing.T) {
+	t.Run("wrong case returns error", func(t *testing.T) {
 		t.Parallel()
 
-		rule, err := normalizeAndConvert("LENGTH(10, 30)")
-		require.NoError(t, err)
-		assert.Equal(t, "Must be between 10 and 30 characters long", rule.Message)
+		_, err := normalizeAndConvert("LENGTH(10, 30)")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "unrecognized validation rule")
 	})
 
 	t.Run("length missing comma returns error", func(t *testing.T) {
