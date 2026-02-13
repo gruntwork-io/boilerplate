@@ -335,12 +335,8 @@ func unmarshalValidationsField(fields map[string]any) ([]CustomValidationRule, e
 
 		return allRules, nil
 	case string:
-		util.Logger.Printf("WARN: the 'validations' field is specified as a string (%q). "+
-			"Please use the YAML list format instead:\n  validations:\n    - %q\n"+
-			"String-format validations are no longer supported, and the \"%q\" validation will be ignored.", v, v)
-
-		// If we wanted to be more aggressive, we could return an error here, but that would be a breaking change.
-		return nil, nil
+		return nil, fmt.Errorf("the 'validations' field must be a YAML list, not a string (%q). "+
+			"Please use the list format instead:\n  validations:\n    - %q", v, v)
 	default:
 		return nil, fmt.Errorf("validations field must be a list or string, got %T", validations)
 	}

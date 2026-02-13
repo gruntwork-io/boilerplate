@@ -351,60 +351,16 @@ func TestUnmarshalValidationsField(t *testing.T) {
 		assert.Nil(t, rules)
 	})
 
-	t.Run("required as scalar", func(t *testing.T) {
+	t.Run("scalar string returns error", func(t *testing.T) {
 		t.Parallel()
 
 		fields := map[string]any{
 			"validations": "required",
 		}
 
-		rules, err := unmarshalValidationsField(fields)
-		require.NoError(t, err)
-		require.Len(t, rules, 1)
-		assert.Equal(t, "Must not be empty", rules[0].Message)
-
-		err = rules[0].Validator.Validate("")
+		_, err := unmarshalValidationsField(fields)
 		require.Error(t, err)
-
-		err = rules[0].Validator.Validate("something")
-		require.NoError(t, err)
-	})
-
-	t.Run("email as scalar", func(t *testing.T) {
-		t.Parallel()
-
-		fields := map[string]any{
-			"validations": "email",
-		}
-
-		rules, err := unmarshalValidationsField(fields)
-		require.NoError(t, err)
-		require.Len(t, rules, 1)
-		assert.Equal(t, "Must be a valid email address", rules[0].Message)
-
-		err = rules[0].Validator.Validate("user@example.com")
-		require.NoError(t, err)
-
-		err = rules[0].Validator.Validate("not-an-email")
-		require.Error(t, err)
-	})
-
-	t.Run("regex as scalar preserves case", func(t *testing.T) {
-		t.Parallel()
-
-		fields := map[string]any{
-			"validations": "regex(^[A-Z]+$)",
-		}
-
-		rules, err := unmarshalValidationsField(fields)
-		require.NoError(t, err)
-		require.Len(t, rules, 1)
-
-		err = rules[0].Validator.Validate("HELLO")
-		require.NoError(t, err)
-
-		err = rules[0].Validator.Validate("hello")
-		require.Error(t, err)
+		assert.Contains(t, err.Error(), "must be a YAML list, not a string")
 	})
 
 	t.Run("regex in list preserves case", func(t *testing.T) {
@@ -425,31 +381,6 @@ func TestUnmarshalValidationsField(t *testing.T) {
 
 		err = rules[0].Validator.Validate("ab-1234")
 		require.Error(t, err)
-	})
-
-	t.Run("scalar string is case-insensitive for non-regex rules", func(t *testing.T) {
-		t.Parallel()
-
-		fields := map[string]any{
-			"validations": "Required",
-		}
-
-		rules, err := unmarshalValidationsField(fields)
-		require.NoError(t, err)
-		require.Len(t, rules, 1)
-		assert.Equal(t, "Must not be empty", rules[0].Message)
-	})
-
-	t.Run("unrecognized scalar returns no rules", func(t *testing.T) {
-		t.Parallel()
-
-		fields := map[string]any{
-			"validations": "notarealrule",
-		}
-
-		rules, err := unmarshalValidationsField(fields)
-		require.NoError(t, err)
-		assert.Nil(t, rules)
 	})
 
 	t.Run("unsupported type returns error", func(t *testing.T) {
