@@ -1,0 +1,150 @@
+---
+title: Boilerplate & Runbooks
+sidebar:
+  order: 5
+description: How Boilerplate powers interactive Runbooks with auto-generated forms and live code preview.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+import templateForm from '../../../assets/screenshots/runbooks-template-form.webp';
+import livePreview from '../../../assets/screenshots/runbooks-live-preview.webp';
+
+[Gruntwork Runbooks](https://github.com/gruntwork-io/runbooks) are interactive markdown documents that combine documentation with executable functionality, including code generation. Boilerplate is the template engine that powers Runbooks' code generation.
+
+This means that with minimal work, you can transform any of your boilerplate templates into an instant interactiveweb UI that generates customized code. Runbooks will honor your boilerplate variable types, validations, dependencies, and more.
+
+Better yet, you can add documentation to your boilerplate template in standard markdown, run customizable commands, authenticate to services like AWS and GitHub, git clone a repo, compute boilerplate variables from custom scripts and more.
+
+## How It Works
+
+A Runbook is an MDX file that can contain special blocks like `<Template>`, `<Inputs>`, and `<TemplateInline>`. These blocks reference Boilerplate templates (directories with a `boilerplate.yml`), and Runbooks automatically generates web forms from the variable definitions.
+
+Here's the flow:
+
+1. You write a `boilerplate.yml` with variables, just like any Boilerplate template
+2. You reference that template from a Runbook MDX file using a `<Template>` block
+3. Runbooks reads the `boilerplate.yml` and auto-generates a web form
+4. The user fills in the form, and Boilerplate renders the output files
+
+## Example
+
+### The Boilerplate template
+
+A standard Boilerplate template with variables and template files:
+
+```yaml
+# templates/lambda-unit/boilerplate.yml
+variables:
+  - name: Environment
+    type: enum
+    description: Target environment for deployment
+    options:
+      - non-prod
+      - prod
+    default: non-prod
+
+  - name: AwsRegion
+    type: enum
+    description: The AWS region to deploy the Lambda function to
+    options:
+      - us-east-1
+      - us-west-2
+      - eu-west-1
+    default: "us-west-2"
+    validations: "required"
+
+  - name: FunctionName
+    type: string
+    description: Name for your Lambda function
+    default: example-lambda
+    validations: "required"
+
+  - name: Runtime
+    type: enum
+    description: Lambda runtime environment
+    options:
+      - python3.13
+      - python3.12
+      - nodejs22.x
+      - nodejs20.x
+    default: python3.13
+```
+
+### The Runbook
+
+The Runbook MDX file references the template with a `<Template>` block:
+
+```mdx
+## Configure the Lambda function
+
+First, let's configure the Lambda function itself. This is boilerplate code
+that will run "Hello, World!" when the Lambda function is invoked.
+
+<Template id="lambda-setup" path="templates/lambda-unit" />
+```
+
+### The result
+
+Runbooks reads the `boilerplate.yml` and renders an interactive form. Each variable becomes a form field matching its type — text inputs for strings, dropdowns for enums, checkboxes for booleans:
+
+<img src={templateForm.src} alt="Runbooks template form showing auto-generated input fields for Environment, AWS Region, Function Name, and Runtime" />
+
+As the user fills in the form, a live preview shows exactly how their inputs affect the generated code:
+
+<img src={livePreview.src} alt="Runbooks live preview showing generated OpenTofu code updating in real-time as form values change" />
+
+When the user clicks **Generate**, Boilerplate processes the template files and writes the rendered output to the workspace.
+
+## Runbooks-Specific Extensions
+
+<Aside type="tip">
+For the most up to date information on Runbooks-specific extensions, see the official [Runbooks documentation](https://runbooks.gruntwork.io/authoring/boilerplate/#runbooks-extensions).
+</Aside>
+
+Runbooks adds a few YAML extensions (prefixed with `x-`) to the standard `boilerplate.yml` format:
+
+| Extension | Purpose |
+|-----------|---------|
+| `x-section` | Groups related variables under named collapsible headings in the form UI |
+| `x-schema` | Defines structured field schemas for `map` type variables |
+| `x-schema-instance-label` | Custom label for each entry in a schema-based map |
+
+```yaml
+variables:
+  - name: FunctionName
+    type: string
+    description: Name for your Lambda function
+    x-section: Function Settings
+
+  - name: AwsRegion
+    type: enum
+    description: AWS region
+    x-section: Deployment Settings
+
+  - name: Tags
+    type: map
+    description: Resource tags
+    x-section: Advanced
+    x-schema:
+      Name: string
+      Environment: string
+    x-schema-instance-label: Tag Name
+```
+
+## Block Types
+
+Runbooks provides several block types that use Boilerplate:
+
+- Template
+- Inputs
+- TemplateInline
+- Sharing variables between blocks
+
+For details, see the authoring section in the [Runbooks documentation](https://runbooks.gruntwork.io/authoring/overview/).
+
+In general, everything you know about Boilerplate such asvariables, types, validations, dependencies, Go template syntax, and helper functions all works in Runbooks. The Runbook UI is effectively a visual layer on top of the same Boilerplate engine.
+
+## Learn More
+
+- [Runbooks documentation](https://runbooks.gruntwork.io)
+- [Runbooks GitHub repository](https://github.com/gruntwork-io/runbooks)
