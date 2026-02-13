@@ -383,7 +383,7 @@ func TestUnmarshalValidationsField_RegexWithSpaces(t *testing.T) {
 		//     - required
 		//     - 'regex("^[a-z ]+$")'
 		fields := map[string]any{
-			"validations": []interface{}{
+			"validations": []any{
 				"required",
 				`regex("^[a-z ]+$")`,
 			},
@@ -435,7 +435,7 @@ func TestUnmarshalValidationsField(t *testing.T) {
 		t.Parallel()
 
 		fields := map[string]any{
-			"validations": []interface{}{
+			"validations": []any{
 				`regex("^[A-Z]{2}-\d{4}$")`,
 			},
 		}

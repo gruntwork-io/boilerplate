@@ -320,7 +320,7 @@ func unmarshalValidationsField(fields map[string]any) ([]CustomValidationRule, e
 	}
 
 	switch v := validations.(type) {
-	case []interface{}:
+	case []any:
 		// List of rules (e.g., ["required", "regex(^[a-z ]+$)"])
 		// Process each element individually to preserve spaces and brackets in patterns
 		var allRules []CustomValidationRule
@@ -590,12 +590,12 @@ func ParseVars(varsList []string, varFileList []string) (map[string]any, error) 
 	return util.MergeMaps(varsFromEnv, varsFromVarsList, varsFromVarFiles), nil
 }
 
-// ConvertYAMLToStringMap modifies an input with type map[any]interface{} to map[string]interface{} so that it may be
+// ConvertYAMLToStringMap modifies an input with type map[any]any to map[string]any so that it may be
 // properly marshalled in to JSON.
 // See: https://github.com/go-yaml/yaml/issues/139
-func ConvertYAMLToStringMap(yamlMapOrList any) (interface{}, error) {
+func ConvertYAMLToStringMap(yamlMapOrList any) (any, error) {
 	switch mapOrList := yamlMapOrList.(type) {
-	case map[any]interface{}:
+	case map[any]any:
 		outputMap := map[string]any{}
 
 		for k, v := range mapOrList {
@@ -613,7 +613,7 @@ func ConvertYAMLToStringMap(yamlMapOrList any) (interface{}, error) {
 		}
 
 		return outputMap, nil
-	// catch cases where there is a map[any]interface{} nested in a map[string]any
+	// catch cases where there is a map[any]any nested in a map[string]any
 	case map[string]any:
 		for k, v := range mapOrList {
 			res, err := ConvertYAMLToStringMap(v)
