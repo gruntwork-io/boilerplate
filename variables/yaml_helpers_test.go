@@ -188,40 +188,40 @@ func TestParserulestring(t *testing.T) {
 
 	type TestCase struct {
 		Input string
-		Want  []string
+		Want  string
 	}
 
 	testCases := []TestCase{
 		{
-			Input: "[required length-5-22 alphanumeric]",
-			Want:  []string{"required", "length-5-22", "alphanumeric"},
+			Input: "required",
+			Want:  "required",
 		},
 		{
-			Input: "[required]",
-			Want:  []string{"required"},
+			Input: "REQUIRED",
+			Want:  "required",
 		},
 		{
-			Input: "[alphanumeric length-10-30]",
-			Want:  []string{"alphanumeric", "length-10-30"},
+			Input: "  alphanumeric  ",
+			Want:  "alphanumeric",
 		},
 		{
-			Input: "[length-1-3 required url email alpha digit alphanumeric CountryCode2]",
-			Want:  []string{"length-1-3", "required", "url", "email", "alpha", "digit", "alphanumeric", "countrycode2"},
+			Input: "CountryCode2",
+			Want:  "countrycode2",
 		},
 		{
-			Input: "[LENGTH-1-3 REQUIRED URL EMAIL ALPHA DIGIT ALPHANUMERIC COUNTRYCODE2]",
-			Want:  []string{"length-1-3", "required", "url", "email", "alpha", "digit", "alphanumeric", "countrycode2"},
+			// Regex patterns preserve case
+			Input: "regex(^[A-Z]{2}-\\d{4}$)",
+			Want:  "regex(^[A-Z]{2}-\\d{4}$)",
 		},
 		{
-			// Regex patterns without spaces work through the string path.
-			Input: "[required regex(^[A-Z]{2}-\\d{4}$)]",
-			Want:  []string{"required", "regex(^[A-Z]{2}-\\d{4}$)"},
+			// Regex patterns with spaces work now (handled via YAML list in production)
+			Input: "regex(^[a-z ]+$)",
+			Want:  "regex(^[a-z ]+$)",
 		},
 	}
 
 	for _, tc := range testCases {
-		got, err := parseRuleString(tc.Input)
-		require.NoError(t, err)
+		got := normalizeRuleString(tc.Input)
 
 		if !cmp.Equal(got, tc.Want) {
 			t.Logf("Got %v for input %s but wanted %v\n", got, tc.Input, tc.Want)
@@ -230,102 +230,77 @@ func TestParserulestring(t *testing.T) {
 	}
 }
 
-func TestParserulestring_RegexWithSpacesErrors(t *testing.T) {
-	t.Parallel()
-
-	_, err := parseRuleString("[required regex(^[a-z ]+$)]")
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "regex pattern appears to contain a space")
+// normalizeAndConvert is a test helper that normalizes a rule string and converts it
+// to a CustomValidationRule in one step.
+func normalizeAndConvert(ruleString string) (CustomValidationRule, error) {
+	return convertSingleValidationRule(normalizeRuleString(ruleString))
 }
 
-// TestConvertValidationStringtoRules_Regex tests the public ConvertValidationStringtoRules API,
-// which uses parseRuleString + convertSingleValidationRule. This function has no production
-// callers (the production path goes through unmarshalValidationsField), but these tests verify
-// the string-parsing pipeline independently.
-func TestConvertValidationStringtoRules_Regex(t *testing.T) {
+// TestConvertSingleValidationRule_Regex tests normalizeRuleString + convertSingleValidationRule
+// for regex rules. The production path goes through unmarshalValidationsField, but these tests
+// verify the string-parsing pipeline independently.
+func TestConvertSingleValidationRule_Regex(t *testing.T) {
 	t.Parallel()
 
 	t.Run("lowercase alphanumeric pattern passes", func(t *testing.T) {
 		t.Parallel()
 
-		rules, err := ConvertValidationStringtoRules("[regex(^[a-z0-9]+$)]")
+		rule, err := normalizeAndConvert("regex(^[a-z0-9]+$)")
 		require.NoError(t, err)
-		require.Len(t, rules, 1)
 
-		err = rules[0].Validator.Validate("hello123")
+		err = rule.Validator.Validate("hello123")
 		assert.NoError(t, err)
 	})
 
 	t.Run("lowercase alphanumeric pattern rejects uppercase", func(t *testing.T) {
 		t.Parallel()
 
-		rules, err := ConvertValidationStringtoRules("[regex(^[a-z0-9]+$)]")
+		rule, err := normalizeAndConvert("regex(^[a-z0-9]+$)")
 		require.NoError(t, err)
-		require.Len(t, rules, 1)
 
-		err = rules[0].Validator.Validate("Hello!")
+		err = rule.Validator.Validate("Hello!")
 		assert.Error(t, err)
 	})
 
 	t.Run("case-sensitive pattern passes", func(t *testing.T) {
 		t.Parallel()
 
-		rules, err := ConvertValidationStringtoRules(`[regex(^[A-Z]{2}-\d{4}$)]`)
+		rule, err := normalizeAndConvert(`regex(^[A-Z]{2}-\d{4}$)`)
 		require.NoError(t, err)
-		require.Len(t, rules, 1)
 
-		err = rules[0].Validator.Validate("AB-1234")
+		err = rule.Validator.Validate("AB-1234")
 		assert.NoError(t, err)
 	})
 
 	t.Run("case-sensitive pattern rejects wrong case", func(t *testing.T) {
 		t.Parallel()
 
-		rules, err := ConvertValidationStringtoRules(`[regex(^[A-Z]{2}-\d{4}$)]`)
+		rule, err := normalizeAndConvert(`regex(^[A-Z]{2}-\d{4}$)`)
 		require.NoError(t, err)
-		require.Len(t, rules, 1)
 
-		err = rules[0].Validator.Validate("ab-1234")
+		err = rule.Validator.Validate("ab-1234")
 		assert.Error(t, err)
 	})
 
 	t.Run("invalid regex returns error", func(t *testing.T) {
 		t.Parallel()
 
-		_, err := ConvertValidationStringtoRules("[regex(invalid[)]")
+		_, err := normalizeAndConvert("regex(invalid[)")
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "invalid regex pattern")
 	})
 
-	t.Run("regex works alongside other validations", func(t *testing.T) {
+	t.Run("regex with spaces works as single rule", func(t *testing.T) {
 		t.Parallel()
 
-		rules, err := ConvertValidationStringtoRules("[required regex(^[a-z]+$)]")
-		require.NoError(t, err)
-		require.Len(t, rules, 2)
-
-		assert.Equal(t, "Must not be empty", rules[0].Message)
-		assert.Equal(t, "Must match pattern: ^[a-z]+$", rules[1].Message)
-
-		// required should reject empty string
-		err = rules[0].Validator.Validate("")
-		require.Error(t, err)
-
-		// regex should accept valid input
-		err = rules[1].Validator.Validate("hello")
+		rule, err := normalizeAndConvert("regex(^[a-z ]+$)")
 		require.NoError(t, err)
 
-		// regex should reject invalid input
-		err = rules[1].Validator.Validate("Hello123")
+		err = rule.Validator.Validate("hello world")
+		require.NoError(t, err)
+
+		err = rule.Validator.Validate("Hello123")
 		assert.Error(t, err)
-	})
-
-	t.Run("regex with spaces in string format returns error", func(t *testing.T) {
-		t.Parallel()
-
-		_, err := ConvertValidationStringtoRules("[required regex(^[a-z ]+$)]")
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "regex pattern appears to contain a space")
 	})
 }
 

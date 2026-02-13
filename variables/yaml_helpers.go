@@ -1,7 +1,6 @@
 package variables
 
 import (
-	stderrors "errors"
 	"fmt"
 	"os"
 	"reflect"
@@ -207,35 +206,6 @@ func (c CustomValidationRule) DescriptionText() string {
 	return c.Message
 }
 
-// parseRuleString converts a space-delimited string of validation rules into a slice of
-// normalized rule strings. Used by ConvertValidationStringtoRules for its public API.
-// Because this splits on spaces, regex patterns containing spaces cannot be represented
-// in a space-delimited string. If a split regex pattern is detected, an error is returned
-// advising the user to use the YAML list format instead.
-func parseRuleString(ruleString string) ([]string, error) {
-	// Only strip the outer wrapping brackets from the YAML list format (e.g., "[required url]"),
-	// not brackets inside regex character classes (e.g., "regex(^[a-z]+$)")
-	ruleString = strings.TrimSpace(ruleString)
-	if strings.HasPrefix(ruleString, "[") && strings.HasSuffix(ruleString, "]") {
-		ruleString = ruleString[1 : len(ruleString)-1]
-	}
-
-	parts := strings.Split(ruleString, " ")
-	for i, part := range parts {
-		parts[i] = normalizeRuleString(part)
-	}
-
-	// Detect regex patterns that were broken by the space split: a token starting with
-	// "regex(" but not ending with ")" means the pattern contained a space.
-	for _, part := range parts {
-		if strings.HasPrefix(part, "regex(") && !strings.HasSuffix(part, ")") {
-			return nil, stderrors.New("regex pattern appears to contain a space, which is not supported in string-format validations; use the YAML list format instead:\n  validations:\n    - \"regex(...)\"")
-		}
-	}
-
-	return parts, nil
-}
-
 // convertSingleValidationRule converts a single validation rule string into a CustomValidationRule.
 // The rule string should already be normalized (lowercased for non-regex rules).
 func convertSingleValidationRule(rule string) (CustomValidationRule, error) {
@@ -329,40 +299,15 @@ func normalizeRuleString(rule string) string {
 	return strings.ToLower(rule)
 }
 
-// ConvertValidationStringtoRules takes the string representation of the variable's validations and parses it
-// into CustomValidationRules that should be run on the variable's value when submitted by a user
-func ConvertValidationStringtoRules(ruleString string) ([]CustomValidationRule, error) {
-	var validationRules []CustomValidationRule
-
-	rules, err := parseRuleString(ruleString)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, rule := range rules {
-		cvr, err := convertSingleValidationRule(rule)
-		if err != nil {
-			return validationRules, err
-		}
-
-		if cvr != (CustomValidationRule{}) {
-			validationRules = append(validationRules, cvr)
-		}
-	}
-
-	return validationRules, nil
-}
-
 // unmarshalValidationsField looks up the validations specified in the map and converts them to
 // CustomValidationRules that provide real-time feedback on the validity of user entries.
-// It handles two YAML formats:
+// The recommended YAML format is a list of rules:
 //
-//	validations:           # a single rule as a scalar string
-//	  required
-//
-//	validations:           # a list of rules
+//	validations:
 //	  - required
 //	  - regex(^[a-z ]+$)
+//
+// A scalar string (e.g. "validations: required") is ignored and a warning is emitted.
 func unmarshalValidationsField(fields map[string]any) ([]CustomValidationRule, error) {
 	validations := fields["validations"]
 	if validations == nil {
@@ -390,18 +335,11 @@ func unmarshalValidationsField(fields map[string]any) ([]CustomValidationRule, e
 
 		return allRules, nil
 	case string:
-		// Single rule as a scalar string (e.g., "required")
-		rule := normalizeRuleString(v)
+		util.Logger.Printf("WARN: the 'validations' field is specified as a string (%q). "+
+			"Please use the YAML list format instead:\n  validations:\n    - %q\n"+
+			"String-format validations are no longer supported, and the \"%q\" validation will be ignored.", v, v)
 
-		cvr, err := convertSingleValidationRule(rule)
-		if err != nil {
-			return nil, err
-		}
-
-		if cvr != (CustomValidationRule{}) {
-			return []CustomValidationRule{cvr}, nil
-		}
-
+		// If we wanted to be more aggressive, we could return an error here, but that would be a breaking change.
 		return nil, nil
 	default:
 		return nil, fmt.Errorf("validations field must be a list or string, got %T", validations)
