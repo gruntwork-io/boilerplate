@@ -11,7 +11,7 @@ import { Aside } from '@astrojs/starlight/components';
 
 The most common use case is generating entire project structures from templates.
 
-For example, you may have an opinionated way to spin up a new Next.js app that includes a Go backend, CI/CD config, Dockerfile, OpenTofu modules, and Kubernetes manifests. You can declar a set of boilerplate variables to customize your template as needed.
+For example, you may have an opinionated way to spin up a new Next.js app that includes a Go backend, CI/CD config, Dockerfile, OpenTofu modules, and Kubernetes manifests. You can declare a set of boilerplate variables to customize your template as needed.
 
 ```yaml
 variables:
@@ -33,7 +33,7 @@ Generate custom OpenTofu, Terraform, or CloudFormation files based on a set of v
 To build interactive web UIs that can generate infrastructure-as-code based on simple markdown files, check out our open source tool [Gruntwork Runbooks](https://runbooks.gruntwork.io/).
 </Aside>
 
-For example, perhaps each time you deploy a new customer, you need to create slightly different OpenTofu files. Instead of creating complex OpenTofu files that can dyanmically swap the customer name and preferences, use Boilerplate to gather the variable values, and generate a _unique_ set of OpenTofu files. 
+For example, perhaps each time you deploy a new customer, you need to create slightly different OpenTofu files. Instead of creating complex OpenTofu files that can dynamically swap the customer name and preferences, use Boilerplate to gather the variable values, and generate a _unique_ set of OpenTofu files. 
 
 
 ```yaml

@@ -43,7 +43,13 @@
     "prek",
     "worktree",
     "WORKTREE",
-    "glab"
+    "glab",
+    "jsonnet",
+    "dont-inherit-variables",
+    "giter8",
+    "snakecase",
+    "kebabcase",
+    "nindent"
   ],
   "ignorePaths": [
     "node_modules",
