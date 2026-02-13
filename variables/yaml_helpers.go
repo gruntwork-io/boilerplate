@@ -291,9 +291,6 @@ func convertSingleValidationRule(rule string) (CustomValidationRule, error) {
 			Message:   "Must match pattern: " + pattern,
 		}, nil
 	default:
-		if rule == "" {
-			return CustomValidationRule{}, nil
-		}
 		return CustomValidationRule{}, fmt.Errorf("unrecognized validation rule %q", rule)
 	}
 }
@@ -344,9 +341,7 @@ func unmarshalValidationsField(fields map[string]any) ([]CustomValidationRule, e
 				return nil, err
 			}
 
-			if cvr != (CustomValidationRule{}) {
-				allRules = append(allRules, cvr)
-			}
+			allRules = append(allRules, cvr)
 		}
 
 		return allRules, nil
