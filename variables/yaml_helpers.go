@@ -323,7 +323,7 @@ func unmarshalValidationsField(fields map[string]any) ([]CustomValidationRule, e
 	case []any:
 		// List of rules (e.g., ["required", "regex(^[a-z ]+$)"])
 		// Process each element individually to preserve spaces and brackets in patterns
-		var allRules []CustomValidationRule
+		allRules := make([]CustomValidationRule, 0, len(v))
 
 		for _, item := range v {
 			rule := normalizeRuleString(fmt.Sprintf("%v", item))
