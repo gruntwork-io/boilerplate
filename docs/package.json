@@ -7,9 +7,16 @@
     "start": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "spellcheck": "cspell \"src/content/**/*.{md,mdx}\" --no-progress",
+    "spellcheck": "cspell \"src/content/**/*.{md,mdx}\" --no-progress"
+  },
+  "dependencies": {
+    "@astrojs/starlight": "0.37.6",
+    "@vercel/analytics": "^1.6.1",
+    "astro": "5.17.2",
+    "sharp": "^0.34.2"
   },
   "devDependencies": {
-    "cspell": "^9.6.4"
+    "cspell": "^9.6.4",
+    "linkinator": "^7.5.1"
   }
 }
