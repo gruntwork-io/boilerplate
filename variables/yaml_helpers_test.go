@@ -209,14 +209,19 @@ func TestParserulestring(t *testing.T) {
 			Want:  "countrycode2",
 		},
 		{
-			// Regex patterns preserve case
-			Input: "regex(^[A-Z]{2}-\\d{4}$)",
-			Want:  "regex(^[A-Z]{2}-\\d{4}$)",
+			// Regex patterns preserve case inside the quoted string
+			Input: `regex("^[A-Z]{2}-\d{4}$")`,
+			Want:  `regex("^[A-Z]{2}-\d{4}$")`,
 		},
 		{
-			// Regex patterns with spaces work now (handled via YAML list in production)
-			Input: "regex(^[a-z ]+$)",
-			Want:  "regex(^[a-z ]+$)",
+			// Regex patterns with spaces work (handled via YAML list in production)
+			Input: `regex("^[a-z ]+$")`,
+			Want:  `regex("^[a-z ]+$")`,
+		},
+		{
+			// REGEX keyword is normalized to lowercase, pattern preserved
+			Input: `REGEX("^[A-Z]+$")`,
+			Want:  `regex("^[A-Z]+$")`,
 		},
 		{
 			// length() is lowercased like other non-regex rules
@@ -254,7 +259,7 @@ func TestConvertSingleValidationRule_Regex(t *testing.T) {
 	t.Run("lowercase alphanumeric pattern passes", func(t *testing.T) {
 		t.Parallel()
 
-		rule, err := normalizeAndConvert("regex(^[a-z0-9]+$)")
+		rule, err := normalizeAndConvert(`regex("^[a-z0-9]+$")`)
 		require.NoError(t, err)
 
 		err = rule.Validator.Validate("hello123")
@@ -264,7 +269,7 @@ func TestConvertSingleValidationRule_Regex(t *testing.T) {
 	t.Run("lowercase alphanumeric pattern rejects uppercase", func(t *testing.T) {
 		t.Parallel()
 
-		rule, err := normalizeAndConvert("regex(^[a-z0-9]+$)")
+		rule, err := normalizeAndConvert(`regex("^[a-z0-9]+$")`)
 		require.NoError(t, err)
 
 		err = rule.Validator.Validate("Hello!")
@@ -274,7 +279,7 @@ func TestConvertSingleValidationRule_Regex(t *testing.T) {
 	t.Run("case-sensitive pattern passes", func(t *testing.T) {
 		t.Parallel()
 
-		rule, err := normalizeAndConvert(`regex(^[A-Z]{2}-\d{4}$)`)
+		rule, err := normalizeAndConvert(`regex("^[A-Z]{2}-\d{4}$")`)
 		require.NoError(t, err)
 
 		err = rule.Validator.Validate("AB-1234")
@@ -284,7 +289,7 @@ func TestConvertSingleValidationRule_Regex(t *testing.T) {
 	t.Run("case-sensitive pattern rejects wrong case", func(t *testing.T) {
 		t.Parallel()
 
-		rule, err := normalizeAndConvert(`regex(^[A-Z]{2}-\d{4}$)`)
+		rule, err := normalizeAndConvert(`regex("^[A-Z]{2}-\d{4}$")`)
 		require.NoError(t, err)
 
 		err = rule.Validator.Validate("ab-1234")
@@ -294,25 +299,23 @@ func TestConvertSingleValidationRule_Regex(t *testing.T) {
 	t.Run("invalid regex returns error", func(t *testing.T) {
 		t.Parallel()
 
-		_, err := normalizeAndConvert("regex(invalid[)")
+		_, err := normalizeAndConvert(`regex("invalid[")`)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "invalid regex pattern")
 	})
 
-
-	t.Run("invalid regex #2 returns error", func(t *testing.T) {
+	t.Run("missing quotes returns error", func(t *testing.T) {
 		t.Parallel()
 
-		_, err := normalizeAndConvert(`regex (^[A-Z]{2}-\d{4}$)`)
+		_, err := normalizeAndConvert(`regex(^[A-Z]{2}-\d{4}$)`)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "unrecognized validation rule")
 	})
 
-
 	t.Run("regex with spaces works as single rule", func(t *testing.T) {
 		t.Parallel()
 
-		rule, err := normalizeAndConvert("regex(^[a-z ]+$)")
+		rule, err := normalizeAndConvert(`regex("^[a-z ]+$")`)
 		require.NoError(t, err)
 
 		err = rule.Validator.Validate("hello world")
@@ -396,11 +399,11 @@ func TestUnmarshalValidationsField_RegexWithSpaces(t *testing.T) {
 		// Simulate what YAML parsing produces for:
 		//   validations:
 		//     - required
-		//     - "regex(^[a-z ]+$)"
+		//     - 'regex("^[a-z ]+$")'
 		fields := map[string]any{
 			"validations": []interface{}{
 				"required",
-				"regex(^[a-z ]+$)",
+				`regex("^[a-z ]+$")`,
 			},
 		}
 
@@ -451,7 +454,7 @@ func TestUnmarshalValidationsField(t *testing.T) {
 
 		fields := map[string]any{
 			"validations": []interface{}{
-				"regex(^[A-Z]{2}-\\d{4}$)",
+				`regex("^[A-Z]{2}-\d{4}$")`,
 			},
 		}
 

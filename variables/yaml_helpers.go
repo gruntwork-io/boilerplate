@@ -278,12 +278,12 @@ func convertSingleValidationRule(rule string) (CustomValidationRule, error) {
 			Validator: validation.Length(min, max),
 			Message:   fmt.Sprintf("Must be between %d and %d characters long", min, max),
 		}, nil
-	case strings.HasPrefix(rule, "regex(") && strings.HasSuffix(rule, ")"):
-		pattern := strings.TrimSuffix(strings.TrimPrefix(rule, "regex("), ")")
+	case strings.HasPrefix(rule, `regex("`) && strings.HasSuffix(rule, `")`):
+		pattern := strings.TrimSuffix(strings.TrimPrefix(rule, `regex("`), `")`)
 
 		compiledRegex, err := regexp.Compile(pattern)
 		if err != nil {
-			return CustomValidationRule{}, fmt.Errorf("invalid regex pattern in validation 'regex(%s)': %w", pattern, err)
+			return CustomValidationRule{}, fmt.Errorf("invalid regex pattern in validation 'regex(\"%s\")': %w", pattern, err)
 		}
 
 		return CustomValidationRule{
@@ -300,14 +300,17 @@ func convertSingleValidationRule(rule string) (CustomValidationRule, error) {
 
 // normalizeRuleString normalizes a single validation rule string by lowercasing it,
 // except for regex patterns which preserve their original case.
-// e.g. "Required" becomes "required" but "regex(^[A-Z]+$)" remains "regex(^[A-Z]+$)"
+// e.g. "Required" becomes "required" but regex("^[A-Z]+$") remains regex("^[A-Z]+$")
 func normalizeRuleString(rule string) string {
 	rule = strings.TrimSpace(rule)
-	if strings.HasPrefix(rule, "regex(") || strings.HasPrefix(strings.ToLower(rule), "regex(") {
-		return rule
+	lower := strings.ToLower(rule)
+	if strings.HasPrefix(lower, `regex("`) {
+		// Preserve case for the pattern inside regex("..."), but normalize the
+		// "regex" keyword itself to lowercase.
+		return "regex(" + rule[len("regex("):]
 	}
 
-	return strings.ToLower(rule)
+	return lower
 }
 
 // unmarshalValidationsField looks up the validations specified in the map and converts them to
@@ -316,7 +319,7 @@ func normalizeRuleString(rule string) string {
 //
 //	validations:
 //	  - required
-//	  - regex(^[a-z ]+$)
+//	  - regex("^[a-z ]+$")
 //
 // A scalar string (e.g. "validations: required") is ignored and a warning is emitted.
 func unmarshalValidationsField(fields map[string]any) ([]CustomValidationRule, error) {
