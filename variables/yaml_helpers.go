@@ -208,9 +208,6 @@ func (c CustomValidationRule) DescriptionText() string {
 
 // convertSingleValidationRule converts a single validation rule string into a CustomValidationRule.
 // Rule names are case-sensitive and must match exactly (e.g. "required", not "Required").
-// lengthArgCount is the expected number of arguments for the length() validation rule.
-const lengthArgCount = 2
-
 func convertSingleValidationRule(rule string) (CustomValidationRule, error) {
 	rule = strings.TrimSpace(rule)
 
@@ -256,6 +253,9 @@ func convertSingleValidationRule(rule string) (CustomValidationRule, error) {
 			Message:   "Must be a valid semantic version",
 		}, nil
 	case strings.HasPrefix(rule, "length(") && strings.HasSuffix(rule, ")"):
+		// lengthArgCount is the expected number of arguments for the length() validation rule.
+		const lengthArgCount = 2
+
 		inner := strings.TrimSuffix(strings.TrimPrefix(rule, "length("), ")")
 		parts := strings.SplitN(inner, ",", lengthArgCount)
 
