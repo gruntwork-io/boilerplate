@@ -1,4 +1,6 @@
 [codespell]
+# The docs/ directory has its own spellchecker (see docs/package.json)
 skip =
     template_helpers_test.go,
-    go.sum
+    go.sum,
+    docs
