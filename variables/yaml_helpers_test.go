@@ -319,7 +319,7 @@ func TestConvertSingleValidationRule_Length(t *testing.T) {
 		assert.Equal(t, "Must be between 5 and 22 characters long", rule.Message)
 
 		err = rule.Validator.Validate("hello")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		err = rule.Validator.Validate("hi")
 		assert.Error(t, err)
@@ -333,7 +333,7 @@ func TestConvertSingleValidationRule_Length(t *testing.T) {
 		assert.Equal(t, "Must be between 1 and 3 characters long", rule.Message)
 
 		err = rule.Validator.Validate("ab")
-		assert.NoError(t, err)
+		require.NoError(t, err)
 
 		err = rule.Validator.Validate("abcd")
 		assert.Error(t, err)

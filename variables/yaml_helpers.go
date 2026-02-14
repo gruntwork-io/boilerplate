@@ -208,8 +208,10 @@ func (c CustomValidationRule) DescriptionText() string {
 
 // convertSingleValidationRule converts a single validation rule string into a CustomValidationRule.
 // Rule names are case-sensitive and must match exactly (e.g. "required", not "Required").
+// lengthArgCount is the expected number of arguments for the length() validation rule.
+const lengthArgCount = 2
+
 func convertSingleValidationRule(rule string) (CustomValidationRule, error) {
-	
 	rule = strings.TrimSpace(rule)
 	
 	switch {
@@ -255,8 +257,8 @@ func convertSingleValidationRule(rule string) (CustomValidationRule, error) {
 		}, nil
 	case strings.HasPrefix(rule, "length(") && strings.HasSuffix(rule, ")"):
 		inner := strings.TrimSuffix(strings.TrimPrefix(rule, "length("), ")")
-		parts := strings.SplitN(inner, ",", 2)
-		if len(parts) != 2 {
+		parts := strings.SplitN(inner, ",", lengthArgCount)
+		if len(parts) != lengthArgCount {
 			return CustomValidationRule{}, fmt.Errorf("invalid length validation %q: expected length(min, max)", rule)
 		}
 
