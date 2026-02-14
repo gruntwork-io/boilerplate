@@ -213,7 +213,7 @@ const lengthArgCount = 2
 
 func convertSingleValidationRule(rule string) (CustomValidationRule, error) {
 	rule = strings.TrimSpace(rule)
-	
+
 	switch {
 	case rule == "required":
 		return CustomValidationRule{
@@ -258,6 +258,7 @@ func convertSingleValidationRule(rule string) (CustomValidationRule, error) {
 	case strings.HasPrefix(rule, "length(") && strings.HasSuffix(rule, ")"):
 		inner := strings.TrimSuffix(strings.TrimPrefix(rule, "length("), ")")
 		parts := strings.SplitN(inner, ",", lengthArgCount)
+
 		if len(parts) != lengthArgCount {
 			return CustomValidationRule{}, fmt.Errorf("invalid length validation %q: expected length(min, max)", rule)
 		}
