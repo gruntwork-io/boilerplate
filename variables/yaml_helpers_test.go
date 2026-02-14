@@ -475,6 +475,6 @@ func TestUnmarshalValidationsField(t *testing.T) {
 
 		_, err := unmarshalValidationsField(fields)
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "must be a list or string")
+		assert.Contains(t, err.Error(), "must be a list of strings")
 	})
 }
