@@ -209,7 +209,7 @@ func (c CustomValidationRule) DescriptionText() string {
 // convertSingleValidationRule converts a single validation rule string into a CustomValidationRule.
 // Rule names are case-sensitive and must match exactly (e.g. "required", not "Required").
 func convertSingleValidationRule(rule string) (CustomValidationRule, error) {
-	rule = strings.TrimSpace(rule)
+	rule = normalizeRuleString(rule)
 
 	switch {
 	case rule == "required":
