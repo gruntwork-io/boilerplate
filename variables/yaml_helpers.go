@@ -281,8 +281,18 @@ func convertSingleValidationRule(rule string) (CustomValidationRule, error) {
 			Validator: validation.Length(min, max),
 			Message:   fmt.Sprintf("Must be between %d and %d characters long", min, max),
 		}, nil
-	case strings.HasPrefix(rule, `regex("`) && strings.HasSuffix(rule, `")`):
-		pattern := strings.TrimSuffix(strings.TrimPrefix(rule, `regex("`), `")`)
+	case strings.HasPrefix(rule, "regex(") && strings.HasSuffix(rule, ")"):
+		// Extract the quoted string inside regex(...). strconv.Unquote handles
+		// both double-quoted ("pattern") and backtick-quoted (`pattern`) strings,
+		// including escape sequences like \" inside double-quoted strings.
+		quoted := rule[len("regex(") : len(rule)-1]
+
+		pattern, err := strconv.Unquote(quoted)
+		if err != nil {
+			return CustomValidationRule{}, fmt.Errorf(
+				"invalid regex validation %q: pattern must be a quoted string "+
+					"(e.g. regex(\"pattern\") or regex(`pattern`)): %w", rule, err)
+		}
 
 		compiledRegex, err := regexp.Compile(pattern)
 		if err != nil {

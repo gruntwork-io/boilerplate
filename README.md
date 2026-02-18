@@ -728,7 +728,7 @@ Boilerplate uses the [`go-ozzo/ozzo-validation` library](https://github.com/go-o
  - "digit" - field must contain digits only
  - "countrycode2" - field must be an ISO3166 Alpha 2 Country code
  - "semver" - field must be a valid semantic version
- - "regex(pattern)" - field must match the given regular expression pattern (e.g., `regex(^[a-z0-9-]+$)`)
+ - `regex("pattern")` - field must match the given regular expression pattern. The pattern must be quoted with double quotes or backticks (e.g., `regex("^[a-z0-9-]+$")` or `` regex(`^[a-z0-9-]+$`) ``). Use backticks for patterns containing literal double quotes.
 
 #### Variable Ordering
 

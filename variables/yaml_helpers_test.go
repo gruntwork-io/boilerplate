@@ -258,24 +258,38 @@ func TestConvertSingleValidationRule_Regex(t *testing.T) {
 		assert.Error(t, err)
 	})
 
-	t.Run("case-sensitive pattern passes", func(t *testing.T) {
+	t.Run("case-sensitive backtick pattern passes", func(t *testing.T) {
 		t.Parallel()
 
-		rule, err := normalizeAndConvert(`regex("^[A-Z]{2}-\d{4}$")`)
+		// The \\d is a Go source-level escape (this string contains backticks,
+		// so we can't use a raw literal). The runtime value is: regex(`^[A-Z]{2}-\d{4}$`)
+		rule, err := normalizeAndConvert("regex(`^[A-Z]{2}-\\d{4}$`)")
 		require.NoError(t, err)
 
 		err = rule.Validator.Validate("AB-1234")
 		assert.NoError(t, err)
 	})
 
-	t.Run("case-sensitive pattern rejects wrong case", func(t *testing.T) {
+	t.Run("case-sensitive backtick pattern rejects wrong case", func(t *testing.T) {
 		t.Parallel()
 
-		rule, err := normalizeAndConvert(`regex("^[A-Z]{2}-\d{4}$")`)
+		rule, err := normalizeAndConvert("regex(`^[A-Z]{2}-\\d{4}$`)")
 		require.NoError(t, err)
 
 		err = rule.Validator.Validate("ab-1234")
 		assert.Error(t, err)
+	})
+
+	t.Run("backslash sequence in regex() quoted with double quotes", func(t *testing.T) {
+		t.Parallel()
+
+			// When the pattern inside regex() is quoted with "...", a literal
+		// backslash must be written as \\ (Go strconv.Unquote semantics).
+		rule, err := normalizeAndConvert(`regex("^[A-Z]{2}-\\d{4}$")`)
+		require.NoError(t, err)
+
+		err = rule.Validator.Validate("AB-1234")
+		assert.NoError(t, err)
 	})
 
 	t.Run("invalid regex returns error", func(t *testing.T) {
@@ -291,10 +305,10 @@ func TestConvertSingleValidationRule_Regex(t *testing.T) {
 
 		_, err := normalizeAndConvert(`regex(^[A-Z]{2}-\d{4}$)`)
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "unrecognized validation rule")
+		assert.Contains(t, err.Error(), "pattern must be a quoted string")
 	})
 
-	t.Run("regex with spaces works as single rule", func(t *testing.T) {
+	t.Run("regex with spaces works", func(t *testing.T) {
 		t.Parallel()
 
 		rule, err := normalizeAndConvert(`regex("^[a-z ]+$")`)
@@ -304,6 +318,45 @@ func TestConvertSingleValidationRule_Regex(t *testing.T) {
 		require.NoError(t, err)
 
 		err = rule.Validator.Validate("Hello123")
+		assert.Error(t, err)
+	})
+
+	t.Run("regex with escaped quotes works", func(t *testing.T) {
+		t.Parallel()
+
+		rule, err := normalizeAndConvert(`regex("They said: \"Hello world!\"")`)
+		require.NoError(t, err)
+
+		err = rule.Validator.Validate(`They said: "Hello world!"`)
+		require.NoError(t, err)
+
+		err = rule.Validator.Validate(`They said something else`)
+		assert.Error(t, err)
+	})
+
+	t.Run("backtick-quoted pattern works", func(t *testing.T) {
+		t.Parallel()
+
+		rule, err := normalizeAndConvert("regex(`^[a-z0-9-]+$`)")
+		require.NoError(t, err)
+
+		err = rule.Validator.Validate("hello-world-123")
+		require.NoError(t, err)
+
+		err = rule.Validator.Validate("Hello World!")
+		assert.Error(t, err)
+	})
+
+	t.Run("backtick-quoted pattern with literal quotes", func(t *testing.T) {
+		t.Parallel()
+
+		rule, err := normalizeAndConvert("regex(`They said: \"Hello world!\"`)")
+		require.NoError(t, err)
+
+		err = rule.Validator.Validate(`They said: "Hello world!"`)
+		require.NoError(t, err)
+
+		err = rule.Validator.Validate(`no match here`)
 		assert.Error(t, err)
 	})
 }
@@ -434,9 +487,10 @@ func TestUnmarshalValidationsField(t *testing.T) {
 	t.Run("regex in list preserves case", func(t *testing.T) {
 		t.Parallel()
 
+		// Use backtick quoting since the pattern contains \d
 		fields := map[string]any{
 			"validations": []any{
-				`regex("^[A-Z]{2}-\d{4}$")`,
+				"regex(`^[A-Z]{2}-\\d{4}$`)",
 			},
 		}
 
