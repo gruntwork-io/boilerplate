@@ -748,7 +748,6 @@ variables:
  - name: ProfileName
    order: 2
    description: Enter the display name for your user
-
 ```
 
 #### Alternative Template Engines (EXPERIMENTAL)
