@@ -260,7 +260,7 @@ func TestConvertSingleValidationRule_Regex(t *testing.T) {
 			invalidValues: []string{"ab-1234"},
 		},
 		{
-			name:          "double-quoted pattern with escaped backslash",
+			name:          "double-quoted pattern with backslash shorthand",
 			ruleInput:     `regex("^[A-Z]{2}-\d{4}$")`,
 			validValues:   []string{"AB-1234"},
 			invalidValues: []string{"AB-XXXX"},
@@ -323,11 +323,6 @@ func TestConvertSingleValidationRule_Regex(t *testing.T) {
 			ruleInput:   `regex(^[A-Z]{2}-\d{4}$)`,
 			errContains: "pattern must be a quoted string",
 		},
-		{
-			name:        "invalid escape sequence in double-quoted pattern",
-			ruleInput:   `regex("^[A-Z]{2}-\d{4}$")`,
-			errContains: "invalid escape sequence",
-		},
 	}
 
 	for _, tc := range errorCases {
@@ -337,6 +332,47 @@ func TestConvertSingleValidationRule_Regex(t *testing.T) {
 			_, err := normalizeAndConvert(tc.ruleInput)
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), tc.errContains)
+		})
+	}
+}
+
+func TestUnquoteRegexPattern(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		input   string
+		want    string
+		wantErr bool
+	}{
+		{name: "double-quoted simple", input: `"^[a-z]+$"`, want: `^[a-z]+$`},
+		{name: "backtick-quoted simple", input: "`^[a-z]+$`", want: `^[a-z]+$`},
+		{name: `\d passes through`, input: `"^\d{3}$"`, want: `^\d{3}$`},
+		{name: `\w passes through`, input: `"^\w+$"`, want: `^\w+$`},
+		{name: `\s passes through`, input: `"\s+"`, want: `\s+`},
+		{name: `\" unescapes to quote`, input: `"say \"hi\""`, want: `say "hi"`},
+		{name: `\\ unescapes to backslash`, input: `"a\\\\b"`, want: `a\\b`},
+		{name: "backtick preserves everything", input: "`\\d \\w \\\\ \\\"`", want: `\d \w \\ \"`},
+		{name: "empty double-quoted", input: `""`, want: ""},
+		{name: "empty backtick", input: "``", want: ""},
+		{name: "too short", input: `x`, wantErr: true},
+		{name: "empty string", input: ``, wantErr: true},
+		{name: "mismatched quotes", input: "`foo\"", wantErr: true},
+		{name: "unquoted string", input: `hello`, wantErr: true},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := unquoteRegexPattern(tc.input)
+			if tc.wantErr {
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), "pattern must be a quoted string")
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tc.want, got)
 		})
 	}
 }
@@ -488,6 +524,8 @@ func TestUnmarshalValidationsField(t *testing.T) {
 		// Use backtick quoting since the pattern contains \d
 		fields := map[string]any{
 			"validations": []any{
+				// Alternatively, we could use double-quoted strings:
+				// `regex("^[A-Z]{2}-\d{4}$")``,
 				"regex(`^[A-Z]{2}-\\d{4}$`)",
 			},
 		}

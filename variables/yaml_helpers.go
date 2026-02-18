@@ -304,6 +304,44 @@ func convertSingleValidationRule(rule string) (CustomValidationRule, error) {
 	}
 }
 
+// unquoteRegexPattern extracts a regex pattern from a quoted string. It accepts
+// double-quoted ("pattern") and backtick-quoted (`pattern`) strings. Unlike
+// strconv.Unquote, double-quoted strings are treated as nearly raw: only \"
+// and \\ are interpreted as escape sequences, so regex metacharacters like \d,
+// \w, and \s pass through without requiring double-escaping.
+func unquoteRegexPattern(quoted string) (string, error) {
+	if len(quoted) < 2 {
+		return "", fmt.Errorf("pattern must be a quoted string (e.g. regex(\"pattern\") or regex(`pattern`))")
+	}
+
+	opener, closer := quoted[0], quoted[len(quoted)-1]
+
+	switch {
+	case opener == '`' && closer == '`':
+		return quoted[1 : len(quoted)-1], nil
+
+	case opener == '"' && closer == '"':
+		raw := quoted[1 : len(quoted)-1]
+		var buf strings.Builder
+		buf.Grow(len(raw))
+		for i := 0; i < len(raw); i++ {
+			if raw[i] == '\\' && i+1 < len(raw) {
+				next := raw[i+1]
+				if next == '"' || next == '\\' {
+					buf.WriteByte(next)
+					i++
+					continue
+				}
+			}
+			buf.WriteByte(raw[i])
+		}
+		return buf.String(), nil
+
+	default:
+		return "", fmt.Errorf("pattern must be a quoted string (e.g. regex(\"pattern\") or regex(`pattern`))")
+	}
+}
+
 // normalizeRuleString trims surrounding whitespace from a validation rule string.
 // Rule names and arguments are case-sensitive and must be written exactly as documented.
 func normalizeRuleString(rule string) string {
