@@ -299,7 +299,7 @@ func TestConvertSingleValidationRule_Regex(t *testing.T) {
 			require.NoError(t, err)
 
 			for _, val := range tc.validValues {
-				assert.NoError(t, rule.Validator.Validate(val), "expected %q to match", val)
+				require.NoError(t, rule.Validator.Validate(val), "expected %q to match", val)
 			}
 
 			for _, val := range tc.invalidValues {
@@ -369,8 +369,10 @@ func TestUnquoteRegexPattern(t *testing.T) {
 			if tc.wantErr {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), "pattern must be a quoted string")
+
 				return
 			}
+
 			require.NoError(t, err)
 			assert.Equal(t, tc.want, got)
 		})
@@ -412,7 +414,7 @@ func TestConvertSingleValidationRule_Length(t *testing.T) {
 			assert.Equal(t, tc.expectedMessage, rule.Message)
 
 			for _, val := range tc.validValues {
-				assert.NoError(t, rule.Validator.Validate(val), "expected %q to pass", val)
+				require.NoError(t, rule.Validator.Validate(val), "expected %q to pass", val)
 			}
 
 			for _, val := range tc.invalidValues {

@@ -1,6 +1,7 @@
 package variables
 
 import (
+	stderrors "errors"
 	"fmt"
 	"os"
 	"reflect"
@@ -14,6 +15,8 @@ import (
 	"github.com/gruntwork-io/boilerplate/util"
 	"gopkg.in/yaml.v2"
 )
+
+var errInvalidRegexPattern = stderrors.New("pattern must be a quoted string (e.g. regex(\"pattern\") or regex(`pattern`))")
 
 // Given a map of key:value pairs read from a Boilerplate YAML config file of the format:
 //
@@ -310,8 +313,10 @@ func convertSingleValidationRule(rule string) (CustomValidationRule, error) {
 // and \\ are interpreted as escape sequences, so regex metacharacters like \d,
 // \w, and \s pass through without requiring double-escaping.
 func unquoteRegexPattern(quoted string) (string, error) {
-	if len(quoted) < 2 {
-		return "", fmt.Errorf("pattern must be a quoted string (e.g. regex(\"pattern\") or regex(`pattern`))")
+	const minQuotedLen = 2
+
+	if len(quoted) < minQuotedLen {
+		return "", errInvalidRegexPattern
 	}
 
 	opener, closer := quoted[0], quoted[len(quoted)-1]
@@ -322,23 +327,30 @@ func unquoteRegexPattern(quoted string) (string, error) {
 
 	case opener == '"' && closer == '"':
 		raw := quoted[1 : len(quoted)-1]
+
 		var buf strings.Builder
+
 		buf.Grow(len(raw))
+
 		for i := 0; i < len(raw); i++ {
 			if raw[i] == '\\' && i+1 < len(raw) {
 				next := raw[i+1]
 				if next == '"' || next == '\\' {
 					buf.WriteByte(next)
+
 					i++
+
 					continue
 				}
 			}
+
 			buf.WriteByte(raw[i])
 		}
+
 		return buf.String(), nil
 
 	default:
-		return "", fmt.Errorf("pattern must be a quoted string (e.g. regex(\"pattern\") or regex(`pattern`))")
+		return "", errInvalidRegexPattern
 	}
 }
 
