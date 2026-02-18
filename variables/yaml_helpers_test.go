@@ -238,191 +238,189 @@ func normalizeAndConvert(ruleString string) (CustomValidationRule, error) {
 func TestConvertSingleValidationRule_Regex(t *testing.T) {
 	t.Parallel()
 
-	t.Run("lowercase alphanumeric pattern passes", func(t *testing.T) {
-		t.Parallel()
+	// Backtick-quoted rule inputs use regular Go string literals (not raw literals)
+	// because the rule itself contains backtick characters. The \\d sequences become
+	// \d at runtime.
+	validCases := []struct {
+		name          string
+		ruleInput     string
+		validValues   []string
+		invalidValues []string
+	}{
+		{
+			name:          "lowercase alphanumeric double-quoted pattern",
+			ruleInput:     `regex("^[a-z0-9]+$")`,
+			validValues:   []string{"hello123"},
+			invalidValues: []string{"Hello!"},
+		},
+		{
+			name:          "case-sensitive backtick-quoted pattern",
+			ruleInput:     "regex(`^[A-Z]{2}-\\d{4}$`)",
+			validValues:   []string{"AB-1234"},
+			invalidValues: []string{"ab-1234"},
+		},
+		{
+			name:          "double-quoted pattern with escaped backslash",
+			ruleInput:     `regex("^[A-Z]{2}-\d{4}$")`,
+			validValues:   []string{"AB-1234"},
+			invalidValues: []string{"AB-XXXX"},
+		},
+		{
+			name:          "pattern with spaces",
+			ruleInput:     `regex("^[a-z ]+$")`,
+			validValues:   []string{"hello world"},
+			invalidValues: []string{"Hello123"},
+		},
+		{
+			name:          "double-quoted pattern with escaped quotes",
+			ruleInput:     `regex("They said: \"Hello world!\"")`,
+			validValues:   []string{`They said: "Hello world!"`},
+			invalidValues: []string{`They said something else`},
+		},
+		{
+			name:          "backtick-quoted pattern",
+			ruleInput:     "regex(`^[a-z0-9-]+$`)",
+			validValues:   []string{"hello-world-123"},
+			invalidValues: []string{"Hello World!"},
+		},
+		{
+			name:          "backtick-quoted pattern with literal quotes",
+			ruleInput:     "regex(`They said: \"Hello world!\"`)",
+			validValues:   []string{`They said: "Hello world!"`},
+			invalidValues: []string{`no match here`},
+		},
+	}
 
-		rule, err := normalizeAndConvert(`regex("^[a-z0-9]+$")`)
-		require.NoError(t, err)
+	for _, tc := range validCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 
-		err = rule.Validator.Validate("hello123")
-		assert.NoError(t, err)
-	})
+			rule, err := normalizeAndConvert(tc.ruleInput)
+			require.NoError(t, err)
 
-	t.Run("lowercase alphanumeric pattern rejects uppercase", func(t *testing.T) {
-		t.Parallel()
+			for _, val := range tc.validValues {
+				assert.NoError(t, rule.Validator.Validate(val), "expected %q to match", val)
+			}
 
-		rule, err := normalizeAndConvert(`regex("^[a-z0-9]+$")`)
-		require.NoError(t, err)
+			for _, val := range tc.invalidValues {
+				assert.Error(t, rule.Validator.Validate(val), "expected %q to not match", val)
+			}
+		})
+	}
 
-		err = rule.Validator.Validate("Hello!")
-		assert.Error(t, err)
-	})
+	errorCases := []struct {
+		name        string
+		ruleInput   string
+		errContains string
+	}{
+		{
+			name:        "invalid regex returns error",
+			ruleInput:   `regex("invalid[")`,
+			errContains: "invalid regex pattern",
+		},
+		{
+			name:        "missing quotes returns error",
+			ruleInput:   `regex(^[A-Z]{2}-\d{4}$)`,
+			errContains: "pattern must be a quoted string",
+		},
+		{
+			name:        "invalid escape sequence in double-quoted pattern",
+			ruleInput:   `regex("^[A-Z]{2}-\d{4}$")`,
+			errContains: "invalid escape sequence",
+		},
+	}
 
-	t.Run("case-sensitive backtick pattern passes", func(t *testing.T) {
-		t.Parallel()
+	for _, tc := range errorCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 
-		// The \\d is a Go source-level escape (this string contains backticks,
-		// so we can't use a raw literal). The runtime value is: regex(`^[A-Z]{2}-\d{4}$`)
-		rule, err := normalizeAndConvert("regex(`^[A-Z]{2}-\\d{4}$`)")
-		require.NoError(t, err)
-
-		err = rule.Validator.Validate("AB-1234")
-		assert.NoError(t, err)
-	})
-
-	t.Run("case-sensitive backtick pattern rejects wrong case", func(t *testing.T) {
-		t.Parallel()
-
-		rule, err := normalizeAndConvert("regex(`^[A-Z]{2}-\\d{4}$`)")
-		require.NoError(t, err)
-
-		err = rule.Validator.Validate("ab-1234")
-		assert.Error(t, err)
-	})
-
-	t.Run("backslash sequence in regex() quoted with double quotes", func(t *testing.T) {
-		t.Parallel()
-
-			// When the pattern inside regex() is quoted with "...", a literal
-		// backslash must be written as \\ (Go strconv.Unquote semantics).
-		rule, err := normalizeAndConvert(`regex("^[A-Z]{2}-\\d{4}$")`)
-		require.NoError(t, err)
-
-		err = rule.Validator.Validate("AB-1234")
-		assert.NoError(t, err)
-	})
-
-	t.Run("invalid regex returns error", func(t *testing.T) {
-		t.Parallel()
-
-		_, err := normalizeAndConvert(`regex("invalid[")`)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "invalid regex pattern")
-	})
-
-	t.Run("missing quotes returns error", func(t *testing.T) {
-		t.Parallel()
-
-		_, err := normalizeAndConvert(`regex(^[A-Z]{2}-\d{4}$)`)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "pattern must be a quoted string")
-	})
-
-	t.Run("regex with spaces works", func(t *testing.T) {
-		t.Parallel()
-
-		rule, err := normalizeAndConvert(`regex("^[a-z ]+$")`)
-		require.NoError(t, err)
-
-		err = rule.Validator.Validate("hello world")
-		require.NoError(t, err)
-
-		err = rule.Validator.Validate("Hello123")
-		assert.Error(t, err)
-	})
-
-	t.Run("regex with escaped quotes works", func(t *testing.T) {
-		t.Parallel()
-
-		rule, err := normalizeAndConvert(`regex("They said: \"Hello world!\"")`)
-		require.NoError(t, err)
-
-		err = rule.Validator.Validate(`They said: "Hello world!"`)
-		require.NoError(t, err)
-
-		err = rule.Validator.Validate(`They said something else`)
-		assert.Error(t, err)
-	})
-
-	t.Run("backtick-quoted pattern works", func(t *testing.T) {
-		t.Parallel()
-
-		rule, err := normalizeAndConvert("regex(`^[a-z0-9-]+$`)")
-		require.NoError(t, err)
-
-		err = rule.Validator.Validate("hello-world-123")
-		require.NoError(t, err)
-
-		err = rule.Validator.Validate("Hello World!")
-		assert.Error(t, err)
-	})
-
-	t.Run("backtick-quoted pattern with literal quotes", func(t *testing.T) {
-		t.Parallel()
-
-		rule, err := normalizeAndConvert("regex(`They said: \"Hello world!\"`)")
-		require.NoError(t, err)
-
-		err = rule.Validator.Validate(`They said: "Hello world!"`)
-		require.NoError(t, err)
-
-		err = rule.Validator.Validate(`no match here`)
-		assert.Error(t, err)
-	})
+			_, err := normalizeAndConvert(tc.ruleInput)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tc.errContains)
+		})
+	}
 }
 
 func TestConvertSingleValidationRule_Length(t *testing.T) {
 	t.Parallel()
 
-	t.Run("length with spaces around args", func(t *testing.T) {
-		t.Parallel()
+	validCases := []struct {
+		name            string
+		ruleInput       string
+		expectedMessage string
+		validValues     []string
+		invalidValues   []string
+	}{
+		{
+			name:            "with spaces around args",
+			ruleInput:       "length(5, 22)",
+			expectedMessage: "Must be between 5 and 22 characters long",
+			validValues:     []string{"hello"},
+			invalidValues:   []string{"hi"},
+		},
+		{
+			name:            "without spaces around args",
+			ruleInput:       "length(1,3)",
+			expectedMessage: "Must be between 1 and 3 characters long",
+			validValues:     []string{"ab"},
+			invalidValues:   []string{"abcd"},
+		},
+	}
 
-		rule, err := normalizeAndConvert("length(5, 22)")
-		require.NoError(t, err)
-		assert.Equal(t, "Must be between 5 and 22 characters long", rule.Message)
+	for _, tc := range validCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 
-		err = rule.Validator.Validate("hello")
-		require.NoError(t, err)
+			rule, err := normalizeAndConvert(tc.ruleInput)
+			require.NoError(t, err)
+			assert.Equal(t, tc.expectedMessage, rule.Message)
 
-		err = rule.Validator.Validate("hi")
-		assert.Error(t, err)
-	})
+			for _, val := range tc.validValues {
+				assert.NoError(t, rule.Validator.Validate(val), "expected %q to pass", val)
+			}
 
-	t.Run("length without spaces around args", func(t *testing.T) {
-		t.Parallel()
+			for _, val := range tc.invalidValues {
+				assert.Error(t, rule.Validator.Validate(val), "expected %q to fail", val)
+			}
+		})
+	}
 
-		rule, err := normalizeAndConvert("length(1,3)")
-		require.NoError(t, err)
-		assert.Equal(t, "Must be between 1 and 3 characters long", rule.Message)
+	errorCases := []struct {
+		name        string
+		ruleInput   string
+		errContains string
+	}{
+		{
+			name:        "wrong case returns error",
+			ruleInput:   "LENGTH(10, 30)",
+			errContains: "unrecognized validation rule",
+		},
+		{
+			name:        "missing comma returns error",
+			ruleInput:   "length(5)",
+			errContains: "expected length(min, max)",
+		},
+		{
+			name:        "non-numeric min returns error",
+			ruleInput:   "length(abc, 10)",
+			errContains: "invalid min",
+		},
+		{
+			name:        "non-numeric max returns error",
+			ruleInput:   "length(5, xyz)",
+			errContains: "invalid max",
+		},
+	}
 
-		err = rule.Validator.Validate("ab")
-		require.NoError(t, err)
+	for _, tc := range errorCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 
-		err = rule.Validator.Validate("abcd")
-		assert.Error(t, err)
-	})
-
-	t.Run("wrong case returns error", func(t *testing.T) {
-		t.Parallel()
-
-		_, err := normalizeAndConvert("LENGTH(10, 30)")
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "unrecognized validation rule")
-	})
-
-	t.Run("length missing comma returns error", func(t *testing.T) {
-		t.Parallel()
-
-		_, err := normalizeAndConvert("length(5)")
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "expected length(min, max)")
-	})
-
-	t.Run("length non-numeric min returns error", func(t *testing.T) {
-		t.Parallel()
-
-		_, err := normalizeAndConvert("length(abc, 10)")
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "invalid min")
-	})
-
-	t.Run("length non-numeric max returns error", func(t *testing.T) {
-		t.Parallel()
-
-		_, err := normalizeAndConvert("length(5, xyz)")
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "invalid max")
-	})
+			_, err := normalizeAndConvert(tc.ruleInput)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tc.errContains)
+		})
+	}
 }
 
 func TestUnmarshalValidationsField_RegexWithSpaces(t *testing.T) {

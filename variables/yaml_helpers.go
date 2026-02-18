@@ -282,21 +282,17 @@ func convertSingleValidationRule(rule string) (CustomValidationRule, error) {
 			Message:   fmt.Sprintf("Must be between %d and %d characters long", min, max),
 		}, nil
 	case strings.HasPrefix(rule, "regex(") && strings.HasSuffix(rule, ")"):
-		// Extract the quoted string inside regex(...). strconv.Unquote handles
-		// both double-quoted ("pattern") and backtick-quoted (`pattern`) strings,
-		// including escape sequences like \" inside double-quoted strings.
 		quoted := rule[len("regex(") : len(rule)-1]
 
-		pattern, err := strconv.Unquote(quoted)
+		pattern, err := unquoteRegexPattern(quoted)
 		if err != nil {
 			return CustomValidationRule{}, fmt.Errorf(
-				"invalid regex validation %q: pattern must be a quoted string "+
-					"(e.g. regex(\"pattern\") or regex(`pattern`)): %w", rule, err)
+				"invalid regex validation %q: %w", rule, err)
 		}
 
 		compiledRegex, err := regexp.Compile(pattern)
 		if err != nil {
-			return CustomValidationRule{}, fmt.Errorf("invalid regex pattern in validation 'regex(\"%s\")': %w", pattern, err)
+			return CustomValidationRule{}, fmt.Errorf("invalid regex pattern in validation %q: %w", pattern, err)
 		}
 
 		return CustomValidationRule{
@@ -333,7 +329,7 @@ func unmarshalValidationsField(fields map[string]any) ([]CustomValidationRule, e
 	// We use []any (rather than []string) because Go's YAML libraries unmarshal
 	// sequences into []any, not []string, when the target type is any/interface{}.
 	case []any:
-		// List of rules (e.g., ["required", "regex(^[a-z ]+$)"])
+		// List of rules (e.g., ["required", `regex("^[a-z ]+$")`])
 		// Process each element individually to preserve spaces and brackets in patterns
 		allRules := make([]CustomValidationRule, 0, len(v))
 
