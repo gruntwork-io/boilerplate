@@ -354,8 +354,8 @@ func TestUnquoteRegexPattern(t *testing.T) {
 		name        string
 		input       string
 		want        string
-		wantErr     bool
 		errContains string
+		wantErr     bool
 	}{
 		{name: "double-quoted simple", input: `"^[a-z]+$"`, want: `^[a-z]+$`},
 		{name: "backtick-quoted simple", input: "`^[a-z]+$`", want: `^[a-z]+$`},
