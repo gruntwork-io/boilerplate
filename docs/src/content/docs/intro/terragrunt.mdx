@@ -1,0 +1,46 @@
+---
+title: Boilerplate and Terragrunt
+sidebar:
+  order: 5
+description: How Terragrunt uses Boilerplate under the hood for scaffolding and catalog features.
+---
+
+[Terragrunt](https://terragrunt.gruntwork.io) is the open-source IaC orchestrator for OpenTofu and Terraform. It helps teams organize and speed up large OpenTofu/Terraform code bases by segmenting infrastructure into independently manageable units and providing a collection of useful functionality to help manage all units at scale. 
+
+Terragrunt uses Boilerplate as its template engine for two key features: **scaffold** and **catalog**.
+
+_For the latest information on Terragrunt's scaffold and catalog features, see the official [Terragrunt documentation](https://terragrunt.gruntwork.io)._
+
+## Scaffold
+
+The `terragrunt scaffold` command generates a ready-to-use Terragrunt configuration for a given OpenTofu/Terraform module. Under the hood, it uses Boilerplate to render template files, automatically filling in variables, backend configuration, and provider blocks based on the target module.
+
+This means you can go from a bare module URL to a fully wired Terragrunt unit in a single command:
+
+```bash
+terragrunt scaffold github.com/acme/terraform-modules//modules/vpc
+```
+
+Scaffold inspects the module's variables and outputs, then runs Boilerplate to produce a `terragrunt.hcl` file with sensible defaults already filled in. Because Boilerplate powers the rendering, you get the same Go template syntax and helper functions you're already familiar with.
+
+### Custom scaffold templates
+
+You can provide your own Boilerplate templates to customize what `scaffold` generates. This lets your team enforce conventions like default tags, required provider versions, or standard backend config. Point Terragrunt at a directory containing a `boilerplate.yml` and your template files, and `scaffold` will use those instead of the built-in defaults.
+
+## Catalog
+
+The `terragrunt catalog` command launches an interactive terminal or web UI that lets you browse a collection of OpenTofu/Terraform modules. When you select a module from the catalog, Terragrunt calls `scaffold` behind the scenes, which in turn uses Boilerplate to generate the configuration.
+
+The workflow looks like this:
+
+1. Run `terragrunt catalog` to browse available modules
+2. Select a module from the list
+3. Terragrunt scaffolds the configuration using Boilerplate
+4. You get a fully rendered `terragrunt.hcl` ready to customize and apply
+
+This makes it easy for teams to maintain a curated library of approved modules and let developers self-serve without manually wiring up configurations.
+
+## Learn More
+
+- [Terragrunt documentation](https://terragrunt.gruntwork.io)
+- [Terragrunt GitHub repository](https://github.com/gruntwork-io/terragrunt)
