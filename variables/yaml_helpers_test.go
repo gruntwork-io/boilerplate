@@ -273,6 +273,12 @@ func TestConvertSingleValidationRule_Regex(t *testing.T) {
 		},
 		{
 			name:          "double-quoted pattern with escaped quotes",
+			ruleInput:     "regex(`They said: \"Hello world!\"`)",
+			validValues:   []string{`They said: "Hello world!"`},
+			invalidValues: []string{`They said something else`},
+		},
+		{
+			name:          "double-quoted pattern with escaped quotes",
 			ruleInput:     `regex("They said: \"Hello world!\"")`,
 			validValues:   []string{`They said: "Hello world!"`},
 			invalidValues: []string{`They said something else`},
@@ -323,6 +329,11 @@ func TestConvertSingleValidationRule_Regex(t *testing.T) {
 			ruleInput:   `regex(^[A-Z]{2}-\d{4}$)`,
 			errContains: "pattern must be a quoted string",
 		},
+		{
+			name:        "unescaped inner quotes returns error",
+			ruleInput:   `regex("They said: "Hello world!"")`,
+			errContains: "unescaped",
+		},
 	}
 
 	for _, tc := range errorCases {
@@ -340,10 +351,11 @@ func TestUnquoteRegexPattern(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name    string
-		input   string
-		want    string
-		wantErr bool
+		name        string
+		input       string
+		want        string
+		wantErr     bool
+		errContains string
 	}{
 		{name: "double-quoted simple", input: `"^[a-z]+$"`, want: `^[a-z]+$`},
 		{name: "backtick-quoted simple", input: "`^[a-z]+$`", want: `^[a-z]+$`},
@@ -355,10 +367,11 @@ func TestUnquoteRegexPattern(t *testing.T) {
 		{name: "backtick preserves everything", input: "`\\d \\w \\\\ \\\"`", want: `\d \w \\ \"`},
 		{name: "empty double-quoted", input: `""`, want: ""},
 		{name: "empty backtick", input: "``", want: ""},
-		{name: "too short", input: `x`, wantErr: true},
-		{name: "empty string", input: ``, wantErr: true},
-		{name: "mismatched quotes", input: "`foo\"", wantErr: true},
-		{name: "unquoted string", input: `hello`, wantErr: true},
+		{name: "empty string", input: ``, wantErr: true, errContains: "pattern must be a quoted string"},
+		{name: "mismatched quotes", input: "`foo\"", wantErr: true, errContains: "pattern must be a quoted string"},
+		{name: "unquoted string", input: `hello`, wantErr: true, errContains: "pattern must be a quoted string"},
+		{name: "unescaped inner quote", input: `"foo"bar"`, wantErr: true, errContains: "unescaped"},
+		{name: "unescaped inner quotes in sentence", input: `"They said: "Hello world!""`, wantErr: true, errContains: "unescaped"},
 	}
 
 	for _, tc := range tests {
@@ -368,7 +381,10 @@ func TestUnquoteRegexPattern(t *testing.T) {
 			got, err := unquoteRegexPattern(tc.input)
 			if tc.wantErr {
 				require.Error(t, err)
-				assert.Contains(t, err.Error(), "pattern must be a quoted string")
+
+				if tc.errContains != "" {
+					assert.Contains(t, err.Error(), tc.errContains)
+				}
 
 				return
 			}

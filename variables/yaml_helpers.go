@@ -344,6 +344,11 @@ func unquoteRegexPattern(quoted string) (string, error) {
 				}
 			}
 
+			if raw[i] == '"' {
+				return "", fmt.Errorf(
+					"unescaped \" in regex pattern; use \\\" to include a literal quote, or use backtick quoting: regex(`pattern`)")
+			}
+
 			buf.WriteByte(raw[i])
 		}
 
