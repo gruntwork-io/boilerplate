@@ -44,7 +44,10 @@ func TestExamplesShell(t *testing.T) {
 					t.Run(fmt.Sprintf("%s-missing-key-%s", example, string(missingKeyAction)), func(t *testing.T) {
 						t.Parallel()
 
-						testExample(t, templateFolder, outputFolder, varFile, expectedOutputFolder, string(missingKeyAction))
+						// Each sub-test needs its own output folder to avoid races when
+						// parallel sub-tests write hook output files to the same directory.
+						actionOutputFolder := path.Join(outputFolder, string(missingKeyAction))
+						testExample(t, templateFolder, actionOutputFolder, varFile, expectedOutputFolder, string(missingKeyAction))
 					})
 				}
 			})
