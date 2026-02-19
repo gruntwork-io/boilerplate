@@ -28,4 +28,14 @@ fmt:
 	@echo "Running source files through gofmt..."
 	gofmt -w $(GOFMT_FILES)
 
-.PHONY: lint test default update-lint-config
+build-wasm:
+	GOOS=js GOARCH=wasm go build -o examples/wasm/boilerplate.wasm -ldflags "-s -w" ./cmd/wasm/
+
+copy-wasm-exec:
+	cp "$$(go env GOROOT)/lib/wasm/wasm_exec.js" examples/wasm/
+
+wasm: build-wasm copy-wasm-exec
+	@echo "WASM build complete:"
+	@ls -lh examples/wasm/boilerplate.wasm
+
+.PHONY: lint test default update-lint-config build-wasm copy-wasm-exec wasm

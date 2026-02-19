@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boilerplate WASM Demo</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: system-ui, -apple-system, sans-serif; max-width: 900px; margin: 0 auto; padding: 2rem; background: #f5f5f5; }
+        h1 { margin-bottom: 0.5rem; }
+        p.subtitle { color: #666; margin-bottom: 1.5rem; }
+        label { display: block; font-weight: 600; margin-bottom: 0.25rem; }
+        textarea { width: 100%; font-family: monospace; font-size: 14px; padding: 0.75rem; border: 1px solid #ccc; border-radius: 4px; resize: vertical; }
+        .field { margin-bottom: 1rem; }
+        button { background: #2563eb; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 4px; font-size: 1rem; cursor: pointer; }
+        button:hover { background: #1d4ed8; }
+        button:disabled { background: #94a3b8; cursor: not-allowed; }
+        #output { background: white; border: 1px solid #ccc; border-radius: 4px; padding: 0.75rem; min-height: 60px; font-family: monospace; white-space: pre-wrap; word-break: break-word; }
+        #output.error { color: #dc2626; border-color: #dc2626; }
+        #status { margin-bottom: 1rem; color: #666; }
+    </style>
+</head>
+<body>
+    <h1>Boilerplate WASM Demo</h1>
+    <p class="subtitle">Render Go templates in the browser using boilerplate compiled to WebAssembly.</p>
+
+    <div id="status">Loading WASM...</div>
+
+    <div class="field">
+        <label for="template">Template</label>
+        <textarea id="template" rows="8">Hello, {{ .Name | upper }}!
+
+Items:
+{{ range .Items }}- {{ . }}
+{{ end }}
+Written by {{ .Author }}.</textarea>
+    </div>
+
+    <div class="field">
+        <label for="vars">Variables (JSON)</label>
+        <textarea id="vars" rows="6">{
+  "Name": "world",
+  "Items": ["alpha", "bravo", "charlie"],
+  "Author": "boilerplate"
+}</textarea>
+    </div>
+
+    <button id="render" disabled>Render</button>
+
+    <div class="field" style="margin-top: 1rem;">
+        <label>Output</label>
+        <div id="output"></div>
+    </div>
+
+    <script src="wasm_exec.js"></script>
+    <script>
+        const go = new Go();
+
+        WebAssembly.instantiateStreaming(fetch("boilerplate.wasm"), go.importObject).then(result => {
+            go.run(result.instance);
+            document.getElementById("status").textContent = "WASM loaded. Ready to render.";
+            document.getElementById("render").disabled = false;
+        }).catch(err => {
+            document.getElementById("status").textContent = "Failed to load WASM: " + err;
+        });
+
+        document.getElementById("render").addEventListener("click", () => {
+            const templateStr = document.getElementById("template").value;
+            const varsStr = document.getElementById("vars").value;
+            const outputEl = document.getElementById("output");
+
+            const result = boilerplateRenderTemplate(templateStr, varsStr);
+
+            if (result instanceof Error) {
+                outputEl.textContent = result.message;
+                outputEl.classList.add("error");
+            } else {
+                outputEl.textContent = result;
+                outputEl.classList.remove("error");
+            }
+        });
+    </script>
+</body>
+</html>

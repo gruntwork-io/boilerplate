@@ -65,3 +65,27 @@ jobs:
         with:
           name: boilerplate_${{ matrix.os }}_${{ matrix.arch }}
           path: bin/boilerplate_${{ matrix.os }}_${{ matrix.arch }}*
+
+  build-wasm:
+    name: Build (js/wasm)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Use mise to install dependencies
+        uses: jdx/mise-action@v3
+        with:
+          version: 2025.8.16
+          experimental: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build WASM
+        run: GOOS=js GOARCH=wasm go build -o boilerplate.wasm -ldflags "-s -w" ./cmd/wasm/
+
+      - name: Upload WASM Artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: boilerplate_js_wasm
+          path: boilerplate.wasm
