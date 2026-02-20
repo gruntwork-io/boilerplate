@@ -1,5 +1,6 @@
 //go:build !(js && wasm)
 
+// Package shell provides helpers for executing external commands.
 package shell
 
 import (

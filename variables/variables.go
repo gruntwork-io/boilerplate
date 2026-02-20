@@ -8,6 +8,8 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/gruntwork-io/boilerplate/internal/validation"
 )
 
 // Variable represents an interface for a variable defined in a boilerplate.yml config file
@@ -56,7 +58,7 @@ type Variable interface {
 	MarshalYAML() (any, error)
 
 	// Validations that should be run on the variable
-	Validations() []CustomValidationRule
+	Validations() []validation.CustomValidationRule
 }
 
 // A private implementation of the Variable interface that forces all users to use our public constructors
@@ -67,7 +69,7 @@ type defaultVariable struct {
 	reference    string
 	variableType BoilerplateType
 	options      []string
-	validations  []CustomValidationRule
+	validations  []validation.CustomValidationRule
 	order        int
 }
 
@@ -165,7 +167,7 @@ func (variable *defaultVariable) Options() []string {
 	return variable.options
 }
 
-func (variable *defaultVariable) Validations() []CustomValidationRule {
+func (variable *defaultVariable) Validations() []validation.CustomValidationRule {
 	return variable.validations
 }
 
@@ -550,7 +552,7 @@ func UnmarshalVariableFromBoilerplateConfigYaml(fields map[string]any) (Variable
 
 	variable.options = options
 
-	validationRules, err := unmarshalValidationsField(fields)
+	validationRules, err := validation.UnmarshalValidationsField(fields)
 	if err != nil {
 		return nil, err
 	}

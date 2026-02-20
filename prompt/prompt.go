@@ -1,3 +1,4 @@
+// Package prompt provides interactive user prompting.
 package prompt
 
 // UserResponse represents the user's response to a yes/no/all prompt

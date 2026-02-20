@@ -7,7 +7,6 @@ require (
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/gabriel-vasile/mimetype v1.4.12
 	github.com/go-ozzo/ozzo-validation v3.6.0+incompatible
-	github.com/google/go-cmp v0.7.0
 	github.com/google/go-jsonnet v0.21.0
 	github.com/gruntwork-io/terratest v0.47.2
 	github.com/hashicorp/go-getter v1.8.4

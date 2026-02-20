@@ -1,3 +1,4 @@
+// Package color provides lightweight ANSI terminal color helpers.
 package color
 
 const (
