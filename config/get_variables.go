@@ -11,12 +11,12 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/terminal"
 	validation "github.com/go-ozzo/ozzo-validation"
+	"github.com/gruntwork-io/boilerplate/internal/color"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/render"
 	"github.com/gruntwork-io/boilerplate/util"
 	"github.com/gruntwork-io/boilerplate/variables"
 	"github.com/hashicorp/go-multierror"
-	"github.com/pterm/pterm"
 )
 
 const MaxReferenceDepth = 20
@@ -294,7 +294,7 @@ func getUserInput(variable variables.Variable) (string, error) {
 
 			msg := fmt.Sprintf("Variable %s of type '%s' does not support manual input and has no default value.\n"+
 				"Please update the variable in the boilerplate.yml file to include a default value or provide a value via the command line using the --var option.",
-				pterm.Green(variable.FullName()), variable.Type())
+				color.Green(variable.FullName()), variable.Type())
 			log.Fatal(msg)
 		}
 	}
@@ -343,22 +343,22 @@ func validateUserInput(value string, variable variables.Variable) (map[string]bo
 // RenderValidationErrors displays in user-legible format the exact validation errors
 // that the user's last submission generated
 func renderValidationErrors(val any, m map[string]bool) {
-	pterm.Warning.WithPrefix(pterm.Prefix{Text: "Invalid entry"}).Println(val)
+	fmt.Printf("%s %v\n", color.Yellow("WARNING: Invalid entry:"), val)
 
 	for k, v := range m {
 		if v {
-			pterm.Success.Println(k)
+			fmt.Printf("  %s %s\n", color.Green("PASS"), k)
 		} else {
-			pterm.Error.Println(k)
+			fmt.Printf("  %s %s\n", color.Red("FAIL"), k)
 		}
 	}
 }
 
 func renderVariablePrompts(variable variables.Variable, invalidEntries variables.InvalidEntries) {
-	pterm.Println(pterm.Green(variable.FullName()))
+	fmt.Println(color.Green(variable.FullName()))
 
 	if variable.Description() != "" {
-		pterm.Println(pterm.Yellow(variable.Description()))
+		fmt.Println(color.Yellow(variable.Description()))
 	}
 
 	if len(invalidEntries.Issues) > 0 {

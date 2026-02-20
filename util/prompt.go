@@ -2,14 +2,12 @@ package util
 
 import (
 	"bufio"
+	"fmt"
 	"os"
 	"strings"
 
-	"github.com/fatih/color"
-	"github.com/inancgumus/screen"
+	"github.com/gruntwork-io/boilerplate/internal/color"
 )
-
-var brightGreen = color.New(color.FgHiGreen, color.Bold)
 
 // UserResponse represents the user's response to a yes/no/all prompt
 type UserResponse string
@@ -22,9 +20,7 @@ const (
 
 // PromptUserForInput prompts the user for text in the CLI. Returns the text entered by the user.
 func PromptUserForInput(prompt string) (string, error) {
-	if _, err := brightGreen.Print(prompt + ": "); err != nil {
-		return "", err
-	}
+	fmt.Print(color.BoldGreen(prompt + ": "))
 
 	reader := bufio.NewReader(os.Stdin)
 
@@ -67,9 +63,4 @@ func PromptUserForYesNoAll(prompt string) (UserResponse, error) {
 	default:
 		return UserResponseNo, nil
 	}
-}
-
-// ClearTerminal clears the terminal screen in a cross-platform compatible manner
-func ClearTerminal() {
-	screen.Clear()
 }
