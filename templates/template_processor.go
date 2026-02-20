@@ -12,7 +12,9 @@ import (
 
 	"github.com/gruntwork-io/boilerplate/config"
 	"github.com/gruntwork-io/boilerplate/getterhelper"
+	"github.com/gruntwork-io/boilerplate/internal/fileutil"
 	"github.com/gruntwork-io/boilerplate/internal/logging"
+	"github.com/gruntwork-io/boilerplate/internal/shell"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/prompt"
 	"github.com/gruntwork-io/boilerplate/render"
@@ -376,7 +378,7 @@ func processHook(ctx context.Context, hook *variables.Hook, opts *options.Boiler
 		workingDir = renderedWd
 	}
 
-	return util.RunShellCommandWithContext(ctx, workingDir, envVars, cmd, args...)
+	return shell.RunShellCommandWithContext(ctx, workingDir, envVars, cmd, args...)
 }
 
 // Return true if the "skip" condition of this hook evaluates to true
@@ -715,7 +717,7 @@ func processTemplateFolder(
 		case shouldSkipPath(path, opts, processedSkipFiles):
 			logging.Logger.Printf("Skipping %s", path)
 			return nil
-		case util.IsDir(path):
+		case fileutil.IsDir(path):
 			return createOutputDir(ctx, path, opts, variables)
 		default:
 			engine := determineTemplateEngine(processedEngines, path)
@@ -734,7 +736,7 @@ func processFile(
 	partials []string,
 	engine variables.TemplateEngineType,
 ) error {
-	isText, err := util.IsTextFile(path)
+	isText, err := fileutil.IsTextFile(path)
 	if err != nil {
 		return err
 	}
@@ -801,7 +803,7 @@ func copyFile(ctx context.Context, file string, opts *options.BoilerplateOptions
 
 	logging.Logger.Printf("Copying %s to %s", file, destination)
 
-	return util.CopyFile(file, destination)
+	return fileutil.CopyFile(file, destination)
 }
 
 // processTemplate runs the template at templatePath, which is in templateFolder, through the Go template engine with the given
@@ -836,7 +838,7 @@ func processTemplate(
 		destination = strings.TrimSuffix(destination, ".jsonnet")
 	}
 
-	return util.WriteFileWithSamePermissions(templatePath, destination, []byte(out))
+	return fileutil.WriteFileWithSamePermissions(templatePath, destination, []byte(out))
 }
 
 // Return true if this is a path that should not be copied

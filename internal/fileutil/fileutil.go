@@ -1,16 +1,10 @@
-package util
+package fileutil
 
 import (
-	"context"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
-
-	"github.com/gabriel-vasile/mimetype"
 )
-
-const textMimeType = "text/plain"
 
 // PathExists returns true if the path exists
 func PathExists(path string) bool {
@@ -22,58 +16,6 @@ func PathExists(path string) bool {
 func IsDir(path string) bool {
 	fileInfo, err := os.Stat(path)
 	return err == nil && fileInfo.IsDir()
-}
-
-// IsTextFile - usage of mimetype library to identify if the file is binary or text.
-func IsTextFile(path string) (bool, error) {
-	if !PathExists(path) {
-		return false, NoSuchFile(path)
-	}
-	// consider empty file as binary file
-	fileInfo, err := os.Stat(path)
-	if err != nil {
-		return false, err
-	}
-
-	if fileInfo.Size() == 0 {
-		return false, nil
-	}
-
-	detectedMIME, err := mimetype.DetectFile(path)
-	if err != nil {
-		return false, err
-	}
-
-	for mtype := detectedMIME; mtype != nil; mtype = mtype.Parent() {
-		if mtype.Is(textMimeType) {
-			return true, nil
-		}
-	}
-
-	return false, nil
-}
-
-// CommandInstalled returns true if the OS has the given command installed
-func CommandInstalled(command string) bool {
-	_, err := exec.LookPath(command)
-	return err == nil
-}
-
-// RunCommandAndGetOutput runs the given command and returns its stdout and stderr as a string
-func RunCommandAndGetOutput(command string, args ...string) (string, error) {
-	return RunCommandAndGetOutputWithContext(context.Background(), command, args...)
-}
-
-// RunCommandAndGetOutputWithContext runs the given command and returns its stdout and stderr as a string
-func RunCommandAndGetOutputWithContext(ctx context.Context, command string, args ...string) (string, error) {
-	cmd := exec.CommandContext(ctx, command, args...)
-
-	bytes, err := cmd.Output()
-	if err != nil {
-		return "", err
-	}
-
-	return string(bytes), nil
 }
 
 // CopyFile copies a file from source to destination

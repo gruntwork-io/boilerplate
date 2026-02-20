@@ -20,10 +20,11 @@ import (
 
 	"github.com/Masterminds/sprig/v3"
 
+	"github.com/gruntwork-io/boilerplate/internal/fileutil"
 	"github.com/gruntwork-io/boilerplate/internal/logging"
+	shellcmd "github.com/gruntwork-io/boilerplate/internal/shell"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/prompt"
-	"github.com/gruntwork-io/boilerplate/util"
 	"github.com/gruntwork-io/boilerplate/variables"
 	"gopkg.in/yaml.v2"
 
@@ -96,7 +97,7 @@ func CreateTemplateHelpers(ctx context.Context, templatePath string, opts *optio
 		"snippet":    wrapWithTemplatePath(ctx, templatePath, opts, snippet),
 		"include":    wrapIncludeWithTemplatePath(ctx, templatePath, opts),
 		"shell":      wrapWithTemplatePath(ctx, templatePath, opts, shell),
-		"pathExists": util.PathExists,
+		"pathExists": fileutil.PathExists,
 
 		"templateIsDefined": wrapIsDefinedWithTemplate(tmpl),
 
@@ -272,7 +273,7 @@ func PathRelativeToTemplate(templatePath string, filePath string) string {
 	switch {
 	case path.IsAbs(filePath):
 		return filePath
-	case util.IsDir(templatePath):
+	case fileutil.IsDir(templatePath):
 		return filepath.Join(templatePath, filePath)
 	default:
 		templateDir := filepath.Dir(templatePath)
@@ -688,7 +689,7 @@ func shell(ctx context.Context, templatePath string, opts *options.BoilerplateOp
 
 		logging.Logger.Printf("Executing shell command (non-interactive mode)")
 
-		return util.RunShellCommandAndGetOutputWithContext(ctx, workingDir, envVars, args...)
+		return shellcmd.RunShellCommandAndGetOutputWithContext(ctx, workingDir, envVars, args...)
 	}
 
 	// Check previous confirmation
@@ -700,7 +701,7 @@ func shell(ctx context.Context, templatePath string, opts *options.BoilerplateOp
 
 		logging.Logger.Printf("Executing shell command (%s)", "previously confirmed or all confirmed")
 
-		return util.RunShellCommandAndGetOutputWithContext(ctx, workingDir, envVars, args...)
+		return shellcmd.RunShellCommandAndGetOutputWithContext(ctx, workingDir, envVars, args...)
 	}
 
 	// Handle user confirmation
@@ -729,7 +730,7 @@ func shell(ctx context.Context, templatePath string, opts *options.BoilerplateOp
 		return shellDisabledPlaceholder, nil
 	}
 
-	return util.RunShellCommandAndGetOutputWithContext(ctx, workingDir, envVars, args...)
+	return shellcmd.RunShellCommandAndGetOutputWithContext(ctx, workingDir, envVars, args...)
 }
 
 // To pass env vars to the shell helper, we use the format ENV:KEY=VALUE. This method goes through the given list of

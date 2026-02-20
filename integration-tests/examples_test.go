@@ -12,8 +12,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/gruntwork-io/boilerplate/cli"
+	"github.com/gruntwork-io/boilerplate/internal/fileutil"
 	"github.com/gruntwork-io/boilerplate/options"
-	"github.com/gruntwork-io/boilerplate/util"
 )
 
 // Our integration tests run through all the examples in the /examples/for-learning-and-testing folder, generate them,
@@ -48,7 +48,7 @@ func TestExamples(t *testing.T) {
 			varFile := path.Join(examplesVarFilesBasePath, example.Name(), "vars.yml")
 			expectedOutputFolder := path.Join(examplesExpectedOutputBasePath, example.Name())
 
-			if !util.PathExists(varFile) || !util.PathExists(expectedOutputFolder) {
+			if !fileutil.PathExists(varFile) || !fileutil.PathExists(expectedOutputFolder) {
 				t.Logf("Skipping example %s because either the var file (%s) or expected output folder (%s) does not exist.", templateFolder, varFile, expectedOutputFolder)
 				return
 			}

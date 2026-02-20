@@ -1,4 +1,6 @@
-package util
+//go:build !(js && wasm)
+
+package shell
 
 import (
 	"context"

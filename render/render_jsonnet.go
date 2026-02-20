@@ -1,3 +1,5 @@
+//go:build !(js && wasm)
+
 // Package render provides functionality for rendering templates and processing various file formats.
 package render
 

@@ -12,6 +12,7 @@ import (
 	goversion "github.com/hashicorp/go-version"
 	"gopkg.in/yaml.v2"
 
+	"github.com/gruntwork-io/boilerplate/internal/fileutil"
 	"github.com/gruntwork-io/boilerplate/internal/logging"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/util"
@@ -195,7 +196,7 @@ func LoadBoilerplateConfig(opts *options.BoilerplateOptions) (*BoilerplateConfig
 	configPath := BoilerplateConfigPath(opts.TemplateFolder)
 
 	switch {
-	case util.PathExists(configPath):
+	case fileutil.PathExists(configPath):
 		logging.Logger.Printf("Loading boilerplate config from %s", configPath)
 
 		bytes, err := os.ReadFile(configPath)
