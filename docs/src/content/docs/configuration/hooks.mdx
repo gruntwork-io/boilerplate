@@ -1,0 +1,89 @@
+---
+title: Hooks
+sidebar:
+  order: 4
+description: Run shell commands before and after template rendering.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Hooks let you execute shell commands before and/or after Boilerplate renders your template files. This is useful for
+running formatters, validators, installers, or any other setup/teardown tasks.
+
+## Defining Hooks
+
+```yaml
+hooks:
+  before:
+    - command: echo
+      args: ["Setting up..."]
+
+  after:
+    - command: terraform
+      args: ["fmt", "-recursive"]
+```
+
+### Hook Fields
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `command` | Yes | The command to execute |
+| `args` | No | List of arguments passed to the command |
+| `env` | No | Map of environment variables to set |
+| `dir` | No | Working directory for the command |
+| `skip` | No | Go template expression — if `true`, the hook is skipped |
+
+## Variable Interpolation
+
+Hook arguments and environment variables support Go template syntax:
+
+```yaml
+hooks:
+  after:
+    - command: ./setup.sh
+      args:
+        - "{{ .ProjectName }}"
+        - "{{ .Environment }}"
+      env:
+        APP_NAME: "{{ .ProjectName }}"
+        DB_HOST: "{{ .DatabaseHost }}"
+```
+
+## Conditional Hooks
+
+Use the `skip` field to conditionally skip a hook:
+
+```yaml
+hooks:
+  after:
+    - command: docker
+      args: ["build", "-t", "{{ .ProjectName }}", "."]
+      skip: "{{ not .IncludeDocker }}"
+```
+
+## Working Directory
+
+By default, hooks run in the output folder. Use `dir` to specify a different working directory:
+
+```yaml
+hooks:
+  after:
+    - command: npm
+      args: ["install"]
+      dir: "{{ outputFolder }}/frontend"
+```
+
+## Security
+
+In interactive mode, Boilerplate prompts for confirmation before running each hook, showing the full command and
+arguments. The user can respond with:
+
+| Response | Behavior |
+|----------|----------|
+| `y` | Run this hook |
+| `a` | Run this and all subsequent hooks without prompting |
+| `n` | Skip this hook |
+
+<Aside type="tip">
+Use `--non-interactive` to auto-approve all hooks, or `--no-hooks` to skip all hooks entirely.
+</Aside>

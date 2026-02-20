@@ -1,0 +1,187 @@
+---
+title: Helper Functions
+sidebar:
+  order: 2
+description: Built-in and Sprig template helper functions.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Boilerplate provides a rich set of helper functions available in all template files. Helper functions transform values using the pipe (`|`) operator.
+
+## Quick Example
+
+Given a variable `ProjectName` with the value `"My Cool App"`:
+
+```text
+{{ .ProjectName | lower }}          → my cool app
+{{ .ProjectName | snakecase }}      → my_cool_app
+{{ .ProjectName | kebabcase }}      → my-cool-app
+{{ .ProjectName | dasherize }}      → my-cool-app
+{{ .ProjectName | camelcase }}      → MyCoolApp
+{{ .ProjectName | camelCaseLower }} → myCoolApp
+```
+
+You can also chain multiple helpers together:
+
+```text
+{{ .ProjectName | lower | replace " " "-" }} → my-cool-app
+```
+
+## String Functions
+
+### Boilerplate built-in
+
+| Function | Description | Example |
+|----------|-------------|---------|
+| `dasherize` | Convert to dash-separated lowercase | `{{ "Foo Bar" \| dasherize }}` → `foo-bar` |
+| `camelCaseLower` | Lower camelCase | `{{ "foo-bar" \| camelCaseLower }}` → `fooBar` |
+| `replaceOne` | Replace first occurrence | `{{ "aab" \| replaceOne "a" "b" }}` → `bab` |
+
+### Sprig string functions
+
+All [Sprig v3](https://masterminds.github.io/sprig/) string functions are available:
+
+| Function | Description |
+|----------|-------------|
+| `lower` | Lowercase |
+| `upper` | Uppercase |
+| `title` | Title Case |
+| `trim` | Remove leading/trailing whitespace |
+| `trimPrefix` | Remove prefix |
+| `trimSuffix` | Remove suffix |
+| `replace` | Replace all occurrences |
+| `contains` | Check if string contains substring |
+| `hasPrefix` | Check if string starts with prefix |
+| `hasSuffix` | Check if string ends with suffix |
+| `snakecase` | Convert to snake_case |
+| `camelcase` | Convert to CamelCase |
+| `kebabcase` | Convert to kebab-case |
+| `quote` | Wrap in double quotes |
+| `indent` | Indent each line |
+| `nindent` | Indent with leading newline |
+
+<Aside type="note">
+The older aliases `downcase`, `upcase`, `capitalize`, and `snakeCase` still work but are deprecated. Use `lower`, `upper`, `title`, and `snakecase` instead.
+</Aside>
+
+## Math Functions
+
+| Function | Description | Example |
+|----------|-------------|---------|
+| `plus` | Addition | `{{ plus 2 3 }}` → `5` |
+| `minus` | Subtraction | `{{ minus 10 3 }}` → `7` |
+| `times` | Multiplication | `{{ times 4 5 }}` → `20` |
+| `divide` | Division | `{{ divide 10 3 }}` → `3.333...` |
+| `roundInt` | Round to integer | `{{ roundInt 3.7 }}` → `4` |
+| `ceilInt` | Ceiling integer | `{{ ceilInt 3.2 }}` → `4` |
+| `floorInt` | Floor integer | `{{ floorInt 3.8 }}` → `3` |
+| `numRange` | Generate number list | `{{ numRange 1 5 1 }}` → `[1 2 3 4]` |
+
+## Collection Functions
+
+| Function | Description |
+|----------|-------------|
+| `keysSorted` | Return sorted keys of a map |
+| `toYaml` | Convert value to YAML string |
+| `fromYaml` | Parse YAML string into a value |
+
+## File & Shell Functions
+
+| Function | Description |
+|----------|-------------|
+| `snippet` | Extract file contents, optionally by named marker |
+| `include` | Include and render another template file |
+| `pathExists` | Check if a file path exists |
+| `shell` | Execute a shell command and capture output |
+
+### `snippet`
+
+Include the contents of a file, optionally extracting a named section:
+
+```text
+{{ snippet "../src/handler.go" }}
+```
+
+With named sections (delimited by `boilerplate-snippet: <name>` comments in the source file):
+
+```text
+{{ snippet "../src/handler.go" "main-handler" }}
+```
+
+### `include`
+
+Include and render another template file with the current variables:
+
+```text
+{{ include "../shared/header.html" . }}
+```
+
+### `shell`
+
+Run a shell command and insert its output. This is useful for dynamically fetching values at render time — for example, looking up an AWS account ID, reading a secret, or grabbing the current git commit — and interpolating the result directly into your generated files.
+
+```text
+Git SHA: {{ shell "git" "rev-parse" "HEAD" }}
+```
+
+More examples:
+
+```text
+AWS Account ID: {{ shell "aws" "sts" "get-caller-identity" "--query" "Account" "--output" "text" }}
+
+Current date: {{ shell "date" "+%Y-%m-%d" }}
+
+Resolved IP: {{ shell "dig" "+short" "example.com" }}
+```
+
+<Aside type="tip">
+Each argument to `shell` is a separate string, just like `exec.Command` in Go. So `shell "git" "rev-parse" "HEAD"` is correct, not `shell "git rev-parse HEAD"`.
+</Aside>
+
+<Aside type="caution">
+The `shell` helper can be disabled with `--no-shell`, in which case it returns the string `"replace-me"`.
+</Aside>
+
+## Context Functions
+
+| Function | Description |
+|----------|-------------|
+| `templateFolder` | Absolute path to the template directory |
+| `templateUrl` | The template URL as provided |
+| `outputFolder` | Absolute path to the output directory |
+| `vars` | Return all variables as a map |
+| `templateIsDefined` | Check if a named partial/template is defined |
+| `envWithDefault` | Get an environment variable with a fallback value |
+| `relPath` | Create a relative path from two absolute paths |
+
+### Examples
+
+```text
+Template is at: {{ templateFolder }}
+Output goes to: {{ outputFolder }}
+Git branch: {{ envWithDefault "BRANCH" "main" }}
+```
+
+## Deprecated Helpers
+
+These older function names still work for backwards compatibility but should be replaced with their modern equivalents:
+
+| Deprecated | Use Instead |
+|-----------|-------------|
+| `downcase` | `lower` (Sprig) |
+| `upcase` | `upper` (Sprig) |
+| `capitalize` | `title` (Sprig) |
+| `snakeCase` | `snakecase` (Sprig) |
+| `camelCase` | `camelcase` (Sprig) |
+| `round` | `roundInt` |
+| `ceil` | `ceilInt` |
+| `floor` | `floorInt` |
+| `env` | `envWithDefault` |
+| `keys` | `keysSorted` |
+| `replace` | `replaceOne` or Sprig's `replace` |
+| `slice` | Sprig's `list` |
+
+<Aside type="note">
+The deprecated `round`, `ceil`, `floor`, `env`, `keys`, `replace`, and `slice` functions have different behavior than the Sprig functions with the same names. The Boilerplate-specific versions (e.g., `roundInt`, `keysSorted`) were created to avoid these conflicts.
+</Aside>

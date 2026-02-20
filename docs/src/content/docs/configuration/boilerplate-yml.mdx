@@ -1,0 +1,105 @@
+---
+title: boilerplate.yml
+sidebar:
+  order: 1
+description: Complete reference for the boilerplate.yml configuration file.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+The `boilerplate.yml` file is the configuration file at the root of every Boilerplate template. It defines variables,
+dependencies, hooks, skip rules, partials, and engine overrides.
+
+## Top-Level Structure
+
+```yaml
+required_version: ">= 0.5.0"     # Optional version constraint
+
+variables:
+  - name: MyVar
+    # ... variable definition
+
+dependencies:
+  - name: my-dep
+    # ... dependency definition
+
+hooks:
+  before:
+    - command: echo
+      args: ["Starting..."]
+  after:
+    - command: echo
+      args: ["Done!"]
+
+partials:
+  - ../partials/*.html
+
+skip_files:
+  - path: "*.test.go"
+    if: "{{ not .IncludeTests }}"
+
+engines:
+  - path: "**/*.jsonnet"
+    template_engine: jsonnet
+```
+
+## Sections
+
+### `required_version`
+
+An optional version constraint (Terraform-style) that ensures the user is running a compatible version of Boilerplate:
+
+```yaml
+required_version: ">= 0.5.0, < 1.0.0"
+```
+
+### `variables`
+
+A list of variable definitions. See the [Variables](/configuration/variables/) page for the full reference.
+
+### `dependencies`
+
+A list of child templates to process. See the [Dependencies](/configuration/dependencies/) page for full details.
+
+### `hooks`
+
+Shell commands to run before (`before`) or after (`after`) template rendering. See [Hooks](/configuration/hooks/).
+
+### `partials`
+
+A list of glob patterns for external template files that can be included via Go's `{{ "{{" }} template "name" . {{ "}}" }}` syntax:
+
+```yaml
+partials:
+  - ../../partials/*.html
+  - ../shared/footer.html
+```
+
+Partials are defined in external files using `{{ "{{" }} define "name" {{ "}}" }}...{{ "{{" }} end {{ "}}" }}` and can be reused across multiple template files.
+
+### `skip_files`
+
+Rules for excluding files from the output. See [Skip Files](/configuration/skip-files/).
+
+### `engines`
+
+Override the template engine for specific files. Currently supports `jsonnet` as an alternative to the default Go template engine:
+
+```yaml
+engines:
+  - path: "**/*.jsonnet"
+    template_engine: jsonnet
+```
+
+<Aside type="note">
+When using the Jsonnet engine, the `.jsonnet` extension is automatically stripped from output filenames. So `config.json.jsonnet` becomes `config.json`.
+</Aside>
+
+## Missing Config Behavior
+
+If a template directory doesn't contain a `boilerplate.yml`, Boilerplate's behavior depends on the `--missing-config-action` flag:
+
+| Value | Behavior |
+|-------|----------|
+| `exit` (default) | Exit with an error |
+| `ignore` | Log a warning and process files without variable substitution |

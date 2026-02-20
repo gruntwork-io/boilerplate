@@ -1,0 +1,9 @@
+repos:
+  - repo: local
+    hooks:
+      - id: docs-spellcheck
+        name: Spellcheck docs
+        entry: bash -c 'cd docs && bun install && bun run spellcheck'
+        language: system
+        files: ^docs/src/content/.*\.(md|mdx)$
+        pass_filenames: false

@@ -1,0 +1,131 @@
+---
+title: Use Cases
+sidebar:
+  order: 4
+description: Common use cases for Boilerplate.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+## Project Scaffolding
+
+The most common use case is generating entire project structures from templates.
+
+For example, you may have an opinionated way to spin up a new Next.js app that includes a Go backend, CI/CD config, Dockerfile, OpenTofu modules, and Kubernetes manifests. You can declare a set of boilerplate variables to customize your template as needed.
+
+```yaml
+variables:
+  - name: ServiceName
+    type: string
+  - name: Port
+    type: int
+    default: 8080
+  - name: Environment
+    type: enum
+    options: [dev, staging, production]
+```
+
+## Infrastructure-as-Code Generation
+
+Generate custom OpenTofu, Terraform, or CloudFormation files based on a set of variables you specify.
+
+<Aside type="tip">
+To build interactive web UIs that can generate infrastructure-as-code based on simple markdown files, check out our open source tool [Gruntwork Runbooks](https://runbooks.gruntwork.io/).
+</Aside>
+
+For example, perhaps each time you deploy a new customer, you need to create slightly different OpenTofu files. Instead of creating complex OpenTofu files that can dynamically swap the customer name and preferences, use Boilerplate to gather the variable values, and generate a _unique_ set of OpenTofu files. 
+
+
+```yaml
+variables:
+  - name: CustomName
+    type: string
+  - name: AwsRegion
+    type: enum
+    options: [us-west-2, us-east-1, eu-west-1]
+
+```
+
+You might also use [dependencies](/configuration/dependencies/) to compose modules from smaller templates. 
+
+```yaml
+dependencies:
+  - name: networking
+    template-url: ../tofu-modules/networking
+    output-folder: ./tofu/networking
+    variables:
+      - name: VpcCidr
+        default: "10.0.0.0/16"
+
+  - name: database
+    template-url: ../tofu-modules/database
+    output-folder: ./tofu/database
+    variables:
+      - name: InstanceClass
+        default: "db.t3.medium"
+
+```
+
+And you might use [hooks](/configuration/hooks/) to run `tofu fmt` after generation.
+
+```yaml
+hooks:
+  after:
+    - command: tofu
+      args: ["fmt", "-recursive"]
+```
+
+## Documentation with Live Code Snippets
+
+Use the `snippet` helper to embed code from your actual source files into documentation. When the source code changes,
+regenerate the docs and the snippets stay up-to-date.
+
+```text
+Here is how the handler works:
+
+{{ snippet "../src/handler.go" "main-handler" }}
+```
+
+Mark snippet boundaries in your source files with comments:
+
+```go
+// boilerplate-snippet: main-handler
+func handleRequest(w http.ResponseWriter, r *http.Request) {
+    // ...
+}
+// boilerplate-snippet: main-handler
+```
+
+## CI/CD Automation
+
+Run Boilerplate in non-interactive mode to generate configuration files as part of your CI/CD pipeline:
+
+```bash
+boilerplate \
+  --template-url git@github.com:myorg/templates.git//k8s-deploy \
+  --output-folder ./generated \
+  --non-interactive \
+  --var-file vars/production.yml
+```
+
+## Multi-Language Project Generation
+
+Use dependencies to compose templates for multi-language projects. A root template can include a Go backend template, a
+React frontend template, and a shared infrastructure template:
+
+```yaml
+dependencies:
+  - name: backend
+    template-url: ../go-service
+    output-folder: ./backend
+    variables:
+      - name: ServiceName
+        default: "{{ .ProjectName }}-api"
+
+  - name: frontend
+    template-url: ../react-app
+    output-folder: ./frontend
+    variables:
+      - name: AppName
+        default: "{{ .ProjectName }}-web"
+```

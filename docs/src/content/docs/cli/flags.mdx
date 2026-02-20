@@ -1,0 +1,109 @@
+---
+title: CLI Flags
+sidebar:
+  order: 1
+description: Complete reference for all Boilerplate command-line flags.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+## Usage
+
+```bash
+boilerplate [options]
+```
+
+## Required Flags
+
+| Flag | Description |
+|------|-------------|
+| `--template-url URL` | Path to the template directory. Can be a local path or a remote [go-getter](https://github.com/hashicorp/go-getter) URL |
+| `--output-folder PATH` | Directory where rendered files will be written |
+
+## Variable Input
+
+| Flag | Description |
+|------|-------------|
+| `--var NAME=VALUE` | Set a variable value. Can be specified multiple times. Supports YAML syntax for complex types |
+| `--var-file PATH` | Load variables from a YAML file. Can be specified multiple times |
+
+### Complex variable syntax
+
+```bash
+# String
+--var 'Name=Hello World'
+
+# List (YAML syntax)
+--var 'Tags=["web", "api", "v2"]'
+
+# Map (YAML syntax)
+--var 'Config={host: "localhost", port: "8080"}'
+
+# Bool
+--var 'EnableDocker=true'
+
+# Dependency-specific variable
+--var 'my-dependency.Port=9090'
+```
+
+## Behavior Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--non-interactive` | `false` | Don't prompt for input. All variables must be provided via flags or files |
+| `--missing-key-action` | `error` | How to handle undefined template variables: `error`, `zero`, or `invalid` |
+| `--missing-config-action` | `exit` | How to handle missing `boilerplate.yml`: `exit` or `ignore` |
+| `--disable-dependency-prompt` | `false` | Skip confirmation prompts for dependencies (keeps variable prompts) |
+| `--no-hooks` | `false` | Don't execute any hooks |
+| `--no-shell` | `false` | Don't execute shell helpers (returns `"replace-me"` instead) |
+
+## Info Flags
+
+| Flag | Description |
+|------|-------------|
+| `--version` | Print the version number |
+| `--help` | Print help text |
+
+## Examples
+
+### Basic interactive usage
+
+```bash
+boilerplate \
+  --template-url ~/templates/go-service \
+  --output-folder ~/projects/my-service
+```
+
+### Non-interactive with variable file
+
+```bash
+boilerplate \
+  --template-url ~/templates/go-service \
+  --output-folder ~/projects/my-service \
+  --non-interactive \
+  --var-file vars.yml
+```
+
+### Remote template from Git
+
+```bash
+boilerplate \
+  --template-url "git@github.com:myorg/templates.git//go-service?ref=v1.2.0" \
+  --output-folder ~/projects/my-service \
+  --non-interactive \
+  --var ProjectName="my-service"
+```
+
+<Aside type="tip">
+The double-slash (`//`) in go-getter URLs separates the repository URL from the subdirectory path within the repository.
+</Aside>
+
+### Lenient mode for partial templates
+
+```bash
+boilerplate \
+  --template-url ./partial-template \
+  --output-folder ./output \
+  --missing-key-action zero \
+  --missing-config-action ignore
+```

@@ -1,0 +1,220 @@
+---
+title: Dependencies
+sidebar:
+  order: 3
+description: Chain multiple templates together with dependencies.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Dependencies let you compose templates by running child templates as part of a parent template. This is useful for
+building complex project structures from smaller, reusable template modules.
+
+## Basic Dependency
+
+```yaml
+dependencies:
+  - name: backend
+    template-url: ../go-service
+    output-folder: ./backend
+```
+
+### Fields
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `name` | Yes | A unique name for this dependency |
+| `template-url` | Yes | Path to the child template (local or remote go-getter URL) |
+| `output-folder` | Yes | Where to write the child template's output, relative to the current output |
+| `skip` | No | A Go template expression — if it evaluates to `true`, the dependency is skipped |
+| `dont-inherit-variables` | No | If `true`, the child template won't inherit parent variables |
+| `variables` | No | Override or add variables for this dependency |
+| `var_files` | No | YAML files to load variables from for this dependency |
+| `for_each` | No | A list of values — the dependency is rendered once per item |
+| `for_each_reference` | No | Name of a list variable — the dependency is rendered once per item in that list |
+
+## Full Example
+
+Suppose you have a `fullstack-app` template that composes a Go backend and a React frontend from separate, reusable templates:
+
+```
+templates/
+├── fullstack-app/
+│   └── boilerplate.yml       # Parent template
+├── go-service/
+│   ├── boilerplate.yml
+│   ├── main.go
+│   └── Dockerfile
+└── react-app/
+    ├── boilerplate.yml
+    ├── package.json
+    └── src/
+        └── App.tsx
+```
+
+**`fullstack-app/boilerplate.yml`** — the parent template that ties everything together:
+
+```yaml
+variables:
+  - name: ProjectName
+    description: Name of the project
+    type: string
+
+  - name: IncludeDocker
+    description: Include Docker configuration?
+    type: bool
+    default: true
+
+dependencies:
+  - name: backend
+    template-url: ../go-service
+    output-folder: ./backend
+    variables:
+      - name: ServiceName
+        default: "{{ .ProjectName }}-api"
+      - name: Port
+        default: "8080"
+
+  - name: frontend
+    template-url: ../react-app
+    output-folder: ./frontend
+    variables:
+      - name: AppName
+        default: "{{ .ProjectName }}-web"
+      - name: ApiUrl
+        default: "http://localhost:8080"
+
+  - name: docker
+    template-url: ../docker-compose
+    output-folder: .
+    skip: "{{ not .IncludeDocker }}"
+```
+
+Running this generates a complete project in one command:
+
+```bash
+boilerplate \
+  --template-url ./templates/fullstack-app \
+  --output-folder ./my-project \
+  --var ProjectName="Acme" \
+  --var IncludeDocker=true
+```
+
+The output:
+
+```
+my-project/
+├── backend/
+│   ├── main.go              # Rendered from go-service template
+│   └── Dockerfile
+├── frontend/
+│   ├── package.json          # Rendered from react-app template
+│   └── src/
+│       └── App.tsx
+└── docker-compose.yml        # Rendered from docker-compose template
+```
+
+Each child template is self-contained — `go-service` and `react-app` can also be used independently. The parent simply orchestrates them and passes the right variables down.
+
+## Variable Inheritance
+
+By default, child templates inherit all variables from the parent. You can override specific values:
+
+```yaml
+dependencies:
+  - name: backend
+    template-url: ../go-service
+    output-folder: ./backend
+    variables:
+      - name: ServiceName
+        default: "{{ .ProjectName }}-api"
+      - name: Port
+        default: "8080"
+```
+
+Set `dont-inherit-variables: true` to prevent any parent variables from being passed down.
+
+## Conditional Dependencies
+
+Use the `skip` field with a Go template expression to conditionally skip a dependency:
+
+```yaml
+dependencies:
+  - name: docker
+    template-url: ../docker-template
+    output-folder: .
+    skip: "{{ not .IncludeDocker }}"
+```
+
+<Aside type="tip">
+You can use `and`, `or`, and `not` in skip expressions: `skip: "{{ and .IsProduction (not .UseDocker) }}"`.
+</Aside>
+
+## Loop Dependencies
+
+### `for_each`
+
+Render a dependency once for each item in a static list:
+
+```yaml
+dependencies:
+  - name: microservice
+    template-url: ../service-template
+    output-folder: "./services/{{ .__each__ }}"
+    for_each:
+      - users
+      - orders
+      - notifications
+```
+
+Inside the child template, access the current item with `{{ "{{" }} .__each__ {{ "}}" }}`.
+
+### `for_each_reference`
+
+Reference a list variable instead of a static list:
+
+```yaml
+variables:
+  - name: ServiceList
+    type: list
+    default:
+      - users
+      - orders
+
+dependencies:
+  - name: microservice
+    template-url: ../service-template
+    output-folder: "./services/{{ .__each__ }}"
+    for_each_reference: ServiceList
+```
+
+## Dependency Variable Files
+
+Load variables from YAML files specific to a dependency:
+
+```yaml
+dependencies:
+  - name: production
+    template-url: ../deploy-template
+    output-folder: ./deploy
+    var_files:
+      - ../vars/production.yml
+```
+
+## Recursive Dependencies
+
+Dependencies can have their own dependencies, creating a tree of templates. Variable inheritance flows
+down through the entire chain.
+
+## Execution Order
+
+1. Parent variables are gathered
+2. Parent `before` hooks run
+3. Each dependency is processed (recursively):
+   - Child variables are merged with inherited values
+   - Child `before` hooks run
+   - Child dependencies are processed
+   - Child template files are rendered
+   - Child `after` hooks run
+4. Parent template files are rendered
+5. Parent `after` hooks run

@@ -1,0 +1,137 @@
+---
+title: Boilerplate Documentation
+description: Generate files and folders from templates
+template: splash
+hero:
+  title: Boilerplate
+  tagline: Generate files and folders from customizable templates
+  actions:
+    - text: Get Started
+      link: /intro/overview/
+      icon: right-arrow
+      variant: primary
+    - text: View on GitHub
+      link: https://github.com/gruntwork-io/boilerplate
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+## What is Boilerplate?
+
+Boilerplate is a tool for generating files and folders (boilerplate code) from a set of templates. It's
+built by [Gruntwork](https://gruntwork.io) and is designed for:
+
+- **Scaffolding** new projects, modules, and repositories from templates
+- **Generating** configuration files with dynamic variable substitution
+- **Embedding** code snippets from source files into documentation
+- **Automating** repetitive file creation in CI/CD pipelines
+
+## Key Features
+
+<CardGrid stagger>
+  <Card title="Flexible Variables" icon="pencil">
+    Seven built-in types (string, int, float, bool, list, map, enum) with validations, defaults, and interactive prompts.
+  </Card>
+  <Card title="Go Template Engine" icon="setting">
+    Full Go template syntax with 50+ helper functions from the Sprig library, plus custom helpers for snippets, shell commands, and more.
+  </Card>
+  <Card title="Template Dependencies" icon="puzzle">
+    Chain multiple templates together with recursive dependencies, variable inheritance, conditional skipping, and loop-based rendering.
+  </Card>
+  <Card title="Hooks" icon="rocket">
+    Run shell commands before and after template rendering, with full variable interpolation and conditional execution.
+  </Card>
+</CardGrid>
+
+## Quick Example
+
+A typical Boilerplate template has a `boilerplate.yml` config file and one or more template files:
+
+```yaml
+# boilerplate.yml
+variables:
+  - name: ProjectName
+    description: The name of your project
+    type: string
+
+  - name: EnableDocker
+    description: Include Docker configuration?
+    type: bool
+    default: true
+```
+
+```text
+# {{.ProjectName}}
+
+Welcome to {{.ProjectName}}!
+
+{{if .EnableDocker}}
+## Docker
+
+Run with: `docker compose up`
+{{end}}
+```
+
+Then run:
+
+```bash
+boilerplate \
+  --template-url ./my-template \
+  --output-folder ./my-project \
+  --var ProjectName="My App"
+```
+
+## Getting Started
+
+<CardGrid>
+  <Card title="Overview" icon="information">
+    Learn what Boilerplate is and when to use it.
+
+    [Overview →](/intro/overview/)
+  </Card>
+  <Card title="Installation" icon="setting">
+    Install Boilerplate on your machine.
+
+    [Install →](/intro/installation/)
+  </Card>
+  <Card title="Your First Template" icon="document">
+    Create a template from scratch with a step-by-step tutorial.
+
+    [Tutorial →](/intro/your-first-template/)
+  </Card>
+  <Card title="CLI Reference" icon="laptop">
+    Command-line flags, variable input, and behavior options.
+
+    [CLI →](/cli/flags/)
+  </Card>
+</CardGrid>
+
+## Learn More
+
+<CardGrid>
+  <Card title="Configuration" icon="open-book">
+    Deep dive into boilerplate.yml, variables, dependencies, hooks, and more.
+
+    [Configuration →](/configuration/boilerplate-yml/)
+  </Card>
+  <Card title="Template Syntax" icon="pen">
+    Go template syntax, helper functions, and dynamic file naming.
+
+    [Templates →](/template-syntax/go-templates/)
+  </Card>
+  <Card title="Advanced Features" icon="puzzle">
+    Remote templates, Jsonnet engine, partials, and CI/CD integration.
+
+    [Advanced →](/advanced/remote-templates/)
+  </Card>
+</CardGrid>
+
+## Community & Support
+
+- **GitHub**: Report issues and contribute at [github.com/gruntwork-io/boilerplate](https://github.com/gruntwork-io/boilerplate)
+
+## License
+
+Boilerplate is open source software licensed under the Mozilla Public License 2.0.

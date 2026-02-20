@@ -1,0 +1,122 @@
+---
+title: Go Templates
+sidebar:
+  order: 1
+description: Go template syntax for Boilerplate templates.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Boilerplate uses Go's built-in [text/template](https://pkg.go.dev/text/template) engine. Every file in your template
+directory (except `boilerplate.yml`) is processed through this engine.
+
+## Accessing Variables
+
+Variables defined in `boilerplate.yml` are accessed with dot notation:
+
+```text
+Hello, {{ .ProjectName }}!
+The port is {{ .Port }}.
+```
+
+## Conditionals
+
+```text
+{{ if .EnableFeature }}
+Feature is enabled!
+{{ else }}
+Feature is disabled.
+{{ end }}
+```
+
+### Comparison operators
+
+```text
+{{ if eq .Environment "production" }}
+  Production mode
+{{ else if eq .Environment "staging" }}
+  Staging mode
+{{ else }}
+  Development mode
+{{ end }}
+```
+
+Available comparison functions:
+
+| Function | Meaning | Equivalent |
+|----------|---------|------------|
+| `eq` | equal | `==` |
+| `ne` | not equal | `!=` |
+| `lt` | less than | `<` |
+| `le` | less than or equal | `<=` |
+| `gt` | greater than | `>` |
+| `ge` | greater than or equal | `>=` |
+
+Go templates use function-call syntax rather than infix operators, so `eq .Port 8080` means `.Port == 8080`. You can also pass multiple arguments: `eq .Env "dev" "development"` returns `true` if `.Env` equals either value.
+
+## Loops
+
+### Iterating over lists
+
+```text
+{{ range .Tags }}
+- {{ . }}
+{{ end }}
+```
+
+### Iterating over maps
+
+```text
+{{ range $key, $value := .Config }}
+{{ $key }}: {{ $value }}
+{{ end }}
+```
+
+## Pipelines
+
+Chain functions with the pipe operator:
+
+```text
+{{ .ProjectName | lower }}
+{{ .ProjectName | upper | replace " " "_" }}
+```
+
+## Variables Inside Templates
+
+Assign values to local variables:
+
+```text
+{{ $name := .ProjectName | lower }}
+The slug is: {{ $name }}
+```
+
+## Whitespace Control
+
+Use `-` to trim whitespace around template actions:
+
+```text
+{{- .ProjectName -}}
+```
+
+<Aside type="tip">
+Use `{{- ` and ` -}}` to avoid unwanted blank lines in your output, especially around conditionals and loops.
+</Aside>
+
+## Dynamic File Names
+
+File and directory names can also use template syntax:
+
+```
+{{ .ProjectName | snakecase }}_service.go
+com/{{ .PackageName }}/MyClass.java
+```
+
+## Missing Keys
+
+By default, referencing an undefined variable causes an error. Control this with `--missing-key-action`:
+
+| Value | Behavior |
+|-------|----------|
+| `error` (default) | Exit with an error |
+| `zero` | Render zero value (empty string, 0, false) |
+| `invalid` | Render `<no value>` |
