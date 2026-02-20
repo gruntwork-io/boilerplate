@@ -91,7 +91,7 @@ func testExample(t *testing.T, templateFolder string, outputFolder string, varFi
 	}
 
 	err := app.Run(args)
-	require.NoError(t, err, err.Error())
+	require.NoError(t, err)
 
 	if expectedOutputFolder != "" {
 		assertDirectoriesEqual(t, expectedOutputFolder, outputFolder)

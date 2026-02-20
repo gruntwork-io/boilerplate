@@ -28,7 +28,7 @@ func TestEnvVarExample(t *testing.T) {
 	}
 
 	err := app.Run(args)
-	require.NoError(t, err, err.Error())
+	require.NoError(t, err)
 
 	testTxt := tempdir + "/target.txt"
 	assert.FileExists(t, testTxt)
@@ -39,7 +39,7 @@ func TestEnvVarExample(t *testing.T) {
 	t.Setenv("BOILERPLATE_ValueFromEnvVar", "env-var-value")
 
 	err = app.Run(args)
-	require.NoError(t, err, err.Error())
+	require.NoError(t, err)
 
 	content, err = os.ReadFile(testTxt)
 	require.NoError(t, err)

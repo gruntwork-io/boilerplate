@@ -40,10 +40,9 @@ func TestParseBoilerplateConfigInvalid(t *testing.T) {
 
 	require.Error(t, err)
 
-	unwrapped := errors.Unwrap(err)
 	typeError := &yaml.TypeError{}
-	isYamlTypeError := errors.As(unwrapped, &typeError)
-	assert.True(t, isYamlTypeError, "Expected a YAML type error for an invalid yaml file but got %s: %v", reflect.TypeOf(unwrapped), unwrapped)
+	isYamlTypeError := errors.As(err, &typeError)
+	assert.True(t, isYamlTypeError, "Expected a YAML type error for an invalid yaml file but got %s: %v", reflect.TypeOf(err), err)
 }
 
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
@@ -682,10 +681,9 @@ func TestLoadBoilerplateConfigInvalidConfig(t *testing.T) {
 
 	require.Error(t, err)
 
-	unwrapped := errors.Unwrap(err)
 	typeError := &yaml.TypeError{}
-	isYamlTypeError := errors.As(unwrapped, &typeError)
-	assert.True(t, isYamlTypeError, "Expected a YAML type error for an invalid yaml file but got %s", reflect.TypeOf(unwrapped))
+	isYamlTypeError := errors.As(err, &typeError)
+	assert.True(t, isYamlTypeError, "Expected a YAML type error for an invalid yaml file but got %s", reflect.TypeOf(err))
 }
 
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
