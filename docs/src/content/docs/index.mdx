@@ -25,8 +25,11 @@ hero:
 ---
 
 import { Card, CardGrid, Tabs, TabItem } from '@astrojs/starlight/components';
+import LandingSection from '../../components/LandingSection.astro';
+import CompactCards from '../../components/CompactCards.astro';
+import SecondaryFeatures from '../../components/SecondaryFeatures.astro';
 
-<div class="landing-section">
+<LandingSection>
 
 ## How it works
 
@@ -82,9 +85,9 @@ Run with: `docker compose up`
   </TabItem>
 </Tabs>
 
-</div>
+</LandingSection>
 
-<div class="landing-section">
+<LandingSection>
 
 ## Why Boilerplate?
 
@@ -102,34 +105,25 @@ Boilerplate is designed for platform teams who need to generate infrastructure c
   </Card>
 </CardGrid>
 
-### And there's more
+<SecondaryFeatures features={[
+  { href: "/configuration/dependencies/", title: "Composable templates", description: "Build complex scaffolds from smaller, reusable modules using the dependency system." },
+  { href: "/configuration/variables/", title: "Variable validation", description: "Seven variable types with built-in validators including required, regex, email, URL, and semver." },
+  { href: "/configuration/hooks/", title: "Hooks", description: "Run shell commands before or after rendering to format code, install dependencies, or run tests." },
+  { href: "/advanced/remote-templates/", title: "Remote templates", description: "Fetch templates from Git repos, S3, GCS, or HTTP URLs." },
+  { href: "/advanced/snippets/", title: "Snippets", description: "Embed code from source files in generated docs to keep examples always in sync." },
+  { href: "/cli/flags/", title: "Non-interactive mode", description: "Run fully headless in CI/CD pipelines with --non-interactive, --var-file, and environment variables." },
+]} />
 
-- **[Composable templates](/configuration/dependencies/)** — Build complex scaffolds from smaller, reusable modules using the dependency system.
-- **[Variable validation](/configuration/variables/)** — Seven variable types with built-in validators including required, regex, email, URL, and semver.
-- **[Hooks](/configuration/hooks/)** — Run shell commands before or after rendering to format code, install dependencies, or run tests.
-- **[Remote templates](/advanced/remote-templates/)** — Fetch templates from Git repos, S3, GCS, or HTTP URLs.
-- **[Snippets](/advanced/snippets/)** — Embed code from source files in generated docs to keep examples always in sync.
-- **[Non-interactive mode](/cli/flags/)** — Run fully headless in CI/CD pipelines with `--non-interactive`, `--var-file`, and environment variables.
+</LandingSection>
 
-</div>
-
-<div class="landing-section landing-cta">
+<LandingSection variant="cta">
 
 ## Get started
 
-<div class="compact-cards">
-  <a href="/intro/installation/" class="compact-card">
-    <strong>Install Boilerplate</strong>
-    <span>Install via Homebrew, download a binary, or build from source.</span>
-  </a>
-  <a href="/intro/your-first-template/" class="compact-card">
-    <strong>Write your first template</strong>
-    <span>Step-by-step tutorial to create and render your first template.</span>
-  </a>
-  <a href="https://github.com/gruntwork-io/boilerplate" class="compact-card">
-    <strong>View on GitHub</strong>
-    <span>Browse the source, open issues, and contribute.</span>
-  </a>
-</div>
+<CompactCards cards={[
+  { href: "/intro/installation/", title: "Install Boilerplate", description: "Install via Homebrew, download a binary, or build from source." },
+  { href: "/intro/your-first-template/", title: "Write your first template", description: "Step-by-step tutorial to create and render your first template." },
+  { href: "https://github.com/gruntwork-io/boilerplate", title: "View on GitHub", description: "Browse the source, open issues, and contribute." },
+]} />
 
-</div>
+</LandingSection>
