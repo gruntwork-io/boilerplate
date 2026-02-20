@@ -6,7 +6,7 @@ require (
 	github.com/AlecAivazis/survey/v2 v2.3.7
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/fatih/color v1.18.0
-	github.com/go-errors/errors v1.5.1
+	github.com/go-errors/errors v1.5.1 // indirect
 	github.com/go-ozzo/ozzo-validation v3.6.0+incompatible
 	github.com/google/go-jsonnet v0.21.0
 	github.com/gruntwork-io/go-commons v0.17.2

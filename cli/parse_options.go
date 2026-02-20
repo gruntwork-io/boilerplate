@@ -3,7 +3,6 @@ package cli
 import (
 	"github.com/urfave/cli/v2"
 
-	"github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/boilerplate/getterhelper"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/variables"
@@ -66,7 +65,7 @@ func ParseCLIContext(cliContext *cli.Context) (*options.BoilerplateOptions, erro
 // validateOptions checks that the options have reasonable values and returns an error if they don't.
 func validateOptions(opts *options.BoilerplateOptions) error {
 	if opts.TemplateURL == "" {
-		return errors.WithStackTrace(options.ErrTemplateURLOptionCannotBeEmpty)
+		return options.ErrTemplateURLOptionCannotBeEmpty
 	}
 
 	if err := getterhelper.ValidateTemplateURL(opts.TemplateURL); err != nil {
@@ -74,7 +73,7 @@ func validateOptions(opts *options.BoilerplateOptions) error {
 	}
 
 	if opts.OutputFolder == "" {
-		return errors.WithStackTrace(options.ErrOutputFolderOptionCannotBeEmpty)
+		return options.ErrOutputFolderOptionCannotBeEmpty
 	}
 
 	return nil

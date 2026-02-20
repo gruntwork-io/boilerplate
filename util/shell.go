@@ -5,8 +5,6 @@ import (
 	"os"
 	"os/exec"
 	"strings"
-
-	"github.com/gruntwork-io/boilerplate/errors"
 )
 
 // RunShellCommandAndGetOutput runs the given shell command with the given environment variables and arguments in the given working directory
@@ -30,7 +28,7 @@ func RunShellCommandAndGetOutputWithContext(ctx context.Context, workingDir stri
 
 	out, err := cmd.Output()
 	if err != nil {
-		return "", errors.WithStackTrace(err)
+		return "", err
 	}
 
 	return string(out), nil

@@ -1,7 +1,5 @@
 package variables
 
-import "github.com/gruntwork-io/boilerplate/errors"
-
 // SkipFile represents a single skip_file entry, which is a file that (conditionally) should be excluded from the rendered output.
 type SkipFile struct {
 	Path    string
@@ -87,7 +85,7 @@ func unmarshalSkipFileFromBoilerplateConfigYaml(fields map[string]any) (*SkipFil
 
 	// One of not_path or path must be set, so we check that here.
 	if (notPath == "" && path == "") || (notPath != "" && path != "") {
-		return nil, errors.WithStackTrace(MutexRequiredFieldErr{fields: []string{"path", "not_path"}})
+		return nil, MutexRequiredFieldErr{fields: []string{"path", "not_path"}}
 	}
 
 	skipIfPtr, err := unmarshalStringField(fields, "if", false, path)

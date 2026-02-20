@@ -6,7 +6,6 @@ import (
 
 	zglob "github.com/mattn/go-zglob"
 
-	"github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/render"
 	"github.com/gruntwork-io/boilerplate/util"
@@ -34,7 +33,7 @@ func processSkipFiles(ctx context.Context, skipFiles []variables.SkipFile, opts 
 	for _, skipFile := range skipFiles {
 		matchedPaths, err := renderGlobPath(ctx, opts, skipFile.Path, variables)
 		if err != nil {
-			return nil, errors.WithStackTrace(err)
+			return nil, err
 		}
 
 		if skipFile.Path != "" {
@@ -43,7 +42,7 @@ func processSkipFiles(ctx context.Context, skipFiles []variables.SkipFile, opts 
 
 		matchedNotPaths, err := renderGlobPath(ctx, opts, skipFile.NotPath, variables)
 		if err != nil {
-			return nil, errors.WithStackTrace(err)
+			return nil, err
 		}
 
 		if skipFile.NotPath != "" {
@@ -118,7 +117,7 @@ func renderGlobPath(ctx context.Context, opts *options.BoilerplateOptions, path 
 	if err != nil {
 		// TODO: logger-debug - switch to debug
 		util.Logger.Printf("ERROR: could not glob %s", globPath)
-		return nil, errors.WithStackTrace(err)
+		return nil, err
 	}
 	// Canonicalize the matched paths prior to storage
 	matchedPaths := []string{}

@@ -11,7 +11,6 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/terminal"
 	validation "github.com/go-ozzo/ozzo-validation"
-	pkgErrors "github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/render"
 	"github.com/gruntwork-io/boilerplate/util"
@@ -143,7 +142,7 @@ func GetValueForVariable(
 	referenceDepth int,
 ) (any, error) {
 	if referenceDepth > MaxReferenceDepth {
-		return nil, pkgErrors.WithStackTrace(CyclicalReference{VariableName: variable.Name(), ReferenceName: variable.Reference()})
+		return nil, CyclicalReference{VariableName: variable.Name(), ReferenceName: variable.Reference()}
 	}
 
 	value, alreadyExists := valuesForPreviousVariables[variable.Name()]
@@ -159,7 +158,7 @@ func GetValueForVariable(
 
 		reference, containsReference := variablesInConfig[variable.Reference()]
 		if !containsReference {
-			return nil, pkgErrors.WithStackTrace(MissingReference{VariableName: variable.Name(), ReferenceName: variable.Reference()})
+			return nil, MissingReference{VariableName: variable.Name(), ReferenceName: variable.Reference()}
 		}
 
 		return GetValueForVariable(reference, variablesInConfig, valuesForPreviousVariables, opts, referenceDepth+1)
@@ -195,7 +194,7 @@ func getVariable(variable variables.Variable, opts *options.BoilerplateOptions) 
 		util.Logger.Printf("Using default value for variable '%s': %v", variable.FullName(), variable.Default())
 		return variable.Default(), nil
 	case opts.NonInteractive:
-		return nil, pkgErrors.WithStackTrace(MissingVariableWithNonInteractiveMode(variable.FullName()))
+		return nil, MissingVariableWithNonInteractiveMode(variable.FullName())
 	default:
 		return getVariableFromUser(variable, variables.InvalidEntries{})
 	}

@@ -3,7 +3,6 @@ package util
 import (
 	"fmt"
 
-	"github.com/gruntwork-io/boilerplate/errors"
 	"gopkg.in/yaml.v2"
 )
 
@@ -15,12 +14,12 @@ func MarshalListOfObjectsToYAML(inputList []any) ([]any, error) {
 	for _, item := range inputList {
 		itemAsMarshaler, hasType := item.(yaml.Marshaler)
 		if !hasType {
-			return nil, errors.WithStackTrace(UnmarshalableObjectErr{item})
+			return nil, UnmarshalableObjectErr{item}
 		}
 
 		yaml, err := itemAsMarshaler.MarshalYAML()
 		if err != nil {
-			return nil, errors.WithStackTrace(ObjectMarshalingErr{item, err})
+			return nil, ObjectMarshalingErr{item, err}
 		}
 
 		output = append(output, yaml)

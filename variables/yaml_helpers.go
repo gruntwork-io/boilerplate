@@ -1,7 +1,7 @@
 package variables
 
 import (
-	stderrors "errors"
+	"errors"
 	"fmt"
 	"os"
 	"reflect"
@@ -11,12 +11,11 @@ import (
 
 	validation "github.com/go-ozzo/ozzo-validation"
 	"github.com/go-ozzo/ozzo-validation/is"
-	"github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/boilerplate/util"
 	"gopkg.in/yaml.v2"
 )
 
-var errInvalidRegexPattern = stderrors.New("pattern must be a quoted string (e.g. regex(\"pattern\") or regex(`pattern`))")
+var errInvalidRegexPattern = errors.New("pattern must be a quoted string (e.g. regex(\"pattern\") or regex(`pattern`))")
 
 // Given a map of key:value pairs read from a Boilerplate YAML config file of the format:
 //
@@ -36,7 +35,7 @@ func unmarshalMapOfFields(fields map[string]any, fieldName string) (map[string]a
 
 	asYamlMap, isYamlMap := fieldAsYaml.(map[any]any)
 	if !isYamlMap {
-		return nil, errors.WithStackTrace(InvalidTypeForField{FieldName: fieldName, ExpectedType: "map[string]any", ActualType: reflect.TypeOf(fieldAsYaml)})
+		return nil, InvalidTypeForField{FieldName: fieldName, ExpectedType: "map[string]any", ActualType: reflect.TypeOf(fieldAsYaml)}
 	}
 
 	stringMap := map[string]any{}
@@ -45,7 +44,7 @@ func unmarshalMapOfFields(fields map[string]any, fieldName string) (map[string]a
 		if keyAsString, isString := key.(string); isString {
 			stringMap[keyAsString] = value
 		} else {
-			return nil, errors.WithStackTrace(InvalidTypeForField{FieldName: fieldName, ExpectedType: "string", ActualType: reflect.TypeOf(key)})
+			return nil, InvalidTypeForField{FieldName: fieldName, ExpectedType: "string", ActualType: reflect.TypeOf(key)}
 		}
 	}
 
@@ -104,7 +103,7 @@ func UnmarshalListOfStrings(fields map[string]any, fieldName string) ([]string, 
 			if valueAsString, isString := asYaml.(string); isString {
 				listOfStrings = append(listOfStrings, valueAsString)
 			} else {
-				return nil, errors.WithStackTrace(InvalidTypeForField{FieldName: fieldName, ExpectedType: "string", ActualType: reflect.TypeOf(asList)})
+				return nil, InvalidTypeForField{FieldName: fieldName, ExpectedType: "string", ActualType: reflect.TypeOf(asList)}
 			}
 		}
 
@@ -112,7 +111,7 @@ func UnmarshalListOfStrings(fields map[string]any, fieldName string) ([]string, 
 	case []string:
 		return asList, nil
 	default:
-		return nil, errors.WithStackTrace(InvalidTypeForField{FieldName: fieldName, ExpectedType: "[]any or []string", ActualType: reflect.TypeOf(fieldAsYaml)})
+		return nil, InvalidTypeForField{FieldName: fieldName, ExpectedType: "[]any or []string", ActualType: reflect.TypeOf(fieldAsYaml)}
 	}
 }
 
@@ -138,7 +137,7 @@ func unmarshalListOfFields(fields map[string]any, fieldName string) ([]map[strin
 
 	asYamlList, isYamlList := fieldAsYaml.([]any)
 	if !isYamlList {
-		return nil, errors.WithStackTrace(InvalidTypeForField{FieldName: fieldName, ExpectedType: "[]any", ActualType: reflect.TypeOf(fieldAsYaml)})
+		return nil, InvalidTypeForField{FieldName: fieldName, ExpectedType: "[]any", ActualType: reflect.TypeOf(fieldAsYaml)}
 	}
 
 	listOfFields := []map[string]any{}
@@ -146,7 +145,7 @@ func unmarshalListOfFields(fields map[string]any, fieldName string) ([]map[strin
 	for _, asYaml := range asYamlList {
 		asYamlMap, isYamlMap := asYaml.(map[any]any)
 		if !isYamlMap {
-			return nil, errors.WithStackTrace(InvalidTypeForField{FieldName: fieldName, ExpectedType: "map[string]any", ActualType: reflect.TypeOf(asYaml)})
+			return nil, InvalidTypeForField{FieldName: fieldName, ExpectedType: "map[string]any", ActualType: reflect.TypeOf(asYaml)}
 		}
 
 		listOfFields = append(listOfFields, util.ToStringToGenericMap(asYamlMap))
@@ -171,19 +170,19 @@ func unmarshalOptionsField(fields map[string]any, context string, variableType B
 
 	if !hasOptions {
 		if variableType == Enum {
-			return nil, errors.WithStackTrace(OptionsMissing(context))
+			return nil, OptionsMissing(context)
 		} else {
 			return nil, nil
 		}
 	}
 
 	if variableType != Enum {
-		return nil, errors.WithStackTrace(OptionsCanOnlyBeUsedWithEnum{Context: context, Type: variableType})
+		return nil, OptionsCanOnlyBeUsedWithEnum{Context: context, Type: variableType}
 	}
 
 	optionsAsList, isList := options.([]any)
 	if !isList {
-		return nil, errors.WithStackTrace(InvalidTypeForField{FieldName: "options", ExpectedType: "List", ActualType: reflect.TypeOf(options), Context: context})
+		return nil, InvalidTypeForField{FieldName: "options", ExpectedType: "List", ActualType: reflect.TypeOf(options), Context: context}
 	}
 
 	return util.ToStringList(optionsAsList), nil
@@ -345,7 +344,7 @@ func unquoteRegexPattern(quoted string) (string, error) {
 			}
 
 			if raw[i] == '"' {
-				return "", stderrors.New(
+				return "", errors.New(
 					"unescaped \" in regex pattern; use \\\" to include a literal quote, or use backtick quoting: regex(`pattern`)")
 			}
 
@@ -448,7 +447,7 @@ func unmarshalIntField(fields map[string]any, fieldName string, requiredField bo
 	value, hasValue := fields[fieldName]
 	if !hasValue {
 		if requiredField {
-			return nil, errors.WithStackTrace(RequiredFieldMissing(fieldName))
+			return nil, RequiredFieldMissing(fieldName)
 		} else {
 			return nil, nil
 		}
@@ -457,7 +456,7 @@ func unmarshalIntField(fields map[string]any, fieldName string, requiredField bo
 	if valueAsInt, isInt := value.(int); isInt {
 		return &valueAsInt, nil
 	} else {
-		return nil, errors.WithStackTrace(InvalidTypeForField{FieldName: fieldName, ExpectedType: "int", ActualType: reflect.TypeOf(value), Context: context})
+		return nil, InvalidTypeForField{FieldName: fieldName, ExpectedType: "int", ActualType: reflect.TypeOf(value), Context: context}
 	}
 }
 
@@ -471,7 +470,7 @@ func unmarshalStringField(fields map[string]any, fieldName string, requiredField
 	value, hasValue := fields[fieldName]
 	if !hasValue {
 		if requiredField {
-			return nil, errors.WithStackTrace(RequiredFieldMissing(fieldName))
+			return nil, RequiredFieldMissing(fieldName)
 		} else {
 			return nil, nil
 		}
@@ -480,7 +479,7 @@ func unmarshalStringField(fields map[string]any, fieldName string, requiredField
 	if valueAsString, isString := value.(string); isString {
 		return &valueAsString, nil
 	} else {
-		return nil, errors.WithStackTrace(InvalidTypeForField{FieldName: fieldName, ExpectedType: "string", ActualType: reflect.TypeOf(value), Context: context})
+		return nil, InvalidTypeForField{FieldName: fieldName, ExpectedType: "string", ActualType: reflect.TypeOf(value), Context: context}
 	}
 }
 
@@ -499,7 +498,7 @@ func unmarshalBooleanField(fields map[string]any, fieldName string, requiredFiel
 	value, hasValue := fields[fieldName]
 	if !hasValue {
 		if requiredField {
-			return false, errors.WithStackTrace(RequiredFieldMissing(fieldName))
+			return false, RequiredFieldMissing(fieldName)
 		} else {
 			return false, nil
 		}
@@ -508,7 +507,7 @@ func unmarshalBooleanField(fields map[string]any, fieldName string, requiredFiel
 	if valueAsBool, isBool := value.(bool); isBool {
 		return valueAsBool, nil
 	} else {
-		return false, errors.WithStackTrace(InvalidTypeForField{FieldName: fieldName, ExpectedType: "bool", ActualType: reflect.TypeOf(value), Context: context})
+		return false, InvalidTypeForField{FieldName: fieldName, ExpectedType: "bool", ActualType: reflect.TypeOf(value), Context: context}
 	}
 }
 
@@ -527,7 +526,7 @@ func parseVariablesFromEnvironmentVariables() (map[string]any, error) {
 
 		key, value, found := strings.Cut(envVar, "=")
 		if !found {
-			return vars, errors.WithStackTrace(InvalidVarSyntax(envVar))
+			return vars, InvalidVarSyntax(envVar)
 		}
 
 		if strings.HasPrefix(key, "BOILERPLATE_") {
@@ -553,11 +552,11 @@ func parseVariablesFromKeyValuePairs(varsList []string) (map[string]any, error) 
 	for _, variable := range varsList {
 		key, value, found := strings.Cut(variable, "=")
 		if !found {
-			return vars, errors.WithStackTrace(InvalidVarSyntax(variable))
+			return vars, InvalidVarSyntax(variable)
 		}
 
 		if key == "" {
-			return vars, errors.WithStackTrace(VariableNameCannotBeEmpty(variable))
+			return vars, VariableNameCannotBeEmpty(variable)
 		}
 
 		parsedValue, err := ParseYamlString(value)
@@ -577,12 +576,12 @@ func ParseYamlString(str string) (any, error) {
 
 	err := yaml.Unmarshal([]byte(str), &parsedValue)
 	if err != nil {
-		return nil, errors.WithStackTrace(err)
+		return nil, err
 	}
 
 	parsedValue, err = ConvertYAMLToStringMap(parsedValue)
 	if err != nil {
-		return nil, errors.WithStackTrace(err)
+		return nil, err
 	}
 
 	return parsedValue, nil
@@ -610,7 +609,7 @@ func parseVariablesFromVarFiles(varFileList []string) (map[string]any, error) {
 func ParseVariablesFromVarFile(varFilePath string) (map[string]any, error) {
 	bytes, err := os.ReadFile(varFilePath)
 	if err != nil {
-		return map[string]any{}, errors.WithStackTrace(err)
+		return map[string]any{}, err
 	}
 
 	return parseVariablesFromVarFileContents(bytes)
@@ -627,7 +626,7 @@ func parseVariablesFromVarFileContents(varFileContents []byte) (map[string]any, 
 
 	converted, err := ConvertYAMLToStringMap(vars)
 	if err != nil {
-		return nil, errors.WithStackTrace(err)
+		return nil, err
 	}
 
 	vars, ok := converted.(map[string]any)

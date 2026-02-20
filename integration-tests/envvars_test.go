@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/gruntwork-io/boilerplate/cli"
-	"github.com/gruntwork-io/boilerplate/errors"
 )
 
 // Our integration tests run through all the examples in the /examples/for-learning-and-testing folder, generate them,
@@ -29,7 +28,7 @@ func TestEnvVarExample(t *testing.T) {
 	}
 
 	err := app.Run(args)
-	require.NoError(t, err, errors.PrintErrorWithStackTrace(err))
+	require.NoError(t, err, err.Error())
 
 	testTxt := tempdir + "/target.txt"
 	assert.FileExists(t, testTxt)
@@ -40,7 +39,7 @@ func TestEnvVarExample(t *testing.T) {
 	t.Setenv("BOILERPLATE_ValueFromEnvVar", "env-var-value")
 
 	err = app.Run(args)
-	require.NoError(t, err, errors.PrintErrorWithStackTrace(err))
+	require.NoError(t, err, err.Error())
 
 	content, err = os.ReadFile(testTxt)
 	require.NoError(t, err)

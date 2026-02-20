@@ -13,7 +13,6 @@ import (
 	"github.com/gruntwork-io/go-commons/collections"
 
 	"github.com/gruntwork-io/boilerplate/config"
-	"github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/boilerplate/getterhelper"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/render"
@@ -83,7 +82,7 @@ func ProcessTemplateWithContext(ctx context.Context, options, rootOpts *options.
 
 	err = os.MkdirAll(options.OutputFolder, defaultDirPerm)
 	if err != nil {
-		return errors.WithStackTrace(err)
+		return err
 	}
 
 	err = processHooks(ctx, boilerplateConfig.Hooks.BeforeHooks, options, vars)
@@ -765,29 +764,29 @@ func createOutputDir(ctx context.Context, dir string, opts *options.BoilerplateO
 func outPath(ctx context.Context, file string, opts *options.BoilerplateOptions, variables map[string]any) (string, error) {
 	templateFolderAbsPath, err := filepath.Abs(opts.TemplateFolder)
 	if err != nil {
-		return "", errors.WithStackTrace(err)
+		return "", err
 	}
 
 	// | is an illegal filename char in Windows, so we also support urlencoded chars in the path. To support this, we
 	// first urldecode the file before passing it through.
 	urlDecodedFile, err := url.QueryUnescape(file)
 	if err != nil {
-		return "", errors.WithStackTrace(err)
+		return "", err
 	}
 
 	interpolatedFilePath, err := render.RenderTemplateFromStringWithContext(ctx, file, urlDecodedFile, variables, opts)
 	if err != nil {
-		return "", errors.WithStackTrace(err)
+		return "", err
 	}
 
 	fileAbsPath, err := filepath.Abs(interpolatedFilePath)
 	if err != nil {
-		return "", errors.WithStackTrace(err)
+		return "", err
 	}
 
 	relPath, err := filepath.Rel(templateFolderAbsPath, fileAbsPath)
 	if err != nil {
-		return "", errors.WithStackTrace(err)
+		return "", err
 	}
 
 	return path.Join(opts.OutputFolder, relPath), nil

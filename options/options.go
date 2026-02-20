@@ -3,8 +3,6 @@ package options
 
 import (
 	"fmt"
-
-	"github.com/gruntwork-io/boilerplate/errors"
 )
 
 const OptTemplateURL = "template-url"
@@ -56,7 +54,7 @@ func ParseMissingKeyAction(str string) (MissingKeyAction, error) {
 		}
 	}
 
-	return MissingKeyAction(""), errors.WithStackTrace(InvalidMissingKeyAction(str))
+	return MissingKeyAction(""), InvalidMissingKeyAction(str)
 }
 
 // MissingConfigAction is an enum that represents what to do when the template folder passed to boilerplate does not contain a
@@ -79,7 +77,7 @@ func ParseMissingConfigAction(str string) (MissingConfigAction, error) {
 		}
 	}
 
-	return MissingConfigAction(""), errors.WithStackTrace(InvalidMissingConfigAction(str))
+	return MissingConfigAction(""), InvalidMissingConfigAction(str)
 }
 
 //nolint:staticcheck

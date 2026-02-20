@@ -6,7 +6,6 @@ import (
 
 	jsonnet "github.com/google/go-jsonnet"
 
-	"github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/util"
 )
@@ -36,7 +35,7 @@ func RenderJsonnetTemplate(
 
 	output, err := jsonnetVM.EvaluateFile(templatePath)
 	if err != nil {
-		return "", errors.WithStackTrace(err)
+		return "", err
 	}
 
 	return output, nil
@@ -64,7 +63,7 @@ func configureTLAVarsFromBoilerplateVars(vm *jsonnet.VM, vars map[string]any) er
 
 	jsonBytes, err := json.Marshal(jsonCompatibleMap)
 	if err != nil {
-		return errors.WithStackTrace(err)
+		return err
 	}
 
 	vm.TLACode("boilerplateVars", string(jsonBytes))

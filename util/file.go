@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 
 	"github.com/gabriel-vasile/mimetype"
-	"github.com/gruntwork-io/boilerplate/errors"
 )
 
 const textMimeType = "text/plain"
@@ -33,7 +32,7 @@ func IsTextFile(path string) (bool, error) {
 	// consider empty file as binary file
 	fileInfo, err := os.Stat(path)
 	if err != nil {
-		return false, errors.WithStackTrace(err)
+		return false, err
 	}
 
 	if fileInfo.Size() == 0 {
@@ -42,7 +41,7 @@ func IsTextFile(path string) (bool, error) {
 
 	detectedMIME, err := mimetype.DetectFile(path)
 	if err != nil {
-		return false, errors.WithStackTrace(err)
+		return false, err
 	}
 
 	for mtype := detectedMIME; mtype != nil; mtype = mtype.Parent() {
@@ -71,7 +70,7 @@ func RunCommandAndGetOutputWithContext(ctx context.Context, command string, args
 
 	bytes, err := cmd.Output()
 	if err != nil {
-		return "", errors.WithStackTrace(err)
+		return "", err
 	}
 
 	return string(bytes), nil
@@ -81,7 +80,7 @@ func RunCommandAndGetOutputWithContext(ctx context.Context, command string, args
 func CopyFile(source string, destination string) error {
 	contents, err := os.ReadFile(source)
 	if err != nil {
-		return errors.WithStackTrace(err)
+		return err
 	}
 
 	return WriteFileWithSamePermissions(source, destination, contents)
@@ -91,7 +90,7 @@ func CopyFile(source string, destination string) error {
 func WriteFileWithSamePermissions(source string, destination string, contents []byte) error {
 	fileInfo, err := os.Stat(source)
 	if err != nil {
-		return errors.WithStackTrace(err)
+		return err
 	}
 
 	return os.WriteFile(destination, contents, fileInfo.Mode())

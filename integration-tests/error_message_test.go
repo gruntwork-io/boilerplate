@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/gruntwork-io/boilerplate/cli"
-	"github.com/gruntwork-io/boilerplate/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -26,6 +25,6 @@ func TestMisspelledTemplateURLErrorMessage(t *testing.T) {
 		"--non-interactive",
 	}
 	runErr := app.Run(args)
-	require.Error(t, runErr, errors.PrintErrorWithStackTrace(runErr))
+	require.Error(t, runErr, runErr.Error())
 	assert.Contains(t, runErr.Error(), "Did you misspell the URL")
 }

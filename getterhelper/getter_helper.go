@@ -11,7 +11,6 @@ import (
 	getter "github.com/hashicorp/go-getter"
 	urlhelper "github.com/hashicorp/go-getter/helper/url"
 
-	"github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/boilerplate/util"
 )
 
@@ -26,12 +25,12 @@ func ValidateTemplateURL(templateURL string) error {
 func ParseGetterURL(templateURL string) (*url.URL, error) {
 	pwd, err := os.Getwd()
 	if err != nil {
-		return nil, errors.WithStackTrace(err)
+		return nil, err
 	}
 
 	getterURLWithGetter, err := getter.Detect(templateURL, pwd, getter.Detectors)
 	if err != nil {
-		return nil, errors.WithStackTrace(err)
+		return nil, err
 	}
 
 	return urlParseGetterURL(getterURLWithGetter)
@@ -46,7 +45,7 @@ func urlParseGetterURL(rawGetterURLStr string) (*url.URL, error) {
 	// Parse the URL without the getter prefix
 	canonicalGetterURL, err := urlhelper.Parse(getterURLStr)
 	if err != nil {
-		return nil, errors.WithStackTrace(err)
+		return nil, err
 	}
 
 	// Reattach the "getter" prefix as part of the scheme
@@ -94,7 +93,7 @@ func DetermineTemplateConfig(templateURL string) (string, string, error) {
 func NewGetterClient(src string, dst string) (*getter.Client, error) {
 	pwd, err := os.Getwd()
 	if err != nil {
-		return nil, errors.WithStackTrace(err)
+		return nil, err
 	}
 
 	client := &getter.Client{
@@ -127,7 +126,7 @@ func NewGetterClient(src string, dst string) (*getter.Client, error) {
 func DownloadTemplatesToTemporaryFolder(templateURL string) (string, string, error) {
 	workingDir, err := getTempFolder()
 	if err != nil {
-		return workingDir, workingDir, errors.WithStackTrace(err)
+		return workingDir, workingDir, err
 	}
 
 	// Always set a subdir path because go-getter can not clone into an existing dir.

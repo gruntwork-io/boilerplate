@@ -20,7 +20,6 @@ import (
 
 	"github.com/Masterminds/sprig/v3"
 
-	pkgErrors "github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/util"
 	"github.com/gruntwork-io/boilerplate/variables"
@@ -240,7 +239,7 @@ func snippet(ctx context.Context, templatePath string, opts *options.Boilerplate
 	case snippetArgsWithName:
 		return readSnippetFromFile(templatePath, args[0], args[1])
 	default:
-		return "", pkgErrors.WithStackTrace(InvalidSnippetArguments(args))
+		return "", InvalidSnippetArguments(args)
 	}
 }
 
@@ -285,7 +284,7 @@ func readFile(templatePath, path string) (string, error) {
 
 	bytes, err := os.ReadFile(relativePath)
 	if err != nil {
-		return "", pkgErrors.WithStackTrace(err)
+		return "", err
 	}
 
 	return string(bytes), nil
@@ -297,7 +296,7 @@ func readSnippetFromFile(templatePath string, path string, snippetName string) (
 
 	file, err := os.Open(relativePath)
 	if err != nil {
-		return "", pkgErrors.WithStackTrace(err)
+		return "", err
 	}
 
 	defer file.Close()
@@ -330,9 +329,9 @@ func readSnippetFromScanner(scanner *bufio.Scanner, snippetName string) (string,
 	}
 
 	if inSnippet {
-		return "", pkgErrors.WithStackTrace(SnippetNotTerminated(snippetName))
+		return "", SnippetNotTerminated(snippetName)
 	} else {
-		return "", pkgErrors.WithStackTrace(SnippetNotFound(snippetName))
+		return "", SnippetNotFound(snippetName)
 	}
 }
 
@@ -356,7 +355,7 @@ func wrapFloatToFloatFunction(f func(float64) float64) func(interface{}) (float6
 	return func(value interface{}) (float64, error) {
 		valueAsFloat, err := toFloat64(value)
 		if err != nil {
-			return 0, pkgErrors.WithStackTrace(err)
+			return 0, err
 		}
 
 		return f(valueAsFloat), nil
@@ -369,7 +368,7 @@ func wrapFloatToIntFunction(f func(float64) int) func(interface{}) (int, error) 
 	return func(value interface{}) (int, error) {
 		valueAsFloat, err := toFloat64(value)
 		if err != nil {
-			return 0, pkgErrors.WithStackTrace(err)
+			return 0, err
 		}
 
 		return f(valueAsFloat), nil
@@ -382,12 +381,12 @@ func wrapFloatFloatToFloatFunction(f func(arg1 float64, arg2 float64) float64) f
 	return func(arg1 interface{}, arg2 interface{}) (float64, error) {
 		arg1AsFloat, err := toFloat64(arg1)
 		if err != nil {
-			return 0, pkgErrors.WithStackTrace(err)
+			return 0, err
 		}
 
 		arg2AsFloat, err := toFloat64(arg2)
 		if err != nil {
-			return 0, pkgErrors.WithStackTrace(err)
+			return 0, err
 		}
 
 		return f(arg1AsFloat, arg2AsFloat), nil
@@ -588,17 +587,17 @@ func slice(start interface{}, end interface{}, increment interface{}) ([]int, er
 
 	startAsInt, err := toInt(start)
 	if err != nil {
-		return out, pkgErrors.WithStackTrace(err)
+		return out, err
 	}
 
 	endAsInt, err := toInt(end)
 	if err != nil {
-		return out, pkgErrors.WithStackTrace(err)
+		return out, err
 	}
 
 	incrementAsInt, err := toInt(increment)
 	if err != nil {
-		return out, pkgErrors.WithStackTrace(err)
+		return out, err
 	}
 
 	for i := startAsInt; i < endAsInt; i += incrementAsInt {
@@ -613,7 +612,7 @@ func slice(start interface{}, end interface{}, increment interface{}) ([]int, er
 func keys(value interface{}) ([]string, error) {
 	valueType := reflect.ValueOf(value)
 	if valueType.Kind() != reflect.Map {
-		return nil, pkgErrors.WithStackTrace(InvalidTypeForMethodArgument{"keys", "Map", valueType.Kind().String()})
+		return nil, InvalidTypeForMethodArgument{"keys", "Map", valueType.Kind().String()}
 	}
 
 	out := []string{}
@@ -674,7 +673,7 @@ func shell(ctx context.Context, templatePath string, opts *options.BoilerplateOp
 	}
 
 	if len(rawArgs) == 0 {
-		return "", pkgErrors.WithStackTrace(NoArgsPassedToShellHelper{})
+		return "", NoArgsPassedToShellHelper{}
 	}
 
 	args, envVars := separateArgsAndEnvVars(rawArgs)
@@ -766,7 +765,7 @@ func trimSuffix(str, suffix string) string {
 func toYaml(obj interface{}) (string, error) {
 	yamlObj, err := yaml.Marshal(&obj)
 	if err != nil {
-		return "", pkgErrors.WithStackTrace(err)
+		return "", err
 	}
 
 	return string(yamlObj), nil
@@ -777,7 +776,7 @@ func fromYaml(yamlStr string) (interface{}, error) {
 
 	err := yaml.Unmarshal([]byte(yamlStr), &obj)
 	if err != nil {
-		return nil, pkgErrors.WithStackTrace(err)
+		return nil, err
 	}
 
 	return obj, nil
@@ -787,7 +786,7 @@ func fromYaml(yamlStr string) (interface{}, error) {
 func relPath(basePath, targetPath string) (string, error) {
 	relPath, err := filepath.Rel(basePath, targetPath)
 	if err != nil {
-		return "", pkgErrors.WithStackTrace(err)
+		return "", err
 	}
 
 	return relPath, nil

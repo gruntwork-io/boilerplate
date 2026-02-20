@@ -7,8 +7,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-
-	"github.com/gruntwork-io/boilerplate/errors"
 )
 
 // Variable represents an interface for a variable defined in a boilerplate.yml config file
@@ -344,13 +342,13 @@ func parseStringAsList(str string) ([]string, error) {
 		return goOut, nil
 	}
 
-	return nil, errors.WithStackTrace(&FormatNotJSONOrGo{
+	return nil, &FormatNotJSONOrGo{
 		ExpectedJSONFormat: `["value1", "value2", "value3"]`,
 		ExpectedGoFormat:   `[value1 value2 value3]`,
 		ActualFormat:       str,
 		JSONErr:            jsonErr,
 		GoErr:              goErr,
-	})
+	}
 }
 
 // If you render a list in Go, it'll have the format [<value> <value> <value>]. This method parses this format back
@@ -365,7 +363,7 @@ func parseStringAsGoList(str string) ([]string, error) {
 	matches := goListSyntaxRegex.FindStringSubmatch(str)
 
 	if len(matches) != expectedMatches {
-		return nil, errors.WithStackTrace(ParseError{ExpectedType: "list", ExpectedFormat: "[<value> <value> <value>]", ActualFormat: str})
+		return nil, ParseError{ExpectedType: "list", ExpectedFormat: "[<value> <value> <value>]", ActualFormat: str}
 	}
 
 	items := strings.TrimSpace(matches[1])
@@ -382,7 +380,7 @@ func parseStringAsJSONList(str string) ([]string, error) {
 	var out []string
 
 	if err := json.Unmarshal([]byte(str), &out); err != nil {
-		return nil, errors.WithStackTrace(err)
+		return nil, err
 	}
 
 	return out, nil
@@ -400,13 +398,13 @@ func parseStringAsMap(str string) (map[string]string, error) {
 		return goOut, nil
 	}
 
-	return nil, errors.WithStackTrace(&FormatNotJSONOrGo{
+	return nil, &FormatNotJSONOrGo{
 		ExpectedJSONFormat: `{"key1": "value1", "key2": "value2", "key3": "value3"}`,
 		ExpectedGoFormat:   `map[key1:value1 key2:value2 key3:value3]`,
 		ActualFormat:       str,
 		JSONErr:            jsonErr,
 		GoErr:              goErr,
-	})
+	}
 }
 
 // If you render a map in Go, it'll have the format map[<key>:<value> <key>:<value> <key>:<value>]. This method parses
@@ -421,7 +419,7 @@ func parseStringAsGoMap(str string) (map[string]string, error) {
 	matches := goMapSyntaxRegex.FindStringSubmatch(str)
 
 	if len(matches) != expectedMatches {
-		return nil, errors.WithStackTrace(ParseError{ExpectedType: "map", ExpectedFormat: "[<key>:<value> <key>:<value> <key>:<value>]", ActualFormat: str})
+		return nil, ParseError{ExpectedType: "map", ExpectedFormat: "[<key>:<value> <key>:<value> <key>:<value>]", ActualFormat: str}
 	}
 
 	items := strings.TrimSpace(matches[1])
@@ -438,7 +436,7 @@ func parseStringAsGoMap(str string) (map[string]string, error) {
 
 		parts := strings.Split(keyAndValue, ":")
 		if len(parts) < minPartsForKeyValue {
-			return nil, errors.WithStackTrace(ParseError{ExpectedType: "map", ExpectedFormat: "<key>:<value> for each item in the map", ActualFormat: str})
+			return nil, ParseError{ExpectedType: "map", ExpectedFormat: "<key>:<value> for each item in the map", ActualFormat: str}
 		}
 
 		key := strings.Join(parts[:(len(parts)-1)], ":")
@@ -455,7 +453,7 @@ func parseStringAsJSONMap(str string) (map[string]string, error) {
 	var out map[string]string
 
 	if err := json.Unmarshal([]byte(str), &out); err != nil {
-		return nil, errors.WithStackTrace(err)
+		return nil, err
 	}
 
 	return out, nil
