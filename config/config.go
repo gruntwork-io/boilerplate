@@ -8,7 +8,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/gruntwork-io/go-commons/version"
+	"github.com/gruntwork-io/boilerplate/version"
 	goversion "github.com/hashicorp/go-version"
 	"gopkg.in/yaml.v2"
 

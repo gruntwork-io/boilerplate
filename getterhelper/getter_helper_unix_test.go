@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/gruntwork-io/go-commons/errors"
 	"github.com/gruntwork-io/terratest/modules/git"
 	"github.com/gruntwork-io/terratest/modules/shell"
 	"github.com/stretchr/testify/require"
@@ -30,7 +29,7 @@ func TestDownloadTemplatesToTempDir(t *testing.T) {
 	workingDir, workPath, err := getterhelper.DownloadTemplatesToTemporaryFolder(templateURL)
 	defer os.RemoveAll(workingDir)
 
-	require.NoError(t, err, errors.PrintErrorWithStackTrace(err))
+	require.NoError(t, err)
 
 	// Run diff to make sure there are no differences
 	cmd := shell.Command{

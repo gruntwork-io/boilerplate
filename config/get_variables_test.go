@@ -1,10 +1,10 @@
 package config //nolint:testpackage
 
 import (
+	"maps"
 	"reflect"
+	"slices"
 	"testing"
-
-	"golang.org/x/exp/maps"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -292,6 +292,6 @@ func TestValidateUserInput(t *testing.T) {
 	m, hasValidationErrs = validateUserInput("bar", v)
 	assert.True(t, hasValidationErrs)
 
-	key := maps.Keys(m)[0]
+	key := slices.Collect(maps.Keys(m))[0]
 	assert.Contains(t, key, "Value must be of type int")
 }

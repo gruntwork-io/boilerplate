@@ -5,13 +5,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/gruntwork-io/go-commons/entrypoint"
-	"github.com/gruntwork-io/go-commons/version"
 	"github.com/urfave/cli/v2"
 
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/templates"
 	"github.com/gruntwork-io/boilerplate/variables"
+	"github.com/gruntwork-io/boilerplate/version"
 )
 
 const customHelpText = `Usage: {{.UsageText}}
@@ -41,10 +40,8 @@ Options:
    {{end}}`
 
 func CreateBoilerplateCli() *cli.App {
-	cli.HelpPrinter = entrypoint.WrappedHelpPrinter
 	cli.AppHelpTemplate = customHelpText
 	app := cli.NewApp()
-	entrypoint.HelpTextLineWidth = 120
 
 	app.Name = "boilerplate"
 	app.Authors = []*cli.Author{
@@ -116,7 +113,7 @@ func runApp(cliContext *cli.Context) error {
 		return cli.ShowAppHelp(cliContext)
 	}
 
-	opts, err := ParseOptions(cliContext)
+	opts, err := ParseCLIContext(cliContext)
 	if err != nil {
 		return err
 	}

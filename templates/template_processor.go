@@ -10,8 +10,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/gruntwork-io/go-commons/collections"
-
 	"github.com/gruntwork-io/boilerplate/config"
 	"github.com/gruntwork-io/boilerplate/getterhelper"
 	"github.com/gruntwork-io/boilerplate/options"
@@ -456,7 +454,7 @@ func processDependency(
 
 		if len(forEach) > 0 {
 			for _, item := range forEach {
-				updatedVars := collections.MergeMaps(originalVars, map[string]interface{}{eachVarName: item})
+				updatedVars := util.MergeMaps(originalVars, map[string]any{eachVarName: item})
 				if err := doProcess(updatedVars); err != nil {
 					return err
 				}
