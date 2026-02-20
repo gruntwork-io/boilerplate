@@ -20,7 +20,9 @@ import (
 
 	"github.com/Masterminds/sprig/v3"
 
+	"github.com/gruntwork-io/boilerplate/internal/logging"
 	"github.com/gruntwork-io/boilerplate/options"
+	"github.com/gruntwork-io/boilerplate/prompt"
 	"github.com/gruntwork-io/boilerplate/util"
 	"github.com/gruntwork-io/boilerplate/variables"
 	"gopkg.in/yaml.v2"
@@ -654,13 +656,13 @@ func generateShellCommandKey(args []string, envVars []string, workingDir string)
 
 // printShellCommandDetails prints the details of a shell command that will be executed
 func printShellCommandDetails(args []string, envVars []string, workingDir string) {
-	util.Logger.Printf("Shell command details:")
+	logging.Logger.Printf("Shell command details:")
 
 	details := formatShellCommandDetails(args, envVars, workingDir)
 
 	lines := strings.SplitSeq(details, "\n")
 	for line := range lines {
-		util.Logger.Printf("  %s", line)
+		logging.Logger.Printf("  %s", line)
 	}
 }
 
@@ -668,7 +670,7 @@ func printShellCommandDetails(args []string, envVars []string, workingDir string
 // string.
 func shell(ctx context.Context, templatePath string, opts *options.BoilerplateOptions, rawArgs ...string) (string, error) {
 	if opts.NoShell {
-		util.Logger.Printf("Shell helpers are disabled. Will not execute shell command '%v'. Returning placeholder value '%s'.", rawArgs, shellDisabledPlaceholder)
+		logging.Logger.Printf("Shell helpers are disabled. Will not execute shell command '%v'. Returning placeholder value '%s'.", rawArgs, shellDisabledPlaceholder)
 		return shellDisabledPlaceholder, nil
 	}
 
@@ -684,7 +686,7 @@ func shell(ctx context.Context, templatePath string, opts *options.BoilerplateOp
 	if opts.NonInteractive {
 		opts.ShellCommandAnswers[shellKey] = true
 
-		util.Logger.Printf("Executing shell command (non-interactive mode)")
+		logging.Logger.Printf("Executing shell command (non-interactive mode)")
 
 		return util.RunShellCommandAndGetOutputWithContext(ctx, workingDir, envVars, args...)
 	}
@@ -692,11 +694,11 @@ func shell(ctx context.Context, templatePath string, opts *options.BoilerplateOp
 	// Check previous confirmation
 	if confirmed, seen := opts.ShellCommandAnswers[shellKey]; seen || opts.ExecuteAllShellCommands {
 		if seen && !confirmed {
-			util.Logger.Printf("Skipping shell command (previously declined)")
+			logging.Logger.Printf("Skipping shell command (previously declined)")
 			return shellDisabledPlaceholder, nil
 		}
 
-		util.Logger.Printf("Executing shell command (%s)", "previously confirmed or all confirmed")
+		logging.Logger.Printf("Executing shell command (%s)", "previously confirmed or all confirmed")
 
 		return util.RunShellCommandAndGetOutputWithContext(ctx, workingDir, envVars, args...)
 	}
@@ -704,25 +706,25 @@ func shell(ctx context.Context, templatePath string, opts *options.BoilerplateOp
 	// Handle user confirmation
 	printShellCommandDetails(args, envVars, workingDir)
 
-	resp, err := util.PromptUserForYesNoAll("Execute shell command?")
+	resp, err := prompt.PromptUserForYesNoAll("Execute shell command?")
 	if err != nil {
 		return "", err
 	}
 
 	switch resp {
-	case util.UserResponseYes:
+	case prompt.UserResponseYes:
 		opts.ShellCommandAnswers[shellKey] = true
 
-		util.Logger.Printf("Executing shell command (user confirmed)")
-	case util.UserResponseAll:
+		logging.Logger.Printf("Executing shell command (user confirmed)")
+	case prompt.UserResponseAll:
 		opts.ShellCommandAnswers[shellKey] = true
 		opts.ExecuteAllShellCommands = true
 
-		util.Logger.Printf("Executing shell command (user confirmed all)")
-	case util.UserResponseNo:
+		logging.Logger.Printf("Executing shell command (user confirmed all)")
+	case prompt.UserResponseNo:
 		opts.ShellCommandAnswers[shellKey] = false
 
-		util.Logger.Printf("Skipping shell command (user declined)")
+		logging.Logger.Printf("Skipping shell command (user declined)")
 
 		return shellDisabledPlaceholder, nil
 	}

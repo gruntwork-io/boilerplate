@@ -12,9 +12,9 @@ import (
 	"github.com/AlecAivazis/survey/v2/terminal"
 	validation "github.com/go-ozzo/ozzo-validation"
 	"github.com/gruntwork-io/boilerplate/internal/color"
+	"github.com/gruntwork-io/boilerplate/internal/logging"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/render"
-	"github.com/gruntwork-io/boilerplate/util"
 	"github.com/gruntwork-io/boilerplate/variables"
 	"github.com/hashicorp/go-multierror"
 )
@@ -188,10 +188,10 @@ func getVariable(variable variables.Variable, opts *options.BoilerplateOptions) 
 
 	switch {
 	case valueSpecifiedInVars:
-		util.Logger.Printf("Using value specified via command line options for variable '%s': %s", variable.FullName(), valueFromVars)
+		logging.Logger.Printf("Using value specified via command line options for variable '%s': %s", variable.FullName(), valueFromVars)
 		return valueFromVars, nil
 	case opts.NonInteractive && variable.Default() != nil:
-		util.Logger.Printf("Using default value for variable '%s': %v", variable.FullName(), variable.Default())
+		logging.Logger.Printf("Using default value for variable '%s': %v", variable.FullName(), variable.Default())
 		return variable.Default(), nil
 	case opts.NonInteractive:
 		return nil, MissingVariableWithNonInteractiveMode(variable.FullName())
@@ -244,7 +244,7 @@ func getVariableFromUser(variable variables.Variable, invalidEntries variables.I
 
 	if value == "" {
 		// TODO: what if the user wanted an empty string instead of the default?
-		util.Logger.Printf("Using default value for variable '%s': %v", variable.FullName(), variable.Default())
+		logging.Logger.Printf("Using default value for variable '%s': %v", variable.FullName(), variable.Default())
 		return variable.Default(), nil
 	}
 

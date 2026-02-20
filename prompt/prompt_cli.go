@@ -1,4 +1,6 @@
-package util
+//go:build !(js && wasm)
+
+package prompt
 
 import (
 	"bufio"
@@ -7,15 +9,6 @@ import (
 	"strings"
 
 	"github.com/gruntwork-io/boilerplate/internal/color"
-)
-
-// UserResponse represents the user's response to a yes/no/all prompt
-type UserResponse string
-
-const (
-	UserResponseYes UserResponse = "yes"
-	UserResponseNo  UserResponse = "no"
-	UserResponseAll UserResponse = "all"
 )
 
 // PromptUserForInput prompts the user for text in the CLI. Returns the text entered by the user.

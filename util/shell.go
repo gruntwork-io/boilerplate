@@ -5,6 +5,8 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+
+	"github.com/gruntwork-io/boilerplate/internal/logging"
 )
 
 // RunShellCommandAndGetOutput runs the given shell command with the given environment variables and arguments in the given working directory
@@ -16,7 +18,7 @@ func RunShellCommandAndGetOutput(workingDir string, envVars []string, argslist .
 func RunShellCommandAndGetOutputWithContext(ctx context.Context, workingDir string, envVars []string, argslist ...string) (string, error) {
 	command := argslist[0]
 	args := argslist[1:]
-	Logger.Printf("Running command: %s %s", command, strings.Join(args, " "))
+	logging.Logger.Printf("Running command: %s %s", command, strings.Join(args, " "))
 
 	cmd := exec.CommandContext(ctx, command, args...)
 
@@ -41,7 +43,7 @@ func RunShellCommand(workingDir string, envVars []string, command string, args .
 
 // RunShellCommandWithContext runs the given shell command with the given environment variables and arguments in the given working directory
 func RunShellCommandWithContext(ctx context.Context, workingDir string, envVars []string, command string, args ...string) error {
-	Logger.Printf("Running command: %s %s", command, strings.Join(args, " "))
+	logging.Logger.Printf("Running command: %s %s", command, strings.Join(args, " "))
 
 	cmd := exec.CommandContext(ctx, command, args...)
 

@@ -6,3 +6,4 @@ vendor
 boilerplate
 examples/wasm/boilerplate.wasm
 examples/wasm/wasm_exec.js
+/wasm
