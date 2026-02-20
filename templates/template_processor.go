@@ -492,7 +492,7 @@ func cloneOptionsForDependency(
 		return nil, err
 	}
 
-	templateURL, templateFolder, err := options.DetermineTemplateConfig(renderedTemplateURL)
+	templateURL, templateFolder, err := getterhelper.DetermineTemplateConfig(renderedTemplateURL)
 	if err != nil {
 		return nil, err
 	}

@@ -70,6 +70,26 @@ func getForcedGetter(sourceURL string) (string, string) {
 	return "", sourceURL
 }
 
+// DetermineTemplateConfig decides what should be passed to TemplateURL and TemplateFolder. This parses the templateURL
+// and determines if it is a local path. If so, use that path directly instead of downloading it to a temp working dir.
+// We do this by setting the template folder, which will instruct the process routine to skip downloading the template.
+//
+// Returns TemplateURL, TemplateFolder, error
+func DetermineTemplateConfig(templateURL string) (string, string, error) {
+	url, err := ParseGetterURL(templateURL)
+	if err != nil {
+		return "", "", err
+	}
+
+	if url.Scheme == "file" {
+		// Intentionally return as both TemplateURL and TemplateFolder so that validation passes, but still skip
+		// download.
+		return templateURL, templateURL, nil
+	}
+
+	return templateURL, "", nil
+}
+
 // NewGetterClient creates a new getter client that forces go-getter to copy files instead of creating symlinks.
 func NewGetterClient(src string, dst string) (*getter.Client, error) {
 	pwd, err := os.Getwd()

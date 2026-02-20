@@ -116,7 +116,7 @@ func runApp(cliContext *cli.Context) error {
 		return cli.ShowAppHelp(cliContext)
 	}
 
-	opts, err := options.ParseOptions(cliContext)
+	opts, err := ParseOptions(cliContext)
 	if err != nil {
 		return err
 	}
