@@ -1,6 +1,5 @@
 //go:build aix || darwin || dragonfly || freebsd || (js && wasm) || linux || netbsd || openbsd || solaris
 
-
 // Package integrationtests provides integration tests for the boilerplate tool.
 package integrationtests_test
 

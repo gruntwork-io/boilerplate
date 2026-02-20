@@ -1,6 +1,5 @@
 //go:build aix || darwin || dragonfly || freebsd || (js && wasm) || linux || netbsd || openbsd || solaris
 
-
 package render //nolint:testpackage
 
 import (
