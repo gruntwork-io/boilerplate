@@ -1,0 +1,147 @@
+name: Update Homebrew Tap
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  update-homebrew:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.HOMEBREW_TAP_APP_ID }}
+          private-key: ${{ secrets.HOMEBREW_TAP_APP_PRIVATE_KEY }}
+          owner: gruntwork-io
+          repositories: homebrew-tap
+
+      - name: Update Homebrew formula and open PR
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          set -euo pipefail
+
+          TAG="${{ github.event.release.tag_name }}"
+          REPO="${{ github.repository }}"
+          TOOL="${REPO##*/}"
+
+          # --- Download release binaries and compute SHA256 checksums ---
+
+          for platform in darwin_arm64 darwin_amd64 linux_arm64 linux_amd64; do
+            curl -sfL \
+              "https://github.com/${REPO}/releases/download/${TAG}/${TOOL}_${platform}" \
+              -o "${TOOL}_${platform}"
+          done
+
+          SHA_DARWIN_ARM64=$(sha256sum "${TOOL}_darwin_arm64" | cut -d' ' -f1)
+          SHA_DARWIN_AMD64=$(sha256sum "${TOOL}_darwin_amd64" | cut -d' ' -f1)
+          SHA_LINUX_ARM64=$(sha256sum "${TOOL}_linux_arm64" | cut -d' ' -f1)
+          SHA_LINUX_AMD64=$(sha256sum "${TOOL}_linux_amd64" | cut -d' ' -f1)
+
+          # --- Clone homebrew-tap ---
+
+          git clone "https://x-access-token:${GH_TOKEN}@github.com/gruntwork-io/homebrew-tap.git" tap
+          cd tap
+
+          # --- Read metadata from existing formula ---
+
+          FORMULA_FILE="Formula/${TOOL}.rb"
+          if [[ ! -f "$FORMULA_FILE" ]]; then
+            echo "::error::${FORMULA_FILE} not found in homebrew-tap"
+            exit 1
+          fi
+
+          DESC=$(grep -m1 '^\s*desc ' "$FORMULA_FILE" | sed 's/.*desc "\(.*\)"/\1/')
+          HOMEPAGE=$(grep -m1 '^\s*homepage ' "$FORMULA_FILE" | sed 's/.*homepage "\(.*\)"/\1/')
+          LICENSE=$(grep -m1 '^\s*license ' "$FORMULA_FILE" | sed 's/.*license "\(.*\)"/\1/')
+
+          # --- Derive names and versions ---
+
+          # PascalCase class name: boilerplate -> Boilerplate, my-tool -> MyTool
+          CLASS_NAME=$(echo "$TOOL" | sed -r 's/(^|[-_])(\w)/\U\2/g')
+
+          # Numeric semver only: strip prefix (v, beta-v, etc.) and prerelease suffix (-alpha1, etc.)
+          SEMVER=$(echo "$TAG" | sed 's/^[^0-9]*//' | sed 's/-.*//')
+
+          # Versioned class name: BoilerplateAT0120
+          VERSIONED_CLASS="${CLASS_NAME}AT$(echo "$SEMVER" | tr -d '.')"
+
+          # --- Write unversioned formula ---
+
+          cat > "$FORMULA_FILE" <<FORMULA
+          class ${CLASS_NAME} < Formula
+            desc "${DESC}"
+            homepage "${HOMEPAGE}"
+            version "${TAG}"
+            license "${LICENSE}"
+
+            on_macos do
+              if Hardware::CPU.arm?
+                url "https://github.com/${REPO}/releases/download/${TAG}/${TOOL}_darwin_arm64"
+                sha256 "${SHA_DARWIN_ARM64}"
+              else
+                url "https://github.com/${REPO}/releases/download/${TAG}/${TOOL}_darwin_amd64"
+                sha256 "${SHA_DARWIN_AMD64}"
+              end
+            end
+
+            on_linux do
+              if Hardware::CPU.arm?
+                url "https://github.com/${REPO}/releases/download/${TAG}/${TOOL}_linux_arm64"
+                sha256 "${SHA_LINUX_ARM64}"
+              else
+                url "https://github.com/${REPO}/releases/download/${TAG}/${TOOL}_linux_amd64"
+                sha256 "${SHA_LINUX_AMD64}"
+              end
+            end
+
+            def install
+              binary = Dir["${TOOL}_*"].first
+              bin.install binary => "${TOOL}"
+            end
+
+            test do
+              assert_match version.to_s, shell_output("#{bin}/${TOOL} --version")
+            end
+          end
+          FORMULA
+
+          # --- Write versioned formula (identical content, different class name) ---
+
+          VERSIONED_FILE="Formula/${TOOL}@${SEMVER}.rb"
+          sed "s/^class ${CLASS_NAME} </class ${VERSIONED_CLASS} </" "$FORMULA_FILE" > "$VERSIONED_FILE"
+
+          # --- Update README version examples ---
+
+          if grep -q "gruntwork-io/tap/${TOOL}@" README.md; then
+            sed -i "s|gruntwork-io/tap/${TOOL}@[0-9.]*|gruntwork-io/tap/${TOOL}@${SEMVER}|g" README.md
+          fi
+
+          # --- Commit and open PR ---
+
+          BRANCH="update-${TOOL}-${TAG}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add -A
+          git commit -m "Update ${TOOL} to ${TAG}"
+          git push origin "$BRANCH"
+
+          PR_URL=$(gh pr create \
+            --repo gruntwork-io/homebrew-tap \
+            --base main \
+            --head "$BRANCH" \
+            --title "Update ${TOOL} to ${TAG}" \
+            --body "Automated update of the ${TOOL} Homebrew formula to ${TAG}.
+
+          Changes:
+          - Updated \`Formula/${TOOL}.rb\` (latest) to ${TAG}
+          - Added \`Formula/${TOOL}@${SEMVER}.rb\` (versioned formula)
+          - Updated README.md version examples")
+
+          # --- Approve and auto-merge ---
+
+          gh pr review "$PR_URL" --repo gruntwork-io/homebrew-tap --approve
+          gh pr merge "$PR_URL" --repo gruntwork-io/homebrew-tap --auto --squash
