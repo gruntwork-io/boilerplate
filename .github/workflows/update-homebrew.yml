@@ -60,7 +60,7 @@ jobs:
           # --- Derive names and versions ---
 
           # PascalCase class name: boilerplate -> Boilerplate, my-tool -> MyTool
-          CLASS_NAME=$(echo "$TOOL" | sed -r 's/(^|[-_])(\w)/\U\2/g')
+          CLASS_NAME=$(echo "$TOOL" | perl -pe 's/(^|[-_])(\w)/\U$2/g')
 
           # Numeric semver only: strip prefix (v, beta-v, etc.) and prerelease suffix (-alpha1, etc.)
           SEMVER=$(echo "$TAG" | sed 's/^[^0-9]*//' | sed 's/-.*//')
