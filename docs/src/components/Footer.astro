@@ -1,0 +1,19 @@
+---
+import type { Props } from '@astrojs/starlight/props';
+import Default from '@astrojs/starlight/components/Footer.astro';
+---
+
+<Default {...Astro.props}><slot /></Default>
+
+<div class="gruntwork-footer">
+  <div class="gruntwork-footer-inner">
+    <span class="gruntwork-footer-text">
+      Boilerplate is an open source project by
+      <a href="https://gruntwork.io" target="_blank" rel="noopener noreferrer">Gruntwork</a>
+    </span>
+    <span class="gruntwork-footer-separator" aria-hidden="true">&middot;</span>
+    <a href="https://github.com/gruntwork-io/boilerplate" target="_blank" rel="noopener noreferrer" class="gruntwork-footer-link">View on GitHub</a>
+    <span class="gruntwork-footer-separator" aria-hidden="true">&middot;</span>
+    <a href="https://www.gruntwork.io/?ref=boilerplate" target="_blank" rel="noopener noreferrer" class="gruntwork-footer-link">More from Gruntwork</a>
+  </div>
+</div>

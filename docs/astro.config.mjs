@@ -5,9 +5,6 @@ import starlight from '@astrojs/starlight';
 // https://astro.build/config
 export default defineConfig({
 	site: 'https://boilerplate.gruntwork.io',
-	redirects: {
-		'/': '/intro/overview/',
-	},
 	integrations: [
 		starlight({
 			title: 'Gruntwork Boilerplate',
@@ -30,6 +27,7 @@ export default defineConfig({
 			},
 			components: {
 				Head: './src/components/Head.astro',
+				Footer: './src/components/Footer.astro',
 			},
 			head: [
 				{
