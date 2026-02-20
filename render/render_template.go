@@ -116,7 +116,7 @@ func RenderVariables(
 	opts *options.BoilerplateOptions,
 	variablesToRender map[string]any,
 	alreadyRenderedVariables map[string]any,
-) (map[string]interface{}, error) {
+) (map[string]any, error) {
 	return RenderVariablesWithContext(context.Background(), opts, variablesToRender, alreadyRenderedVariables)
 }
 
@@ -140,7 +140,7 @@ func RenderVariablesWithContext(
 	opts *options.BoilerplateOptions,
 	variablesToRender map[string]any,
 	alreadyRenderedVariables map[string]any,
-) (map[string]interface{}, error) {
+) (map[string]any, error) {
 	// Force to use ExitWithError for missing key, because by design this algorithm depends on boilerplate error-ing if
 	// a variable can't be rendered due to a reference that hasn't been rendered yet. If OnMissingKey was invalid or
 	// zero, then boilerplate will automatically render all references to `"<no-value>"` or `""` in the first pass.
@@ -195,8 +195,8 @@ func attemptRenderVariables(
 	ctx context.Context,
 	opts *options.BoilerplateOptions,
 	unrenderedVariables []string,
-	renderedVariables map[string]interface{},
-	variables map[string]interface{},
+	renderedVariables map[string]any,
+	variables map[string]any,
 ) (attemptRenderVariablesOutput, error) {
 	newUnrenderedVariables := []string{}
 	wasRendered := false
@@ -272,7 +272,7 @@ func attemptRenderVariable(ctx context.Context, opts *options.BoilerplateOptions
 // Return types
 
 type attemptRenderVariablesOutput struct {
-	renderedVariables     map[string]interface{}
+	renderedVariables     map[string]any
 	unrenderedVariables   []string
 	variablesWereRendered bool
 }

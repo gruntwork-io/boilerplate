@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -244,7 +245,7 @@ func (variable *defaultVariable) MarshalYAML() (any, error) {
 }
 
 // ConvertType checks that the given value matches the type we're expecting in the given variable and returns an error if it doesn't
-func ConvertType(value interface{}, variable Variable) (interface{}, error) {
+func ConvertType(value any, variable Variable) (any, error) {
 	if value == nil {
 		return nil, nil
 	}
@@ -315,10 +316,8 @@ func ConvertType(value interface{}, variable Variable) (interface{}, error) {
 		}
 	case Enum:
 		if isString {
-			for _, option := range variable.Options() {
-				if asString == option {
-					return asString, nil
-				}
+			if slices.Contains(variable.Options(), asString) {
+				return asString, nil
 			}
 		}
 	}
@@ -472,7 +471,7 @@ func parseStringAsJSONMap(str string) (map[string]string, error) {
 //     default: <DEFAULT>
 //
 // This method takes the data above and unmarshals it into a list of Variable objects
-func UnmarshalVariablesFromBoilerplateConfigYaml(fields map[string]interface{}) ([]Variable, error) {
+func UnmarshalVariablesFromBoilerplateConfigYaml(fields map[string]any) ([]Variable, error) {
 	unmarshalledVariables := []Variable{}
 
 	listOfFields, err := unmarshalListOfFields(fields, "variables")
@@ -500,7 +499,7 @@ func UnmarshalVariablesFromBoilerplateConfigYaml(fields map[string]interface{}) 
 // default: <DEFAULT>
 //
 // This method takes the data above and unmarshals it into a Variable object
-func UnmarshalVariableFromBoilerplateConfigYaml(fields map[string]interface{}) (Variable, error) {
+func UnmarshalVariableFromBoilerplateConfigYaml(fields map[string]any) (Variable, error) {
 	variable := defaultVariable{}
 
 	name, err := unmarshalStringField(fields, "name", true, "")

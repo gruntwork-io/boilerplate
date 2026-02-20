@@ -378,7 +378,7 @@ func processHook(ctx context.Context, hook *variables.Hook, opts *options.Boiler
 }
 
 // Return true if the "skip" condition of this hook evaluates to true
-func shouldSkipHook(ctx context.Context, hook *variables.Hook, opts *options.BoilerplateOptions, vars map[string]interface{}) (bool, error) {
+func shouldSkipHook(ctx context.Context, hook *variables.Hook, opts *options.BoilerplateOptions, vars map[string]any) (bool, error) {
 	if hook.Skip == "" {
 		return false, nil
 	}
@@ -546,7 +546,7 @@ func cloneVariablesForDependency(
 	variablesInConfig map[string]variables.Variable,
 	originalVariables map[string]any,
 	renderedVarFiles []string,
-) (map[string]interface{}, error) {
+) (map[string]any, error) {
 	// Clone the opts so that we attempt to get the value for the variable, and we can error on any variable that is set
 	// on a dependency and the value can't be computed.
 	dependencyOpts := &options.BoilerplateOptions{
@@ -669,7 +669,7 @@ func shouldProcessDependency(
 }
 
 // Return true if the skip parameter of the given dependency evaluates to a "true" value
-func shouldSkipDependency(ctx context.Context, dependency *variables.Dependency, opts *options.BoilerplateOptions, variables map[string]interface{}) (bool, error) {
+func shouldSkipDependency(ctx context.Context, dependency *variables.Dependency, opts *options.BoilerplateOptions, variables map[string]any) (bool, error) {
 	if dependency.Skip == "" {
 		return false, nil
 	}
@@ -791,7 +791,7 @@ func outPath(ctx context.Context, file string, opts *options.BoilerplateOptions,
 }
 
 // Copy the given file, which is in options.TemplateFolder, to options.OutputFolder
-func copyFile(ctx context.Context, file string, opts *options.BoilerplateOptions, variables map[string]interface{}) error {
+func copyFile(ctx context.Context, file string, opts *options.BoilerplateOptions, variables map[string]any) error {
 	destination, err := outPath(ctx, file, opts, variables)
 	if err != nil {
 		return err

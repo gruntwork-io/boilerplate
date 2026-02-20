@@ -198,7 +198,7 @@ func wrapWithTemplatePath(ctx context.Context, templatePath string, opts *option
 
 // This works exactly like wrapWithTemplatePath, but it is adapted to the function args for the include helper function.
 func wrapIncludeWithTemplatePath(ctx context.Context, templatePath string, opts *options.BoilerplateOptions) func(string, map[string]any) (string, error) {
-	return func(path string, varData map[string]interface{}) (string, error) {
+	return func(path string, varData map[string]any) (string, error) {
 		return include(ctx, templatePath, opts, path, varData)
 	}
 }
@@ -249,7 +249,7 @@ func snippet(ctx context.Context, templatePath string, opts *options.Boilerplate
 //
 // This helper returns the contents of PATH, relative to TEMPLAT_PATH, but rendered through the boilerplate templating
 // engine with the given variables.
-func include(ctx context.Context, templatePath string, opts *options.BoilerplateOptions, path string, varData map[string]interface{}) (string, error) {
+func include(ctx context.Context, templatePath string, opts *options.BoilerplateOptions, path string, varData map[string]any) (string, error) {
 	templateContents, err := readFile(templatePath, path)
 	if err != nil {
 		return "", err
@@ -351,8 +351,8 @@ func extractSnippetName(line string) (string, bool) {
 
 // Wrap a function that uses float64 as input and output so it can take any number as input and return a float64 as
 // output
-func wrapFloatToFloatFunction(f func(float64) float64) func(interface{}) (float64, error) {
-	return func(value interface{}) (float64, error) {
+func wrapFloatToFloatFunction(f func(float64) float64) func(any) (float64, error) {
+	return func(value any) (float64, error) {
 		valueAsFloat, err := toFloat64(value)
 		if err != nil {
 			return 0, err
@@ -364,8 +364,8 @@ func wrapFloatToFloatFunction(f func(float64) float64) func(interface{}) (float6
 
 // Wrap a function that uses float64 as input and int as output so it can take any number as input and return an int as
 // output
-func wrapFloatToIntFunction(f func(float64) int) func(interface{}) (int, error) {
-	return func(value interface{}) (int, error) {
+func wrapFloatToIntFunction(f func(float64) int) func(any) (int, error) {
+	return func(value any) (int, error) {
 		valueAsFloat, err := toFloat64(value)
 		if err != nil {
 			return 0, err
@@ -377,8 +377,8 @@ func wrapFloatToIntFunction(f func(float64) int) func(interface{}) (int, error) 
 
 // Wrap a function that takes two float64's as input, performs arithmetic on them, and returns another float64 as a
 // function that can take two values of any number kind as input and return a float64 as output
-func wrapFloatFloatToFloatFunction(f func(arg1 float64, arg2 float64) float64) func(interface{}, interface{}) (float64, error) {
-	return func(arg1 interface{}, arg2 interface{}) (float64, error) {
+func wrapFloatFloatToFloatFunction(f func(arg1 float64, arg2 float64) float64) func(any, any) (float64, error) {
+	return func(arg1 any, arg2 any) (float64, error) {
 		arg1AsFloat, err := toFloat64(arg1)
 		if err != nil {
 			return 0, err
@@ -395,7 +395,7 @@ func wrapFloatFloatToFloatFunction(f func(arg1 float64, arg2 float64) float64) f
 
 // Convert the given value to a float64. Does a proper conversion if the underlying type is a number. For all other
 // types, we first convert to a string, and then try to parse the result as a float64.
-func toFloat64(value interface{}) (float64, error) {
+func toFloat64(value any) (float64, error) {
 	// Because Go is a shitty language, we have to call out each of the numeric types separately, even though the
 	// behavior for almost all of them is identical. If we tried to do a case statement with multiple clauses
 	// (separated by comma), then the variable v would be of type interface{} and we could not use float64(..) to
@@ -432,7 +432,7 @@ func toFloat64(value interface{}) (float64, error) {
 
 // Convert the given value to an int. Does a proper conversion if the underlying type is a number. For all other
 // types, we first convert to a string, and then try to parse the result as a int.
-func toInt(value interface{}) (int, error) {
+func toInt(value any) (int, error) {
 	// Because Go is a shitty language, we have to call out each of the numeric types separately, even though the
 	// behavior for almost all of them is identical. If we tried to do a case statement with multiple clauses
 	// (separated by comma), then the variable v would be of type interface{} and we could not use int(..) to
@@ -582,7 +582,7 @@ func collapseWhiteSpaceAndPunctuationToDelimiter(str string, delimiter string) s
 
 // Generate a slice from start (inclusive) to end (exclusive), incrementing by increment. For example, slice(0, 5, 1)
 // returns [0, 1, 2, 3, 4].
-func slice(start interface{}, end interface{}, increment interface{}) ([]int, error) {
+func slice(start any, end any, increment any) ([]int, error) {
 	out := []int{}
 
 	startAsInt, err := toInt(start)
@@ -609,7 +609,7 @@ func slice(start interface{}, end interface{}, increment interface{}) ([]int, er
 
 // Return the keys in the given map. This method always returns the keys in sorted order to provide a stable iteration
 // order.
-func keys(value interface{}) ([]string, error) {
+func keys(value any) ([]string, error) {
 	valueType := reflect.ValueOf(value)
 	if valueType.Kind() != reflect.Map {
 		return nil, InvalidTypeForMethodArgument{"keys", "Map", valueType.Kind().String()}
@@ -658,8 +658,8 @@ func printShellCommandDetails(args []string, envVars []string, workingDir string
 
 	details := formatShellCommandDetails(args, envVars, workingDir)
 
-	lines := strings.Split(details, "\n")
-	for _, line := range lines {
+	lines := strings.SplitSeq(details, "\n")
+	for line := range lines {
 		util.Logger.Printf("  %s", line)
 	}
 }
@@ -762,7 +762,7 @@ func trimSuffix(str, suffix string) string {
 	return strings.TrimPrefix(str, suffix)
 }
 
-func toYaml(obj interface{}) (string, error) {
+func toYaml(obj any) (string, error) {
 	yamlObj, err := yaml.Marshal(&obj)
 	if err != nil {
 		return "", err
@@ -771,8 +771,8 @@ func toYaml(obj interface{}) (string, error) {
 	return string(yamlObj), nil
 }
 
-func fromYaml(yamlStr string) (interface{}, error) {
-	var obj interface{}
+func fromYaml(yamlStr string) (any, error) {
+	var obj any
 
 	err := yaml.Unmarshal([]byte(yamlStr), &obj)
 	if err != nil {

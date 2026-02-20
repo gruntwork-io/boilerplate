@@ -153,7 +153,7 @@ func TestParseBoilerplateConfigInvalidTypeForNameField(t *testing.T) {
 	_, err := ParseBoilerplateConfig([]byte(configOneVariableInvalidTypeForNameField))
 
 	require.Error(t, err)
-	assert.ErrorIs(t, err, variables.InvalidTypeForField{FieldName: "name", ExpectedType: "string", ActualType: reflect.TypeOf([]interface{}{})}, "Expected a InvalidTypeForField error but got %s: %v", reflect.TypeOf(errors.Unwrap(err)), err)
+	assert.ErrorIs(t, err, variables.InvalidTypeForField{FieldName: "name", ExpectedType: "string", ActualType: reflect.TypeFor[[]any]()}, "Expected a InvalidTypeForField error but got %s: %v", reflect.TypeOf(errors.Unwrap(err)), err)
 }
 
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
@@ -184,7 +184,7 @@ func TestParseBoilerplateConfigOneVariableEnumWrongType(t *testing.T) {
 	_, err := ParseBoilerplateConfig([]byte(configOneVariableEnumOptionsWrongType))
 
 	require.Error(t, err)
-	assert.ErrorIs(t, err, variables.InvalidTypeForField{FieldName: "options", ExpectedType: "List", ActualType: reflect.TypeOf("string"), Context: "foo"}, "Expected a InvalidTypeForField error but got %s", reflect.TypeOf(errors.Unwrap(err)))
+	assert.ErrorIs(t, err, variables.InvalidTypeForField{FieldName: "options", ExpectedType: "List", ActualType: reflect.TypeFor[string](), Context: "foo"}, "Expected a InvalidTypeForField error but got %s", reflect.TypeOf(errors.Unwrap(err)))
 }
 
 // YAML is whitespace sensitive, so we need to be careful that we don't introduce unnecessary indentation
@@ -296,8 +296,8 @@ func TestParseBoilerplateConfigAllTypes(t *testing.T) {
 			variables.NewIntVariable("var3").WithDefault(5),
 			variables.NewFloatVariable("var4").WithDefault(5.5),
 			variables.NewBoolVariable("var5").WithDefault(true),
-			variables.NewListVariable("var6").WithDefault([]interface{}{"foo", "bar", "baz"}),
-			variables.NewMapVariable("var7").WithDefault(map[interface{}]interface{}{"key1": "value1", "key2": "value2", "key3": "value3"}),
+			variables.NewListVariable("var6").WithDefault([]any{"foo", "bar", "baz"}),
+			variables.NewMapVariable("var7").WithDefault(map[any]any{"key1": "value1", "key2": "value2", "key3": "value3"}),
 			variables.NewEnumVariable("var8", []string{"foo", "bar", "baz"}).WithDefault("bar"),
 		},
 		Dependencies: []variables.Dependency{},

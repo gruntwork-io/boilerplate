@@ -103,7 +103,7 @@ func UnmarshalListOfStrings(fields map[string]any, fieldName string) ([]string, 
 			if valueAsString, isString := asYaml.(string); isString {
 				listOfStrings = append(listOfStrings, valueAsString)
 			} else {
-				return nil, InvalidTypeForField{FieldName: fieldName, ExpectedType: "string", ActualType: reflect.TypeOf(asList)}
+				return nil, InvalidTypeForField{FieldName: fieldName, ExpectedType: "string", ActualType: reflect.TypeFor[[]any]()}
 			}
 		}
 
@@ -529,15 +529,13 @@ func parseVariablesFromEnvironmentVariables() (map[string]any, error) {
 			return vars, InvalidVarSyntax(envVar)
 		}
 
-		if strings.HasPrefix(key, "BOILERPLATE_") {
-			key = strings.TrimPrefix(key, "BOILERPLATE_")
-
+		if after, ok := strings.CutPrefix(key, "BOILERPLATE_"); ok {
 			parsedValue, err := ParseYamlString(value)
 			if err != nil {
 				return vars, err
 			}
 
-			vars[key] = parsedValue
+			vars[after] = parsedValue
 		}
 	}
 
