@@ -53,16 +53,32 @@ Written by {{ .Author }}.</textarea>
     </div>
 
     <script src="wasm_exec.js"></script>
-    <script>
-        const go = new Go();
+    <script type="module">
+        const status = document.getElementById("status");
+        try {
+            status.textContent = "Loading brotli decoder...";
+            const brotli = await import(
+                "https://cdn.jsdelivr.net/npm/brotli-wasm@3.0.1/index.web.js"
+            ).then(m => m.default);
 
-        WebAssembly.instantiateStreaming(fetch("boilerplate.wasm"), go.importObject).then(result => {
-            go.run(result.instance);
-            document.getElementById("status").textContent = "WASM loaded. Ready to render.";
+            status.textContent = "Fetching compressed WASM...";
+            const resp = await fetch("boilerplate.wasm.br");
+            if (!resp.ok) throw new Error(`fetch failed: ${resp.status}`);
+            const compressedBytes = new Uint8Array(await resp.arrayBuffer());
+
+            status.textContent = "Decompressing WASM...";
+            const wasmBytes = brotli.decompress(compressedBytes);
+
+            status.textContent = "Instantiating WASM...";
+            const go = new Go();
+            const { instance } = await WebAssembly.instantiate(wasmBytes, go.importObject);
+            go.run(instance);
+
+            status.textContent = "WASM loaded. Ready to render.";
             document.getElementById("render").disabled = false;
-        }).catch(err => {
-            document.getElementById("status").textContent = "Failed to load WASM: " + err;
-        });
+        } catch (err) {
+            status.textContent = "Failed to load WASM: " + err;
+        }
 
         document.getElementById("render").addEventListener("click", () => {
             const templateStr = document.getElementById("template").value;

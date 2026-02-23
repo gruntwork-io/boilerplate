@@ -81,11 +81,22 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Install brotli
+        run: sudo apt-get update && sudo apt-get install -y brotli
+
       - name: Build WASM
         run: GOOS=js GOARCH=wasm go build -o boilerplate.wasm -ldflags "-s -w" ./cmd/wasm/
+
+      - name: Compress WASM with brotli
+        run: |
+          brotli --best boilerplate.wasm -o boilerplate.wasm.br
+          echo "Uncompressed: $(wc -c < boilerplate.wasm | tr -d ' ') bytes"
+          echo "Compressed:   $(wc -c < boilerplate.wasm.br | tr -d ' ') bytes"
 
       - name: Upload WASM Artifact
         uses: actions/upload-artifact@v5
         with:
           name: boilerplate_js_wasm
-          path: boilerplate.wasm
+          path: |
+            boilerplate.wasm
+            boilerplate.wasm.br

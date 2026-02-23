@@ -31,11 +31,17 @@ fmt:
 build-wasm:
 	GOOS=js GOARCH=wasm go build -o examples/wasm/boilerplate.wasm -ldflags "-s -w" ./cmd/wasm/
 
+compress-wasm: build-wasm
+	@command -v brotli >/dev/null 2>&1 || { echo "Error: brotli CLI not found. Install with: brew install brotli (macOS) or apt-get install brotli (Linux)"; exit 1; }
+	brotli --best --force examples/wasm/boilerplate.wasm -o examples/wasm/boilerplate.wasm.br
+	@echo "Uncompressed: $$(wc -c < examples/wasm/boilerplate.wasm | tr -d ' ') bytes"
+	@echo "Compressed:   $$(wc -c < examples/wasm/boilerplate.wasm.br | tr -d ' ') bytes"
+
 copy-wasm-exec:
 	cp "$$(go env GOROOT)/lib/wasm/wasm_exec.js" examples/wasm/
 
-wasm: build-wasm copy-wasm-exec
+wasm: compress-wasm copy-wasm-exec
 	@echo "WASM build complete:"
-	@ls -lh examples/wasm/boilerplate.wasm
+	@ls -lh examples/wasm/boilerplate.wasm examples/wasm/boilerplate.wasm.br
 
-.PHONY: lint test default update-lint-config build-wasm copy-wasm-exec wasm
+.PHONY: lint test default update-lint-config build-wasm compress-wasm copy-wasm-exec wasm
