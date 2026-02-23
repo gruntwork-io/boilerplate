@@ -1,0 +1,88 @@
+# Builds, signs, and publishes release binaries when a version tag is pushed.
+# Also updates the Homebrew formula in gruntwork-io/homebrew-tap.
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  # ── Gate: lint and spell-check ────────────────────────────────
+  lint:
+    uses: ./.github/workflows/lint.yml
+    secrets: inherit
+
+  codespell:
+    uses: ./.github/workflows/codespell.yml
+    secrets: inherit
+
+  # ── Gate: run all tests ───────────────────────────────────────
+  base_tests:
+    needs: [lint, codespell]
+    uses: ./.github/workflows/base-test.yml
+    permissions:
+      contents: read
+      checks: write
+    secrets: inherit
+
+  windows_tests:
+    needs: [lint, codespell]
+    uses: ./.github/workflows/windows-test.yml
+    secrets: inherit
+
+  # ── Build cross-platform binaries ─────────────────────────────
+  build:
+    needs: [lint, codespell]
+    uses: ./.github/workflows/build.yml
+    secrets: inherit
+
+  # ── Sign macOS binaries ───────────────────────────────────────
+  sign-macos:
+    needs: [base_tests, windows_tests, build]
+    uses: ./.github/workflows/sign-macos.yml
+    secrets: inherit
+
+  # ── Create GitHub Release ─────────────────────────────────────
+  release:
+    name: Create GitHub Release
+    needs: [sign-macos]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v5
+        with:
+          pattern: boilerplate_*
+          path: binaries/
+          merge-multiple: true
+
+      - name: List release assets
+        run: |
+          echo "Files to be released:"
+          ls -lh binaries/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: binaries/*
+          draft: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ── Update Homebrew formula ───────────────────────────────────
+  update-homebrew:
+    needs: [release]
+    uses: ./.github/workflows/update-homebrew.yml
+    with:
+      tag: ${{ github.ref_name }}
+    secrets: inherit

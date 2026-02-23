@@ -1,0 +1,52 @@
+name: Windows Tests
+
+on:
+  workflow_call:
+
+jobs:
+  test_windows:
+    name: Test (windows)
+    runs-on: windows-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Use mise to install dependencies
+        uses: jdx/mise-action@v3
+        with:
+          version: 2025.8.16
+          experimental: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install go-junit-report
+        run: go install github.com/jstemmer/go-junit-report/v2@latest
+
+      - name: Run Windows Tests
+        id: run-tests
+        shell: bash
+        run: |
+          set -o pipefail
+          go test -v -tags windows ./... \
+            -ldflags '-X github.com/gruntwork-io/go-commons/version.Version=v1.33.7' \
+            -timeout 45m | tee >(go-junit-report -set-exit-code > result.xml)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Report (windows)
+        uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: test-report-windows
+          path: result.xml
+
+      - name: Display Test Results (windows)
+        uses: mikepenz/action-junit-report@v5
+        if: always()
+        with:
+          report_paths: result.xml
+          detailed_summary: 'true'
+          include_time_in_summary: 'true'
+          group_suite: 'true'

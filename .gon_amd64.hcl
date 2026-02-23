@@ -6,7 +6,7 @@ source = ["./bin/boilerplate_darwin_amd64"]
 bundle_id = "io.gruntwork.app.boilerplate"
 
 apple_id {
-  username = "machine.apple@gruntwork.io"
+  username = "@env:AC_USERNAME"
 }
 
 sign {

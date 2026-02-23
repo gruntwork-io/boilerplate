@@ -20,6 +20,11 @@ jobs:
       checks: write
     secrets: inherit
 
+  windows_tests:
+    needs: [lint, codespell]
+    uses: ./.github/workflows/windows-test.yml
+    secrets: inherit
+
   build:
     needs: [lint, codespell]
     uses: ./.github/workflows/build.yml

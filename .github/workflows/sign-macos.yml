@@ -1,0 +1,103 @@
+# Signs macOS (darwin) binaries with Apple Developer ID and submits for
+# notarization. Called from the release workflow after binaries are built.
+#
+# Follows the pattern from gruntwork-io/runbooks.
+
+name: Sign macOS Binaries
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  sign-macos:
+    name: Sign macOS Binaries
+    runs-on: macos-latest
+    env:
+      GON_VERSION: v0.0.37
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Download macOS build artifacts
+        uses: actions/download-artifact@v5
+        with:
+          pattern: boilerplate_darwin_*
+          path: artifacts/
+
+      - name: Prepare build artifacts
+        run: |
+          mkdir -p bin
+          find artifacts/ -type f -name 'boilerplate_darwin_*' -exec cp {} bin/ \;
+          echo "Binaries to sign:"
+          ls -lh bin/
+
+      - name: Install gon
+        run: .github/scripts/release/macos/install-gon.sh ${{ env.GON_VERSION }}
+
+      - name: Import Apple certificate
+        env:
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+        run: .github/scripts/release/macos/import-cert.sh
+
+      - name: Sign macOS binaries
+        env:
+          AC_PASSWORD: ${{ secrets.MACOS_AC_PASSWORD }}
+          AC_PROVIDER: ${{ secrets.MACOS_AC_PROVIDER }}
+          AC_USERNAME: ${{ secrets.MACOS_AC_LOGIN }}
+        run: |
+          # Expand @env:AC_USERNAME in gon configs since gon's expansion is unreliable
+          for config in .gon_amd64.hcl .gon_arm64.hcl; do
+            tmp="/tmp/gon-config-$(basename "$config")"
+            sed "s|@env:AC_USERNAME|${AC_USERNAME}|g" "$config" > "$tmp"
+            echo "Signing with ${config}..."
+            gon -log-level=debug "$tmp" 2>&1 | tee "/tmp/gon-$(basename "$config").log" || {
+              echo "Signing/notarization failed for ${config}"
+              # Try to extract submission ID from logs for debugging
+              submission_id=$(grep -oE '[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}' "/tmp/gon-$(basename "$config").log" | tail -1 || true)
+              if [[ -n "${submission_id}" ]]; then
+                echo "Submission ID: ${submission_id}"
+                echo "To get detailed logs: xcrun notarytool log ${submission_id} --apple-id \"\$AC_USERNAME\" --password \"\$AC_PASSWORD\" --team-id \"\$AC_PROVIDER\""
+              fi
+              exit 1
+            }
+            rm -f "$tmp"
+          done
+
+      - name: Extract and verify signed binaries
+        run: |
+          for arch in amd64 arm64; do
+            zip_file="boilerplate_darwin_${arch}.zip"
+            binary="boilerplate_darwin_${arch}"
+
+            echo "Extracting ${zip_file}..."
+            unzip -o "$zip_file"
+
+            echo "Verifying codesign signature for ${binary}..."
+            codesign -dv --verbose=4 "$binary" 2>&1 || {
+              echo "ERROR: Signature verification failed for ${binary}"
+              exit 1
+            }
+
+            mv "$binary" bin/
+            echo "Signed ${binary} ready"
+            echo ""
+          done
+
+      - name: Upload signed darwin_amd64
+        uses: actions/upload-artifact@v5
+        with:
+          name: boilerplate_darwin_amd64
+          path: bin/boilerplate_darwin_amd64
+          if-no-files-found: error
+          overwrite: true
+
+      - name: Upload signed darwin_arm64
+        uses: actions/upload-artifact@v5
+        with:
+          name: boilerplate_darwin_arm64
+          path: bin/boilerplate_darwin_arm64
+          if-no-files-found: error
+          overwrite: true
