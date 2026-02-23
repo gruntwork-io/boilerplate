@@ -1,38 +1,25 @@
-package util
+//go:build !(js && wasm)
+
+package prompt
 
 import (
 	"bufio"
+	"fmt"
 	"os"
 	"strings"
 
-	"github.com/fatih/color"
-	"github.com/inancgumus/screen"
-
-	"github.com/gruntwork-io/boilerplate/errors"
-)
-
-var brightGreen = color.New(color.FgHiGreen, color.Bold)
-
-// UserResponse represents the user's response to a yes/no/all prompt
-type UserResponse string
-
-const (
-	UserResponseYes UserResponse = "yes"
-	UserResponseNo  UserResponse = "no"
-	UserResponseAll UserResponse = "all"
+	"github.com/gruntwork-io/boilerplate/internal/color"
 )
 
 // PromptUserForInput prompts the user for text in the CLI. Returns the text entered by the user.
 func PromptUserForInput(prompt string) (string, error) {
-	if _, err := brightGreen.Print(prompt + ": "); err != nil {
-		return "", errors.WithStackTrace(err)
-	}
+	fmt.Print(color.BoldGreen(prompt + ": "))
 
 	reader := bufio.NewReader(os.Stdin)
 
 	text, err := reader.ReadString('\n')
 	if err != nil {
-		return "", errors.WithStackTrace(err)
+		return "", err
 	}
 
 	return strings.TrimSpace(text), nil
@@ -42,7 +29,7 @@ func PromptUserForInput(prompt string) (string, error) {
 func PromptUserForYesNo(prompt string) (bool, error) {
 	resp, err := PromptUserForInput(prompt + " (y/n) ")
 	if err != nil {
-		return false, errors.WithStackTrace(err)
+		return false, err
 	}
 
 	switch strings.ToLower(resp) {
@@ -58,7 +45,7 @@ func PromptUserForYesNo(prompt string) (bool, error) {
 func PromptUserForYesNoAll(prompt string) (UserResponse, error) {
 	resp, err := PromptUserForInput(prompt + " (y/a/n) ")
 	if err != nil {
-		return UserResponseNo, errors.WithStackTrace(err)
+		return UserResponseNo, err
 	}
 
 	switch strings.ToLower(resp) {
@@ -69,9 +56,4 @@ func PromptUserForYesNoAll(prompt string) (UserResponse, error) {
 	default:
 		return UserResponseNo, nil
 	}
-}
-
-// ClearTerminal clears the terminal screen in a cross-platform compatible manner
-func ClearTerminal() {
-	screen.Clear()
 }

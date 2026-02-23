@@ -51,7 +51,7 @@ func (hooks Hooks) MarshalYAML() (any, error) {
 	// polymorphic to that type. So we reconstruct the list using the right type before passing it in to the marshal
 	// function.
 	if len(hooks.BeforeHooks) > 0 {
-		interfaceList := make([]interface{}, 0, len(hooks.BeforeHooks))
+		interfaceList := make([]any, 0, len(hooks.BeforeHooks))
 		for i := range hooks.BeforeHooks {
 			interfaceList = append(interfaceList, &hooks.BeforeHooks[i])
 		}
@@ -65,7 +65,7 @@ func (hooks Hooks) MarshalYAML() (any, error) {
 	}
 
 	if len(hooks.AfterHooks) > 0 {
-		interfaceList := []interface{}{}
+		interfaceList := []any{}
 		for i := range hooks.AfterHooks {
 			interfaceList = append(interfaceList, &hooks.AfterHooks[i])
 		}
@@ -102,7 +102,7 @@ func (hooks Hooks) MarshalYAML() (any, error) {
 //	    skip: <CONDITION>
 //
 // This method takes the data above and unmarshals it into a Hooks struct
-func UnmarshalHooksFromBoilerplateConfigYaml(fields map[string]interface{}) (Hooks, error) {
+func UnmarshalHooksFromBoilerplateConfigYaml(fields map[string]any) (Hooks, error) {
 	hookFields, err := unmarshalMapOfFields(fields, "hooks")
 	if err != nil {
 		return Hooks{}, err
@@ -141,7 +141,7 @@ func UnmarshalHooksFromBoilerplateConfigYaml(fields map[string]interface{}) (Hoo
 //
 // This method takes looks up the given hookName in the map and unmarshals the data inside of it it into a list of
 // Hook structs
-func unmarshalHooksFromBoilerplateConfigYaml(fields map[string]interface{}, hookName string) ([]Hook, error) {
+func unmarshalHooksFromBoilerplateConfigYaml(fields map[string]any, hookName string) ([]Hook, error) {
 	hookFields, err := unmarshalListOfFields(fields, hookName)
 	if err != nil || hookFields == nil {
 		return nil, err
@@ -172,7 +172,7 @@ func unmarshalHooksFromBoilerplateConfigYaml(fields map[string]interface{}, hook
 //	<KEY>: <VALUE>
 //
 // This method unmarshals the YAML data into a Hook struct
-func unmarshalHookFromBoilerplateConfigYaml(fields map[string]interface{}, hookName string) (*Hook, error) {
+func unmarshalHookFromBoilerplateConfigYaml(fields map[string]any, hookName string) (*Hook, error) {
 	command, err := unmarshalStringField(fields, "command", true, hookName)
 	if err != nil {
 		return nil, err

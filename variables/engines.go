@@ -3,7 +3,6 @@ package variables
 import (
 	"fmt"
 
-	"github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/boilerplate/util"
 )
 
@@ -84,7 +83,7 @@ func unmarshalEngineFromBoilerplateConfigYaml(fields map[string]any) (*Engine, e
 
 	// Validate the template engine conforms to enum.
 	if !util.ListContains(maybeTemplateEngine, availableTemplateEngines) {
-		return nil, errors.WithStackTrace(InvalidTemplateEngineErr(maybeTemplateEngine))
+		return nil, InvalidTemplateEngineErr(maybeTemplateEngine)
 	}
 
 	return &Engine{Path: path, TemplateEngine: TemplateEngineType(maybeTemplateEngine)}, nil

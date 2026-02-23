@@ -65,3 +65,42 @@ jobs:
         with:
           name: boilerplate_${{ matrix.os }}_${{ matrix.arch }}
           path: bin/boilerplate_${{ matrix.os }}_${{ matrix.arch }}*
+
+  build-wasm:
+    name: Build (js/wasm)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Use mise to install dependencies
+        uses: jdx/mise-action@v3
+        with:
+          version: 2025.8.16
+          experimental: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install brotli
+        run: sudo apt-get update && sudo apt-get install -y brotli
+
+      - name: Build WASM
+        run: GOOS=js GOARCH=wasm go build -o boilerplate.wasm -ldflags "-s -w" ./cmd/wasm/
+
+      - name: Compress WASM with brotli
+        run: |
+          brotli --best boilerplate.wasm -o boilerplate.wasm.br
+          echo "Uncompressed: $(wc -c < boilerplate.wasm | tr -d ' ') bytes"
+          echo "Compressed:   $(wc -c < boilerplate.wasm.br | tr -d ' ') bytes"
+
+      - name: Copy wasm_exec.js
+        run: cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" .
+
+      - name: Upload WASM Artifacts
+        uses: actions/upload-artifact@v5
+        with:
+          name: boilerplate_js_wasm
+          path: |
+            boilerplate.wasm
+            boilerplate.wasm.br
+            wasm_exec.js

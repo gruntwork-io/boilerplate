@@ -3,12 +3,6 @@ package options
 
 import (
 	"fmt"
-
-	"github.com/urfave/cli/v2"
-
-	"github.com/gruntwork-io/boilerplate/errors"
-	"github.com/gruntwork-io/boilerplate/getterhelper"
-	"github.com/gruntwork-io/boilerplate/variables"
 )
 
 const OptTemplateURL = "template-url"
@@ -38,96 +32,6 @@ type BoilerplateOptions struct {
 	ExecuteAllShellCommands bool
 }
 
-// Validate that the options have reasonable values and return an error if they don't
-func (options *BoilerplateOptions) Validate() error {
-	if options.TemplateURL == "" {
-		return errors.WithStackTrace(ErrTemplateURLOptionCannotBeEmpty)
-	}
-
-	if err := getterhelper.ValidateTemplateURL(options.TemplateURL); err != nil {
-		return err
-	}
-
-	if options.OutputFolder == "" {
-		return errors.WithStackTrace(ErrOutputFolderOptionCannotBeEmpty)
-	}
-
-	return nil
-}
-
-// ParseOptions parses the command line options provided by the user
-func ParseOptions(cliContext *cli.Context) (*BoilerplateOptions, error) {
-	vars, err := variables.ParseVars(cliContext.StringSlice(OptVar), cliContext.StringSlice(OptVarFile))
-	if err != nil {
-		return nil, err
-	}
-
-	missingKeyAction := DefaultMissingKeyAction
-	missingKeyActionValue := cliContext.String(OptMissingKeyAction)
-
-	if missingKeyActionValue != "" {
-		missingKeyAction, err = ParseMissingKeyAction(missingKeyActionValue)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	missingConfigAction := DefaultMissingConfigAction
-	missingConfigActionValue := cliContext.String(OptMissingConfigAction)
-
-	if missingConfigActionValue != "" {
-		missingConfigAction, err = ParseMissingConfigAction(missingConfigActionValue)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	templateURL, templateFolder, err := DetermineTemplateConfig(cliContext.String(OptTemplateURL))
-	if err != nil {
-		return nil, err
-	}
-
-	options := &BoilerplateOptions{
-		TemplateURL:             templateURL,
-		TemplateFolder:          templateFolder,
-		OutputFolder:            cliContext.String(OptOutputFolder),
-		NonInteractive:          cliContext.Bool(OptNonInteractive),
-		OnMissingKey:            missingKeyAction,
-		OnMissingConfig:         missingConfigAction,
-		Vars:                    vars,
-		NoHooks:                 cliContext.Bool(OptNoHooks),
-		NoShell:                 cliContext.Bool(OptNoShell),
-		DisableDependencyPrompt: cliContext.Bool(OptDisableDependencyPrompt),
-		ExecuteAllShellCommands: false,
-		ShellCommandAnswers:     make(map[string]bool),
-	}
-
-	if err := options.Validate(); err != nil {
-		return nil, err
-	}
-
-	return options, nil
-}
-
-// DetermineTemplateConfig decides what should be passed to TemplateURL and TemplateFolder. This parses the templateUrl
-// and determines if it is a local path. If so, use that path directly instead of downloading it to a temp working dir.
-// We do this by setting the template folder, which will instruct the process routine to skip downloading the template.
-// Returns TemplateURL, TemplateFolder, error
-func DetermineTemplateConfig(templateURL string) (string, string, error) {
-	url, err := getterhelper.ParseGetterURL(templateURL)
-	if err != nil {
-		return "", "", err
-	}
-
-	if url.Scheme == "file" {
-		// Intentionally return as both TemplateURL and TemplateFolder so that validation passes, but still skip
-		// download.
-		return templateURL, templateURL, nil
-	}
-
-	return templateURL, "", nil
-}
-
 // MissingKeyAction is an enum that represents what we can do when a template looks up a missing key. This typically happens
 // when there is a typo in the variable name in a template.
 type MissingKeyAction string
@@ -150,7 +54,7 @@ func ParseMissingKeyAction(str string) (MissingKeyAction, error) {
 		}
 	}
 
-	return MissingKeyAction(""), errors.WithStackTrace(InvalidMissingKeyAction(str))
+	return MissingKeyAction(""), InvalidMissingKeyAction(str)
 }
 
 // MissingConfigAction is an enum that represents what to do when the template folder passed to boilerplate does not contain a
@@ -173,7 +77,7 @@ func ParseMissingConfigAction(str string) (MissingConfigAction, error) {
 		}
 	}
 
-	return MissingConfigAction(""), errors.WithStackTrace(InvalidMissingConfigAction(str))
+	return MissingConfigAction(""), InvalidMissingConfigAction(str)
 }
 
 //nolint:staticcheck

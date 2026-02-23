@@ -1,10 +1,10 @@
 package config //nolint:testpackage
 
 import (
+	"maps"
 	"reflect"
+	"slices"
 	"testing"
-
-	"golang.org/x/exp/maps"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -132,7 +132,7 @@ func TestGetVariableDefaultNonInteractive(t *testing.T) {
 	variable := variables.NewStringVariable("foo").WithDefault("bar")
 	opts := &options.BoilerplateOptions{
 		NonInteractive: true,
-		Vars: map[string]interface{}{
+		Vars: map[string]any{
 			"key1": "value1",
 			"key2": "value2",
 			"key3": "value3",
@@ -155,10 +155,10 @@ func TestGetVariablesNoVariables(t *testing.T) {
 	dependency := &variables.Dependency{}
 
 	actual, err := GetVariables(opts, boilerplateConfig, rootBoilerplateConfig, dependency)
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"BoilerplateConfigVars": map[string]variables.Variable{},
 		"BoilerplateConfigDeps": map[string]*variables.Dependency{},
-		"This": map[string]interface{}{
+		"This": map[string]any{
 			"Config":     boilerplateConfig,
 			"Options":    opts,
 			"CurrentDep": dependency,
@@ -192,7 +192,7 @@ func TestGetVariablesMatchFromVars(t *testing.T) {
 
 	opts := &options.BoilerplateOptions{
 		NonInteractive: true,
-		Vars: map[string]interface{}{
+		Vars: map[string]any{
 			"foo": "bar",
 		},
 		OnMissingKey: options.ExitWithError,
@@ -209,11 +209,11 @@ func TestGetVariablesMatchFromVars(t *testing.T) {
 	dependency := &variables.Dependency{}
 
 	actual, err := GetVariables(opts, boilerplateConfig, rootBoilerplateConfig, dependency)
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"foo":                   "bar",
 		"BoilerplateConfigVars": map[string]variables.Variable{},
 		"BoilerplateConfigDeps": map[string]*variables.Dependency{},
-		"This": map[string]interface{}{
+		"This": map[string]any{
 			"Config":     boilerplateConfig,
 			"Options":    opts,
 			"CurrentDep": dependency,
@@ -229,7 +229,7 @@ func TestGetVariablesMatchFromVarsAndDefaults(t *testing.T) {
 
 	opts := &options.BoilerplateOptions{
 		NonInteractive: true,
-		Vars: map[string]interface{}{
+		Vars: map[string]any{
 			"key1": "value1",
 			"key2": "value2",
 		},
@@ -249,13 +249,13 @@ func TestGetVariablesMatchFromVarsAndDefaults(t *testing.T) {
 	dependency := &variables.Dependency{}
 
 	actual, err := GetVariables(opts, boilerplateConfig, rootBoilerplateConfig, dependency)
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"key1":                  "value1",
 		"key2":                  "value2",
 		"key3":                  "value3",
 		"BoilerplateConfigVars": map[string]variables.Variable{},
 		"BoilerplateConfigDeps": map[string]*variables.Dependency{},
-		"This": map[string]interface{}{
+		"This": map[string]any{
 			"Config":     boilerplateConfig,
 			"Options":    opts,
 			"CurrentDep": dependency,
@@ -292,6 +292,6 @@ func TestValidateUserInput(t *testing.T) {
 	m, hasValidationErrs = validateUserInput("bar", v)
 	assert.True(t, hasValidationErrs)
 
-	key := maps.Keys(m)[0]
+	key := slices.Collect(maps.Keys(m))[0]
 	assert.Contains(t, key, "Value must be of type int")
 }

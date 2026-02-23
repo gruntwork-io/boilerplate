@@ -1,7 +1,8 @@
 package main
 
 import (
-	"github.com/gruntwork-io/go-commons/entrypoint"
+	"fmt"
+	"os"
 
 	"github.com/gruntwork-io/boilerplate/cli"
 )
@@ -9,5 +10,8 @@ import (
 // The main entrypoint for boilerplate
 func main() {
 	app := cli.CreateBoilerplateCli()
-	entrypoint.RunApp(app)
+	if err := app.Run(os.Args); err != nil {
+		fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
+		os.Exit(1)
+	}
 }

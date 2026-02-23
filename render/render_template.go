@@ -8,7 +8,6 @@ import (
 	"reflect"
 	"text/template"
 
-	"github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/hashicorp/go-multierror"
 )
@@ -28,7 +27,7 @@ func RenderTemplateWithPartials(templatePath string, partials []string, variable
 func RenderTemplateWithPartialsWithContext(ctx context.Context, templatePath string, partials []string, variables map[string]any, opts *options.BoilerplateOptions) (string, error) {
 	tmpl, err := getTemplate(ctx, templatePath, opts).ParseGlob(templatePath)
 	if err != nil {
-		return "", errors.WithStackTrace(err)
+		return "", err
 	}
 
 	// Each item in the list of partials is a glob to a path relative to the templatePath, so we need to
@@ -41,12 +40,12 @@ func RenderTemplateWithPartialsWithContext(ctx context.Context, templatePath str
 
 		parsedTemplate, err := getTemplate(ctx, templatePath, opts).ParseGlob(relativePath)
 		if err != nil {
-			return "", errors.WithStackTrace(err)
+			return "", err
 		}
 
 		for _, t := range parsedTemplate.Templates() {
 			if _, err := tmpl.AddParseTree(t.Name(), t.Tree); err != nil {
-				return "", errors.WithStackTrace(err)
+				return "", err
 			}
 		}
 	}
@@ -61,7 +60,7 @@ func RenderTemplateFromString(templatePath string, templateContents string, vari
 
 	parsedTemplate, err := tmpl.Parse(templateContents)
 	if err != nil {
-		return "", errors.WithStackTrace(err)
+		return "", err
 	}
 
 	return executeTemplate(parsedTemplate, variables)
@@ -74,7 +73,7 @@ func RenderTemplateFromStringWithContext(ctx context.Context, templatePath strin
 
 	parsedTemplate, err := tmpl.Parse(templateContents)
 	if err != nil {
-		return "", errors.WithStackTrace(err)
+		return "", err
 	}
 
 	return executeTemplate(parsedTemplate, variables)
@@ -92,7 +91,7 @@ func getTemplate(ctx context.Context, templatePath string, opts *options.Boilerp
 func executeTemplate(tmpl *template.Template, variables map[string]any) (string, error) {
 	var output bytes.Buffer
 	if err := tmpl.Execute(&output, variables); err != nil {
-		return "", errors.WithStackTrace(err)
+		return "", err
 	}
 
 	return output.String(), nil
@@ -117,7 +116,7 @@ func RenderVariables(
 	opts *options.BoilerplateOptions,
 	variablesToRender map[string]any,
 	alreadyRenderedVariables map[string]any,
-) (map[string]interface{}, error) {
+) (map[string]any, error) {
 	return RenderVariablesWithContext(context.Background(), opts, variablesToRender, alreadyRenderedVariables)
 }
 
@@ -141,7 +140,7 @@ func RenderVariablesWithContext(
 	opts *options.BoilerplateOptions,
 	variablesToRender map[string]any,
 	alreadyRenderedVariables map[string]any,
-) (map[string]interface{}, error) {
+) (map[string]any, error) {
 	// Force to use ExitWithError for missing key, because by design this algorithm depends on boilerplate error-ing if
 	// a variable can't be rendered due to a reference that hasn't been rendered yet. If OnMissingKey was invalid or
 	// zero, then boilerplate will automatically render all references to `"<no-value>"` or `""` in the first pass.
@@ -169,7 +168,7 @@ func RenderVariablesWithContext(
 		if iterations > MaxRenderAttempts {
 			// Reached maximum supported iterations, which is most likely an infinite loop bug so cut the iteration
 			// short an return an error.
-			return nil, errors.WithStackTrace(MaxRenderAttemptsErr{})
+			return nil, MaxRenderAttemptsErr{}
 		}
 
 		attemptRenderOutput, err := attemptRenderVariables(ctx, &optsForRender, unrenderedVariables, renderedVariables, variablesToRender)
@@ -196,8 +195,8 @@ func attemptRenderVariables(
 	ctx context.Context,
 	opts *options.BoilerplateOptions,
 	unrenderedVariables []string,
-	renderedVariables map[string]interface{},
-	variables map[string]interface{},
+	renderedVariables map[string]any,
+	variables map[string]any,
 ) (attemptRenderVariablesOutput, error) {
 	newUnrenderedVariables := []string{}
 	wasRendered := false
@@ -273,7 +272,7 @@ func attemptRenderVariable(ctx context.Context, opts *options.BoilerplateOptions
 // Return types
 
 type attemptRenderVariablesOutput struct {
-	renderedVariables     map[string]interface{}
+	renderedVariables     map[string]any
 	unrenderedVariables   []string
 	variablesWereRendered bool
 }

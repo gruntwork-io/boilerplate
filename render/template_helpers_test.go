@@ -573,11 +573,11 @@ func TestFromYaml(t *testing.T) {
 		{
 			name:  "nested object",
 			input: "person:\n  name: John\n  age: 30\n  skills:\n    - go\n    - yaml",
-			expected: map[interface{}]interface{}{
-				"person": map[interface{}]interface{}{
+			expected: map[any]any{
+				"person": map[any]any{
 					"name":   "John",
 					"age":    30,
-					"skills": []interface{}{"go", "yaml"},
+					"skills": []any{"go", "yaml"},
 				},
 			},
 		},
@@ -592,19 +592,19 @@ users:
     roles: [admin, user]
   - name: Bob
     roles: [user]`,
-			expected: map[interface{}]interface{}{
-				"config": map[interface{}]interface{}{
+			expected: map[any]any{
+				"config": map[any]any{
 					"debug":   true,
 					"timeout": 300,
 				},
-				"users": []interface{}{
-					map[interface{}]interface{}{
+				"users": []any{
+					map[any]any{
 						"name":  "Alice",
-						"roles": []interface{}{"admin", "user"},
+						"roles": []any{"admin", "user"},
 					},
-					map[interface{}]interface{}{
+					map[any]any{
 						"name":  "Bob",
-						"roles": []interface{}{"user"},
+						"roles": []any{"user"},
 					},
 				},
 			},
@@ -612,7 +612,7 @@ users:
 		{
 			name:     "special cases",
 			input:    "message: \"Hello World\"\nnumeric_key: 123\nempty_obj: {}\nempty_array: []",
-			expected: map[interface{}]interface{}{"message": "Hello World", "numeric_key": 123, "empty_obj": map[interface{}]interface{}{}, "empty_array": []interface{}{}},
+			expected: map[any]any{"message": "Hello World", "numeric_key": 123, "empty_obj": map[any]any{}, "empty_array": []any{}},
 		},
 	}
 

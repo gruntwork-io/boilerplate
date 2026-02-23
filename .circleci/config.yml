@@ -43,7 +43,16 @@ jobs:
       - checkout
       - run:
           <<: *install_gruntwork_utils
-      - run: build-go-binaries --app-name boilerplate --dest-path bin --ld-flags "-X github.com/gruntwork-io/go-commons/version.Version=$CIRCLE_TAG"
+      - run: build-go-binaries --app-name boilerplate --dest-path bin --ld-flags "-X github.com/gruntwork-io/boilerplate/version.Version=$CIRCLE_TAG"
+      - run:
+          name: Install brotli
+          command: sudo apt-get update && sudo apt-get install -y brotli
+      - run:
+          name: Build WASM binary
+          command: |
+            GOOS=js GOARCH=wasm go build -o bin/boilerplate.wasm -ldflags "-s -w -X github.com/gruntwork-io/boilerplate/version.Version=$CIRCLE_TAG" ./cmd/wasm/
+            brotli --best bin/boilerplate.wasm -o bin/boilerplate.wasm.br
+            cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" bin/
       - run: echo "Done building assets"
       - persist_to_workspace:
           root: .
@@ -91,7 +100,7 @@ jobs:
             run-go-tests \
               --path . \
               --timeout 1h \
-              --extra-flags "-ldflags '-X github.com/gruntwork-io/go-commons/version.Version=v1.33.7'" \
+              --extra-flags "-ldflags '-X github.com/gruntwork-io/boilerplate/version.Version=v1.33.7'" \
               --packages "$packages_to_test" \
               | tee /tmp/logs/all.log
           no_output_timeout: 3600s
@@ -133,7 +142,7 @@ jobs:
           shell: powershell.exe
           no_output_timeout: 45m
           command: |
-            go test -tags windows -ldflags '-X github.com/gruntwork-io/go-commons/version.Version=v1.33.7' -v ./... -timeout 45m
+            go test -tags windows -ldflags '-X github.com/gruntwork-io/boilerplate/version.Version=v1.33.7' -v ./... -timeout 45m
 
   test_signing:
     description: Test signing binaries
@@ -158,7 +167,7 @@ jobs:
           command: |
             export AC_PASSWORD=${MACOS_AC_PASSWORD}
             export AC_PROVIDER=${MACOS_AC_PROVIDER}
-            
+
             sign-binary --os mac --install-macos-sign-dependencies .gon_amd64.hcl
             sign-binary --os mac .gon_arm64.hcl
             echo "Done signing the binary"
@@ -192,7 +201,7 @@ jobs:
           command: |
             export AC_PASSWORD=${MACOS_AC_PASSWORD}
             export AC_PROVIDER=${MACOS_AC_PROVIDER}
-            
+
             sign-binary --install-macos-sign-dependencies --os mac .gon_amd64.hcl
             sign-binary --os mac .gon_arm64.hcl
             echo "Done signing the binary"

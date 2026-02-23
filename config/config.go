@@ -8,11 +8,12 @@ import (
 	"path"
 	"strings"
 
-	"github.com/gruntwork-io/go-commons/version"
+	"github.com/gruntwork-io/boilerplate/version"
 	goversion "github.com/hashicorp/go-version"
 	"gopkg.in/yaml.v2"
 
-	"github.com/gruntwork-io/boilerplate/errors"
+	"github.com/gruntwork-io/boilerplate/internal/fileutil"
+	"github.com/gruntwork-io/boilerplate/internal/logging"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/util"
 	"github.com/gruntwork-io/boilerplate/variables"
@@ -195,21 +196,21 @@ func LoadBoilerplateConfig(opts *options.BoilerplateOptions) (*BoilerplateConfig
 	configPath := BoilerplateConfigPath(opts.TemplateFolder)
 
 	switch {
-	case util.PathExists(configPath):
-		util.Logger.Printf("Loading boilerplate config from %s", configPath)
+	case fileutil.PathExists(configPath):
+		logging.Logger.Printf("Loading boilerplate config from %s", configPath)
 
 		bytes, err := os.ReadFile(configPath)
 		if err != nil {
-			return nil, errors.WithStackTrace(err)
+			return nil, err
 		}
 
 		return ParseBoilerplateConfig(bytes)
 	case opts.OnMissingConfig == options.Ignore:
-		util.Logger.Printf("Warning: boilerplate config file not found at %s. The %s flag is set, so ignoring. Note that no variables will be available while generating.", configPath, options.OptMissingConfigAction)
+		logging.Logger.Printf("Warning: boilerplate config file not found at %s. The %s flag is set, so ignoring. Note that no variables will be available while generating.", configPath, options.OptMissingConfigAction)
 		return &BoilerplateConfig{}, nil
 	default:
 		// If the template URL is similar to a git URL, surface in error message that there may be a misspelling/typo.
-		return nil, errors.WithStackTrace(BoilerplateConfigNotFound(configPath))
+		return nil, BoilerplateConfigNotFound(configPath)
 	}
 }
 
@@ -218,7 +219,7 @@ func ParseBoilerplateConfig(configContents []byte) (*BoilerplateConfig, error) {
 	boilerplateConfig := &BoilerplateConfig{}
 
 	if err := yaml.Unmarshal(configContents, boilerplateConfig); err != nil {
-		return nil, errors.WithStackTrace(err)
+		return nil, err
 	}
 
 	converted, err := variables.ConvertYAMLToStringMap(boilerplateConfig)
@@ -277,16 +278,16 @@ func EnforceRequiredVersionWithProvider(boilerplateConfig *BoilerplateConfig, ve
 	// At this point there is a valid version that needs to be checked against the constraint
 	boilerplateVersion, err := goversion.NewVersion(currentVersion)
 	if err != nil {
-		return errors.WithStackTrace(err)
+		return err
 	}
 
 	versionConstraint, err := goversion.NewConstraint(constraint)
 	if err != nil {
-		return errors.WithStackTrace(err)
+		return err
 	}
 
 	if !versionConstraint.Check(boilerplateVersion) {
-		return errors.WithStackTrace(InvalidBoilerplateVersion{CurrentVersion: boilerplateVersion, VersionConstraints: versionConstraint})
+		return InvalidBoilerplateVersion{CurrentVersion: boilerplateVersion, VersionConstraints: versionConstraint}
 	}
 
 	return nil
