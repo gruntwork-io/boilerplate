@@ -36,6 +36,7 @@ variables:
 | `order` | No | Integer controlling the order variables are prompted (lower = first) |
 | `reference` | No | Name of another variable to reference for complex types |
 | `validations` | No | List of validation rules |
+| `confirm` | No | If `true`, prompt the user to confirm the default in interactive mode (see [Defaults in Interactive Mode](#defaults-in-interactive-mode)) |
 
 ## Variable Types
 
@@ -183,6 +184,29 @@ variables:
     default: "{{ "{{" }} .AppName {{ "}}" }}-container"
 ```
 
+## Defaults in Interactive Mode
+
+In interactive mode, variables that have a `default` value are **not prompted** — they silently use the default. This matches the behavior of `--non-interactive` mode and avoids issues with defaults that contain Go template expressions (e.g., `{{ "{{" }} .AppName {{ "}}" }}`), which would otherwise be shown as raw template strings in the prompt.
+
+If you want the user to be prompted to confirm or change a default value, set `confirm: true` on the variable:
+
+```yaml
+variables:
+  - name: AppName
+    type: string
+    default: "my-app"
+    confirm: true  # User will be prompted, with "my-app" as the default
+
+  - name: ContainerName
+    type: string
+    default: "{{ "{{" }} .AppName {{ "}}" }}-container"
+    # No confirm — silently uses the computed default
+```
+
+<Aside type="note">
+`confirm` only affects interactive mode. In `--non-interactive` mode, defaults are always used without prompting regardless of the `confirm` setting.
+</Aside>
+
 ## Providing Values
 
 Variables can be provided in multiple ways. When the same variable is set in more than one place, the highest-precedence source wins:
@@ -280,4 +304,4 @@ Environment variables have lower precedence than `--var`, `--var-file`, and defa
 
 ### Interactive prompts
 
-In interactive mode (the default), Boilerplate prompts for any variable that hasn't been provided by any of the above methods. In `--non-interactive` mode, a missing variable with no default causes an error.
+In interactive mode (the default), Boilerplate prompts for any variable that has no default and hasn't been provided by any of the above methods. Variables with a `default` silently use that default unless `confirm: true` is set (see [Defaults in Interactive Mode](#defaults-in-interactive-mode)). In `--non-interactive` mode, a missing variable with no default causes an error.
