@@ -45,6 +45,9 @@ jobs:
           <<: *install_gruntwork_utils
       - run: build-go-binaries --app-name boilerplate --dest-path bin --ld-flags "-X github.com/gruntwork-io/boilerplate/version.Version=$CIRCLE_TAG"
       - run:
+          name: Install brotli
+          command: sudo apt-get update && sudo apt-get install -y brotli
+      - run:
           name: Build WASM binary
           command: |
             GOOS=js GOARCH=wasm go build -o bin/boilerplate.wasm -ldflags "-s -w -X github.com/gruntwork-io/boilerplate/version.Version=$CIRCLE_TAG" ./cmd/wasm/
