@@ -55,19 +55,36 @@ Written by {{ .Author }}.</textarea>
     <script src="wasm_exec.js"></script>
     <script type="module">
         const status = document.getElementById("status");
+
+        // Feature detect native Brotli support
+        let hasNativeBrotli = false;
+        if ("DecompressionStream" in window) {
+            try {
+                new DecompressionStream("brotli");
+                hasNativeBrotli = true;
+            } catch (e) {
+                // The browser has DecompressionStream, but doesn't support 'brotli'
+            }
+        }
+
         try {
-            status.textContent = "Loading brotli decoder...";
-            const brotli = await import(
-                "https://cdn.jsdelivr.net/npm/brotli-wasm@3.0.1/index.web.js"
-            ).then(m => m.default);
+            let wasmBytes;
 
-            status.textContent = "Fetching compressed WASM...";
-            const resp = await fetch("boilerplate.wasm.br");
-            if (!resp.ok) throw new Error(`fetch failed: ${resp.status}`);
-            const compressedBytes = new Uint8Array(await resp.arrayBuffer());
+            if (hasNativeBrotli) {
+                status.textContent = "Fetching compressed WASM...";
+                const resp = await fetch("boilerplate.wasm.br");
+                if (!resp.ok) throw new Error(`fetch failed: ${resp.status}`);
 
-            status.textContent = "Decompressing WASM...";
-            const wasmBytes = brotli.decompress(compressedBytes);
+                status.textContent = "Decompressing WASM...";
+                const ds = new DecompressionStream("brotli");
+                const decompressedStream = resp.body.pipeThrough(ds);
+                wasmBytes = await new Response(decompressedStream).arrayBuffer();
+            } else {
+                status.textContent = "Fetching WASM...";
+                const resp = await fetch("boilerplate.wasm");
+                if (!resp.ok) throw new Error(`fetch failed: ${resp.status}`);
+                wasmBytes = await resp.arrayBuffer();
+            }
 
             status.textContent = "Instantiating WASM...";
             const go = new Go();
