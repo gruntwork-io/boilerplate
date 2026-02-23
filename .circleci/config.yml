@@ -48,6 +48,8 @@ jobs:
           name: Build WASM binary
           command: |
             GOOS=js GOARCH=wasm go build -o bin/boilerplate.wasm -ldflags "-s -w -X github.com/gruntwork-io/boilerplate/version.Version=$CIRCLE_TAG" ./cmd/wasm/
+            brotli --best bin/boilerplate.wasm -o bin/boilerplate.wasm.br
+            cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" bin/
       - run: echo "Done building assets"
       - persist_to_workspace:
           root: .

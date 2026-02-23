@@ -93,10 +93,14 @@ jobs:
           echo "Uncompressed: $(wc -c < boilerplate.wasm | tr -d ' ') bytes"
           echo "Compressed:   $(wc -c < boilerplate.wasm.br | tr -d ' ') bytes"
 
-      - name: Upload WASM Artifact
+      - name: Copy wasm_exec.js
+        run: cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" .
+
+      - name: Upload WASM Artifacts
         uses: actions/upload-artifact@v5
         with:
           name: boilerplate_js_wasm
           path: |
             boilerplate.wasm
             boilerplate.wasm.br
+            wasm_exec.js
