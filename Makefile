@@ -41,6 +41,8 @@ copy-wasm-exec:
 	cp "$$(go env GOROOT)/lib/wasm/wasm_exec.js" examples/wasm/
 
 wasm: compress-wasm copy-wasm-exec
+	cp examples/wasm/wasm_exec.js examples/wasm/boilerplate.wasm examples/wasm/boilerplate.wasm.br examples/wasm/browser/
+	cp examples/wasm/wasm_exec.js examples/wasm/boilerplate.wasm.br examples/wasm/node/
 	@echo "WASM build complete:"
 	@ls -lh examples/wasm/boilerplate.wasm examples/wasm/boilerplate.wasm.br
 
