@@ -57,6 +57,12 @@ type Variable interface {
 	// A custom marshaling function to translate back to YAML, as expected by go-yaml.
 	MarshalYAML() (any, error)
 
+	// Whether the user should be prompted to confirm/change the default value in interactive mode
+	Confirm() bool
+
+	// Return a copy of this variable but with the confirm flag set to the given value
+	WithConfirm(bool) Variable
+
 	// Validations that should be run on the variable
 	Validations() []validation.CustomValidationRule
 }
@@ -71,6 +77,7 @@ type defaultVariable struct {
 	options      []string
 	validations  []validation.CustomValidationRule
 	order        int
+	confirm      bool
 }
 
 // NewStringVariable creates a new variable that holds a string
@@ -171,6 +178,15 @@ func (variable *defaultVariable) Validations() []validation.CustomValidationRule
 	return variable.validations
 }
 
+func (variable *defaultVariable) Confirm() bool {
+	return variable.confirm
+}
+
+func (variable *defaultVariable) WithConfirm(confirm bool) Variable {
+	variable.confirm = confirm
+	return variable
+}
+
 func (variable *defaultVariable) WithName(name string) Variable {
 	variable.name = name
 	return variable
@@ -241,6 +257,10 @@ func (variable *defaultVariable) MarshalYAML() (any, error) {
 
 	if len(variable.Validations()) > 0 {
 		varYml["validations"] = variable.Validations()
+	}
+
+	if variable.Confirm() {
+		varYml["confirm"] = true
 	}
 
 	return varYml, nil
@@ -560,6 +580,13 @@ func UnmarshalVariableFromBoilerplateConfigYaml(fields map[string]any) (Variable
 	variable.validations = validationRules
 
 	variable.defaultValue = fields["default"]
+
+	confirm, err := unmarshalBooleanField(fields, "confirm", false, *name)
+	if err != nil {
+		return nil, err
+	}
+
+	variable.confirm = confirm
 
 	return &variable, nil
 }

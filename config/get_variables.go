@@ -195,6 +195,9 @@ func getVariable(variable variables.Variable, opts *options.BoilerplateOptions) 
 		return variable.Default(), nil
 	case opts.NonInteractive:
 		return nil, MissingVariableWithNonInteractiveMode(variable.FullName())
+	case variable.Default() != nil && !variable.Confirm():
+		logging.Logger.Printf("Using default value for variable '%s': %v", variable.FullName(), variable.Default())
+		return variable.Default(), nil
 	default:
 		return getVariableFromUser(variable, variables.InvalidEntries{})
 	}
