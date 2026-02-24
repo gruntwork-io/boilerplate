@@ -61,7 +61,7 @@ boilerplate [options]
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--manifest` | `false` | Write a manifest of all generated files (with SHA256 checksums) to the output directory as `boilerplate-manifest.json` |
+| `--manifest` | `false` | Write a manifest of all generated files (with SHA256 checksums) to the output directory as `boilerplate-manifest.yaml` |
 | `--manifest-file PATH` | | Write the manifest to a custom path. Implies `--manifest`. Format is auto-detected from extension (`.yaml`/`.yml` for YAML, otherwise JSON) |
 
 See [Manifest](/advanced/manifest) for details on the manifest schema and usage.
@@ -110,7 +110,7 @@ The double-slash (`//`) in go-getter URLs separates the repository URL from the 
 ### Generate with a manifest
 
 ```bash
-# Default JSON manifest in the output folder
+# Default YAML manifest in the output folder
 boilerplate \
   --template-url ~/templates/go-service \
   --output-folder ~/projects/my-service \

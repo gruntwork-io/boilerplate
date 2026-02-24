@@ -118,7 +118,7 @@ func TestExampleWithManifest(t *testing.T) {
 	require.NoError(t, err)
 
 	// Check manifest file was created in output directory
-	manifestPath := path.Join(outputFolder, "boilerplate-manifest.json")
+	manifestPath := path.Join(outputFolder, "boilerplate-manifest.yaml")
 	require.FileExists(t, manifestPath)
 
 	// Read and verify manifest content

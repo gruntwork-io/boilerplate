@@ -25,7 +25,7 @@ boilerplate \
   --manifest
 ```
 
-This creates `boilerplate-manifest.json` inside the output folder.
+This creates `boilerplate-manifest.yaml` inside the output folder.
 
 To write the manifest to a custom path, use `--manifest-file`:
 

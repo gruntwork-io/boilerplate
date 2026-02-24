@@ -14,7 +14,7 @@ import (
 	"github.com/gruntwork-io/boilerplate/version"
 )
 
-const DefaultManifestFilename = "boilerplate-manifest.json"
+const DefaultManifestFilename = "boilerplate-manifest.yaml"
 const SchemaVersion = "1.0"
 const defaultFilePerm = 0o644
 
