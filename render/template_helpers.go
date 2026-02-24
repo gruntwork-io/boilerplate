@@ -762,7 +762,7 @@ func trimPrefix(str, prefix string) string {
 
 // Returns str without the provided trailing suffix string. If str doesn't end with suffix, str is returned unchanged.
 func trimSuffix(str, suffix string) string {
-	return strings.TrimPrefix(str, suffix)
+	return strings.TrimSuffix(str, suffix)
 }
 
 func toYaml(obj any) (string, error) {

@@ -21,7 +21,7 @@ variables:
     order: 1
     validations:
       - required
-      - length-3-50
+      - length(3, 50)
 ```
 
 ### Fields
@@ -129,17 +129,18 @@ Validations run in real-time during interactive prompts, showing which rules pas
 | Validation | Description |
 |-----------|-------------|
 | `required` | Value cannot be empty |
-| `length-{min}-{max}` | Character count must be within range (e.g., `length-3-50`) |
+| `length(min, max)` | Character count must be within range (e.g., `length(3, 50)`) |
 | `url` | Must be a valid URL |
 | `email` | Must be a valid email address |
 | `alpha` | English letters only |
+| `alphanumeric` | English letters and digits only |
 | `digit` | Digits only |
 | `countrycode2` | ISO 3166 Alpha-2 country code |
 | `semver` | Semantic versioning format (e.g., `1.2.3`) |
-| `regex(pattern)` | Custom regex pattern (e.g., `regex(^[a-z0-9-]+$)`) |
+| `regex(pattern)` | Custom regex pattern (e.g., `regex("^[a-z0-9-]+$")`) |
 
 <Aside type="caution">
-Regex patterns with spaces must be specified as YAML strings wrapped in quotes. Patterns with spaces cannot be provided as bare strings.
+Regex patterns inside `regex()` must be quoted with double quotes or backticks — e.g., `regex("^[a-z]+$")` or `` regex(`^[a-z]+$`) ``. Additionally, if the overall YAML value contains spaces or special characters, wrap it in quotes at the YAML level too.
 </Aside>
 
 ### Example with multiple validations
@@ -150,8 +151,8 @@ Regex patterns with spaces must be specified as YAML strings wrapped in quotes. 
   description: URL-friendly project slug
   validations:
     - required
-    - length-3-30
-    - regex(^[a-z0-9-]+$)
+    - length(3, 30)
+    - regex("^[a-z0-9-]+$")
 ```
 
 ## Variable References
