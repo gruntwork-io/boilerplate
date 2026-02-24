@@ -2,6 +2,7 @@ package render //nolint:testpackage
 
 import (
 	"os"
+	"path/filepath"
 	"runtime"
 	"testing"
 
@@ -50,8 +51,9 @@ func TestRenderTemplate(t *testing.T) {
 	defaultTemplateDir := "/templates"
 
 	if runtime.GOOS == windowsOS {
-		defaultOutputDir = "C:\\output"
-		defaultTemplateDir = "C:\\templates"
+		vol := filepath.VolumeName(pwd)
+		defaultOutputDir = vol + "\\output"
+		defaultTemplateDir = vol + "\\templates"
 	}
 
 	testCases := []struct {
