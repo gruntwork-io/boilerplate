@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -161,19 +162,18 @@ func runApp(cliContext *cli.Context) error {
 	return nil
 }
 
-// computeChecksums reads each generated file and computes its SHA256 checksum.
+// computeChecksums streams each generated file through a SHA256 hasher.
 func computeChecksums(outputDir string, relativePaths []string) ([]manifest.GeneratedFile, error) {
 	files := make([]manifest.GeneratedFile, 0, len(relativePaths))
 
 	for _, relPath := range relativePaths {
 		absPath := filepath.Join(outputDir, relPath)
 
-		data, err := os.ReadFile(absPath)
+		checksum, err := sha256File(absPath)
 		if err != nil {
-			return nil, fmt.Errorf("failed to read file for checksum %s: %w", absPath, err)
+			return nil, fmt.Errorf("failed to compute checksum for %s: %w", absPath, err)
 		}
 
-		checksum := fmt.Sprintf("%x", sha256.Sum256(data))
 		files = append(files, manifest.GeneratedFile{
 			Path:     relPath,
 			Checksum: checksum,
@@ -181,4 +181,19 @@ func computeChecksums(outputDir string, relativePaths []string) ([]manifest.Gene
 	}
 
 	return files, nil
+}
+
+func sha256File(path string) (string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("%x", h.Sum(nil)), nil
 }
