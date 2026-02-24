@@ -21,6 +21,7 @@ var errInvalidRegexPattern = errors.New("pattern must be a quoted string (e.g. r
 type CustomValidationRule struct {
 	Validator validation.Rule
 	Message   string
+	Args      []any // Original arguments for parameterized rules (e.g., regex pattern, length bounds).
 }
 
 // CustomValidationRuleCollection is a slice of CustomValidationRule.
@@ -115,6 +116,7 @@ func convertSingleValidationRule(rule string) (CustomValidationRule, error) {
 		return CustomValidationRule{
 			Validator: validation.Length(min, max),
 			Message:   fmt.Sprintf("Must be between %d and %d characters long", min, max),
+			Args:      []any{min, max},
 		}, nil
 	case strings.HasPrefix(rule, "regex(") && strings.HasSuffix(rule, ")"):
 		quoted := rule[len("regex(") : len(rule)-1]
@@ -133,6 +135,7 @@ func convertSingleValidationRule(rule string) (CustomValidationRule, error) {
 		return CustomValidationRule{
 			Validator: validation.Match(compiledRegex),
 			Message:   "Must match pattern: " + pattern,
+			Args:      []any{pattern},
 		}, nil
 	default:
 		return CustomValidationRule{}, fmt.Errorf("unrecognized validation rule %q", rule)
