@@ -12,6 +12,7 @@ import (
 
 	"github.com/gruntwork-io/boilerplate/cli"
 	"github.com/gruntwork-io/boilerplate/internal/fileutil"
+	"github.com/gruntwork-io/boilerplate/internal/manifest"
 	"github.com/gruntwork-io/boilerplate/options"
 )
 
@@ -128,6 +129,7 @@ func TestExampleWithManifest(t *testing.T) {
 	manifestStr := string(manifestContent)
 	// Verify single-generation manifest structure
 	assert.Contains(t, manifestStr, "schema_version")
+	assert.Contains(t, manifestStr, manifest.SchemaURL)
 	assert.Contains(t, manifestStr, "timestamp")
 	assert.Contains(t, manifestStr, "checksum")
 	assert.Contains(t, manifestStr, "index.html")

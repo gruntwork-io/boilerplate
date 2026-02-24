@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://boilerplate.gruntwork.io/schemas/manifest/v1/schema.json",
+  "properties": {
+    "schema_version": {
+      "type": "string"
+    },
+    "timestamp": {
+      "type": "string"
+    },
+    "template_url": {
+      "type": "string"
+    },
+    "boilerplate_version": {
+      "type": "string"
+    },
+    "output_dir": {
+      "type": "string"
+    },
+    "files": {
+      "items": {
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "checksum": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "path",
+          "checksum"
+        ]
+      },
+      "type": "array"
+    }
+  },
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "schema_version",
+    "timestamp",
+    "template_url",
+    "boilerplate_version",
+    "output_dir",
+    "files"
+  ],
+  "title": "Boilerplate Manifest Schema",
+  "description": "Schema for boilerplate generation manifest"
+}

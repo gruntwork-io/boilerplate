@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 
-	"github.com/gruntwork-io/boilerplate/manifest"
+	"github.com/gruntwork-io/boilerplate/internal/manifest"
 )
 
 func TestWriteManifestJSON(t *testing.T) {
@@ -20,7 +20,7 @@ func TestWriteManifestJSON(t *testing.T) {
 	manifestPath := filepath.Join(tempDir, "boilerplate-manifest.json")
 
 	m := &manifest.Manifest{
-		SchemaVersion:      "1.0",
+		SchemaVersion:      manifest.SchemaVersion,
 		Timestamp:          "2024-01-01T00:00:00Z",
 		TemplateURL:        "template1",
 		BoilerplateVersion: "v1.0.0",
@@ -42,7 +42,7 @@ func TestWriteManifestJSON(t *testing.T) {
 	err = json.Unmarshal(data, &result)
 	require.NoError(t, err)
 
-	assert.Equal(t, "1.0", result.SchemaVersion)
+	assert.Equal(t, manifest.SchemaVersion, result.SchemaVersion)
 	assert.Equal(t, "2024-01-01T00:00:00Z", result.Timestamp)
 	assert.Equal(t, "template1", result.TemplateURL)
 	assert.Equal(t, "v1.0.0", result.BoilerplateVersion)
@@ -59,7 +59,7 @@ func TestWriteManifestYAML(t *testing.T) {
 	manifestPath := filepath.Join(tempDir, "boilerplate-manifest.yaml")
 
 	m := &manifest.Manifest{
-		SchemaVersion:      "1.0",
+		SchemaVersion:      manifest.SchemaVersion,
 		Timestamp:          "2024-01-01T00:00:00Z",
 		TemplateURL:        "template1",
 		BoilerplateVersion: "v1.0.0",
@@ -80,7 +80,7 @@ func TestWriteManifestYAML(t *testing.T) {
 	err = yaml.Unmarshal(data, &result)
 	require.NoError(t, err)
 
-	assert.Equal(t, "1.0", result.SchemaVersion)
+	assert.Equal(t, manifest.SchemaVersion, result.SchemaVersion)
 	assert.Equal(t, "template1", result.TemplateURL)
 	assert.Len(t, result.Files, 1)
 	assert.Equal(t, "abc123", result.Files[0].Checksum)
@@ -93,7 +93,7 @@ func TestWriteManifestYMLExtension(t *testing.T) {
 	manifestPath := filepath.Join(tempDir, "manifest.yml")
 
 	m := &manifest.Manifest{
-		SchemaVersion: "1.0",
+		SchemaVersion: manifest.SchemaVersion,
 		Timestamp:     "2024-01-01T00:00:00Z",
 		Files:         []manifest.GeneratedFile{{Path: "a.txt", Checksum: "aaa"}},
 	}
@@ -109,7 +109,7 @@ func TestWriteManifestYMLExtension(t *testing.T) {
 	err = yaml.Unmarshal(data, &result)
 	require.NoError(t, err)
 
-	assert.Equal(t, "1.0", result.SchemaVersion)
+	assert.Equal(t, manifest.SchemaVersion, result.SchemaVersion)
 }
 
 func TestWriteManifestOverwritesPrevious(t *testing.T) {
@@ -120,7 +120,7 @@ func TestWriteManifestOverwritesPrevious(t *testing.T) {
 
 	// Write first manifest
 	m1 := &manifest.Manifest{
-		SchemaVersion: "1.0",
+		SchemaVersion: manifest.SchemaVersion,
 		Timestamp:     "2024-01-01T00:00:00Z",
 		TemplateURL:   "template1",
 		Files:         []manifest.GeneratedFile{{Path: "file1.txt", Checksum: "aaa"}},
@@ -130,7 +130,7 @@ func TestWriteManifestOverwritesPrevious(t *testing.T) {
 
 	// Write second manifest (overwrites)
 	m2 := &manifest.Manifest{
-		SchemaVersion: "1.0",
+		SchemaVersion: manifest.SchemaVersion,
 		Timestamp:     "2024-01-02T00:00:00Z",
 		TemplateURL:   "template2",
 		Files:         []manifest.GeneratedFile{{Path: "file2.txt", Checksum: "bbb"}},
@@ -164,13 +164,37 @@ func TestWriteManifestErrorsOnCorruptExistingFile(t *testing.T) {
 	require.NoError(t, err)
 
 	m := &manifest.Manifest{
-		SchemaVersion: "1.0",
+		SchemaVersion: manifest.SchemaVersion,
 		Files:         []manifest.GeneratedFile{},
 	}
 
 	err = manifest.WriteManifest(manifestPath, m)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "corrupted")
+}
+
+func TestGenerateSchema(t *testing.T) {
+	t.Parallel()
+
+	schema := manifest.GenerateSchema()
+
+	assert.Equal(t, manifest.SchemaURL, string(schema.ID))
+	assert.Equal(t, "Boilerplate Manifest Schema", schema.Title)
+	assert.Equal(t, "Schema for boilerplate generation manifest", schema.Description)
+
+	// Verify required properties
+	assert.Contains(t, schema.Required, "schema_version")
+	assert.Contains(t, schema.Required, "timestamp")
+	assert.Contains(t, schema.Required, "template_url")
+	assert.Contains(t, schema.Required, "boilerplate_version")
+	assert.Contains(t, schema.Required, "output_dir")
+	assert.Contains(t, schema.Required, "files")
+
+	// Verify it can be marshaled to JSON
+	data, err := json.MarshalIndent(schema, "", "  ")
+	require.NoError(t, err)
+	assert.Contains(t, string(data), `"$id"`)
+	assert.Contains(t, string(data), manifest.SchemaURL)
 }
 
 func TestNewManifest(t *testing.T) {

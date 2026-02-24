@@ -54,7 +54,7 @@ The manifest contains the following fields:
 
 | Field | Description |
 |-------|-------------|
-| `schema_version` | Manifest schema version (currently `1.0`) |
+| `schema_version` | URL pointing to the [JSON Schema](#json-schema) for the manifest format |
 | `timestamp` | UTC timestamp of the generation run (RFC 3339) |
 | `template_url` | The `--template-url` value used for this run |
 | `boilerplate_version` | Version of boilerplate that produced the output |
@@ -67,7 +67,7 @@ The manifest contains the following fields:
 
 ```json
 {
-  "schema_version": "1.0",
+  "schema_version": "https://boilerplate.gruntwork.io/schemas/manifest/v1/schema.json",
   "timestamp": "2026-02-24T12:00:00Z",
   "template_url": "./templates/service",
   "boilerplate_version": "v0.6.0",
@@ -88,7 +88,7 @@ The manifest contains the following fields:
 ### YAML example
 
 ```yaml
-schema_version: "1.0"
+schema_version: "https://boilerplate.gruntwork.io/schemas/manifest/v1/schema.json"
 timestamp: "2026-02-24T12:00:00Z"
 template_url: ./templates/service
 boilerplate_version: v0.6.0
@@ -99,6 +99,16 @@ files:
   - path: README.md
     checksum: f6e5d4c3b2a1...
 ```
+
+## JSON Schema
+
+Boilerplate publishes a formal [JSON Schema](https://json-schema.org/) for the manifest format. The schema is available at:
+
+```
+https://boilerplate.gruntwork.io/schemas/manifest/v1/schema.json
+```
+
+The `schema_version` field in every generated manifest contains this URL, making it easy to identify which schema version was used and to fetch the schema for validation.
 
 ## Behavior
 
