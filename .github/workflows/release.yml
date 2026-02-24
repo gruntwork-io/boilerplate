@@ -1,5 +1,5 @@
-# Builds, signs, and publishes release binaries when a version tag is pushed.
-# Also updates the Homebrew formula in gruntwork-io/homebrew-tap.
+# Builds, signs, and uploads release binaries when a version tag is pushed.
+# Expects a GitHub Release to already exist (created via the Releases page).
 
 name: Release
 
@@ -48,16 +48,13 @@ jobs:
     uses: ./.github/workflows/sign-macos.yml
     secrets: inherit
 
-  # ── Create GitHub Release ─────────────────────────────────────
-  release:
-    name: Create GitHub Release
+  # ── Upload assets to existing GitHub Release ─────────────────
+  upload-assets:
+    name: Upload Release Assets
     needs: [sign-macos]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
-
       - name: Download all build artifacts
         uses: actions/download-artifact@v5
         with:
@@ -67,22 +64,10 @@ jobs:
 
       - name: List release assets
         run: |
-          echo "Files to be released:"
+          echo "Files to be uploaded:"
           ls -lh binaries/
 
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: binaries/*
-          draft: false
-          generate_release_notes: true
+      - name: Upload assets to release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  # ── Update Homebrew formula ───────────────────────────────────
-  update-homebrew:
-    needs: [release]
-    uses: ./.github/workflows/update-homebrew.yml
-    with:
-      tag: ${{ github.ref_name }}
-    secrets: inherit
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${{ github.ref_name }}" binaries/* --repo "${{ github.repository }}"

@@ -30,7 +30,7 @@ jobs:
         run: |
           set -o pipefail
           go test -v -tags windows ./... \
-            -ldflags '-X github.com/gruntwork-io/go-commons/version.Version=v1.33.7' \
+            -ldflags '-X github.com/gruntwork-io/boilerplate/version.Version=v1.33.7' \
             -timeout 45m | tee >(go-junit-report -set-exit-code > result.xml)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

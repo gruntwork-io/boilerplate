@@ -57,7 +57,7 @@ jobs:
             OUTPUT="${OUTPUT}.exe"
           fi
           go build -o "${OUTPUT}" \
-            -ldflags "-s -w -X github.com/gruntwork-io/go-commons/version.Version=${GITHUB_REF_NAME} -extldflags '-static'" \
+            -ldflags "-s -w -X github.com/gruntwork-io/boilerplate/version.Version=${GITHUB_REF_NAME} -extldflags '-static'" \
             .
 
       - name: Upload Build Artifact
