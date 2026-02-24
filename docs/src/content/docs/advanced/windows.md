@@ -29,10 +29,6 @@ If your templates generate files with these names (e.g. `NUL.txt`, `CON.md`), th
 
 The `|` character is illegal in Windows file names. Boilerplate supports URL-encoded characters in template file paths as a workaround. If you have a template file path that would normally contain `|`, use `%7C` instead.
 
-## Symlinks
-
-Boilerplate uses file copying instead of symlinks when fetching templates. This avoids permission issues on Windows, where creating symlinks requires elevated privileges or developer mode to be enabled. No action is needed on your part — this is handled automatically.
-
 ## Shell Helper
 
 The `shell` template helper executes commands using the system shell. On Windows, commands run through `cmd.exe` rather than a Unix shell. Keep this in mind when writing hooks or using `shell` in templates:
@@ -43,4 +39,4 @@ The `shell` template helper executes commands using the system shell. On Windows
 
 ## SSH-Based Templates
 
-Some integration tests for SSH-based remote templates are skipped on Windows due to file name compatibility issues in certain Git repositories. If you encounter issues cloning remote templates over SSH on Windows, try using HTTPS URLs instead.
+Cloning remote templates over SSH on Windows may fail due to file name compatibility issues in certain Git repositories. If you run into errors, try using HTTPS URLs instead.
