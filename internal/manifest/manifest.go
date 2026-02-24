@@ -105,5 +105,6 @@ func GenerateSchema() *jsonschema.Schema {
 	schema.ID = jsonschema.ID(SchemaURL)
 	schema.Title = "Boilerplate Manifest Schema"
 	schema.Description = "Schema for boilerplate generation manifest"
+
 	return schema
 }
