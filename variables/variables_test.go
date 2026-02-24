@@ -115,6 +115,66 @@ func TestConvertType(t *testing.T) {
 	}
 }
 
+func TestUnmarshalVariableWithConfirm(t *testing.T) {
+	t.Parallel()
+
+	fields := map[string]interface{}{
+		"name":    "MyVar",
+		"type":    "string",
+		"default": "some-default",
+		"confirm": true,
+	}
+
+	variable, err := UnmarshalVariableFromBoilerplateConfigYaml(fields)
+	require.NoError(t, err)
+	assert.Equal(t, "MyVar", variable.Name())
+	assert.Equal(t, "some-default", variable.Default())
+	assert.True(t, variable.Confirm())
+}
+
+func TestUnmarshalVariableWithoutConfirm(t *testing.T) {
+	t.Parallel()
+
+	fields := map[string]interface{}{
+		"name":    "MyVar",
+		"type":    "string",
+		"default": "some-default",
+	}
+
+	variable, err := UnmarshalVariableFromBoilerplateConfigYaml(fields)
+	require.NoError(t, err)
+	assert.Equal(t, "MyVar", variable.Name())
+	assert.False(t, variable.Confirm())
+}
+
+func TestMarshalVariableWithConfirm(t *testing.T) {
+	t.Parallel()
+
+	variable := NewStringVariable("MyVar").WithDefault("val").WithConfirm(true)
+
+	marshaled, err := variable.MarshalYAML()
+	require.NoError(t, err)
+
+	asMap, ok := marshaled.(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, true, asMap["confirm"])
+}
+
+func TestMarshalVariableWithoutConfirm(t *testing.T) {
+	t.Parallel()
+
+	variable := NewStringVariable("MyVar").WithDefault("val")
+
+	marshaled, err := variable.MarshalYAML()
+	require.NoError(t, err)
+
+	asMap, ok := marshaled.(map[string]any)
+	require.True(t, ok)
+
+	_, hasConfirm := asMap["confirm"]
+	assert.False(t, hasConfirm)
+}
+
 func TestParseStringAsMap(t *testing.T) {
 	t.Parallel()
 

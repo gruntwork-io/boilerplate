@@ -11,8 +11,7 @@ import (
 	getter "github.com/hashicorp/go-getter"
 	urlhelper "github.com/hashicorp/go-getter/helper/url"
 
-	"github.com/gruntwork-io/boilerplate/errors"
-	"github.com/gruntwork-io/boilerplate/util"
+	"github.com/gruntwork-io/boilerplate/internal/logging"
 )
 
 var forcedRegexp = regexp.MustCompile(`^([A-Za-z0-9]+)::(.+)$`)
@@ -26,12 +25,12 @@ func ValidateTemplateURL(templateURL string) error {
 func ParseGetterURL(templateURL string) (*url.URL, error) {
 	pwd, err := os.Getwd()
 	if err != nil {
-		return nil, errors.WithStackTrace(err)
+		return nil, err
 	}
 
 	getterURLWithGetter, err := getter.Detect(templateURL, pwd, getter.Detectors)
 	if err != nil {
-		return nil, errors.WithStackTrace(err)
+		return nil, err
 	}
 
 	return urlParseGetterURL(getterURLWithGetter)
@@ -46,7 +45,7 @@ func urlParseGetterURL(rawGetterURLStr string) (*url.URL, error) {
 	// Parse the URL without the getter prefix
 	canonicalGetterURL, err := urlhelper.Parse(getterURLStr)
 	if err != nil {
-		return nil, errors.WithStackTrace(err)
+		return nil, err
 	}
 
 	// Reattach the "getter" prefix as part of the scheme
@@ -70,11 +69,31 @@ func getForcedGetter(sourceURL string) (string, string) {
 	return "", sourceURL
 }
 
+// DetermineTemplateConfig decides what should be passed to TemplateURL and TemplateFolder. This parses the templateURL
+// and determines if it is a local path. If so, use that path directly instead of downloading it to a temp working dir.
+// We do this by setting the template folder, which will instruct the process routine to skip downloading the template.
+//
+// Returns TemplateURL, TemplateFolder, error
+func DetermineTemplateConfig(templateURL string) (string, string, error) {
+	url, err := ParseGetterURL(templateURL)
+	if err != nil {
+		return "", "", err
+	}
+
+	if url.Scheme == "file" {
+		// Intentionally return as both TemplateURL and TemplateFolder so that validation passes, but still skip
+		// download.
+		return templateURL, templateURL, nil
+	}
+
+	return templateURL, "", nil
+}
+
 // NewGetterClient creates a new getter client that forces go-getter to copy files instead of creating symlinks.
 func NewGetterClient(src string, dst string) (*getter.Client, error) {
 	pwd, err := os.Getwd()
 	if err != nil {
-		return nil, errors.WithStackTrace(err)
+		return nil, err
 	}
 
 	client := &getter.Client{
@@ -107,13 +126,13 @@ func NewGetterClient(src string, dst string) (*getter.Client, error) {
 func DownloadTemplatesToTemporaryFolder(templateURL string) (string, string, error) {
 	workingDir, err := getTempFolder()
 	if err != nil {
-		return workingDir, workingDir, errors.WithStackTrace(err)
+		return workingDir, workingDir, err
 	}
 
 	// Always set a subdir path because go-getter can not clone into an existing dir.
 	cloneDir := filepath.Join(workingDir, "wd")
 
-	util.Logger.Printf("Downloading templates to %s", workingDir)
+	logging.Logger.Printf("Downloading templates to %s", workingDir)
 
 	// If there is a subdir component, we download everything and combine the path at the end to return the working path
 	mainPath, subDir := getter.SourceDirSubdir(templateURL)

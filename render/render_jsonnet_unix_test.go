@@ -1,5 +1,4 @@
-//go:build aix || darwin || dragonfly || freebsd || (js && wasm) || linux || netbsd || openbsd || solaris
-// +build aix darwin dragonfly freebsd js,wasm linux netbsd openbsd solaris
+//go:build aix || darwin || dragonfly || freebsd || linux || netbsd || openbsd || solaris
 
 package render //nolint:testpackage
 

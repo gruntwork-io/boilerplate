@@ -9,7 +9,7 @@ import (
 
 	"github.com/hashicorp/go-getter"
 
-	"github.com/gruntwork-io/boilerplate/util"
+	"github.com/gruntwork-io/boilerplate/internal/fileutil"
 )
 
 // FileCopyGetter is a custom getter.Getter implementation that uses file copying instead of symlinks. Symlinks are
@@ -34,7 +34,7 @@ func (g *FileCopyGetter) Get(dst string, u *url.URL) error {
 		return errors.New("source path must be a directory")
 	}
 
-	return util.CopyFolder(path, dst)
+	return fileutil.CopyFolder(path, dst)
 }
 
 // GetFile implements file copying for the FileCopyGetter. The original FileGetter already knows how to do file copying so long as we set the Copy flag to true, so just

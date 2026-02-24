@@ -2,8 +2,6 @@ package variables
 
 import (
 	"fmt"
-
-	"github.com/gruntwork-io/boilerplate/errors"
 )
 
 // BoilerplateType represents an enum that represents the types we support for boilerplate variables
@@ -31,7 +29,7 @@ func ParseBoilerplateType(str string) (*BoilerplateType, error) {
 		}
 	}
 
-	return nil, errors.WithStackTrace(InvalidBoilerplateType(str))
+	return nil, InvalidBoilerplateType(str)
 }
 
 // String returns a string representation of this Type

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gruntwork-io/boilerplate/errors"
 	"github.com/gruntwork-io/boilerplate/util"
 )
 
@@ -125,7 +124,7 @@ func UnmarshalDependenciesFromBoilerplateConfigYaml(fields map[string]any) ([]De
 		}
 
 		if util.ListContains(dependency.Name, dependencyNames) {
-			return unmarshalledDependencies, errors.WithStackTrace(DuplicateDependencyName(dependency.Name))
+			return unmarshalledDependencies, DuplicateDependencyName(dependency.Name)
 		}
 
 		dependencyNames = append(dependencyNames, dependency.Name)

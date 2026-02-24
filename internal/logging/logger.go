@@ -1,4 +1,5 @@
-package util
+// Package logging provides a shared application logger.
+package logging
 
 import (
 	"log"
