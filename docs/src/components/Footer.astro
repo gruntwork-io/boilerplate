@@ -1,0 +1,83 @@
+---
+import type { Props } from '@astrojs/starlight/props';
+import Default from '@astrojs/starlight/components/Footer.astro';
+---
+
+<Default {...Astro.props}><slot /></Default>
+
+<div class="gruntwork-footer">
+  <div class="gruntwork-footer-inner">
+    <span class="gruntwork-footer-text">
+      Boilerplate is an open source project by
+      <a href="https://gruntwork.io" target="_blank" rel="noopener noreferrer">Gruntwork</a>
+    </span>
+    <span class="gruntwork-footer-separator" aria-hidden="true">&middot;</span>
+    <a href="https://github.com/gruntwork-io/boilerplate" target="_blank" rel="noopener noreferrer" class="gruntwork-footer-link">View on GitHub</a>
+    <span class="gruntwork-footer-separator" aria-hidden="true">&middot;</span>
+    <a href="https://www.gruntwork.io/?ref=boilerplate" target="_blank" rel="noopener noreferrer" class="gruntwork-footer-link">More from Gruntwork</a>
+  </div>
+</div>
+
+<style>
+  .gruntwork-footer {
+    border-top: 1px solid var(--sl-color-gray-6);
+    margin-top: 2rem;
+    padding: 1.5rem 0;
+    text-align: center;
+  }
+
+  .gruntwork-footer-inner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    font-size: var(--sl-text-xs);
+    color: var(--sl-color-gray-3);
+  }
+
+  .gruntwork-footer-text {
+    color: var(--sl-color-gray-3);
+  }
+
+  .gruntwork-footer-text a {
+    color: var(--sl-color-gray-2);
+    font-weight: 600;
+    text-decoration: none;
+    transition: color 0.15s ease;
+  }
+
+  .gruntwork-footer-text a:hover {
+    color: var(--sl-color-accent);
+  }
+
+  .gruntwork-footer-separator {
+    color: var(--sl-color-gray-5);
+  }
+
+  .gruntwork-footer-link {
+    color: var(--sl-color-gray-3);
+    text-decoration: none;
+    transition: color 0.15s ease;
+  }
+
+  .gruntwork-footer-link:hover {
+    color: var(--sl-color-accent);
+  }
+
+  :root[data-theme='dark'] .gruntwork-footer {
+    border-top-color: #52525b;
+  }
+
+  :root[data-theme='dark'] .gruntwork-footer-text a {
+    color: var(--sl-color-gray-2);
+  }
+
+  :root[data-theme='dark'] .gruntwork-footer-text a:hover {
+    color: var(--sl-color-accent-high);
+  }
+
+  :root[data-theme='dark'] .gruntwork-footer-link:hover {
+    color: var(--sl-color-accent-high);
+  }
+</style>

@@ -347,9 +347,15 @@ button[data-open-modal]:hover {
    CUSTOM STYLES
    ============================================ */
 
-/* Remove content margin */
+/* Remove content margin on doc pages */
 .main-pane .sl-container {
   margin-inline: 10px;
+}
+
+/* Center content on the landing page */
+.main-pane:has(.hero) .sl-container {
+  margin-inline: auto;
+  padding-inline: 1.5rem;
 }
 
 /* Brand header - Boilerplate dark teal, stays the same in both light and dark mode */
@@ -401,3 +407,89 @@ button[data-open-modal]:hover {
 .header button[data-open-modal] svg {
   color: #d4d4d8 !important;
 }
+
+/* ============================================
+   LANDING PAGE HERO
+   ============================================ */
+
+/* The splash page hero - give it a dark branded background */
+.hero {
+  background: linear-gradient(135deg, #0B3D4A 0%, #0a2e38 40%, #091c24 100%);
+  margin: 0 calc(-1 * var(--sl-content-pad-x, 1rem));
+  padding: clamp(3rem, 8vw, 6rem) clamp(2rem, 6vw, 5rem);
+  border-bottom: 1px solid rgba(119, 226, 239, 0.15);
+}
+
+.hero h1 {
+  color: #ffffff !important;
+  font-size: clamp(2rem, calc(0.5rem + 4vw), 3.25rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.hero-accent {
+  color: #77E2EF;
+}
+
+.hero .tagline {
+  color: #b0c4cc;
+  font-size: clamp(1rem, calc(0.5rem + 1.5vw), 1.25rem);
+  line-height: 1.6;
+  max-width: 42ch;
+}
+
+.hero .tagline a {
+  color: #77E2EF;
+  font-weight: 600;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(119, 226, 239, 0.3);
+  transition: border-color 0.15s ease;
+}
+
+.hero .tagline a:hover {
+  border-bottom-color: #77E2EF;
+}
+
+/* Hero CTA buttons */
+.hero .actions a.primary {
+  background: #1B46DD;
+  border-color: #1B46DD;
+  color: #ffffff;
+}
+
+.hero .actions a.primary:hover {
+  background: #2854e6;
+}
+
+.hero .actions a.minimal {
+  color: #b0c4cc;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  padding: 0.6875rem 1.25rem;
+}
+
+@media (min-width: 50rem) {
+  .hero .actions a.minimal {
+    padding: 0.9375rem 1.25rem;
+  }
+}
+
+.hero .actions a.minimal:hover {
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* Hero logo image */
+.hero-logo-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hero-logo-img {
+  width: clamp(8rem, 15vw, 14rem);
+  height: auto;
+  filter: drop-shadow(0 0 40px rgba(119, 226, 239, 0.2));
+}
+
