@@ -1,0 +1,43 @@
+---
+interface Props {
+  variant?: 'default' | 'cta';
+}
+
+const { variant = 'default' } = Astro.props;
+---
+
+<div class:list={['landing-section', { 'landing-cta': variant === 'cta' }]}>
+  <slot />
+</div>
+
+<style>
+  .landing-section {
+    padding: 3rem 0 1rem;
+  }
+
+  .landing-section :global(h2) {
+    font-size: 1.75rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .landing-section > :global(p) {
+    color: var(--sl-color-gray-2);
+    font-size: 1.1rem;
+    max-width: 60ch;
+    margin-bottom: 1.5rem;
+  }
+
+  .landing-cta {
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+    border-top: 1px solid var(--sl-color-gray-6);
+  }
+
+  :root[data-theme='dark'] .landing-cta {
+    border-top-color: #52525b;
+  }
+
+  .landing-cta :global(h2) {
+    margin-bottom: 1rem;
+  }
+</style>

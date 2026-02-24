@@ -1,0 +1,87 @@
+---
+interface CardItem {
+  href: string;
+  title: string;
+  description: string;
+}
+
+interface Props {
+  cards: CardItem[];
+}
+
+const { cards } = Astro.props;
+---
+
+<div class="compact-cards">
+  {cards.map((card) => (
+    <a href={card.href} class="compact-card">
+      <strong>{card.title}</strong>
+      <span>{card.description}</span>
+    </a>
+  ))}
+</div>
+
+<style>
+  .compact-cards {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  @media (min-width: 50rem) {
+    .compact-cards {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  .compact-card {
+    display: block;
+    padding: 0.875rem 1rem;
+    border: 1px solid var(--sl-color-gray-6);
+    border-radius: 0.5rem;
+    text-decoration: none;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+  }
+
+  .compact-card:hover {
+    border-color: var(--sl-color-gray-5);
+    background-color: var(--sl-color-gray-7);
+    text-decoration: none;
+  }
+
+  .compact-card:hover strong {
+    text-decoration: underline;
+  }
+
+  .compact-card strong {
+    display: block;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--sl-color-accent);
+    margin-bottom: 0.2rem;
+  }
+
+  .compact-card span {
+    display: inline-block;
+    font-size: 1rem;
+    color: var(--sl-color-gray-3);
+    line-height: 1.5;
+  }
+
+  :root[data-theme='dark'] .compact-card {
+    border-color: #52525b;
+  }
+
+  :root[data-theme='dark'] .compact-card:hover {
+    border-color: var(--sl-color-gray-4);
+    background-color: #27272a;
+  }
+
+  :root[data-theme='dark'] .compact-card strong {
+    color: var(--sl-color-accent-high);
+  }
+
+  :root[data-theme='dark'] .compact-card span {
+    color: var(--sl-color-gray-2);
+  }
+</style>

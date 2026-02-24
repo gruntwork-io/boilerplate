@@ -1,10 +1,18 @@
 ---
-title: Boilerplate Documentation
-description: Generate files and folders from templates
+title: Boilerplate
+description: A code generation tool by Gruntwork for scaffolding projects and configs from templates.
 template: splash
+editUrl: false
 hero:
-  title: Boilerplate
-  tagline: Generate files and folders from customizable templates
+  title: |
+    The template generator <span class="hero-accent">built for platform teams</span>
+  tagline: |
+    Boilerplate is an open source template generator by <a href="https://gruntwork.io">Gruntwork</a>. Define your _boilerplate_ once, then generate code repeatedly with a single command.
+  image:
+    html: |
+      <div class="hero-logo-container">
+        <img src="/favicon.svg" alt="" class="hero-logo-img" />
+      </div>
   actions:
     - text: Get Started
       link: /intro/overview/
@@ -16,39 +24,20 @@ hero:
       variant: minimal
 ---
 
-import { Card, CardGrid } from '@astrojs/starlight/components';
+import { Card, CardGrid, Tabs, TabItem } from '@astrojs/starlight/components';
+import LandingSection from '../../components/LandingSection.astro';
+import CompactCards from '../../components/CompactCards.astro';
+import SecondaryFeatures from '../../components/SecondaryFeatures.astro';
 
-## What is Boilerplate?
+<LandingSection>
 
-Boilerplate is a tool for generating files and folders (boilerplate code) from a set of templates. It's
-built by [Gruntwork](https://gruntwork.io) and is designed for:
+## How it works
 
-- **Scaffolding** new projects, modules, and repositories from templates
-- **Generating** configuration files with dynamic variable substitution
-- **Embedding** code snippets from source files into documentation
-- **Automating** repetitive file creation in CI/CD pipelines
+Define a `boilerplate.yml` with your variables, write Go-template files, and run one command.
+Boilerplate handles prompts, defaults, validation, and rendering.
 
-## Key Features
-
-<CardGrid stagger>
-  <Card title="Flexible Variables" icon="pencil">
-    Seven built-in types (string, int, float, bool, list, map, enum) with validations, defaults, and interactive prompts.
-  </Card>
-  <Card title="Go Template Engine" icon="setting">
-    Full Go template syntax with 50+ helper functions from the Sprig library, plus custom helpers for snippets, shell commands, and more.
-  </Card>
-  <Card title="Template Dependencies" icon="puzzle">
-    Chain multiple templates together with recursive dependencies, variable inheritance, conditional skipping, and loop-based rendering.
-  </Card>
-  <Card title="Hooks" icon="rocket">
-    Run shell commands before and after template rendering, with full variable interpolation and conditional execution.
-  </Card>
-</CardGrid>
-
-## Quick Example
-
-A typical Boilerplate template has a `boilerplate.yml` config file and one or more template files:
-
+<Tabs>
+  <TabItem label="1. Define variables">
 ```yaml
 # boilerplate.yml
 variables:
@@ -61,8 +50,9 @@ variables:
     type: bool
     default: true
 ```
-
-```text
+  </TabItem>
+  <TabItem label="2. Write templates">
+```text title="README.md"
 # {{.ProjectName}}
 
 Welcome to {{.ProjectName}}!
@@ -73,65 +63,67 @@ Welcome to {{.ProjectName}}!
 Run with: `docker compose up`
 {{end}}
 ```
-
-Then run:
-
+  </TabItem>
+  <TabItem label="3. Generate">
 ```bash
 boilerplate \
   --template-url ./my-template \
   --output-folder ./my-project \
   --var ProjectName="My App"
 ```
+  </TabItem>
+  <TabItem label="4. Output">
+```markdown title="my-project/README.md"
+# My App
 
-## Getting Started
+Welcome to My App!
+
+## Docker
+
+Run with: `docker compose up`
+```
+  </TabItem>
+</Tabs>
+
+</LandingSection>
+
+<LandingSection>
+
+## Why Boilerplate?
+
+Boilerplate is designed for platform teams who need to generate infrastructure code, create app starter templates, enforce standards, and automate workflows across an entire organization.
 
 <CardGrid>
-  <Card title="Overview" icon="information">
-    Learn what Boilerplate is and when to use it.
-
-    [Overview →](/intro/overview/)
+  <Card title="Run it anywhere" icon="rocket">
+    Boilerplate is a single Go binary with zero runtime dependencies. Download it, run it on your laptop, in CI/CD, or in a container. No Python, no Node, no version conflicts.
   </Card>
-  <Card title="Installation" icon="setting">
-    Install Boilerplate on your machine.
-
-    [Install →](/intro/installation/)
+  <Card title="Easily capture variables" icon="setting">
+    Boilerplate accepts variable values interactively, from the CLI, via YAML files, or through environment variables.
   </Card>
-  <Card title="Your First Template" icon="document">
-    Create a template from scratch with a step-by-step tutorial.
-
-    [Tutorial →](/intro/your-first-template/)
-  </Card>
-  <Card title="CLI Reference" icon="laptop">
-    Command-line flags, variable input, and behavior options.
-
-    [CLI →](/cli/flags/)
+  <Card title="Build powerful templates" icon="puzzle">
+    Boilerplate extends Go templates to include serious templating power including 40+ built-in functions, partials, conditionals, capturing shell command output, and more.
   </Card>
 </CardGrid>
 
-## Learn More
+<SecondaryFeatures features={[
+  { href: "/configuration/dependencies/", title: "Composable templates", description: "Build complex scaffolds from smaller, reusable templates using the dependency system." },
+  { href: "/configuration/variables/", title: "Variable validation", description: "Seven variable types with built-in validators including required, regex, email, URL, and semver." },
+  { href: "/configuration/hooks/", title: "Hooks", description: "Run shell commands before or after rendering to format code, install dependencies, or run tests." },
+  { href: "/advanced/remote-templates/", title: "Remote templates", description: "Fetch templates from Git repos, S3, GCS, or HTTP URLs." },
+  { href: "/advanced/snippets/", title: "Snippets", description: "Embed code from source files in generated docs to keep examples always in sync." },
+  { href: "/cli/flags/", title: "Non-interactive mode", description: "Run fully headless in CI/CD pipelines with --non-interactive, --var-file, and environment variables." },
+]} />
 
-<CardGrid>
-  <Card title="Configuration" icon="open-book">
-    Deep dive into boilerplate.yml, variables, dependencies, hooks, and more.
+</LandingSection>
 
-    [Configuration →](/configuration/boilerplate-yml/)
-  </Card>
-  <Card title="Template Syntax" icon="pen">
-    Go template syntax, helper functions, and dynamic file naming.
+<LandingSection variant="cta">
 
-    [Templates →](/template-syntax/go-templates/)
-  </Card>
-  <Card title="Advanced Features" icon="puzzle">
-    Remote templates, Jsonnet engine, partials, and CI/CD integration.
+## Get started
 
-    [Advanced →](/advanced/remote-templates/)
-  </Card>
-</CardGrid>
+<CompactCards cards={[
+  { href: "/intro/installation/", title: "Install Boilerplate", description: "Install via Homebrew, download a binary, or build from source." },
+  { href: "/intro/your-first-template/", title: "Write your first template", description: "Step-by-step tutorial to create and render your first template." },
+  { href: "https://github.com/gruntwork-io/boilerplate", title: "View on GitHub", description: "Browse the source, open issues, and contribute." },
+]} />
 
-## Community & Support
-
-- **GitHub**: Report issues and contribute at [github.com/gruntwork-io/boilerplate](https://github.com/gruntwork-io/boilerplate)
-
-## License
-
-Boilerplate is open source software licensed under the Mozilla Public License 2.0.
+</LandingSection>

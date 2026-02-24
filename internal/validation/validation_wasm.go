@@ -9,6 +9,7 @@ package validation
 type CustomValidationRule struct {
 	Validator any
 	Message   string
+	Args      []any // Original arguments for parameterized rules (e.g., regex pattern, length bounds).
 }
 
 // CustomValidationRuleCollection is a slice of CustomValidationRule.

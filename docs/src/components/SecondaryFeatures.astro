@@ -1,0 +1,56 @@
+---
+interface FeatureItem {
+  href: string;
+  title: string;
+  description: string;
+}
+
+interface Props {
+  heading?: string;
+  features: FeatureItem[];
+}
+
+const { heading = 'And there\'s more', features } = Astro.props;
+---
+
+<div class="secondary-features">
+  <h3>{heading}</h3>
+  <ul>
+    {features.map((feature) => (
+      <li>
+        <strong><a href={feature.href}>{feature.title}</a></strong> — {feature.description}
+      </li>
+    ))}
+  </ul>
+</div>
+
+<style>
+  h3 {
+    font-size: 1.15rem;
+    color: var(--sl-color-gray-3);
+    margin-top: 2rem;
+    margin-bottom: 0.75rem;
+  }
+
+  ul {
+    list-style: none;
+    padding-left: 0;
+    columns: 1;
+    gap: 0;
+  }
+
+  @media (min-width: 50rem) {
+    ul {
+      columns: 2;
+      gap: 2rem;
+    }
+  }
+
+  li {
+    break-inside: avoid;
+    padding: 0.5rem 0;
+    line-height: 1.5;
+    color: var(--sl-color-gray-2);
+    font-size: 0.95rem;
+  }
+</style>

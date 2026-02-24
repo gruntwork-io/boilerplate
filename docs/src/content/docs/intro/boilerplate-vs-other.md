@@ -31,7 +31,7 @@ Boilerplate is the only tool that combines **a single binary with zero runtime d
 
 **Boilerplate advantages:**
 - **No Python/pip dependency** — Boilerplate is a single binary you download and run. No virtual environments, no dependency conflicts.
-- **Template dependencies** — Compose complex project structures from smaller, reusable template modules. Cookiecutter has no built-in composition system.
+- **Template dependencies** — Compose complex project structures from smaller, reusable templates. Cookiecutter has no built-in composition system.
 - **Richer variable types** — Lists, maps, and enums with real-time validations (required, regex, email, semver, etc.). Cookiecutter variables are limited to what JSON can express.
 - **Hooks with variable interpolation** — Boilerplate hooks can reference template variables in commands, args, and environment variables. Cookiecutter hooks are plain scripts.
 - **Environment variable support** — `BOILERPLATE_VAR_<NAME>` lets CI/CD pipelines inject values without modifying templates.
@@ -58,7 +58,7 @@ Boilerplate is the only tool that combines **a single binary with zero runtime d
 
 **Boilerplate advantages:**
 - **No Node.js dependency** — Single binary with no runtime requirements.
-- **Template dependencies** — Build complex multi-directory project structures from reusable modules. Plop is designed for single-file or small-scale generation.
+- **Template dependencies** — Build complex multi-directory project structures from reusable templates. Plop is designed for single-file or small-scale generation.
 - **Richer variable types with validations** — Seven built-in types with real-time validation feedback. Plop relies on Inquirer.js prompts with custom validation functions.
 - **Var files and environment variables** — `--var-file` loads variables from YAML files, and `BOILERPLATE_VAR_<NAME>` injects values from the environment. Plop supports passing arguments on the command line but has no equivalent to var files.
 - **Remote template support** — Fetch templates from Git repos, S3, GCS, or HTTP via go-getter URLs.
@@ -85,7 +85,7 @@ Boilerplate is the only tool that combines **a single binary with zero runtime d
 
 **Boilerplate advantages:**
 - **No Python dependency** — Single binary with no runtime requirements.
-- **Template dependencies** — Compose complex templates from smaller modules with variable inheritance, conditional skipping, and loop-based rendering. Copier has no dependency system.
+- **Template dependencies** — Compose complex templates from smaller, reusable templates with variable inheritance, conditional skipping, and loop-based rendering. Copier has no dependency system.
 - **Code snippet embedding** — The `snippet` helper extracts code from source files into generated docs.
 - **Hooks with variable interpolation** — Full Go template syntax in hook commands, args, and env vars.
 - **Runbooks integration** — Turn templates into interactive web UIs with auto-generated forms.
@@ -101,7 +101,7 @@ Boilerplate is the only tool that combines **a single binary with zero runtime d
 Boilerplate is a good fit when you need:
 
 - **A single binary** with no runtime dependencies (Python, Node.js, JVM, etc.)
-- **Template composition** via dependencies so you can build complex templates from smaller, reusable modules
+- **Template composition** via dependencies so you can build complex templates from smaller, reusable templates
 - **Non-interactive mode** for CI/CD pipelines with `--var`, `--var-file`, and environment variables
 - **Rich variable types** including lists, maps, and enums with built-in validations
 - **Code snippet embedding** to keep documentation in sync with source code
