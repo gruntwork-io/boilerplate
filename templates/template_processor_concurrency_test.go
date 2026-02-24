@@ -21,61 +21,6 @@ import (
 	"github.com/gruntwork-io/boilerplate/variables"
 )
 
-// createForEachFixture sets up a parent template with a for_each dependency
-// pointing to a child template that renders {{ .__each__ }} into output.txt.
-// Returns the configured options pointing at the parent template.
-func createForEachFixture(t *testing.T, items []string) *options.BoilerplateOptions {
-	t.Helper()
-
-	tempDir := t.TempDir()
-
-	// Child template: renders __each__ into output.txt
-	childDir := filepath.Join(tempDir, "child")
-	require.NoError(t, os.MkdirAll(childDir, 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(childDir, "boilerplate.yml"), []byte("variables: []\n"), 0o644))
-	require.NoError(t, os.WriteFile(filepath.Join(childDir, "output.txt"), []byte("item={{ .__each__ }}"), 0o644))
-
-	// Parent template: for_each dependency on child
-	parentDir := filepath.Join(tempDir, "parent")
-	require.NoError(t, os.MkdirAll(parentDir, 0o755))
-
-	forEachYAML := "    for_each:\n"
-
-	var forEachYAMLSb42 strings.Builder
-	for _, item := range items {
-		forEachYAMLSb42.WriteString(fmt.Sprintf("      - %s\n", item))
-	}
-
-	forEachYAML += forEachYAMLSb42.String()
-
-	parentConfig := "variables: []\ndependencies:\n  - name: test-dep\n    template-url: ../child\n    output-folder: \"{{ .__each__ }}\"\n" + forEachYAML
-	require.NoError(t, os.WriteFile(filepath.Join(parentDir, "boilerplate.yml"), []byte(parentConfig), 0o644))
-
-	outputDir := filepath.Join(tempDir, "output")
-
-	return &options.BoilerplateOptions{
-		ShellCommandAnswers:     make(map[string]bool),
-		TemplateURL:             parentDir,
-		TemplateFolder:          parentDir,
-		OutputFolder:            outputDir,
-		OnMissingKey:            options.ExitWithError,
-		OnMissingConfig:         options.Exit,
-		NonInteractive:          true,
-		NoHooks:                 true,
-		DisableDependencyPrompt: true,
-	}
-}
-
-// readOutputFile reads the rendered output.txt for a given for_each item.
-func readOutputFile(t *testing.T, opts *options.BoilerplateOptions, item string) string {
-	t.Helper()
-
-	content, err := os.ReadFile(filepath.Join(opts.OutputFolder, item, "output.txt"))
-	require.NoError(t, err)
-
-	return string(content)
-}
-
 func TestForEachConcurrent_AllItemsProcessed(t *testing.T) {
 	t.Parallel()
 
@@ -203,12 +148,12 @@ hooks:
 
 	forEachYAML := "    for_each:\n"
 
-	var forEachYAMLSb203 strings.Builder
+	var forEachYAMLSb strings.Builder
 	for _, item := range items {
-		forEachYAMLSb203.WriteString(fmt.Sprintf("      - %s\n", item))
+		forEachYAMLSb.WriteString(fmt.Sprintf("      - %s\n", item))
 	}
 
-	forEachYAML += forEachYAMLSb203.String()
+	forEachYAML += forEachYAMLSb.String()
 
 	parentConfig := "variables: []\ndependencies:\n  - name: timing-dep\n    template-url: ../child\n    output-folder: \"{{ .__each__ }}\"\n" + forEachYAML
 	require.NoError(t, os.WriteFile(filepath.Join(parentDir, "boilerplate.yml"), []byte(parentConfig), 0o644))
@@ -274,12 +219,12 @@ hooks:
 
 	forEachYAML := "    for_each:\n"
 
-	var forEachYAMLSb274 strings.Builder
+	var forEachYAMLSb strings.Builder
 	for _, item := range items {
-		forEachYAMLSb274.WriteString(fmt.Sprintf("      - %s\n", item))
+		forEachYAMLSb.WriteString(fmt.Sprintf("      - %s\n", item))
 	}
 
-	forEachYAML += forEachYAMLSb274.String()
+	forEachYAML += forEachYAMLSb.String()
 
 	parentConfig := "variables: []\ndependencies:\n  - name: limit-dep\n    template-url: ../child\n    output-folder: \"{{ .__each__ }}\"\n" + forEachYAML
 	require.NoError(t, os.WriteFile(filepath.Join(parentDir, "boilerplate.yml"), []byte(parentConfig), 0o644))
@@ -521,12 +466,12 @@ hooks:
 
 	forEachYAML := "    for_each:\n"
 
-	var forEachYAMLSb518 strings.Builder
+	var forEachYAMLSb strings.Builder
 	for _, item := range items {
-		forEachYAMLSb518.WriteString(fmt.Sprintf("      - %s\n", item))
+		forEachYAMLSb.WriteString(fmt.Sprintf("      - %s\n", item))
 	}
 
-	forEachYAML += forEachYAMLSb518.String()
+	forEachYAML += forEachYAMLSb.String()
 
 	parentConfig := "variables: []\ndependencies:\n  - name: order-dep\n    template-url: ../child\n    output-folder: \"{{ .__each__ }}\"\n" + forEachYAML
 	require.NoError(t, os.WriteFile(filepath.Join(parentDir, "boilerplate.yml"), []byte(parentConfig), 0o644))
@@ -711,4 +656,59 @@ func TestErrGroupSetLimitOne_Sequential(t *testing.T) {
 
 	assert.Equal(t, int32(1), maxConcurrent, "with SetLimit(1), at most 1 goroutine should be active at a time")
 	assert.Equal(t, []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}, order, "with SetLimit(1), tasks should execute in submission order")
+}
+
+// createForEachFixture sets up a parent template with a for_each dependency
+// pointing to a child template that renders {{ .__each__ }} into output.txt.
+// Returns the configured options pointing at the parent template.
+func createForEachFixture(t *testing.T, items []string) *options.BoilerplateOptions {
+	t.Helper()
+
+	tempDir := t.TempDir()
+
+	// Child template: renders __each__ into output.txt
+	childDir := filepath.Join(tempDir, "child")
+	require.NoError(t, os.MkdirAll(childDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(childDir, "boilerplate.yml"), []byte("variables: []\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(childDir, "output.txt"), []byte("item={{ .__each__ }}"), 0o644))
+
+	// Parent template: for_each dependency on child
+	parentDir := filepath.Join(tempDir, "parent")
+	require.NoError(t, os.MkdirAll(parentDir, 0o755))
+
+	forEachYAML := "    for_each:\n"
+
+	var forEachYAMLSb strings.Builder
+	for _, item := range items {
+		forEachYAMLSb.WriteString(fmt.Sprintf("      - %s\n", item))
+	}
+
+	forEachYAML += forEachYAMLSb.String()
+
+	parentConfig := "variables: []\ndependencies:\n  - name: test-dep\n    template-url: ../child\n    output-folder: \"{{ .__each__ }}\"\n" + forEachYAML
+	require.NoError(t, os.WriteFile(filepath.Join(parentDir, "boilerplate.yml"), []byte(parentConfig), 0o644))
+
+	outputDir := filepath.Join(tempDir, "output")
+
+	return &options.BoilerplateOptions{
+		ShellCommandAnswers:     make(map[string]bool),
+		TemplateURL:             parentDir,
+		TemplateFolder:          parentDir,
+		OutputFolder:            outputDir,
+		OnMissingKey:            options.ExitWithError,
+		OnMissingConfig:         options.Exit,
+		NonInteractive:          true,
+		NoHooks:                 true,
+		DisableDependencyPrompt: true,
+	}
+}
+
+// readOutputFile reads the rendered output.txt for a given for_each item.
+func readOutputFile(t *testing.T, opts *options.BoilerplateOptions, item string) string {
+	t.Helper()
+
+	content, err := os.ReadFile(filepath.Join(opts.OutputFolder, item, "output.txt"))
+	require.NoError(t, err)
+
+	return string(content)
 }

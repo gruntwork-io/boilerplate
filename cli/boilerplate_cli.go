@@ -109,7 +109,7 @@ func CreateBoilerplateCli() *cli.App {
 		&cli.IntFlag{
 			Name:  options.OptParallelism,
 			Value: runtime.NumCPU(),
-			Usage: "Maximum number of for_each dependency iterations to process concurrently.",
+			Usage: "Maximum number of parallel operations Boilerplate will perform at once (default: number of CPUs).",
 		},
 	}
 
