@@ -45,8 +45,8 @@ The manifest format is determined by the file extension:
 
 | Extension | Format |
 |-----------|--------|
-| `.yaml`, `.yml` | YAML |
-| `.json` (or anything else) | JSON |
+| `.json` | JSON |
+| `.yaml`, `.yml` (or anything else) | YAML |
 
 ## Schema
 
@@ -54,7 +54,7 @@ The manifest contains the following fields:
 
 | Field | Description |
 |-------|-------------|
-| `SchemaVersion` | URL pointing to the [JSON Schema](#json-schema) for the manifest format |
+| `SchemaVersion` | URL pointing to the [Manifest Schema](#manifest-schema) for the manifest format |
 | `Timestamp` | UTC timestamp of the generation run (RFC 3339) |
 | `TemplateURL` | The `--template-url` value used for this run |
 | `BoilerplateVersion` | Version of boilerplate that produced the output |
@@ -62,6 +62,21 @@ The manifest contains the following fields:
 | `Files` | Array of generated files |
 | `Files[].Path` | Path of the generated file, relative to the output directory |
 | `Files[].Checksum` | SHA256 hex digest of the file contents |
+
+### YAML example
+
+```yaml
+SchemaVersion: "https://boilerplate.gruntwork.io/schemas/manifest/v1/schema.json"
+Timestamp: "2026-02-24T12:00:00Z"
+TemplateURL: ./templates/service
+BoilerplateVersion: v0.6.0
+OutputDir: ./output
+Files:
+  - Path: main.go
+    Checksum: a1b2c3d4e5f6...
+  - Path: README.md
+    Checksum: f6e5d4c3b2a1...
+```
 
 ### JSON example
 
@@ -85,22 +100,7 @@ The manifest contains the following fields:
 }
 ```
 
-### YAML example
-
-```yaml
-SchemaVersion: "https://boilerplate.gruntwork.io/schemas/manifest/v1/schema.json"
-Timestamp: "2026-02-24T12:00:00Z"
-TemplateURL: ./templates/service
-BoilerplateVersion: v0.6.0
-OutputDir: ./output
-Files:
-  - Path: main.go
-    Checksum: a1b2c3d4e5f6...
-  - Path: README.md
-    Checksum: f6e5d4c3b2a1...
-```
-
-## JSON Schema
+## Manifest Schema
 
 Boilerplate publishes a formal [JSON Schema](https://json-schema.org/) for the manifest format. The schema is available at:
 

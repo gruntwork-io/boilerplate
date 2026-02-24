@@ -49,8 +49,8 @@ func NewManifest(templateURL, outputDir string, files []GeneratedFile) *Manifest
 }
 
 // WriteManifest writes the manifest to the given path. The format (JSON or YAML)
-// is auto-detected from the file extension: .yaml/.yml produce YAML, everything
-// else produces JSON. If an existing file at manifestPath is corrupted (cannot be
+// is auto-detected from the file extension: .json produces JSON, everything else
+// produces YAML. If an existing file at manifestPath is corrupted (cannot be
 // parsed), an error is returned.
 func WriteManifest(manifestPath string, m *Manifest) error {
 	// If the file already exists, verify it is not corrupted by attempting to parse it.
@@ -65,10 +65,10 @@ func WriteManifest(manifestPath string, m *Manifest) error {
 		err  error
 	)
 
-	if isYAMLExtension(manifestPath) {
-		data, err = yaml.Marshal(m)
-	} else {
+	if isJSONExtension(manifestPath) {
 		data, err = json.MarshalIndent(m, "", "  ")
+	} else {
+		data, err = yaml.Marshal(m)
 	}
 
 	if err != nil {
@@ -83,17 +83,16 @@ func WriteManifest(manifestPath string, m *Manifest) error {
 func parseManifestBytes(manifestPath string, data []byte) error {
 	var m Manifest
 
-	if isYAMLExtension(manifestPath) {
-		return yaml.Unmarshal(data, &m)
+	if isJSONExtension(manifestPath) {
+		return json.Unmarshal(data, &m)
 	}
 
-	return json.Unmarshal(data, &m)
+	return yaml.Unmarshal(data, &m)
 }
 
-// isYAMLExtension returns true if the file extension indicates YAML format.
-func isYAMLExtension(path string) bool {
-	ext := strings.ToLower(filepath.Ext(path))
-	return ext == ".yaml" || ext == ".yml"
+// isJSONExtension returns true if the file extension indicates JSON format.
+func isJSONExtension(path string) bool {
+	return strings.ToLower(filepath.Ext(path)) == ".json"
 }
 
 // GenerateSchema returns a JSON Schema for the Manifest type.
