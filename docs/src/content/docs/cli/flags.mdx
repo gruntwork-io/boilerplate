@@ -57,6 +57,15 @@ boilerplate [options]
 | `--no-hooks` | `false` | Don't execute any hooks |
 | `--no-shell` | `false` | Don't execute shell helpers (returns `"replace-me"` instead) |
 
+## Manifest Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--manifest` | `false` | Write a manifest of all generated files (with SHA256 checksums) to the output directory as `boilerplate-manifest.json` |
+| `--manifest-file PATH` | | Write the manifest to a custom path. Implies `--manifest`. Format is auto-detected from extension (`.yaml`/`.yml` for YAML, otherwise JSON) |
+
+See [Manifest](/advanced/manifest) for details on the manifest schema and usage.
+
 ## Info Flags
 
 | Flag | Description |
@@ -97,6 +106,24 @@ boilerplate \
 <Aside type="tip">
 The double-slash (`//`) in go-getter URLs separates the repository URL from the subdirectory path within the repository.
 </Aside>
+
+### Generate with a manifest
+
+```bash
+# Default JSON manifest in the output folder
+boilerplate \
+  --template-url ~/templates/go-service \
+  --output-folder ~/projects/my-service \
+  --non-interactive \
+  --manifest
+
+# Custom YAML manifest path
+boilerplate \
+  --template-url ~/templates/go-service \
+  --output-folder ~/projects/my-service \
+  --non-interactive \
+  --manifest-file ~/projects/my-service/manifest.yaml
+```
 
 ### Lenient mode for partial templates
 
