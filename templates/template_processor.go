@@ -667,13 +667,13 @@ func cloneOptionsForDependency(
 	}
 
 	return &options.BoilerplateOptions{
+		Vars:                    vars,
 		TemplateURL:             templateURL,
 		TemplateFolder:          templateFolder,
 		OutputFolder:            outputFolder,
-		NonInteractive:          originalOpts.NonInteractive,
-		Vars:                    vars,
 		OnMissingKey:            originalOpts.OnMissingKey,
 		OnMissingConfig:         originalOpts.OnMissingConfig,
+		NonInteractive:          originalOpts.NonInteractive,
 		NoHooks:                 originalOpts.NoHooks,
 		NoShell:                 originalOpts.NoShell,
 		DisableDependencyPrompt: originalOpts.DisableDependencyPrompt,
