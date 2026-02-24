@@ -50,7 +50,11 @@ jobs:
         id: run-tests
         run: |
           set -o pipefail
-          go test -v ./... -timeout 45m | tee >(go-junit-report -set-exit-code > result.xml)
+          # Exclude examples and test-fixtures as they contain example Go code
+          # with Go templating syntax that is not meant to be tested.
+          packages=$(go list -e ./... | grep -v examples | grep -v test-fixtures | tr '\n' ' ')
+          go test -v -timeout 45m \
+            $packages | tee >(go-junit-report -set-exit-code > result.xml)
         shell: bash
         env:
           # Adding token here to reduce the likelihood of hitting rate limit issues.
