@@ -97,19 +97,12 @@ func TestCloneOptionsForDependency(t *testing.T) {
 func TestProcessTemplateReturnsFiles(t *testing.T) {
 	t.Parallel()
 
-	// Create a temporary directory for the test
-	templateDir, err := os.MkdirTemp("", "template-test")
-	require.NoError(t, err)
-	defer os.RemoveAll(templateDir)
-
-	// Create a temporary output directory
-	outputDir, err := os.MkdirTemp("", "output-test")
-	require.NoError(t, err)
-	defer os.RemoveAll(outputDir)
+	templateDir := t.TempDir()
+	outputDir := t.TempDir()
 
 	// Create a simple template file
 	templateFile := filepath.Join(templateDir, "test.txt")
-	err = os.WriteFile(templateFile, []byte("This is a test!"), 0644)
+	err := os.WriteFile(templateFile, []byte("This is a test!"), 0644)
 	require.NoError(t, err)
 
 	// Create an empty boilerplate.yml file
@@ -144,19 +137,12 @@ func TestProcessTemplateReturnsFiles(t *testing.T) {
 func TestProcessTemplate(t *testing.T) {
 	t.Parallel()
 
-	// Create a temporary directory for the test
-	templateDir, err := os.MkdirTemp("", "template-test")
-	require.NoError(t, err)
-	defer os.RemoveAll(templateDir)
-
-	// Create a temporary output directory
-	outputDir, err := os.MkdirTemp("", "output-test")
-	require.NoError(t, err)
-	defer os.RemoveAll(outputDir)
+	templateDir := t.TempDir()
+	outputDir := t.TempDir()
 
 	// Create a simple template file
 	templateFile := filepath.Join(templateDir, "test.txt")
-	err = os.WriteFile(templateFile, []byte("This is a test!"), 0644)
+	err := os.WriteFile(templateFile, []byte("This is a test!"), 0644)
 	require.NoError(t, err)
 
 	// Create an empty boilerplate.yml file

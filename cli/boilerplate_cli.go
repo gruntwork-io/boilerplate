@@ -3,7 +3,10 @@ package cli
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/urfave/cli/v2"
 
@@ -97,8 +100,12 @@ func CreateBoilerplateCli() *cli.App {
 			Usage: fmt.Sprintf("Do not prompt for confirmation to include dependencies. Has the same effect as --%s, without disabling variable prompts.", options.OptNonInteractive),
 		},
 		&cli.BoolFlag{
-			Name:  options.OptOutputManifest,
-			Usage: "Write a JSON list of all generated files to boilerplate-manifest.json in the current working directory.",
+			Name:  options.OptManifest,
+			Usage: "Write a manifest of all generated files (with checksums) to the output directory.",
+		},
+		&cli.StringFlag{
+			Name:  options.OptManifestFile,
+			Usage: "Write the manifest to `FILE` instead of the default location. Implies --manifest. Format is auto-detected from extension (.yaml/.yml for YAML, otherwise JSON).",
 		},
 	}
 
@@ -128,19 +135,50 @@ func runApp(cliContext *cli.Context) error {
 	// The root boilerplate.yml is not itself a dependency, so we pass an empty Dependency.
 	emptyDep := variables.Dependency{}
 
-	if opts.OutputManifest {
-		m, err := templates.ProcessTemplateWithContextAndManifest(ctx, opts, opts, &emptyDep)
-		if err != nil {
-			return err
-		}
-
-		err = manifest.UpdateVersionedManifest(opts.OutputFolder, opts.TemplateURL, opts.Vars, m)
-		if err != nil {
-			return err
-		}
-
-		return nil
+	generatedFiles, err := templates.ProcessTemplateWithContext(ctx, opts, opts, &emptyDep)
+	if err != nil {
+		return err
 	}
 
-	return templates.ProcessTemplateWithContext(ctx, opts, opts, &emptyDep)
+	if opts.Manifest {
+		files, checksumErr := computeChecksums(opts.OutputFolder, generatedFiles)
+		if checksumErr != nil {
+			return checksumErr
+		}
+
+		m := manifest.NewManifest(opts.TemplateURL, opts.OutputFolder, files)
+
+		manifestPath := filepath.Join(opts.OutputFolder, manifest.DefaultManifestFilename)
+		if opts.ManifestFile != "" {
+			manifestPath = opts.ManifestFile
+		}
+
+		if err := manifest.WriteManifest(manifestPath, m); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// computeChecksums reads each generated file and computes its SHA256 checksum.
+func computeChecksums(outputDir string, relativePaths []string) ([]manifest.GeneratedFile, error) {
+	files := make([]manifest.GeneratedFile, 0, len(relativePaths))
+
+	for _, relPath := range relativePaths {
+		absPath := filepath.Join(outputDir, relPath)
+
+		data, err := os.ReadFile(absPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read file for checksum %s: %w", absPath, err)
+		}
+
+		checksum := fmt.Sprintf("%x", sha256.Sum256(data))
+		files = append(files, manifest.GeneratedFile{
+			Path:     relPath,
+			Checksum: checksum,
+		})
+	}
+
+	return files, nil
 }

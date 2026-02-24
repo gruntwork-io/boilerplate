@@ -101,46 +101,40 @@ func TestExampleWithManifest(t *testing.T) {
 
 	templateFolder := "../examples/for-learning-and-testing/website"
 	varFile := "../test-fixtures/examples-var-files/website/vars.yml"
-	
-	outputFolder, err := os.MkdirTemp("", "boilerplate-manifest-test")
-	require.NoError(t, err)
-	defer os.RemoveAll(outputFolder)
 
-	// Change to output directory to test manifest file creation
-	originalDir, err := os.Getwd()
-	require.NoError(t, err)
-	defer os.Chdir(originalDir)
-	
-	err = os.Chdir(outputFolder)
-	require.NoError(t, err)
+	outputFolder := t.TempDir()
 
 	app := cli.CreateBoilerplateCli()
 	args := []string{
 		"boilerplate",
-		"--template-url", path.Join(originalDir, templateFolder),
-		"--output-folder", "output",
-		"--var-file", path.Join(originalDir, varFile),
-		"--output-manifest",
+		"--template-url", templateFolder,
+		"--output-folder", outputFolder,
+		"--var-file", varFile,
+		"--manifest",
 		"--non-interactive",
 	}
 
-	err = app.Run(args)
+	err := app.Run(args)
 	require.NoError(t, err)
 
 	// Check manifest file was created in output directory
-	manifestPath := "output/boilerplate-manifest.json"
+	manifestPath := path.Join(outputFolder, "boilerplate-manifest.json")
 	require.FileExists(t, manifestPath)
 
 	// Read and verify manifest content
 	manifestContent, err := os.ReadFile(manifestPath)
 	require.NoError(t, err)
-	
+
 	manifestStr := string(manifestContent)
-	// Verify versioned manifest structure
-	assert.Contains(t, manifestStr, "latest_version")
-	assert.Contains(t, manifestStr, "versions")
+	// Verify single-generation manifest structure
+	assert.Contains(t, manifestStr, "schema_version")
+	assert.Contains(t, manifestStr, "timestamp")
+	assert.Contains(t, manifestStr, "checksum")
 	assert.Contains(t, manifestStr, "index.html")
 	assert.Contains(t, manifestStr, "logo.png")
 	assert.Contains(t, manifestStr, "template_url")
 	assert.Contains(t, manifestStr, "boilerplate_version")
+	// Verify old versioned fields are NOT present
+	assert.NotContains(t, manifestStr, "latest_version")
+	assert.NotContains(t, manifestStr, "versions")
 }

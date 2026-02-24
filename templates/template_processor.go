@@ -10,8 +10,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/gruntwork-io/boilerplate/manifest"
-
 	"github.com/gruntwork-io/boilerplate/config"
 	"github.com/gruntwork-io/boilerplate/getterhelper"
 	"github.com/gruntwork-io/boilerplate/internal/fileutil"
@@ -35,26 +33,13 @@ const defaultDirPerm = 0o777
 // dependent boilerplate templates, and then execute this template. Note that we pass in rootOptions so that template
 // dependencies can inspect properties of the root template.
 func ProcessTemplate(options, rootOpts *options.BoilerplateOptions, thisDep *variables.Dependency) error {
-	return ProcessTemplateWithContext(context.Background(), options, rootOpts, thisDep)
-}
-
-// ProcessTemplateWithContext is like ProcessTemplate but accepts a context for cancellation and timeouts.
-func ProcessTemplateWithContext(ctx context.Context, options, rootOpts *options.BoilerplateOptions, thisDep *variables.Dependency) error {
-	_, err := processTemplateWithContextInternal(ctx, options, rootOpts, thisDep, false)
+	_, err := ProcessTemplateWithContext(context.Background(), options, rootOpts, thisDep)
 	return err
 }
 
-// ProcessTemplateWithManifest works like ProcessTemplate but also returns the manifest of generated files
-func ProcessTemplateWithManifest(options, rootOpts *options.BoilerplateOptions, thisDep *variables.Dependency) (*manifest.Manifest, error) {
-	return processTemplateWithContextInternal(context.Background(), options, rootOpts, thisDep, true)
-}
-
-// ProcessTemplateWithContextAndManifest is like ProcessTemplateWithManifest but accepts a context for cancellation and timeouts.
-func ProcessTemplateWithContextAndManifest(ctx context.Context, options, rootOpts *options.BoilerplateOptions, thisDep *variables.Dependency) (*manifest.Manifest, error) {
-	return processTemplateWithContextInternal(ctx, options, rootOpts, thisDep, true)
-}
-
-func processTemplateWithContextInternal(ctx context.Context, options, rootOpts *options.BoilerplateOptions, thisDep *variables.Dependency, returnManifest bool) (*manifest.Manifest, error) {
+// ProcessTemplateWithContext is like ProcessTemplate but accepts a context for cancellation and timeouts.
+// Returns the list of generated file paths relative to the output directory.
+func ProcessTemplateWithContext(ctx context.Context, options, rootOpts *options.BoilerplateOptions, thisDep *variables.Dependency) ([]string, error) {
 	// If TemplateFolder is already set, use that directly as it is a local template. Otherwise, download to a temporary
 	// working directory.
 	if options.TemplateFolder == "" {
@@ -119,12 +104,7 @@ func processTemplateWithContextInternal(ctx context.Context, options, rootOpts *
 		return nil, err
 	}
 
-	var fileManifest *manifest.Manifest
-	if returnManifest {
-		fileManifest = manifest.NewManifest(options.OutputFolder)
-	}
-
-	err = processTemplateFolder(ctx, boilerplateConfig, options, vars, partials, fileManifest)
+	generatedFilePaths, err := processTemplateFolder(ctx, boilerplateConfig, options, vars, partials)
 	if err != nil {
 		return nil, err
 	}
@@ -134,10 +114,7 @@ func processTemplateWithContextInternal(ctx context.Context, options, rootOpts *
 		return nil, err
 	}
 
-	if returnManifest {
-		return fileManifest, nil
-	}
-	return nil, nil
+	return generatedFilePaths, nil
 }
 
 func processPartials(ctx context.Context, partials []string, opts *options.BoilerplateOptions, vars map[string]any) ([]string, error) {
@@ -462,7 +439,9 @@ func processDependency(
 
 			logging.Logger.Printf("Processing dependency %s, with template folder %s and output folder %s", dependency.Name, dependencyOptions.TemplateFolder, dependencyOptions.OutputFolder)
 
-			return ProcessTemplateWithContext(ctx, dependencyOptions, opts, dependency)
+			_, err = ProcessTemplateWithContext(ctx, dependencyOptions, opts, dependency)
+
+			return err
 		}
 
 		forEach := dependency.ForEach
@@ -714,29 +693,30 @@ func shouldSkipDependency(ctx context.Context, dependency *variables.Dependency,
 }
 
 // processTemplateFolder copies all the files and folders in templateFolder to outputFolder, passing text files through the Go template engine
-// with the given set of variables as the data.
+// with the given set of variables as the data. Returns the list of generated file paths relative to the output directory.
 func processTemplateFolder(
 	ctx context.Context,
 	config *config.BoilerplateConfig,
 	opts *options.BoilerplateOptions,
 	variables map[string]any,
 	partials []string,
-	fileManifest *manifest.Manifest,
-) error {
+) ([]string, error) {
 	logging.Logger.Printf("Processing templates in %s and outputting generated files to %s", opts.TemplateFolder, opts.OutputFolder)
 
 	// Process and render skip files and engines before walking so we only do the rendering operation once.
 	processedSkipFiles, err := processSkipFiles(ctx, config.SkipFiles, opts, variables)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	processedEngines, err := processEngines(ctx, config.Engines, opts, variables)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return filepath.Walk(opts.TemplateFolder, func(path string, info os.FileInfo, err error) error {
+	var generatedFilePaths []string
+
+	walkErr := filepath.Walk(opts.TemplateFolder, func(path string, info os.FileInfo, err error) error {
 		path = filepath.ToSlash(path)
 
 		switch {
@@ -747,13 +727,25 @@ func processTemplateFolder(
 			return createOutputDir(ctx, path, opts, variables)
 		default:
 			engine := determineTemplateEngine(processedEngines, path)
-			return processFile(ctx, path, opts, variables, partials, engine, fileManifest)
+
+			filePath, processErr := processFile(ctx, path, opts, variables, partials, engine)
+			if processErr != nil {
+				return processErr
+			}
+
+			if filePath != "" {
+				generatedFilePaths = append(generatedFilePaths, filePath)
+			}
+
+			return nil
 		}
 	})
+
+	return generatedFilePaths, walkErr
 }
 
 // processFile copies the given path, which is in the folder templateFolder, to the outputFolder, passing it through the Go template
-// engine with the given set of variables as the data if it's a text file.
+// engine with the given set of variables as the data if it's a text file. Returns the relative path of the generated file.
 func processFile(
 	ctx context.Context,
 	path string,
@@ -761,17 +753,16 @@ func processFile(
 	variables map[string]any,
 	partials []string,
 	engine variables.TemplateEngineType,
-	fileManifest *manifest.Manifest,
-) error {
+) (string, error) {
 	isText, err := fileutil.IsTextFile(path)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	if isText {
-		return processTemplate(ctx, path, opts, variables, partials, engine, fileManifest)
+		return processTemplate(ctx, path, opts, variables, partials, engine)
 	} else {
-		return copyFile(ctx, path, opts, variables, fileManifest)
+		return copyFile(ctx, path, opts, variables)
 	}
 }
 
@@ -821,30 +812,30 @@ func outPath(ctx context.Context, file string, opts *options.BoilerplateOptions,
 	return path.Join(opts.OutputFolder, relPath), nil
 }
 
-// Copy the given file, which is in options.TemplateFolder, to options.OutputFolder
-func copyFile(ctx context.Context, file string, opts *options.BoilerplateOptions, variables map[string]any, fileManifest *manifest.Manifest) error {
+// Copy the given file, which is in options.TemplateFolder, to options.OutputFolder.
+// Returns the relative path of the copied file from the output directory.
+func copyFile(ctx context.Context, file string, opts *options.BoilerplateOptions, variables map[string]any) (string, error) {
 	destination, err := outPath(ctx, file, opts, variables)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	logging.Logger.Printf("Copying %s to %s", file, destination)
 
 	if err := fileutil.CopyFile(file, destination); err != nil {
-		return err
+		return "", err
 	}
 
-	if fileManifest != nil {
-		if err := fileManifest.AddFile(destination); err != nil {
-			return err
-		}
+	relPath, err := filepath.Rel(opts.OutputFolder, destination)
+	if err != nil {
+		relPath = destination
 	}
 
-	return nil
+	return relPath, nil
 }
 
 // processTemplate runs the template at templatePath, which is in templateFolder, through the Go template engine with the given
-// variables as data and write the result to outputFolder
+// variables as data and writes the result to outputFolder. Returns the relative path of the generated file.
 func processTemplate(
 	ctx context.Context,
 	templatePath string,
@@ -852,11 +843,10 @@ func processTemplate(
 	vars map[string]any,
 	partials []string,
 	engine variables.TemplateEngineType,
-	fileManifest *manifest.Manifest,
-) error {
+) (string, error) {
 	destination, err := outPath(ctx, templatePath, opts, vars)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	var out string
@@ -865,28 +855,27 @@ func processTemplate(
 	case variables.GoTemplate:
 		out, err = render.RenderTemplateWithPartialsWithContext(ctx, templatePath, partials, vars, opts)
 		if err != nil {
-			return err
+			return "", err
 		}
 	case variables.Jsonnet:
 		out, err = render.RenderJsonnetTemplate(templatePath, vars, opts)
 		if err != nil {
-			return err
+			return "", err
 		}
 		// Strip the jsonnet extension from the destination, if it exists.
 		destination = strings.TrimSuffix(destination, ".jsonnet")
 	}
 
 	if err := fileutil.WriteFileWithSamePermissions(templatePath, destination, []byte(out)); err != nil {
-		return err
+		return "", err
 	}
 
-	if fileManifest != nil {
-		if err := fileManifest.AddFile(destination); err != nil {
-			return err
-		}
+	relPath, err := filepath.Rel(opts.OutputFolder, destination)
+	if err != nil {
+		relPath = destination
 	}
 
-	return nil
+	return relPath, nil
 }
 
 // Return true if this is a path that should not be copied
