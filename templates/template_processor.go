@@ -11,6 +11,9 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"sync"
+
+	"golang.org/x/sync/errgroup"
 
 	"github.com/gruntwork-io/boilerplate/config"
 	"github.com/gruntwork-io/boilerplate/getterhelper"
@@ -519,6 +522,7 @@ func processDependency(
 	}
 
 	var allDeps []manifest.ManifestDependency
+	var mu sync.Mutex
 
 	doProcess := func(updatedVars map[string]any, forEach []string) error {
 		dependencyOptions, cloneErr := cloneOptionsForDependency(ctx, dependency, opts, variablesInConfig, updatedVars)
@@ -555,7 +559,7 @@ func processDependency(
 			}
 		}
 
-		allDeps = append(allDeps, manifest.ManifestDependency{
+		dep := manifest.ManifestDependency{
 			Name:                 dependency.Name,
 			TemplateURL:          dependencyOptions.TemplateURL,
 			OutputFolder:         dependencyOptions.OutputFolder,
@@ -567,7 +571,11 @@ func processDependency(
 			Variables:            resolvedVars,
 			Files:                depFiles,
 			DontInheritVariables: dependency.DontInheritVariables,
-		})
+		}
+
+		mu.Lock()
+		allDeps = append(allDeps, dep)
+		mu.Unlock()
 
 		return nil
 	}
@@ -589,11 +597,18 @@ func processDependency(
 	}
 
 	if len(forEach) > 0 {
+		g, _ := errgroup.WithContext(ctx)
+		g.SetLimit(opts.Parallelism)
+
 		for _, item := range forEach {
-			updatedVars := util.MergeMaps(originalVars, map[string]any{eachVarName: item})
-			if processErr := doProcess(updatedVars, []string{item}); processErr != nil {
-				return nil, processErr
-			}
+			g.Go(func() error {
+				updatedVars := util.MergeMaps(originalVars, map[string]any{eachVarName: item})
+				return doProcess(updatedVars, []string{item})
+			})
+		}
+
+		if err := g.Wait(); err != nil {
+			return nil, err
 		}
 	} else {
 		if processErr := doProcess(originalVars, nil); processErr != nil {
@@ -662,6 +677,7 @@ func cloneOptionsForDependency(
 		NoHooks:                 originalOpts.NoHooks,
 		NoShell:                 originalOpts.NoShell,
 		DisableDependencyPrompt: originalOpts.DisableDependencyPrompt,
+		Parallelism:             originalOpts.Parallelism,
 	}, nil
 }
 

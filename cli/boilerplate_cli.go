@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"runtime"
 
 	"github.com/urfave/cli/v2"
 
@@ -104,6 +105,11 @@ func CreateBoilerplateCli() *cli.App {
 		&cli.StringFlag{
 			Name:  options.OptManifestFile,
 			Usage: "Write the manifest to `FILE` instead of the default location. Implies --manifest. Format is auto-detected from extension (.yaml/.yml for YAML, otherwise JSON).",
+		},
+		&cli.IntFlag{
+			Name:  options.OptParallelism,
+			Value: runtime.NumCPU(),
+			Usage: "Maximum number of for_each dependency iterations to process concurrently.",
 		},
 	}
 
