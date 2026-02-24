@@ -67,54 +67,63 @@ func TestConvertSingleValidationRule_Regex(t *testing.T) {
 	validCases := []struct {
 		name          string
 		ruleInput     string
+		expectedArgs  []any
 		validValues   []string
 		invalidValues []string
 	}{
 		{
 			name:          "lowercase alphanumeric double-quoted pattern",
 			ruleInput:     `regex("^[a-z0-9]+$")`,
+			expectedArgs:  []any{"^[a-z0-9]+$"},
 			validValues:   []string{"hello123"},
 			invalidValues: []string{"Hello!"},
 		},
 		{
 			name:          "case-sensitive backtick-quoted pattern",
 			ruleInput:     "regex(`^[A-Z]{2}-\\d{4}$`)",
+			expectedArgs:  []any{`^[A-Z]{2}-\d{4}$`},
 			validValues:   []string{"AB-1234"},
 			invalidValues: []string{"ab-1234"},
 		},
 		{
 			name:          "double-quoted pattern with backslash shorthand",
 			ruleInput:     `regex("^[A-Z]{2}-\d{4}$")`,
+			expectedArgs:  []any{`^[A-Z]{2}-\d{4}$`},
 			validValues:   []string{"AB-1234"},
 			invalidValues: []string{"AB-XXXX"},
 		},
 		{
 			name:          "pattern with spaces",
 			ruleInput:     `regex("^[a-z ]+$")`,
+			expectedArgs:  []any{"^[a-z ]+$"},
 			validValues:   []string{"hello world"},
 			invalidValues: []string{"Hello123"},
 		},
 		{
 			name:          "double-quoted pattern with escaped quotes",
 			ruleInput:     "regex(`They said: \"Hello world!\"`)",
+			expectedArgs:  []any{`They said: "Hello world!"`},
 			validValues:   []string{`They said: "Hello world!"`},
 			invalidValues: []string{`They said something else`},
 		},
 		{
 			name:          "double-quoted pattern with escaped quotes",
 			ruleInput:     `regex("They said: \"Hello world!\"")`,
+			expectedArgs:  []any{`They said: "Hello world!"`},
 			validValues:   []string{`They said: "Hello world!"`},
 			invalidValues: []string{`They said something else`},
 		},
 		{
 			name:          "backtick-quoted pattern",
 			ruleInput:     "regex(`^[a-z0-9-]+$`)",
+			expectedArgs:  []any{"^[a-z0-9-]+$"},
 			validValues:   []string{"hello-world-123"},
 			invalidValues: []string{"Hello World!"},
 		},
 		{
 			name:          "backtick-quoted pattern with literal quotes",
 			ruleInput:     "regex(`They said: \"Hello world!\"`)",
+			expectedArgs:  []any{`They said: "Hello world!"`},
 			validValues:   []string{`They said: "Hello world!"`},
 			invalidValues: []string{`no match here`},
 		},
@@ -126,6 +135,7 @@ func TestConvertSingleValidationRule_Regex(t *testing.T) {
 
 			rule, err := normalizeAndConvert(tc.ruleInput)
 			require.NoError(t, err)
+			assert.Equal(t, tc.expectedArgs, rule.Args)
 
 			for _, val := range tc.validValues {
 				require.NoError(t, rule.Validator.Validate(val), "expected %q to match", val)
@@ -225,6 +235,7 @@ func TestConvertSingleValidationRule_Length(t *testing.T) {
 		name            string
 		ruleInput       string
 		expectedMessage string
+		expectedArgs    []any
 		validValues     []string
 		invalidValues   []string
 	}{
@@ -232,6 +243,7 @@ func TestConvertSingleValidationRule_Length(t *testing.T) {
 			name:            "with spaces around args",
 			ruleInput:       "length(5, 22)",
 			expectedMessage: "Must be between 5 and 22 characters long",
+			expectedArgs:    []any{5, 22},
 			validValues:     []string{"hello"},
 			invalidValues:   []string{"hi"},
 		},
@@ -239,6 +251,7 @@ func TestConvertSingleValidationRule_Length(t *testing.T) {
 			name:            "without spaces around args",
 			ruleInput:       "length(1,3)",
 			expectedMessage: "Must be between 1 and 3 characters long",
+			expectedArgs:    []any{1, 3},
 			validValues:     []string{"ab"},
 			invalidValues:   []string{"abcd"},
 		},
@@ -251,6 +264,7 @@ func TestConvertSingleValidationRule_Length(t *testing.T) {
 			rule, err := normalizeAndConvert(tc.ruleInput)
 			require.NoError(t, err)
 			assert.Equal(t, tc.expectedMessage, rule.Message)
+			assert.Equal(t, tc.expectedArgs, rule.Args)
 
 			for _, val := range tc.validValues {
 				require.NoError(t, rule.Validator.Validate(val), "expected %q to pass", val)
@@ -300,6 +314,22 @@ func TestConvertSingleValidationRule_Length(t *testing.T) {
 	}
 }
 
+func TestConvertSingleValidationRule_SimpleRulesHaveNilArgs(t *testing.T) {
+	t.Parallel()
+
+	simpleRules := []string{"required", "url", "email", "alpha", "digit", "alphanumeric", "countrycode2", "semver"}
+
+	for _, ruleStr := range simpleRules {
+		t.Run(ruleStr, func(t *testing.T) {
+			t.Parallel()
+
+			rule, err := normalizeAndConvert(ruleStr)
+			require.NoError(t, err)
+			assert.Nil(t, rule.Args, "simple rule %q should have nil Args", ruleStr)
+		})
+	}
+}
+
 func TestUnmarshalValidationsField_RegexWithSpaces(t *testing.T) {
 	t.Parallel()
 
@@ -322,7 +352,9 @@ func TestUnmarshalValidationsField_RegexWithSpaces(t *testing.T) {
 		require.Len(t, rules, 2)
 
 		assert.Equal(t, "Must not be empty", rules[0].Message)
+		assert.Nil(t, rules[0].Args)
 		assert.Equal(t, "Must match pattern: ^[a-z ]+$", rules[1].Message)
+		assert.Equal(t, []any{"^[a-z ]+$"}, rules[1].Args)
 
 		// Should accept string with spaces
 		err = rules[1].Validator.Validate("hello world")
@@ -374,6 +406,7 @@ func TestUnmarshalValidationsField(t *testing.T) {
 		rules, err := UnmarshalValidationsField(fields)
 		require.NoError(t, err)
 		require.Len(t, rules, 1)
+		assert.Equal(t, []any{`^[A-Z]{2}-\d{4}$`}, rules[0].Args)
 
 		err = rules[0].Validator.Validate("AB-1234")
 		require.NoError(t, err)
