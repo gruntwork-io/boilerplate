@@ -54,32 +54,32 @@ The manifest contains the following fields:
 
 | Field | Description |
 |-------|-------------|
-| `schema_version` | URL pointing to the [JSON Schema](#json-schema) for the manifest format |
-| `timestamp` | UTC timestamp of the generation run (RFC 3339) |
-| `template_url` | The `--template-url` value used for this run |
-| `boilerplate_version` | Version of boilerplate that produced the output |
-| `output_dir` | The `--output-folder` value used for this run |
-| `files` | Array of generated files |
-| `files[].path` | Path of the generated file, relative to the output directory |
-| `files[].checksum` | SHA256 hex digest of the file contents |
+| `SchemaVersion` | URL pointing to the [JSON Schema](#json-schema) for the manifest format |
+| `Timestamp` | UTC timestamp of the generation run (RFC 3339) |
+| `TemplateURL` | The `--template-url` value used for this run |
+| `BoilerplateVersion` | Version of boilerplate that produced the output |
+| `OutputDir` | The `--output-folder` value used for this run |
+| `Files` | Array of generated files |
+| `Files[].Path` | Path of the generated file, relative to the output directory |
+| `Files[].Checksum` | SHA256 hex digest of the file contents |
 
 ### JSON example
 
 ```json
 {
-  "schema_version": "https://boilerplate.gruntwork.io/schemas/manifest/v1/schema.json",
-  "timestamp": "2026-02-24T12:00:00Z",
-  "template_url": "./templates/service",
-  "boilerplate_version": "v0.6.0",
-  "output_dir": "./output",
-  "files": [
+  "SchemaVersion": "https://boilerplate.gruntwork.io/schemas/manifest/v1/schema.json",
+  "Timestamp": "2026-02-24T12:00:00Z",
+  "TemplateURL": "./templates/service",
+  "BoilerplateVersion": "v0.6.0",
+  "OutputDir": "./output",
+  "Files": [
     {
-      "path": "main.go",
-      "checksum": "a1b2c3d4e5f6..."
+      "Path": "main.go",
+      "Checksum": "a1b2c3d4e5f6..."
     },
     {
-      "path": "README.md",
-      "checksum": "f6e5d4c3b2a1..."
+      "Path": "README.md",
+      "Checksum": "f6e5d4c3b2a1..."
     }
   ]
 }
@@ -88,16 +88,16 @@ The manifest contains the following fields:
 ### YAML example
 
 ```yaml
-schema_version: "https://boilerplate.gruntwork.io/schemas/manifest/v1/schema.json"
-timestamp: "2026-02-24T12:00:00Z"
-template_url: ./templates/service
-boilerplate_version: v0.6.0
-output_dir: ./output
-files:
-  - path: main.go
-    checksum: a1b2c3d4e5f6...
-  - path: README.md
-    checksum: f6e5d4c3b2a1...
+SchemaVersion: "https://boilerplate.gruntwork.io/schemas/manifest/v1/schema.json"
+Timestamp: "2026-02-24T12:00:00Z"
+TemplateURL: ./templates/service
+BoilerplateVersion: v0.6.0
+OutputDir: ./output
+Files:
+  - Path: main.go
+    Checksum: a1b2c3d4e5f6...
+  - Path: README.md
+    Checksum: f6e5d4c3b2a1...
 ```
 
 ## JSON Schema
@@ -108,7 +108,7 @@ Boilerplate publishes a formal [JSON Schema](https://json-schema.org/) for the m
 https://boilerplate.gruntwork.io/schemas/manifest/v1/schema.json
 ```
 
-The `schema_version` field in every generated manifest contains this URL, making it easy to identify which schema version was used and to fetch the schema for validation.
+The `SchemaVersion` field in every generated manifest contains this URL, making it easy to identify which schema version was used and to fetch the schema for validation.
 
 ## Behavior
 

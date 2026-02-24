@@ -128,15 +128,12 @@ func TestExampleWithManifest(t *testing.T) {
 
 	manifestStr := string(manifestContent)
 	// Verify single-generation manifest structure
-	assert.Contains(t, manifestStr, "schema_version")
+	assert.Contains(t, manifestStr, "SchemaVersion")
 	assert.Contains(t, manifestStr, manifest.SchemaURL)
-	assert.Contains(t, manifestStr, "timestamp")
-	assert.Contains(t, manifestStr, "checksum")
+	assert.Contains(t, manifestStr, "Timestamp")
+	assert.Contains(t, manifestStr, "Checksum")
 	assert.Contains(t, manifestStr, "index.html")
 	assert.Contains(t, manifestStr, "logo.png")
-	assert.Contains(t, manifestStr, "template_url")
-	assert.Contains(t, manifestStr, "boilerplate_version")
-	// Verify old versioned fields are NOT present
-	assert.NotContains(t, manifestStr, "latest_version")
-	assert.NotContains(t, manifestStr, "versions")
+	assert.Contains(t, manifestStr, "TemplateURL")
+	assert.Contains(t, manifestStr, "BoilerplateVersion")
 }

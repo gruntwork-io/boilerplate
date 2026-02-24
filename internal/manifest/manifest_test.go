@@ -183,12 +183,12 @@ func TestGenerateSchema(t *testing.T) {
 	assert.Equal(t, "Schema for boilerplate generation manifest", schema.Description)
 
 	// Verify required properties
-	assert.Contains(t, schema.Required, "schema_version")
-	assert.Contains(t, schema.Required, "timestamp")
-	assert.Contains(t, schema.Required, "template_url")
-	assert.Contains(t, schema.Required, "boilerplate_version")
-	assert.Contains(t, schema.Required, "output_dir")
-	assert.Contains(t, schema.Required, "files")
+	assert.Contains(t, schema.Required, "SchemaVersion")
+	assert.Contains(t, schema.Required, "Timestamp")
+	assert.Contains(t, schema.Required, "TemplateURL")
+	assert.Contains(t, schema.Required, "BoilerplateVersion")
+	assert.Contains(t, schema.Required, "OutputDir")
+	assert.Contains(t, schema.Required, "Files")
 
 	// Verify it can be marshaled to JSON
 	data, err := json.MarshalIndent(schema, "", "  ")
