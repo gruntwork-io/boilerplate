@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 
-	"github.com/gruntwork-io/boilerplate/errors"
+	"github.com/gruntwork-io/boilerplate/internal/validation"
 )
 
 // Variable represents an interface for a variable defined in a boilerplate.yml config file
@@ -56,8 +57,14 @@ type Variable interface {
 	// A custom marshaling function to translate back to YAML, as expected by go-yaml.
 	MarshalYAML() (any, error)
 
+	// Whether the user should be prompted to confirm/change the default value in interactive mode
+	Confirm() bool
+
+	// Return a copy of this variable but with the confirm flag set to the given value
+	WithConfirm(bool) Variable
+
 	// Validations that should be run on the variable
-	Validations() []CustomValidationRule
+	Validations() []validation.CustomValidationRule
 }
 
 // A private implementation of the Variable interface that forces all users to use our public constructors
@@ -68,8 +75,9 @@ type defaultVariable struct {
 	reference    string
 	variableType BoilerplateType
 	options      []string
-	validations  []CustomValidationRule
+	validations  []validation.CustomValidationRule
 	order        int
+	confirm      bool
 }
 
 // NewStringVariable creates a new variable that holds a string
@@ -166,8 +174,17 @@ func (variable *defaultVariable) Options() []string {
 	return variable.options
 }
 
-func (variable *defaultVariable) Validations() []CustomValidationRule {
+func (variable *defaultVariable) Validations() []validation.CustomValidationRule {
 	return variable.validations
+}
+
+func (variable *defaultVariable) Confirm() bool {
+	return variable.confirm
+}
+
+func (variable *defaultVariable) WithConfirm(confirm bool) Variable {
+	variable.confirm = confirm
+	return variable
 }
 
 func (variable *defaultVariable) WithName(name string) Variable {
@@ -242,11 +259,15 @@ func (variable *defaultVariable) MarshalYAML() (any, error) {
 		varYml["validations"] = variable.Validations()
 	}
 
+	if variable.Confirm() {
+		varYml["confirm"] = true
+	}
+
 	return varYml, nil
 }
 
 // ConvertType checks that the given value matches the type we're expecting in the given variable and returns an error if it doesn't
-func ConvertType(value interface{}, variable Variable) (interface{}, error) {
+func ConvertType(value any, variable Variable) (any, error) {
 	if value == nil {
 		return nil, nil
 	}
@@ -317,10 +338,8 @@ func ConvertType(value interface{}, variable Variable) (interface{}, error) {
 		}
 	case Enum:
 		if isString {
-			for _, option := range variable.Options() {
-				if asString == option {
-					return asString, nil
-				}
+			if slices.Contains(variable.Options(), asString) {
+				return asString, nil
 			}
 		}
 	}
@@ -344,13 +363,13 @@ func parseStringAsList(str string) ([]string, error) {
 		return goOut, nil
 	}
 
-	return nil, errors.WithStackTrace(&FormatNotJSONOrGo{
+	return nil, &FormatNotJSONOrGo{
 		ExpectedJSONFormat: `["value1", "value2", "value3"]`,
 		ExpectedGoFormat:   `[value1 value2 value3]`,
 		ActualFormat:       str,
 		JSONErr:            jsonErr,
 		GoErr:              goErr,
-	})
+	}
 }
 
 // If you render a list in Go, it'll have the format [<value> <value> <value>]. This method parses this format back
@@ -365,7 +384,7 @@ func parseStringAsGoList(str string) ([]string, error) {
 	matches := goListSyntaxRegex.FindStringSubmatch(str)
 
 	if len(matches) != expectedMatches {
-		return nil, errors.WithStackTrace(ParseError{ExpectedType: "list", ExpectedFormat: "[<value> <value> <value>]", ActualFormat: str})
+		return nil, ParseError{ExpectedType: "list", ExpectedFormat: "[<value> <value> <value>]", ActualFormat: str}
 	}
 
 	items := strings.TrimSpace(matches[1])
@@ -382,7 +401,7 @@ func parseStringAsJSONList(str string) ([]string, error) {
 	var out []string
 
 	if err := json.Unmarshal([]byte(str), &out); err != nil {
-		return nil, errors.WithStackTrace(err)
+		return nil, err
 	}
 
 	return out, nil
@@ -400,13 +419,13 @@ func parseStringAsMap(str string) (map[string]string, error) {
 		return goOut, nil
 	}
 
-	return nil, errors.WithStackTrace(&FormatNotJSONOrGo{
+	return nil, &FormatNotJSONOrGo{
 		ExpectedJSONFormat: `{"key1": "value1", "key2": "value2", "key3": "value3"}`,
 		ExpectedGoFormat:   `map[key1:value1 key2:value2 key3:value3]`,
 		ActualFormat:       str,
 		JSONErr:            jsonErr,
 		GoErr:              goErr,
-	})
+	}
 }
 
 // If you render a map in Go, it'll have the format map[<key>:<value> <key>:<value> <key>:<value>]. This method parses
@@ -421,7 +440,7 @@ func parseStringAsGoMap(str string) (map[string]string, error) {
 	matches := goMapSyntaxRegex.FindStringSubmatch(str)
 
 	if len(matches) != expectedMatches {
-		return nil, errors.WithStackTrace(ParseError{ExpectedType: "map", ExpectedFormat: "[<key>:<value> <key>:<value> <key>:<value>]", ActualFormat: str})
+		return nil, ParseError{ExpectedType: "map", ExpectedFormat: "[<key>:<value> <key>:<value> <key>:<value>]", ActualFormat: str}
 	}
 
 	items := strings.TrimSpace(matches[1])
@@ -438,7 +457,7 @@ func parseStringAsGoMap(str string) (map[string]string, error) {
 
 		parts := strings.Split(keyAndValue, ":")
 		if len(parts) < minPartsForKeyValue {
-			return nil, errors.WithStackTrace(ParseError{ExpectedType: "map", ExpectedFormat: "<key>:<value> for each item in the map", ActualFormat: str})
+			return nil, ParseError{ExpectedType: "map", ExpectedFormat: "<key>:<value> for each item in the map", ActualFormat: str}
 		}
 
 		key := strings.Join(parts[:(len(parts)-1)], ":")
@@ -455,7 +474,7 @@ func parseStringAsJSONMap(str string) (map[string]string, error) {
 	var out map[string]string
 
 	if err := json.Unmarshal([]byte(str), &out); err != nil {
-		return nil, errors.WithStackTrace(err)
+		return nil, err
 	}
 
 	return out, nil
@@ -474,7 +493,7 @@ func parseStringAsJSONMap(str string) (map[string]string, error) {
 //     default: <DEFAULT>
 //
 // This method takes the data above and unmarshals it into a list of Variable objects
-func UnmarshalVariablesFromBoilerplateConfigYaml(fields map[string]interface{}) ([]Variable, error) {
+func UnmarshalVariablesFromBoilerplateConfigYaml(fields map[string]any) ([]Variable, error) {
 	unmarshalledVariables := []Variable{}
 
 	listOfFields, err := unmarshalListOfFields(fields, "variables")
@@ -502,7 +521,7 @@ func UnmarshalVariablesFromBoilerplateConfigYaml(fields map[string]interface{}) 
 // default: <DEFAULT>
 //
 // This method takes the data above and unmarshals it into a Variable object
-func UnmarshalVariableFromBoilerplateConfigYaml(fields map[string]interface{}) (Variable, error) {
+func UnmarshalVariableFromBoilerplateConfigYaml(fields map[string]any) (Variable, error) {
 	variable := defaultVariable{}
 
 	name, err := unmarshalStringField(fields, "name", true, "")
@@ -553,7 +572,7 @@ func UnmarshalVariableFromBoilerplateConfigYaml(fields map[string]interface{}) (
 
 	variable.options = options
 
-	validationRules, err := unmarshalValidationsField(fields)
+	validationRules, err := validation.UnmarshalValidationsField(fields)
 	if err != nil {
 		return nil, err
 	}
@@ -561,6 +580,13 @@ func UnmarshalVariableFromBoilerplateConfigYaml(fields map[string]interface{}) (
 	variable.validations = validationRules
 
 	variable.defaultValue = fields["default"]
+
+	confirm, err := unmarshalBooleanField(fields, "confirm", false, *name)
+	if err != nil {
+		return nil, err
+	}
+
+	variable.confirm = confirm
 
 	return &variable, nil
 }
