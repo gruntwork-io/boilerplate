@@ -6,10 +6,9 @@ import (
 
 	zglob "github.com/mattn/go-zglob"
 
-	"github.com/gruntwork-io/boilerplate/errors"
+	"github.com/gruntwork-io/boilerplate/internal/logging"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/render"
-	"github.com/gruntwork-io/boilerplate/util"
 	"github.com/gruntwork-io/boilerplate/variables"
 )
 
@@ -34,7 +33,7 @@ func processSkipFiles(ctx context.Context, skipFiles []variables.SkipFile, opts 
 	for _, skipFile := range skipFiles {
 		matchedPaths, err := renderGlobPath(ctx, opts, skipFile.Path, variables)
 		if err != nil {
-			return nil, errors.WithStackTrace(err)
+			return nil, err
 		}
 
 		if skipFile.Path != "" {
@@ -43,7 +42,7 @@ func processSkipFiles(ctx context.Context, skipFiles []variables.SkipFile, opts 
 
 		matchedNotPaths, err := renderGlobPath(ctx, opts, skipFile.NotPath, variables)
 		if err != nil {
-			return nil, errors.WithStackTrace(err)
+			return nil, err
 		}
 
 		if skipFile.NotPath != "" {
@@ -81,11 +80,11 @@ func skipFileIfCondition(ctx context.Context, skipFile variables.SkipFile, opts 
 	// TODO: logger-debug - switch to debug
 	switch {
 	case skipFile.Path != "":
-		util.Logger.Printf("If attribute for SkipFile Path %s evaluated to '%s'", skipFile.Path, rendered)
+		logging.Logger.Printf("If attribute for SkipFile Path %s evaluated to '%s'", skipFile.Path, rendered)
 	case skipFile.NotPath != "":
-		util.Logger.Printf("If attribute for SkipFile NotPath %s evaluated to '%s'", skipFile.NotPath, rendered)
+		logging.Logger.Printf("If attribute for SkipFile NotPath %s evaluated to '%s'", skipFile.NotPath, rendered)
 	default:
-		util.Logger.Printf("WARN: SkipFile has no path or not_path!")
+		logging.Logger.Printf("WARN: SkipFile has no path or not_path!")
 	}
 
 	return rendered == "true", nil
@@ -93,10 +92,10 @@ func skipFileIfCondition(ctx context.Context, skipFile variables.SkipFile, opts 
 
 func debugLogForMatchedPaths(sourcePath string, paths []string, directiveName string, directiveAttribute string) {
 	// TODO: logger-debug - switch to debug
-	util.Logger.Printf("Following paths were picked up by %s attribute for %s (%s):", directiveAttribute, directiveName, sourcePath)
+	logging.Logger.Printf("Following paths were picked up by %s attribute for %s (%s):", directiveAttribute, directiveName, sourcePath)
 
 	for _, path := range paths {
-		util.Logger.Printf("\t- %s", path)
+		logging.Logger.Printf("\t- %s", path)
 	}
 }
 
@@ -117,8 +116,8 @@ func renderGlobPath(ctx context.Context, opts *options.BoilerplateOptions, path 
 	rawMatchedPaths, err := zglob.Glob(globPath)
 	if err != nil {
 		// TODO: logger-debug - switch to debug
-		util.Logger.Printf("ERROR: could not glob %s", globPath)
-		return nil, errors.WithStackTrace(err)
+		logging.Logger.Printf("ERROR: could not glob %s", globPath)
+		return nil, err
 	}
 	// Canonicalize the matched paths prior to storage
 	matchedPaths := []string{}

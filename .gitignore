@@ -4,3 +4,7 @@ vendor
 .DS_Store
 *.iml
 boilerplate
+boilerplate.wasm
+boilerplate.wasm.br
+wasm_exec.js
+/wasm

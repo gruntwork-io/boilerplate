@@ -20,9 +20,11 @@ import (
 
 	"github.com/Masterminds/sprig/v3"
 
-	pkgErrors "github.com/gruntwork-io/boilerplate/errors"
+	"github.com/gruntwork-io/boilerplate/internal/fileutil"
+	"github.com/gruntwork-io/boilerplate/internal/logging"
+	shellcmd "github.com/gruntwork-io/boilerplate/internal/shell"
 	"github.com/gruntwork-io/boilerplate/options"
-	"github.com/gruntwork-io/boilerplate/util"
+	"github.com/gruntwork-io/boilerplate/prompt"
 	"github.com/gruntwork-io/boilerplate/variables"
 	"gopkg.in/yaml.v2"
 
@@ -95,7 +97,7 @@ func CreateTemplateHelpers(ctx context.Context, templatePath string, opts *optio
 		"snippet":    wrapWithTemplatePath(ctx, templatePath, opts, snippet),
 		"include":    wrapIncludeWithTemplatePath(ctx, templatePath, opts),
 		"shell":      wrapWithTemplatePath(ctx, templatePath, opts, shell),
-		"pathExists": util.PathExists,
+		"pathExists": fileutil.PathExists,
 
 		"templateIsDefined": wrapIsDefinedWithTemplate(tmpl),
 
@@ -199,7 +201,7 @@ func wrapWithTemplatePath(ctx context.Context, templatePath string, opts *option
 
 // This works exactly like wrapWithTemplatePath, but it is adapted to the function args for the include helper function.
 func wrapIncludeWithTemplatePath(ctx context.Context, templatePath string, opts *options.BoilerplateOptions) func(string, map[string]any) (string, error) {
-	return func(path string, varData map[string]interface{}) (string, error) {
+	return func(path string, varData map[string]any) (string, error) {
 		return include(ctx, templatePath, opts, path, varData)
 	}
 }
@@ -240,7 +242,7 @@ func snippet(ctx context.Context, templatePath string, opts *options.Boilerplate
 	case snippetArgsWithName:
 		return readSnippetFromFile(templatePath, args[0], args[1])
 	default:
-		return "", pkgErrors.WithStackTrace(InvalidSnippetArguments(args))
+		return "", InvalidSnippetArguments(args)
 	}
 }
 
@@ -250,7 +252,7 @@ func snippet(ctx context.Context, templatePath string, opts *options.Boilerplate
 //
 // This helper returns the contents of PATH, relative to TEMPLAT_PATH, but rendered through the boilerplate templating
 // engine with the given variables.
-func include(ctx context.Context, templatePath string, opts *options.BoilerplateOptions, path string, varData map[string]interface{}) (string, error) {
+func include(ctx context.Context, templatePath string, opts *options.BoilerplateOptions, path string, varData map[string]any) (string, error) {
 	templateContents, err := readFile(templatePath, path)
 	if err != nil {
 		return "", err
@@ -271,7 +273,7 @@ func PathRelativeToTemplate(templatePath string, filePath string) string {
 	switch {
 	case path.IsAbs(filePath):
 		return filePath
-	case util.IsDir(templatePath):
+	case fileutil.IsDir(templatePath):
 		return filepath.Join(templatePath, filePath)
 	default:
 		templateDir := filepath.Dir(templatePath)
@@ -285,7 +287,7 @@ func readFile(templatePath, path string) (string, error) {
 
 	bytes, err := os.ReadFile(relativePath)
 	if err != nil {
-		return "", pkgErrors.WithStackTrace(err)
+		return "", err
 	}
 
 	return string(bytes), nil
@@ -297,7 +299,7 @@ func readSnippetFromFile(templatePath string, path string, snippetName string) (
 
 	file, err := os.Open(relativePath)
 	if err != nil {
-		return "", pkgErrors.WithStackTrace(err)
+		return "", err
 	}
 
 	defer file.Close()
@@ -330,9 +332,9 @@ func readSnippetFromScanner(scanner *bufio.Scanner, snippetName string) (string,
 	}
 
 	if inSnippet {
-		return "", pkgErrors.WithStackTrace(SnippetNotTerminated(snippetName))
+		return "", SnippetNotTerminated(snippetName)
 	} else {
-		return "", pkgErrors.WithStackTrace(SnippetNotFound(snippetName))
+		return "", SnippetNotFound(snippetName)
 	}
 }
 
@@ -352,11 +354,11 @@ func extractSnippetName(line string) (string, bool) {
 
 // Wrap a function that uses float64 as input and output so it can take any number as input and return a float64 as
 // output
-func wrapFloatToFloatFunction(f func(float64) float64) func(interface{}) (float64, error) {
-	return func(value interface{}) (float64, error) {
+func wrapFloatToFloatFunction(f func(float64) float64) func(any) (float64, error) {
+	return func(value any) (float64, error) {
 		valueAsFloat, err := toFloat64(value)
 		if err != nil {
-			return 0, pkgErrors.WithStackTrace(err)
+			return 0, err
 		}
 
 		return f(valueAsFloat), nil
@@ -365,11 +367,11 @@ func wrapFloatToFloatFunction(f func(float64) float64) func(interface{}) (float6
 
 // Wrap a function that uses float64 as input and int as output so it can take any number as input and return an int as
 // output
-func wrapFloatToIntFunction(f func(float64) int) func(interface{}) (int, error) {
-	return func(value interface{}) (int, error) {
+func wrapFloatToIntFunction(f func(float64) int) func(any) (int, error) {
+	return func(value any) (int, error) {
 		valueAsFloat, err := toFloat64(value)
 		if err != nil {
-			return 0, pkgErrors.WithStackTrace(err)
+			return 0, err
 		}
 
 		return f(valueAsFloat), nil
@@ -378,16 +380,16 @@ func wrapFloatToIntFunction(f func(float64) int) func(interface{}) (int, error) 
 
 // Wrap a function that takes two float64's as input, performs arithmetic on them, and returns another float64 as a
 // function that can take two values of any number kind as input and return a float64 as output
-func wrapFloatFloatToFloatFunction(f func(arg1 float64, arg2 float64) float64) func(interface{}, interface{}) (float64, error) {
-	return func(arg1 interface{}, arg2 interface{}) (float64, error) {
+func wrapFloatFloatToFloatFunction(f func(arg1 float64, arg2 float64) float64) func(any, any) (float64, error) {
+	return func(arg1 any, arg2 any) (float64, error) {
 		arg1AsFloat, err := toFloat64(arg1)
 		if err != nil {
-			return 0, pkgErrors.WithStackTrace(err)
+			return 0, err
 		}
 
 		arg2AsFloat, err := toFloat64(arg2)
 		if err != nil {
-			return 0, pkgErrors.WithStackTrace(err)
+			return 0, err
 		}
 
 		return f(arg1AsFloat, arg2AsFloat), nil
@@ -396,7 +398,7 @@ func wrapFloatFloatToFloatFunction(f func(arg1 float64, arg2 float64) float64) f
 
 // Convert the given value to a float64. Does a proper conversion if the underlying type is a number. For all other
 // types, we first convert to a string, and then try to parse the result as a float64.
-func toFloat64(value interface{}) (float64, error) {
+func toFloat64(value any) (float64, error) {
 	// Because Go is a shitty language, we have to call out each of the numeric types separately, even though the
 	// behavior for almost all of them is identical. If we tried to do a case statement with multiple clauses
 	// (separated by comma), then the variable v would be of type interface{} and we could not use float64(..) to
@@ -433,7 +435,7 @@ func toFloat64(value interface{}) (float64, error) {
 
 // Convert the given value to an int. Does a proper conversion if the underlying type is a number. For all other
 // types, we first convert to a string, and then try to parse the result as a int.
-func toInt(value interface{}) (int, error) {
+func toInt(value any) (int, error) {
 	// Because Go is a shitty language, we have to call out each of the numeric types separately, even though the
 	// behavior for almost all of them is identical. If we tried to do a case statement with multiple clauses
 	// (separated by comma), then the variable v would be of type interface{} and we could not use int(..) to
@@ -583,22 +585,22 @@ func collapseWhiteSpaceAndPunctuationToDelimiter(str string, delimiter string) s
 
 // Generate a slice from start (inclusive) to end (exclusive), incrementing by increment. For example, slice(0, 5, 1)
 // returns [0, 1, 2, 3, 4].
-func slice(start interface{}, end interface{}, increment interface{}) ([]int, error) {
+func slice(start any, end any, increment any) ([]int, error) {
 	out := []int{}
 
 	startAsInt, err := toInt(start)
 	if err != nil {
-		return out, pkgErrors.WithStackTrace(err)
+		return out, err
 	}
 
 	endAsInt, err := toInt(end)
 	if err != nil {
-		return out, pkgErrors.WithStackTrace(err)
+		return out, err
 	}
 
 	incrementAsInt, err := toInt(increment)
 	if err != nil {
-		return out, pkgErrors.WithStackTrace(err)
+		return out, err
 	}
 
 	for i := startAsInt; i < endAsInt; i += incrementAsInt {
@@ -610,10 +612,10 @@ func slice(start interface{}, end interface{}, increment interface{}) ([]int, er
 
 // Return the keys in the given map. This method always returns the keys in sorted order to provide a stable iteration
 // order.
-func keys(value interface{}) ([]string, error) {
+func keys(value any) ([]string, error) {
 	valueType := reflect.ValueOf(value)
 	if valueType.Kind() != reflect.Map {
-		return nil, pkgErrors.WithStackTrace(InvalidTypeForMethodArgument{"keys", "Map", valueType.Kind().String()})
+		return nil, InvalidTypeForMethodArgument{"keys", "Map", valueType.Kind().String()}
 	}
 
 	out := []string{}
@@ -655,13 +657,13 @@ func generateShellCommandKey(args []string, envVars []string, workingDir string)
 
 // printShellCommandDetails prints the details of a shell command that will be executed
 func printShellCommandDetails(args []string, envVars []string, workingDir string) {
-	util.Logger.Printf("Shell command details:")
+	logging.Logger.Printf("Shell command details:")
 
 	details := formatShellCommandDetails(args, envVars, workingDir)
 
-	lines := strings.Split(details, "\n")
-	for _, line := range lines {
-		util.Logger.Printf("  %s", line)
+	lines := strings.SplitSeq(details, "\n")
+	for line := range lines {
+		logging.Logger.Printf("  %s", line)
 	}
 }
 
@@ -669,12 +671,12 @@ func printShellCommandDetails(args []string, envVars []string, workingDir string
 // string.
 func shell(ctx context.Context, templatePath string, opts *options.BoilerplateOptions, rawArgs ...string) (string, error) {
 	if opts.NoShell {
-		util.Logger.Printf("Shell helpers are disabled. Will not execute shell command '%v'. Returning placeholder value '%s'.", rawArgs, shellDisabledPlaceholder)
+		logging.Logger.Printf("Shell helpers are disabled. Will not execute shell command '%v'. Returning placeholder value '%s'.", rawArgs, shellDisabledPlaceholder)
 		return shellDisabledPlaceholder, nil
 	}
 
 	if len(rawArgs) == 0 {
-		return "", pkgErrors.WithStackTrace(NoArgsPassedToShellHelper{})
+		return "", NoArgsPassedToShellHelper{}
 	}
 
 	args, envVars := separateArgsAndEnvVars(rawArgs)
@@ -685,50 +687,50 @@ func shell(ctx context.Context, templatePath string, opts *options.BoilerplateOp
 	if opts.NonInteractive {
 		opts.ShellCommandAnswers[shellKey] = true
 
-		util.Logger.Printf("Executing shell command (non-interactive mode)")
+		logging.Logger.Printf("Executing shell command (non-interactive mode)")
 
-		return util.RunShellCommandAndGetOutputWithContext(ctx, workingDir, envVars, args...)
+		return shellcmd.RunShellCommandAndGetOutputWithContext(ctx, workingDir, envVars, args...)
 	}
 
 	// Check previous confirmation
 	if confirmed, seen := opts.ShellCommandAnswers[shellKey]; seen || opts.ExecuteAllShellCommands {
 		if seen && !confirmed {
-			util.Logger.Printf("Skipping shell command (previously declined)")
+			logging.Logger.Printf("Skipping shell command (previously declined)")
 			return shellDisabledPlaceholder, nil
 		}
 
-		util.Logger.Printf("Executing shell command (%s)", "previously confirmed or all confirmed")
+		logging.Logger.Printf("Executing shell command (%s)", "previously confirmed or all confirmed")
 
-		return util.RunShellCommandAndGetOutputWithContext(ctx, workingDir, envVars, args...)
+		return shellcmd.RunShellCommandAndGetOutputWithContext(ctx, workingDir, envVars, args...)
 	}
 
 	// Handle user confirmation
 	printShellCommandDetails(args, envVars, workingDir)
 
-	resp, err := util.PromptUserForYesNoAll("Execute shell command?")
+	resp, err := prompt.PromptUserForYesNoAll("Execute shell command?")
 	if err != nil {
 		return "", err
 	}
 
 	switch resp {
-	case util.UserResponseYes:
+	case prompt.UserResponseYes:
 		opts.ShellCommandAnswers[shellKey] = true
 
-		util.Logger.Printf("Executing shell command (user confirmed)")
-	case util.UserResponseAll:
+		logging.Logger.Printf("Executing shell command (user confirmed)")
+	case prompt.UserResponseAll:
 		opts.ShellCommandAnswers[shellKey] = true
 		opts.ExecuteAllShellCommands = true
 
-		util.Logger.Printf("Executing shell command (user confirmed all)")
-	case util.UserResponseNo:
+		logging.Logger.Printf("Executing shell command (user confirmed all)")
+	case prompt.UserResponseNo:
 		opts.ShellCommandAnswers[shellKey] = false
 
-		util.Logger.Printf("Skipping shell command (user declined)")
+		logging.Logger.Printf("Skipping shell command (user declined)")
 
 		return shellDisabledPlaceholder, nil
 	}
 
-	return util.RunShellCommandAndGetOutputWithContext(ctx, workingDir, envVars, args...)
+	return shellcmd.RunShellCommandAndGetOutputWithContext(ctx, workingDir, envVars, args...)
 }
 
 // To pass env vars to the shell helper, we use the format ENV:KEY=VALUE. This method goes through the given list of
@@ -763,21 +765,21 @@ func trimSuffix(str, suffix string) string {
 	return strings.TrimPrefix(str, suffix)
 }
 
-func toYaml(obj interface{}) (string, error) {
+func toYaml(obj any) (string, error) {
 	yamlObj, err := yaml.Marshal(&obj)
 	if err != nil {
-		return "", pkgErrors.WithStackTrace(err)
+		return "", err
 	}
 
 	return string(yamlObj), nil
 }
 
-func fromYaml(yamlStr string) (interface{}, error) {
-	var obj interface{}
+func fromYaml(yamlStr string) (any, error) {
+	var obj any
 
 	err := yaml.Unmarshal([]byte(yamlStr), &obj)
 	if err != nil {
-		return nil, pkgErrors.WithStackTrace(err)
+		return nil, err
 	}
 
 	return obj, nil
@@ -787,7 +789,7 @@ func fromYaml(yamlStr string) (interface{}, error) {
 func relPath(basePath, targetPath string) (string, error) {
 	relPath, err := filepath.Rel(basePath, targetPath)
 	if err != nil {
-		return "", pkgErrors.WithStackTrace(err)
+		return "", err
 	}
 
 	return relPath, nil
