@@ -1,3 +1,5 @@
+//go:build !(js && wasm)
+
 // Package cli provides the command-line interface for the boilerplate tool.
 package cli
 
