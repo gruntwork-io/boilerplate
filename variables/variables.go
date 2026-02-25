@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gruntwork-io/boilerplate/internal/validation"
+	"github.com/gruntwork-io/boilerplate/validation"
 )
 
 // Variable represents an interface for a variable defined in a boilerplate.yml config file

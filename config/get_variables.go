@@ -10,7 +10,7 @@ import (
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/AlecAivazis/survey/v2/terminal"
-	validation "github.com/go-ozzo/ozzo-validation"
+	ozzo "github.com/go-ozzo/ozzo-validation"
 	"github.com/gruntwork-io/boilerplate/internal/color"
 	"github.com/gruntwork-io/boilerplate/internal/logging"
 	"github.com/gruntwork-io/boilerplate/options"
@@ -174,7 +174,7 @@ func GetValueForVariable(
 	// Run the value through any defined validations for the variable
 	for _, customValidation := range variable.Validations() {
 		// Run the specific validation against the user-provided value and store it in the map
-		err := validation.Validate(value, customValidation.Validator)
+		err := ozzo.Validate(value, customValidation.Validator)
 		result = multierror.Append(result, err)
 	}
 
@@ -318,7 +318,7 @@ func validateUserInput(value string, variable variables.Variable) (map[string]bo
 
 	for _, customValidation := range variable.Validations() {
 		// Run the specific validation against the user-provided value and store it in the map
-		err := validation.Validate(valueToValidate, customValidation.Validator)
+		err := ozzo.Validate(valueToValidate, customValidation.Validator)
 		val := true
 
 		if err != nil {
