@@ -8,7 +8,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gruntwork-io/terratest/modules/git"
 	"github.com/stretchr/testify/require"
 
 	"github.com/gruntwork-io/boilerplate/cli"
@@ -69,7 +68,7 @@ func testExample(t *testing.T, templateFolder string, outputFolder string, varFi
 
 	app := cli.CreateBoilerplateCli()
 
-	ref := git.GetCurrentGitRef(t)
+	ref := "v0.12.1"
 	args := []string{
 		"boilerplate",
 		"--template-url",
