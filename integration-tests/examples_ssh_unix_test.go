@@ -13,13 +13,12 @@ import (
 	"testing"
 
 	"github.com/gruntwork-io/boilerplate/options"
-	"github.com/gruntwork-io/terratest/modules/git"
 )
 
 func TestSSHExamplesShellRemote(t *testing.T) {
 	t.Parallel()
 
-	branchName := git.GetCurrentBranchName(t)
+	branchName := "v0.12.1"
 	examplesExpectedOutputBasePath := "../test-fixtures/examples-expected-output"
 	examplesVarFilesBasePath := "../test-fixtures/examples-var-files"
 
