@@ -597,8 +597,11 @@ func processDependency(
 	}
 
 	if len(forEach) > 0 {
-		g, _ := errgroup.WithContext(ctx)
-		g.SetLimit(opts.Parallelism)
+		g, ctx := errgroup.WithContext(ctx)
+		_ = ctx // available for future use
+		if opts.Parallelism > 0 {
+			g.SetLimit(opts.Parallelism)
+		}
 
 		for _, item := range forEach {
 			g.Go(func() error {
