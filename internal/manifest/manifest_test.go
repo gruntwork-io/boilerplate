@@ -190,6 +190,7 @@ func TestGenerateSchema(t *testing.T) {
 	assert.Contains(t, schema.Required, "SourceChecksum")
 	assert.Contains(t, schema.Required, "OutputDir")
 	assert.Contains(t, schema.Required, "Files")
+	assert.Contains(t, schema.Required, "Variables")
 
 	// Verify it can be marshaled to JSON
 	data, err := json.MarshalIndent(schema, "", "  ")
@@ -205,7 +206,9 @@ func TestNewManifest(t *testing.T) {
 		{Path: "a.txt", Checksum: "sha256:abc"},
 	}
 
-	m := manifest.NewManifest("my-template", "/output", "sha256:abc123", files)
+	vars := map[string]any{"Name": "test-service", "Port": 8080}
+
+	m := manifest.NewManifest("my-template", "/output", "sha256:abc123", files, vars)
 
 	assert.Equal(t, manifest.SchemaVersion, m.SchemaVersion)
 	assert.NotEmpty(t, m.Timestamp)
@@ -214,4 +217,5 @@ func TestNewManifest(t *testing.T) {
 	assert.Equal(t, "sha256:abc123", m.SourceChecksum)
 	assert.Equal(t, "/output", m.OutputDir)
 	assert.Equal(t, files, m.Files)
+	assert.Equal(t, vars, m.Variables)
 }

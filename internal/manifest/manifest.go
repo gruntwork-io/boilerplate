@@ -22,6 +22,7 @@ const defaultFilePerm = 0o644
 
 // Manifest represents the output manifest for a single boilerplate generation run.
 type Manifest struct {
+	Variables          map[string]any  `json:"Variables" yaml:"Variables" jsonschema:"required"`
 	SchemaVersion      string          `json:"SchemaVersion" yaml:"SchemaVersion" jsonschema:"required"`
 	Timestamp          string          `json:"Timestamp" yaml:"Timestamp" jsonschema:"required"`
 	TemplateURL        string          `json:"TemplateURL" yaml:"TemplateURL" jsonschema:"required"`
@@ -38,7 +39,7 @@ type GeneratedFile struct {
 }
 
 // NewManifest creates a new Manifest with the current timestamp and boilerplate version.
-func NewManifest(templateURL, outputDir, sourceChecksum string, files []GeneratedFile) *Manifest {
+func NewManifest(templateURL, outputDir, sourceChecksum string, files []GeneratedFile, variables map[string]any) *Manifest {
 	return &Manifest{
 		SchemaVersion:      SchemaVersion,
 		Timestamp:          time.Now().UTC().Format(time.RFC3339),
@@ -47,6 +48,7 @@ func NewManifest(templateURL, outputDir, sourceChecksum string, files []Generate
 		SourceChecksum:     sourceChecksum,
 		OutputDir:          outputDir,
 		Files:              files,
+		Variables:          variables,
 	}
 }
 

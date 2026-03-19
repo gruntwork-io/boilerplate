@@ -148,7 +148,7 @@ func runApp(cliContext *cli.Context) error {
 			return checksumErr
 		}
 
-		m := manifest.NewManifest(opts.TemplateURL, opts.OutputFolder, result.SourceChecksum, files)
+		m := manifest.NewManifest(opts.TemplateURL, opts.OutputFolder, result.SourceChecksum, files, result.Variables)
 
 		manifestPath := filepath.Join(opts.OutputFolder, manifest.DefaultManifestFilename)
 		if opts.ManifestFile != "" {

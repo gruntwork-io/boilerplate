@@ -22,6 +22,10 @@
     "OutputDir": {
       "type": "string"
     },
+    "Variables": {
+      "type": "object",
+      "description": "User-defined template variables used during generation"
+    },
     "Files": {
       "items": {
         "properties": {
@@ -53,7 +57,8 @@
     "BoilerplateVersion",
     "SourceChecksum",
     "OutputDir",
-    "Files"
+    "Files",
+    "Variables"
   ],
   "title": "Boilerplate Manifest Schema",
   "description": "Schema for boilerplate generation manifest"

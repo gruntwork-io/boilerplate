@@ -25,6 +25,7 @@ import (
 
 // ProcessResult holds the outputs of a template processing run.
 type ProcessResult struct {
+	Variables      map[string]any
 	SourceChecksum string
 	GeneratedFiles []string
 }
@@ -116,9 +117,21 @@ func ProcessTemplateWithContext(ctx context.Context, options, rootOpts *options.
 		return nil, err
 	}
 
+	// Filter out builtin variables so the manifest only records user-defined ones.
+	userVars := make(map[string]any, len(vars))
+	for k, v := range vars {
+		switch k {
+		case "BoilerplateConfigVars", "BoilerplateConfigDeps", "This":
+			continue
+		default:
+			userVars[k] = v
+		}
+	}
+
 	return &ProcessResult{
 		GeneratedFiles: generatedFilePaths,
 		SourceChecksum: sourceChecksum,
+		Variables:      userVars,
 	}, nil
 }
 
