@@ -2,6 +2,10 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://boilerplate.gruntwork.io/schemas/manifest/v1/schema.json",
   "properties": {
+    "Variables": {
+      "type": "object",
+      "description": "User-defined template variables used during generation"
+    },
     "SchemaVersion": {
       "type": "string"
     },
@@ -17,18 +21,17 @@
     "SourceChecksum": {
       "type": "string",
       "pattern": "^(git-sha1|git-sha256|sha256):.+$",
-      "description": "Checksum of the template source. For git sources: git-sha1:<commit> or git-sha256:<commit>. For local sources: sha256:<hex>."
+      "description": "Checksum of the template source. For git sources: git-sha1:{commit} or git-sha256:{commit}. For local sources: sha256:{hex}."
     },
     "OutputDir": {
       "type": "string"
     },
-    "Variables": {
-      "type": "object",
-      "description": "User-defined template variables used during generation"
-    },
     "Dependencies": {
       "items": {
         "properties": {
+          "Variables": {
+            "type": "object"
+          },
           "Name": {
             "type": "string"
           },
@@ -41,23 +44,8 @@
           "Skip": {
             "type": "string"
           },
-          "ForEach": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
           "ForEachReference": {
             "type": "string"
-          },
-          "VarFiles": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "Variables": {
-            "type": "object"
           },
           "Files": {
             "items": {
@@ -77,6 +65,18 @@
                 "Path",
                 "Checksum"
               ]
+            },
+            "type": "array"
+          },
+          "VarFiles": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "ForEach": {
+            "items": {
+              "type": "string"
             },
             "type": "array"
           },
@@ -119,15 +119,15 @@
   "additionalProperties": false,
   "type": "object",
   "required": [
+    "Variables",
     "SchemaVersion",
     "Timestamp",
     "TemplateURL",
     "BoilerplateVersion",
     "SourceChecksum",
     "OutputDir",
-    "Files",
-    "Variables",
-    "Dependencies"
+    "Dependencies",
+    "Files"
   ],
   "title": "Boilerplate Manifest Schema",
   "description": "Schema for boilerplate generation manifest"

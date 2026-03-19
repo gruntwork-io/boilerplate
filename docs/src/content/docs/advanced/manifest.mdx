@@ -168,9 +168,8 @@ Boilerplate publishes a formal [JSON Schema](https://json-schema.org/) for the m
 
 <Code title="manifest/v1/schema.json" lang="json" code={manifestSchema} />
 
-## Behavior
+## Versioning
 
 Boilerplate writes the manifest **after** all files have been generated. A few things to be aware of:
 
 - Each run overwrites the previous manifest, so it always reflects the most recent generation. If you need to preserve history across runs, track the manifest in version control (e.g. Git).
-- If an existing manifest file is present but contains invalid content (i.e. it cannot be parsed as JSON or YAML), boilerplate exits with an error rather than silently overwriting it. This guards against accidentally clobbering a file that was not actually a manifest.

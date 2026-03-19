@@ -8,10 +8,14 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/xeipuuv/gojsonschema"
 	"gopkg.in/yaml.v2"
 
 	"github.com/gruntwork-io/boilerplate/internal/manifest"
 )
+
+// schemaPath is the path to the official published JSON Schema file, relative to this test file.
+const schemaPath = "../../docs/public/schemas/manifest/v1/schema.json"
 
 func TestWriteManifestJSON(t *testing.T) {
 	t.Parallel()
@@ -159,51 +163,90 @@ func TestWriteManifestOverwritesPrevious(t *testing.T) {
 	assert.Equal(t, "file2.txt", result.Files[0].Path)
 }
 
-func TestWriteManifestErrorsOnCorruptExistingFile(t *testing.T) {
+// TestGeneratedSchemaMatchesPublicSchema verifies that the schema generated from
+// the Go struct is byte-for-byte identical to the official published schema file.
+// If a field is added, removed, or changed in the struct, this test fails until
+// the on-disk schema is regenerated via GenerateSchemaJSON.
+func TestGeneratedSchemaMatchesPublicSchema(t *testing.T) {
 	t.Parallel()
 
-	tempDir := t.TempDir()
-	manifestPath := filepath.Join(tempDir, "boilerplate-manifest.json")
-
-	// Create a corrupted file
-	err := os.WriteFile(manifestPath, []byte("invalid json"), 0o644)
+	generated, err := manifest.GenerateSchemaJSON()
 	require.NoError(t, err)
 
-	m := &manifest.Manifest{
-		SchemaVersion: manifest.SchemaVersion,
-		Files:         []manifest.GeneratedFile{},
-	}
+	absPath, err := filepath.Abs(schemaPath)
+	require.NoError(t, err)
 
-	err = manifest.WriteManifest(manifestPath, m)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "corrupted")
+	onDisk, err := os.ReadFile(absPath)
+	require.NoError(t, err)
+
+	assert.Equal(t, string(onDisk), string(generated),
+		"on-disk schema.json does not match GenerateSchemaJSON() output; regenerate it")
 }
 
-func TestGenerateSchema(t *testing.T) {
+// validateManifestAgainstSchema marshals the manifest to JSON and validates it
+// against the official on-disk schema file. This ensures the Go types and the
+// published schema stay in sync.
+func validateManifestAgainstSchema(t *testing.T, m *manifest.Manifest) {
+	t.Helper()
+
+	absSchema, err := filepath.Abs(schemaPath)
+	require.NoError(t, err)
+
+	schemaLoader := gojsonschema.NewReferenceLoader("file://" + absSchema)
+
+	data, err := json.Marshal(m)
+	require.NoError(t, err)
+
+	documentLoader := gojsonschema.NewBytesLoader(data)
+
+	result, err := gojsonschema.Validate(schemaLoader, documentLoader)
+	require.NoError(t, err)
+
+	for _, desc := range result.Errors() {
+		t.Errorf("schema violation: %s", desc)
+	}
+}
+
+func TestManifestConformsToSchema(t *testing.T) {
 	t.Parallel()
 
-	schema := manifest.GenerateSchema()
+	m := manifest.NewManifest(
+		"./templates/service",
+		"/output",
+		"sha256:abc123",
+		[]manifest.GeneratedFile{
+			{Path: "main.go", Checksum: "sha256:aaa"},
+		},
+		map[string]any{"ServiceName": "my-service", "Port": 8080},
+		[]manifest.ManifestDependency{
+			{
+				Name:         "vpc",
+				TemplateURL:  "./modules/vpc",
+				OutputFolder: "/output/vpc",
+				Variables:    map[string]any{"cidr": "10.0.0.0/16"},
+				Files: []manifest.GeneratedFile{
+					{Path: "main.tf", Checksum: "sha256:bbb"},
+				},
+			},
+			{
+				Name:                 "logging",
+				TemplateURL:          "./modules/logging",
+				OutputFolder:         "/output/logging",
+				Skip:                 "true",
+				DontInheritVariables: true,
+			},
+			{
+				Name:             "multi",
+				TemplateURL:      "./modules/multi",
+				OutputFolder:     "/output/multi",
+				ForEach:          []string{"a", "b"},
+				ForEachReference: "items",
+				VarFiles:         []string{"extra.yml"},
+			},
+		},
+	)
 
-	assert.Equal(t, manifest.SchemaURL, string(schema.ID))
-	assert.Equal(t, "Boilerplate Manifest Schema", schema.Title)
-	assert.Equal(t, "Schema for boilerplate generation manifest", schema.Description)
-
-	// Verify required properties
-	assert.Contains(t, schema.Required, "SchemaVersion")
-	assert.Contains(t, schema.Required, "Timestamp")
-	assert.Contains(t, schema.Required, "TemplateURL")
-	assert.Contains(t, schema.Required, "BoilerplateVersion")
-	assert.Contains(t, schema.Required, "SourceChecksum")
-	assert.Contains(t, schema.Required, "OutputDir")
-	assert.Contains(t, schema.Required, "Files")
-	assert.Contains(t, schema.Required, "Variables")
-	assert.Contains(t, schema.Required, "Dependencies")
-
-	// Verify it can be marshaled to JSON
-	data, err := json.MarshalIndent(schema, "", "  ")
-	require.NoError(t, err)
-	assert.Contains(t, string(data), `"$id"`)
-	assert.Contains(t, string(data), manifest.SchemaURL)
+	validateManifestAgainstSchema(t, m)
 }
 
 func TestNewManifest(t *testing.T) {
