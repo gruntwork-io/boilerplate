@@ -3,6 +3,7 @@ package fileutil
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 )
@@ -41,7 +42,7 @@ func WriteFileWithSamePermissions(source string, destination string, contents []
 
 // CopyFolder copies all the files and folders in srcFolder to targetFolder.
 func CopyFolder(srcFolder string, targetFolder string) error {
-	return filepath.Walk(srcFolder, func(path string, info os.FileInfo, _ error) error {
+	return filepath.WalkDir(srcFolder, func(path string, _ fs.DirEntry, _ error) error {
 		relPath, err := filepath.Rel(srcFolder, path)
 		if err != nil {
 			return err

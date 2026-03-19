@@ -218,7 +218,7 @@ func LoadBoilerplateConfig(opts *options.BoilerplateOptions) (*BoilerplateConfig
 func ParseBoilerplateConfig(configContents []byte) (*BoilerplateConfig, error) {
 	boilerplateConfig := &BoilerplateConfig{}
 
-	if err := yaml.Unmarshal(configContents, boilerplateConfig); err != nil {
+	if err := yaml.Unmarshal(configContents, boilerplateConfig); err != nil { //nolint:musttag // BoilerplateConfig uses custom UnmarshalYAML
 		return nil, err
 	}
 

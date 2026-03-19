@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"io/fs"
 	"maps"
 	"net/url"
 	"os"
@@ -840,7 +841,7 @@ func processTemplateFolder(
 
 	var generatedFilePaths []string
 
-	walkErr := filepath.Walk(opts.TemplateFolder, func(path string, info os.FileInfo, err error) error {
+	walkErr := filepath.WalkDir(opts.TemplateFolder, func(path string, d fs.DirEntry, err error) error {
 		path = filepath.ToSlash(path)
 
 		switch {
