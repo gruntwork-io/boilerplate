@@ -12,9 +12,9 @@ import manifestSchema from '../../../../public/schemas/manifest/v1/schema.json?r
 
 Boilerplate can produce a **manifest file** that records every file it generated during a run, along with SHA256 checksums for each file. This is useful for:
 
-- **Auditing** — knowing exactly which files were created by a template
-- **Drift detection** — comparing checksums to see if generated files were modified after the fact
-- **CI/CD pipelines** — programmatically consuming the list of generated files in downstream steps
+- **Auditing**: knowing exactly which files were created by a template
+- **Drift detection**: comparing checksums to see if generated files were modified after the fact
+- **CI/CD pipelines**: programmatically consuming the list of generated files in downstream steps
 
 ## Enabling the Manifest
 
@@ -168,8 +168,10 @@ Boilerplate publishes a formal [JSON Schema](https://json-schema.org/) for the m
 
 <Code title="manifest/v1/schema.json" lang="json" code={manifestSchema} />
 
+Each run overwrites the previous manifest, so it always reflects the most recent generation. If you need to preserve history across runs, track the manifest in version control (e.g. Git).
+
 ## Versioning
 
-Boilerplate writes the manifest **after** all files have been generated. A few things to be aware of:
+The manifest schema is versioned via the URL path (e.g. `.../v1/schema.json`). Every generated manifest records the schema version it conforms to in the `SchemaVersion` field, so consumers can detect which version they are working with.
 
-- Each run overwrites the previous manifest, so it always reflects the most recent generation. If you need to preserve history across runs, track the manifest in version control (e.g. Git).
+A new schema version is published whenever the schema changes. Breaking changes (removing fields, changing types, etc.) are avoided when possible, but when necessary they will accompany a breaking release of Boilerplate itself: minor releases before 1.0, and major releases afterwards.
