@@ -26,6 +26,74 @@
       "type": "object",
       "description": "User-defined template variables used during generation"
     },
+    "Dependencies": {
+      "items": {
+        "properties": {
+          "Name": {
+            "type": "string"
+          },
+          "TemplateURL": {
+            "type": "string"
+          },
+          "OutputFolder": {
+            "type": "string"
+          },
+          "Skip": {
+            "type": "string"
+          },
+          "ForEach": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "ForEachReference": {
+            "type": "string"
+          },
+          "VarFiles": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "Variables": {
+            "type": "object"
+          },
+          "Files": {
+            "items": {
+              "properties": {
+                "Path": {
+                  "type": "string"
+                },
+                "Checksum": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9]+:.+$",
+                  "description": "Hash of the file contents, prefixed with the algorithm (e.g. sha256:abcdef…)"
+                }
+              },
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "Path",
+                "Checksum"
+              ]
+            },
+            "type": "array"
+          },
+          "DontInheritVariables": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "Name",
+          "TemplateURL",
+          "OutputFolder"
+        ]
+      },
+      "type": "array"
+    },
     "Files": {
       "items": {
         "properties": {
@@ -58,7 +126,8 @@
     "SourceChecksum",
     "OutputDir",
     "Files",
-    "Variables"
+    "Variables",
+    "Dependencies"
   ],
   "title": "Boilerplate Manifest Schema",
   "description": "Schema for boilerplate generation manifest"

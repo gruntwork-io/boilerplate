@@ -29,6 +29,9 @@ func TestWriteManifestJSON(t *testing.T) {
 			{Path: "file1.txt", Checksum: "sha256:abc123"},
 			{Path: "file2.txt", Checksum: "sha256:def456"},
 		},
+		Dependencies: []manifest.ManifestDependency{
+			{Name: "vpc", TemplateURL: "./modules/vpc", OutputFolder: "/output/vpc"},
+		},
 	}
 
 	err := manifest.WriteManifest(manifestPath, m)
@@ -50,6 +53,9 @@ func TestWriteManifestJSON(t *testing.T) {
 	assert.Len(t, result.Files, 2)
 	assert.Equal(t, "file1.txt", result.Files[0].Path)
 	assert.Equal(t, "sha256:abc123", result.Files[0].Checksum)
+	assert.Len(t, result.Dependencies, 1)
+	assert.Equal(t, "vpc", result.Dependencies[0].Name)
+	assert.Equal(t, "./modules/vpc", result.Dependencies[0].TemplateURL)
 }
 
 func TestWriteManifestYAML(t *testing.T) {
@@ -191,6 +197,7 @@ func TestGenerateSchema(t *testing.T) {
 	assert.Contains(t, schema.Required, "OutputDir")
 	assert.Contains(t, schema.Required, "Files")
 	assert.Contains(t, schema.Required, "Variables")
+	assert.Contains(t, schema.Required, "Dependencies")
 
 	// Verify it can be marshaled to JSON
 	data, err := json.MarshalIndent(schema, "", "  ")
@@ -208,7 +215,16 @@ func TestNewManifest(t *testing.T) {
 
 	vars := map[string]any{"Name": "test-service", "Port": 8080}
 
-	m := manifest.NewManifest("my-template", "/output", "sha256:abc123", files, vars)
+	deps := []manifest.ManifestDependency{
+		{
+			Name:         "vpc",
+			TemplateURL:  "./modules/vpc",
+			OutputFolder: "/output/vpc",
+			Variables:    map[string]any{"cidr": "10.0.0.0/16"},
+		},
+	}
+
+	m := manifest.NewManifest("my-template", "/output", "sha256:abc123", files, vars, deps)
 
 	assert.Equal(t, manifest.SchemaVersion, m.SchemaVersion)
 	assert.NotEmpty(t, m.Timestamp)
@@ -218,4 +234,5 @@ func TestNewManifest(t *testing.T) {
 	assert.Equal(t, "/output", m.OutputDir)
 	assert.Equal(t, files, m.Files)
 	assert.Equal(t, vars, m.Variables)
+	assert.Equal(t, deps, m.Dependencies)
 }

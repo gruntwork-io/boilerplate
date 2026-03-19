@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"maps"
 	"net/url"
 	"os"
 	"path"
@@ -26,6 +27,7 @@ import (
 // ProcessResult holds the outputs of a template processing run.
 type ProcessResult struct {
 	Variables      map[string]any
+	Dependencies   []manifest.ManifestDependency
 	SourceChecksum string
 	GeneratedFiles []string
 }
@@ -97,7 +99,7 @@ func ProcessTemplateWithContext(ctx context.Context, options, rootOpts *options.
 		return nil, err
 	}
 
-	err = processDependencies(ctx, boilerplateConfig.Dependencies, options, boilerplateConfig.GetVariablesMap(), vars)
+	deps, err := processDependencies(ctx, boilerplateConfig.Dependencies, options, boilerplateConfig.GetVariablesMap(), vars)
 	if err != nil {
 		return nil, err
 	}
@@ -132,6 +134,7 @@ func ProcessTemplateWithContext(ctx context.Context, options, rootOpts *options.
 		GeneratedFiles: generatedFilePaths,
 		SourceChecksum: sourceChecksum,
 		Variables:      userVars,
+		Dependencies:   deps,
 	}, nil
 }
 
@@ -465,76 +468,138 @@ func processDependencies(
 	opts *options.BoilerplateOptions,
 	variablesInConfig map[string]variables.Variable,
 	variables map[string]any,
-) error {
+) ([]manifest.ManifestDependency, error) {
+	var allDeps []manifest.ManifestDependency
+
 	for i := range dependencies {
-		err := processDependency(ctx, &dependencies[i], opts, variablesInConfig, variables)
+		deps, err := processDependency(ctx, &dependencies[i], opts, variablesInConfig, variables)
 		if err != nil {
-			return err
+			return nil, err
 		}
+
+		allDeps = append(allDeps, deps...)
 	}
 
-	return nil
+	return allDeps, nil
 }
 
-// processDependency is like processDependency but accepts a context for cancellation and timeouts.
+// processDependency processes a single dependency and returns manifest entries for it.
+// A single dependency with for_each can produce multiple entries.
 func processDependency(
 	ctx context.Context,
 	dependency *variables.Dependency,
 	opts *options.BoilerplateOptions,
 	variablesInConfig map[string]variables.Variable,
 	originalVars map[string]any,
-) error {
+) ([]manifest.ManifestDependency, error) {
 	shouldProcess, err := shouldProcessDependency(ctx, dependency, opts, originalVars)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	if shouldProcess {
-		doProcess := func(updatedVars map[string]any) error {
-			dependencyOptions, err := cloneOptionsForDependency(ctx, dependency, opts, variablesInConfig, updatedVars)
-			if err != nil {
-				return err
-			}
-
-			logging.Logger.Printf("Processing dependency %s, with template folder %s and output folder %s", dependency.Name, dependencyOptions.TemplateFolder, dependencyOptions.OutputFolder)
-
-			_, err = ProcessTemplateWithContext(ctx, dependencyOptions, opts, dependency)
-
-			return err
-		}
-
-		forEach := dependency.ForEach
-
-		if len(dependency.ForEachReference) > 0 {
-			renderedReference, err := render.RenderTemplateFromStringWithContext(ctx, opts.TemplateFolder, dependency.ForEachReference, originalVars, opts)
-			if err != nil {
-				return err
-			}
-
-			value, err := variables.UnmarshalListOfStrings(originalVars, renderedReference)
-			if err != nil {
-				return err
-			}
-
-			forEach = value
-		}
-
-		if len(forEach) > 0 {
-			for _, item := range forEach {
-				updatedVars := util.MergeMaps(originalVars, map[string]any{eachVarName: item})
-				if err := doProcess(updatedVars); err != nil {
-					return err
-				}
-			}
-
-			return nil
-		} else {
-			return doProcess(originalVars)
-		}
-	} else {
+	if !shouldProcess {
 		logging.Logger.Printf("Skipping dependency %s", dependency.Name)
+
+		// Record skipped dependency with the rendered skip expression.
+		renderedSkip, skipErr := render.RenderTemplateFromStringWithContext(ctx, opts.TemplateFolder, dependency.Skip, originalVars, opts)
+		if skipErr != nil {
+			renderedSkip = dependency.Skip
+		}
+
+		return []manifest.ManifestDependency{{
+			Name:                 dependency.Name,
+			TemplateURL:          dependency.TemplateURL,
+			OutputFolder:         dependency.OutputFolder,
+			Skip:                 renderedSkip,
+			ForEach:              dependency.ForEach,
+			ForEachReference:     dependency.ForEachReference,
+			DontInheritVariables: dependency.DontInheritVariables,
+		}}, nil
+	}
+
+	var allDeps []manifest.ManifestDependency
+
+	doProcess := func(updatedVars map[string]any, forEach []string) error {
+		dependencyOptions, cloneErr := cloneOptionsForDependency(ctx, dependency, opts, variablesInConfig, updatedVars)
+		if cloneErr != nil {
+			return cloneErr
+		}
+
+		logging.Logger.Printf("Processing dependency %s, with template folder %s and output folder %s", dependency.Name, dependencyOptions.TemplateFolder, dependencyOptions.OutputFolder)
+
+		depResult, processErr := ProcessTemplateWithContext(ctx, dependencyOptions, opts, dependency)
+		if processErr != nil {
+			return processErr
+		}
+
+		// Build resolved variable values from the cloned options.
+		resolvedVars := maps.Clone(dependencyOptions.Vars)
+
+		// Compute checksums for files generated by this dependency.
+		var depFiles []manifest.GeneratedFile
+
+		if opts.Manifest {
+			for _, relPath := range depResult.GeneratedFiles {
+				absPath := filepath.Join(dependencyOptions.OutputFolder, relPath)
+
+				checksum, csErr := manifest.SHA256File(absPath)
+				if csErr != nil {
+					return csErr
+				}
+
+				depFiles = append(depFiles, manifest.GeneratedFile{
+					Path:     relPath,
+					Checksum: checksum,
+				})
+			}
+		}
+
+		allDeps = append(allDeps, manifest.ManifestDependency{
+			Name:                 dependency.Name,
+			TemplateURL:          dependencyOptions.TemplateURL,
+			OutputFolder:         dependencyOptions.OutputFolder,
+			Skip:                 dependency.Skip,
+			ForEach:              forEach,
+			ForEachReference:     dependency.ForEachReference,
+			VarFiles:             dependency.VarFiles,
+			Variables:            resolvedVars,
+			Files:                depFiles,
+			DontInheritVariables: dependency.DontInheritVariables,
+		})
+
 		return nil
 	}
+
+	forEach := dependency.ForEach
+
+	if len(dependency.ForEachReference) > 0 {
+		renderedReference, refErr := render.RenderTemplateFromStringWithContext(ctx, opts.TemplateFolder, dependency.ForEachReference, originalVars, opts)
+		if refErr != nil {
+			return nil, refErr
+		}
+
+		value, unmarshalErr := variables.UnmarshalListOfStrings(originalVars, renderedReference)
+		if unmarshalErr != nil {
+			return nil, unmarshalErr
+		}
+
+		forEach = value
+	}
+
+	if len(forEach) > 0 {
+		for _, item := range forEach {
+			updatedVars := util.MergeMaps(originalVars, map[string]any{eachVarName: item})
+			if processErr := doProcess(updatedVars, []string{item}); processErr != nil {
+				return nil, processErr
+			}
+		}
+	} else {
+		if processErr := doProcess(originalVars, nil); processErr != nil {
+			return nil, processErr
+		}
+	}
+
+	return allDeps, nil
 }
 
 // Clone the given options for use when rendering the given dependency. The dependency will get the same options as

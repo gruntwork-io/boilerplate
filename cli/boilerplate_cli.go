@@ -3,11 +3,7 @@ package cli
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
-	"io"
-	"os"
 	"path/filepath"
 
 	"github.com/urfave/cli/v2"
@@ -148,7 +144,7 @@ func runApp(cliContext *cli.Context) error {
 			return checksumErr
 		}
 
-		m := manifest.NewManifest(opts.TemplateURL, opts.OutputFolder, result.SourceChecksum, files, result.Variables)
+		m := manifest.NewManifest(opts.TemplateURL, opts.OutputFolder, result.SourceChecksum, files, result.Variables, result.Dependencies)
 
 		manifestPath := filepath.Join(opts.OutputFolder, manifest.DefaultManifestFilename)
 		if opts.ManifestFile != "" {
@@ -170,7 +166,7 @@ func computeChecksums(outputDir string, relativePaths []string) ([]manifest.Gene
 	for _, relPath := range relativePaths {
 		absPath := filepath.Join(outputDir, relPath)
 
-		checksum, err := sha256File(absPath)
+		checksum, err := manifest.SHA256File(absPath)
 		if err != nil {
 			return nil, fmt.Errorf("failed to compute checksum for %s: %w", absPath, err)
 		}
@@ -182,19 +178,4 @@ func computeChecksums(outputDir string, relativePaths []string) ([]manifest.Gene
 	}
 
 	return files, nil
-}
-
-func sha256File(path string) (string, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return "", err
-	}
-	defer f.Close()
-
-	h := sha256.New()
-	if _, err := io.Copy(h, f); err != nil {
-		return "", err
-	}
-
-	return "sha256:" + hex.EncodeToString(h.Sum(nil)), nil
 }
