@@ -29,6 +29,7 @@ type ManifestDependency struct {
 	Name                 string          `json:"Name" yaml:"Name" jsonschema:"required"`
 	TemplateURL          string          `json:"TemplateURL" yaml:"TemplateURL" jsonschema:"required"`
 	OutputFolder         string          `json:"OutputFolder" yaml:"OutputFolder" jsonschema:"required"`
+	SourceChecksum       string          `json:"SourceChecksum,omitempty" yaml:"SourceChecksum,omitempty"`
 	Skip                 string          `json:"Skip,omitempty" yaml:"Skip,omitempty"`
 	ForEachReference     string          `json:"ForEachReference,omitempty" yaml:"ForEachReference,omitempty"`
 	Files                []GeneratedFile `json:"Files,omitempty" yaml:"Files,omitempty"`

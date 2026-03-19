@@ -41,6 +41,9 @@
           "OutputFolder": {
             "type": "string"
           },
+          "SourceChecksum": {
+            "type": "string"
+          },
           "Skip": {
             "type": "string"
           },

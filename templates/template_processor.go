@@ -559,6 +559,7 @@ func processDependency(
 			Name:                 dependency.Name,
 			TemplateURL:          dependencyOptions.TemplateURL,
 			OutputFolder:         dependencyOptions.OutputFolder,
+			SourceChecksum:       depResult.SourceChecksum,
 			Skip:                 dependency.Skip,
 			ForEach:              forEach,
 			ForEachReference:     dependency.ForEachReference,
