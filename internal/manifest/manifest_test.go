@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -168,6 +169,10 @@ func TestWriteManifestOverwritesPrevious(t *testing.T) {
 // If a field is added, removed, or changed in the struct, this test fails until
 // the on-disk schema is regenerated via GenerateSchemaJSON.
 func TestGeneratedSchemaMatchesPublicSchema(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("skipping on Windows due to CRLF line ending differences")
+	}
+
 	t.Parallel()
 
 	generated, err := manifest.GenerateSchemaJSON()
@@ -208,6 +213,10 @@ func validateManifestAgainstSchema(t *testing.T, m *manifest.Manifest) {
 }
 
 func TestManifestConformsToSchema(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("skipping on Windows due to file:// URL path differences")
+	}
+
 	t.Parallel()
 
 	m := manifest.NewManifest(
