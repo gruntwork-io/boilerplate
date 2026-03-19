@@ -3,7 +3,7 @@ package util
 import (
 	"fmt"
 
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 // MarshalListOfObjectsToYAML will marshal the list of objects to yaml by calling MarshalYAML on every item in the list

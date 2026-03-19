@@ -533,7 +533,7 @@ func TestToYaml(t *testing.T) {
 		{nil, "null\n"},
 		{"", "\"\"\n"},
 		{map[string]any{"key": "val"}, "key: val\n"},
-		{map[string][]any{"Key": {1, 2, 3}}, "Key:\n- 1\n- 2\n- 3\n"},
+		{map[string][]any{"Key": {1, 2, 3}}, "Key:\n    - 1\n    - 2\n    - 3\n"},
 	}
 	for _, testCase := range testCases {
 		actual, err := toYaml(testCase.input)
@@ -563,7 +563,7 @@ func TestFromYaml(t *testing.T) {
 		{
 			name:     "simple key-value with multiple types",
 			input:    "name: John\nage: 30\nactive: true\nheight: 5.9",
-			expected: map[any]any{"name": "John", "age": 30, "active": true, "height": 5.9},
+			expected: map[string]any{"name": "John", "age": 30, "active": true, "height": 5.9},
 		},
 		{
 			name:     "array",
@@ -573,8 +573,8 @@ func TestFromYaml(t *testing.T) {
 		{
 			name:  "nested object",
 			input: "person:\n  name: John\n  age: 30\n  skills:\n    - go\n    - yaml",
-			expected: map[any]any{
-				"person": map[any]any{
+			expected: map[string]any{
+				"person": map[string]any{
 					"name":   "John",
 					"age":    30,
 					"skills": []any{"go", "yaml"},
@@ -592,17 +592,17 @@ users:
     roles: [admin, user]
   - name: Bob
     roles: [user]`,
-			expected: map[any]any{
-				"config": map[any]any{
+			expected: map[string]any{
+				"config": map[string]any{
 					"debug":   true,
 					"timeout": 300,
 				},
 				"users": []any{
-					map[any]any{
+					map[string]any{
 						"name":  "Alice",
 						"roles": []any{"admin", "user"},
 					},
-					map[any]any{
+					map[string]any{
 						"name":  "Bob",
 						"roles": []any{"user"},
 					},
@@ -612,7 +612,7 @@ users:
 		{
 			name:     "special cases",
 			input:    "message: \"Hello World\"\nnumeric_key: 123\nempty_obj: {}\nempty_array: []",
-			expected: map[any]any{"message": "Hello World", "numeric_key": 123, "empty_obj": map[any]any{}, "empty_array": []any{}},
+			expected: map[string]any{"message": "Hello World", "numeric_key": 123, "empty_obj": map[string]any{}, "empty_array": []any{}},
 		},
 	}
 

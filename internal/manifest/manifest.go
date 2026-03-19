@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/invopop/jsonschema"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
 	"github.com/gruntwork-io/boilerplate/version"
 )

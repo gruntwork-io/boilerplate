@@ -11,7 +11,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/testutil"
@@ -296,7 +296,7 @@ func TestParseBoilerplateConfigAllTypes(t *testing.T) {
 			variables.NewFloatVariable("var4").WithDefault(5.5),
 			variables.NewBoolVariable("var5").WithDefault(true),
 			variables.NewListVariable("var6").WithDefault([]any{"foo", "bar", "baz"}),
-			variables.NewMapVariable("var7").WithDefault(map[any]any{"key1": "value1", "key2": "value2", "key3": "value3"}),
+			variables.NewMapVariable("var7").WithDefault(map[string]any{"key1": "value1", "key2": "value2", "key3": "value3"}),
 			variables.NewEnumVariable("var8", []string{"foo", "bar", "baz"}).WithDefault("bar"),
 		},
 		Dependencies: []variables.Dependency{},

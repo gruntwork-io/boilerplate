@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/gruntwork-io/boilerplate/util"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 // Given a map of key:value pairs read from a Boilerplate YAML config file of the format:
@@ -26,22 +26,12 @@ func unmarshalMapOfFields(fields map[string]any, fieldName string) (map[string]a
 		return nil, nil
 	}
 
-	asYamlMap, isYamlMap := fieldAsYaml.(map[any]any)
+	asYamlMap, isYamlMap := fieldAsYaml.(map[string]any)
 	if !isYamlMap {
 		return nil, InvalidTypeForField{FieldName: fieldName, ExpectedType: "map[string]any", ActualType: reflect.TypeOf(fieldAsYaml)}
 	}
 
-	stringMap := map[string]any{}
-
-	for key, value := range asYamlMap {
-		if keyAsString, isString := key.(string); isString {
-			stringMap[keyAsString] = value
-		} else {
-			return nil, InvalidTypeForField{FieldName: fieldName, ExpectedType: "string", ActualType: reflect.TypeOf(key)}
-		}
-	}
-
-	return stringMap, nil
+	return asYamlMap, nil
 }
 
 // Given a map of key:value pairs read from a Boilerplate YAML config file of the format:
@@ -136,12 +126,12 @@ func unmarshalListOfFields(fields map[string]any, fieldName string) ([]map[strin
 	listOfFields := []map[string]any{}
 
 	for _, asYaml := range asYamlList {
-		asYamlMap, isYamlMap := asYaml.(map[any]any)
+		asYamlMap, isYamlMap := asYaml.(map[string]any)
 		if !isYamlMap {
 			return nil, InvalidTypeForField{FieldName: fieldName, ExpectedType: "map[string]any", ActualType: reflect.TypeOf(asYaml)}
 		}
 
-		listOfFields = append(listOfFields, util.ToStringToGenericMap(asYamlMap))
+		listOfFields = append(listOfFields, asYamlMap)
 	}
 
 	return listOfFields, nil
@@ -422,30 +412,10 @@ func ParseVars(varsList []string, varFileList []string) (map[string]any, error) 
 	return util.MergeMaps(varsFromEnv, varsFromVarsList, varsFromVarFiles), nil
 }
 
-// ConvertYAMLToStringMap modifies an input with type map[any]any to map[string]any so that it may be
-// properly marshalled in to JSON.
-// See: https://github.com/go-yaml/yaml/issues/139
+// ConvertYAMLToStringMap recursively walks a YAML-unmarshaled value and ensures
+// all nested maps and slices are properly typed for JSON marshaling.
 func ConvertYAMLToStringMap(yamlMapOrList any) (any, error) {
 	switch mapOrList := yamlMapOrList.(type) {
-	case map[any]any:
-		outputMap := map[string]any{}
-
-		for k, v := range mapOrList {
-			strK, ok := k.(string)
-			if !ok {
-				return nil, YAMLConversionErr{k}
-			}
-
-			res, err := ConvertYAMLToStringMap(v)
-			if err != nil {
-				return nil, err
-			}
-
-			outputMap[strK] = res
-		}
-
-		return outputMap, nil
-	// catch cases where there is a map[any]any nested in a map[string]any
 	case map[string]any:
 		for k, v := range mapOrList {
 			res, err := ConvertYAMLToStringMap(v)
