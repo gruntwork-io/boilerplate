@@ -14,6 +14,11 @@
     "BoilerplateVersion": {
       "type": "string"
     },
+    "SourceChecksum": {
+      "type": "string",
+      "pattern": "^(git-sha1|git-sha256|sha256):.+$",
+      "description": "Checksum of the template source. For git sources: git-sha1:<commit> or git-sha256:<commit>. For local sources: sha256:<hex>."
+    },
     "OutputDir": {
       "type": "string"
     },
@@ -46,6 +51,7 @@
     "Timestamp",
     "TemplateURL",
     "BoilerplateVersion",
+    "SourceChecksum",
     "OutputDir",
     "Files"
   ],

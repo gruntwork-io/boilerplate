@@ -14,6 +14,10 @@ import (
 	"github.com/gruntwork-io/boilerplate/internal/logging"
 )
 
+// CloneSubdir is the subdirectory name used inside the temporary working
+// directory when downloading remote templates via go-getter.
+const CloneSubdir = "wd"
+
 var forcedRegexp = regexp.MustCompile(`^([A-Za-z0-9]+)::(.+)$`)
 
 // ValidateTemplateURL returns an error if the template URL is not following one of the supported detector patterns.
@@ -130,7 +134,7 @@ func DownloadTemplatesToTemporaryFolder(templateURL string) (string, string, err
 	}
 
 	// Always set a subdir path because go-getter can not clone into an existing dir.
-	cloneDir := filepath.Join(workingDir, "wd")
+	cloneDir := filepath.Join(workingDir, CloneSubdir)
 
 	logging.Logger.Printf("Downloading templates to %s", workingDir)
 

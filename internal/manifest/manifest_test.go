@@ -187,6 +187,7 @@ func TestGenerateSchema(t *testing.T) {
 	assert.Contains(t, schema.Required, "Timestamp")
 	assert.Contains(t, schema.Required, "TemplateURL")
 	assert.Contains(t, schema.Required, "BoilerplateVersion")
+	assert.Contains(t, schema.Required, "SourceChecksum")
 	assert.Contains(t, schema.Required, "OutputDir")
 	assert.Contains(t, schema.Required, "Files")
 
@@ -204,12 +205,13 @@ func TestNewManifest(t *testing.T) {
 		{Path: "a.txt", Checksum: "sha256:abc"},
 	}
 
-	m := manifest.NewManifest("my-template", "/output", files)
+	m := manifest.NewManifest("my-template", "/output", "sha256:abc123", files)
 
 	assert.Equal(t, manifest.SchemaVersion, m.SchemaVersion)
 	assert.NotEmpty(t, m.Timestamp)
 	assert.Equal(t, "my-template", m.TemplateURL)
 	assert.NotEmpty(t, m.BoilerplateVersion)
+	assert.Equal(t, "sha256:abc123", m.SourceChecksum)
 	assert.Equal(t, "/output", m.OutputDir)
 	assert.Equal(t, files, m.Files)
 }

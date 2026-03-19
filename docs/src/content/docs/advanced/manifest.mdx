@@ -61,6 +61,7 @@ The manifest contains the following fields:
 | `Timestamp` | UTC timestamp of the generation run (RFC 3339) |
 | `TemplateURL` | The `--template-url` value used for this run |
 | `BoilerplateVersion` | Version of boilerplate that produced the output |
+| `SourceChecksum` | Checksum of the template source. For git sources: `git-sha1:<commit>` or `git-sha256:<commit>`. For local sources: `sha256:<hex>` |
 | `OutputDir` | The `--output-folder` value used for this run |
 | `Files` | Array of generated files |
 | `Files[].Path` | Path of the generated file, relative to the output directory |
@@ -73,6 +74,7 @@ SchemaVersion: "https://boilerplate.gruntwork.io/schemas/manifest/v1/schema.json
 Timestamp: "2026-02-24T12:00:00Z"
 TemplateURL: ./templates/service
 BoilerplateVersion: v0.6.0
+SourceChecksum: "sha256:a1b2c3d4e5f6..."
 OutputDir: ./output
 Files:
   - Path: main.go
@@ -89,6 +91,7 @@ Files:
   "Timestamp": "2026-02-24T12:00:00Z",
   "TemplateURL": "./templates/service",
   "BoilerplateVersion": "v0.6.0",
+  "SourceChecksum": "sha256:a1b2c3d4e5f6...",
   "OutputDir": "./output",
   "Files": [
     {

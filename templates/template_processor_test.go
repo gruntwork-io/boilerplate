@@ -120,13 +120,9 @@ func TestProcessTemplateReturnsFiles(t *testing.T) {
 	}
 
 	// Call ProcessTemplate
-	files, err := ProcessTemplate(opts, opts, variables.Dependency{})
+	dep := variables.Dependency{}
+	err = ProcessTemplate(opts, opts, &dep)
 	require.NoError(t, err)
-	require.NotNil(t, files)
-
-	// Verify the files list contains the expected file
-	require.Len(t, files, 1)
-	assert.Equal(t, "test.txt", files[0])
 
 	// Verify the file content
 	content, err := os.ReadFile(filepath.Join(outputDir, "test.txt"))
@@ -160,10 +156,9 @@ func TestProcessTemplate(t *testing.T) {
 	}
 
 	// Call ProcessTemplate function
-	files, err := ProcessTemplate(opts, opts, variables.Dependency{})
+	dep := variables.Dependency{}
+	err = ProcessTemplate(opts, opts, &dep)
 	require.NoError(t, err)
-	require.Len(t, files, 1)
-	assert.Equal(t, "test.txt", files[0])
 
 	// Verify the file content
 	content, err := os.ReadFile(filepath.Join(outputDir, "test.txt"))

@@ -14,6 +14,7 @@ import (
 	"github.com/gruntwork-io/boilerplate/getterhelper"
 	"github.com/gruntwork-io/boilerplate/internal/fileutil"
 	"github.com/gruntwork-io/boilerplate/internal/logging"
+	"github.com/gruntwork-io/boilerplate/internal/manifest"
 	"github.com/gruntwork-io/boilerplate/internal/shell"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/prompt"
@@ -21,6 +22,12 @@ import (
 	"github.com/gruntwork-io/boilerplate/util"
 	"github.com/gruntwork-io/boilerplate/variables"
 )
+
+// ProcessResult holds the outputs of a template processing run.
+type ProcessResult struct {
+	SourceChecksum string
+	GeneratedFiles []string
+}
 
 // The name of the variable that contains the current value of the loop in each iteration of for_each
 const eachVarName = "__each__"
@@ -38,27 +45,22 @@ func ProcessTemplate(options, rootOpts *options.BoilerplateOptions, thisDep *var
 }
 
 // ProcessTemplateWithContext is like ProcessTemplate but accepts a context for cancellation and timeouts.
-// Returns the list of generated file paths relative to the output directory.
-func ProcessTemplateWithContext(ctx context.Context, options, rootOpts *options.BoilerplateOptions, thisDep *variables.Dependency) ([]string, error) {
-	// If TemplateFolder is already set, use that directly as it is a local template. Otherwise, download to a temporary
-	// working directory.
-	if options.TemplateFolder == "" {
-		workingDir, templateFolder, downloadErr := getterhelper.DownloadTemplatesToTemporaryFolder(options.TemplateURL)
+// Returns a ProcessResult containing the list of generated file paths and source checksum.
+func ProcessTemplateWithContext(ctx context.Context, options, rootOpts *options.BoilerplateOptions, thisDep *variables.Dependency) (*ProcessResult, error) {
+	cleanup, cloneDir, err := resolveTemplate(options)
+	if cleanup != nil {
+		defer cleanup()
+	}
 
-		defer func() {
-			logging.Logger.Printf("Cleaning up working directory.")
+	if err != nil {
+		return nil, err
+	}
 
-			if rmErr := os.RemoveAll(workingDir); rmErr != nil {
-				logging.Logger.Printf("Failed to clean up working directory %s: %v", workingDir, rmErr)
-			}
-		}()
+	// Compute source checksum while the working directory (and clone dir) still exist.
+	var sourceChecksum string
 
-		if downloadErr != nil {
-			return nil, downloadErr
-		}
-
-		// Set the TemplateFolder of the options to the download dir
-		options.TemplateFolder = templateFolder
+	if options.Manifest {
+		sourceChecksum = computeSourceChecksum(options.TemplateFolder, cloneDir)
 	}
 
 	rootBoilerplateConfig, rootCfgErr := config.LoadBoilerplateConfig(rootOpts)
@@ -114,7 +116,51 @@ func ProcessTemplateWithContext(ctx context.Context, options, rootOpts *options.
 		return nil, err
 	}
 
-	return generatedFilePaths, nil
+	return &ProcessResult{
+		GeneratedFiles: generatedFilePaths,
+		SourceChecksum: sourceChecksum,
+	}, nil
+}
+
+// resolveTemplate ensures opts.TemplateFolder is set, downloading remote
+// templates if necessary. It returns a cleanup function (nil for local templates)
+// and the clone directory (empty for local templates). The cleanup function must
+// be deferred by the caller before checking the error.
+func resolveTemplate(opts *options.BoilerplateOptions) (cleanup func(), cloneDir string, err error) {
+	if opts.TemplateFolder != "" {
+		return nil, "", nil
+	}
+
+	workingDir, templateFolder, downloadErr := getterhelper.DownloadTemplatesToTemporaryFolder(opts.TemplateURL)
+
+	cleanup = func() {
+		logging.Logger.Printf("Cleaning up working directory.")
+
+		if rmErr := os.RemoveAll(workingDir); rmErr != nil {
+			logging.Logger.Printf("Failed to clean up working directory %s: %v", workingDir, rmErr)
+		}
+	}
+
+	if downloadErr != nil {
+		return cleanup, "", downloadErr
+	}
+
+	opts.TemplateFolder = templateFolder
+
+	return cleanup, filepath.Join(workingDir, getterhelper.CloneSubdir), nil
+}
+
+// computeSourceChecksum computes the source checksum, logging a warning on
+// error and returning an empty string.
+func computeSourceChecksum(templateDir, cloneDir string) string {
+	cs, err := manifest.ComputeSourceChecksum(templateDir, cloneDir)
+	if err != nil {
+		logging.Logger.Printf("Warning: failed to compute source checksum: %v", err)
+
+		return ""
+	}
+
+	return cs
 }
 
 func processPartials(ctx context.Context, partials []string, opts *options.BoilerplateOptions, vars map[string]any) ([]string, error) {

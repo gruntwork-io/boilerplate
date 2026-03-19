@@ -137,18 +137,18 @@ func runApp(cliContext *cli.Context) error {
 	// The root boilerplate.yml is not itself a dependency, so we pass an empty Dependency.
 	emptyDep := variables.Dependency{}
 
-	generatedFiles, err := templates.ProcessTemplateWithContext(ctx, opts, opts, &emptyDep)
+	result, err := templates.ProcessTemplateWithContext(ctx, opts, opts, &emptyDep)
 	if err != nil {
 		return err
 	}
 
 	if opts.Manifest {
-		files, checksumErr := computeChecksums(opts.OutputFolder, generatedFiles)
+		files, checksumErr := computeChecksums(opts.OutputFolder, result.GeneratedFiles)
 		if checksumErr != nil {
 			return checksumErr
 		}
 
-		m := manifest.NewManifest(opts.TemplateURL, opts.OutputFolder, files)
+		m := manifest.NewManifest(opts.TemplateURL, opts.OutputFolder, result.SourceChecksum, files)
 
 		manifestPath := filepath.Join(opts.OutputFolder, manifest.DefaultManifestFilename)
 		if opts.ManifestFile != "" {

@@ -26,6 +26,7 @@ type Manifest struct {
 	Timestamp          string          `json:"Timestamp" yaml:"Timestamp" jsonschema:"required"`
 	TemplateURL        string          `json:"TemplateURL" yaml:"TemplateURL" jsonschema:"required"`
 	BoilerplateVersion string          `json:"BoilerplateVersion" yaml:"BoilerplateVersion" jsonschema:"required"`
+	SourceChecksum     string          `json:"SourceChecksum" yaml:"SourceChecksum" jsonschema:"required"`
 	OutputDir          string          `json:"OutputDir" yaml:"OutputDir" jsonschema:"required"`
 	Files              []GeneratedFile `json:"Files" yaml:"Files" jsonschema:"required"`
 }
@@ -37,12 +38,13 @@ type GeneratedFile struct {
 }
 
 // NewManifest creates a new Manifest with the current timestamp and boilerplate version.
-func NewManifest(templateURL, outputDir string, files []GeneratedFile) *Manifest {
+func NewManifest(templateURL, outputDir, sourceChecksum string, files []GeneratedFile) *Manifest {
 	return &Manifest{
 		SchemaVersion:      SchemaVersion,
 		Timestamp:          time.Now().UTC().Format(time.RFC3339),
 		TemplateURL:        templateURL,
 		BoilerplateVersion: version.GetVersion(),
+		SourceChecksum:     sourceChecksum,
 		OutputDir:          outputDir,
 		Files:              files,
 	}
