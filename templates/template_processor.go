@@ -574,9 +574,9 @@ func processDependency(
 	forEach := dependency.ForEach
 
 	if len(dependency.ForEachReference) > 0 {
-		renderedReference, refErr := render.RenderTemplateFromStringWithContext(ctx, opts.TemplateFolder, dependency.ForEachReference, originalVars, opts)
-		if refErr != nil {
-			return nil, refErr
+		renderedReference, renderErr := render.RenderTemplateFromStringWithContext(ctx, opts.TemplateFolder, dependency.ForEachReference, originalVars, opts)
+		if renderErr != nil {
+			return nil, renderErr
 		}
 
 		value, unmarshalErr := variables.UnmarshalListOfStrings(originalVars, renderedReference)
