@@ -24,7 +24,9 @@
             "type": "string"
           },
           "Checksum": {
-            "type": "string"
+            "type": "string",
+            "pattern": "^[a-z0-9]+:.+$",
+            "description": "Hash of the file contents, prefixed with the algorithm (e.g. sha256:abcdef…)"
           }
         },
         "additionalProperties": false,

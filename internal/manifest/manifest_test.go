@@ -26,8 +26,8 @@ func TestWriteManifestJSON(t *testing.T) {
 		BoilerplateVersion: "v1.0.0",
 		OutputDir:          "/output",
 		Files: []manifest.GeneratedFile{
-			{Path: "file1.txt", Checksum: "abc123"},
-			{Path: "file2.txt", Checksum: "def456"},
+			{Path: "file1.txt", Checksum: "sha256:abc123"},
+			{Path: "file2.txt", Checksum: "sha256:def456"},
 		},
 	}
 
@@ -49,7 +49,7 @@ func TestWriteManifestJSON(t *testing.T) {
 	assert.Equal(t, "/output", result.OutputDir)
 	assert.Len(t, result.Files, 2)
 	assert.Equal(t, "file1.txt", result.Files[0].Path)
-	assert.Equal(t, "abc123", result.Files[0].Checksum)
+	assert.Equal(t, "sha256:abc123", result.Files[0].Checksum)
 }
 
 func TestWriteManifestYAML(t *testing.T) {
@@ -65,7 +65,7 @@ func TestWriteManifestYAML(t *testing.T) {
 		BoilerplateVersion: "v1.0.0",
 		OutputDir:          "/output",
 		Files: []manifest.GeneratedFile{
-			{Path: "file1.txt", Checksum: "abc123"},
+			{Path: "file1.txt", Checksum: "sha256:abc123"},
 		},
 	}
 
@@ -83,7 +83,7 @@ func TestWriteManifestYAML(t *testing.T) {
 	assert.Equal(t, manifest.SchemaVersion, result.SchemaVersion)
 	assert.Equal(t, "template1", result.TemplateURL)
 	assert.Len(t, result.Files, 1)
-	assert.Equal(t, "abc123", result.Files[0].Checksum)
+	assert.Equal(t, "sha256:abc123", result.Files[0].Checksum)
 }
 
 func TestWriteManifestYMLExtension(t *testing.T) {
@@ -95,7 +95,7 @@ func TestWriteManifestYMLExtension(t *testing.T) {
 	m := &manifest.Manifest{
 		SchemaVersion: manifest.SchemaVersion,
 		Timestamp:     "2024-01-01T00:00:00Z",
-		Files:         []manifest.GeneratedFile{{Path: "a.txt", Checksum: "aaa"}},
+		Files:         []manifest.GeneratedFile{{Path: "a.txt", Checksum: "sha256:aaa"}},
 	}
 
 	err := manifest.WriteManifest(manifestPath, m)
@@ -123,7 +123,7 @@ func TestWriteManifestOverwritesPrevious(t *testing.T) {
 		SchemaVersion: manifest.SchemaVersion,
 		Timestamp:     "2024-01-01T00:00:00Z",
 		TemplateURL:   "template1",
-		Files:         []manifest.GeneratedFile{{Path: "file1.txt", Checksum: "aaa"}},
+		Files:         []manifest.GeneratedFile{{Path: "file1.txt", Checksum: "sha256:aaa"}},
 	}
 	err := manifest.WriteManifest(manifestPath, m1)
 	require.NoError(t, err)
@@ -133,7 +133,7 @@ func TestWriteManifestOverwritesPrevious(t *testing.T) {
 		SchemaVersion: manifest.SchemaVersion,
 		Timestamp:     "2024-01-02T00:00:00Z",
 		TemplateURL:   "template2",
-		Files:         []manifest.GeneratedFile{{Path: "file2.txt", Checksum: "bbb"}},
+		Files:         []manifest.GeneratedFile{{Path: "file2.txt", Checksum: "sha256:bbb"}},
 	}
 	err = manifest.WriteManifest(manifestPath, m2)
 	require.NoError(t, err)
@@ -201,7 +201,7 @@ func TestNewManifest(t *testing.T) {
 	t.Parallel()
 
 	files := []manifest.GeneratedFile{
-		{Path: "a.txt", Checksum: "abc"},
+		{Path: "a.txt", Checksum: "sha256:abc"},
 	}
 
 	m := manifest.NewManifest("my-template", "/output", files)

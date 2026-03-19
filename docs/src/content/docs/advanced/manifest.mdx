@@ -5,6 +5,9 @@ sidebar:
 description: Track generated files with a manifest that includes SHA256 checksums.
 ---
 
+import { Code } from '@astrojs/starlight/components';
+import manifestSchema from '../../../../public/schemas/manifest/v1/schema.json?raw';
+
 ## Overview
 
 Boilerplate can produce a **manifest file** that records every file it generated during a run, along with SHA256 checksums for each file. This is useful for:
@@ -61,7 +64,7 @@ The manifest contains the following fields:
 | `OutputDir` | The `--output-folder` value used for this run |
 | `Files` | Array of generated files |
 | `Files[].Path` | Path of the generated file, relative to the output directory |
-| `Files[].Checksum` | SHA256 hex digest of the file contents |
+| `Files[].Checksum` | Checksum of the file contents, prefixed with the hash algorithm (e.g. `sha256:a1b2c3…`) |
 
 ### YAML example
 
@@ -73,9 +76,9 @@ BoilerplateVersion: v0.6.0
 OutputDir: ./output
 Files:
   - Path: main.go
-    Checksum: a1b2c3d4e5f6...
+    Checksum: "sha256:a1b2c3d4e5f6..."
   - Path: README.md
-    Checksum: f6e5d4c3b2a1...
+    Checksum: "sha256:f6e5d4c3b2a1..."
 ```
 
 ### JSON example
@@ -90,11 +93,11 @@ Files:
   "Files": [
     {
       "Path": "main.go",
-      "Checksum": "a1b2c3d4e5f6..."
+      "Checksum": "sha256:a1b2c3d4e5f6..."
     },
     {
       "Path": "README.md",
-      "Checksum": "f6e5d4c3b2a1..."
+      "Checksum": "sha256:f6e5d4c3b2a1..."
     }
   ]
 }
@@ -102,16 +105,13 @@ Files:
 
 ## Manifest Schema
 
-Boilerplate publishes a formal [JSON Schema](https://json-schema.org/) for the manifest format. The schema is available at:
+Boilerplate publishes a formal [JSON Schema](https://json-schema.org/) for the manifest format. The `SchemaVersion` field in every generated manifest contains the schema URL, making it easy to identify which schema version was used and to fetch the schema for validation.
 
-```
-https://boilerplate.gruntwork.io/schemas/manifest/v1/schema.json
-```
-
-The `SchemaVersion` field in every generated manifest contains this URL, making it easy to identify which schema version was used and to fetch the schema for validation.
+<Code title="manifest/v1/schema.json" lang="json" code={manifestSchema} />
 
 ## Behavior
 
-- **Overwrite** — Each run overwrites the previous manifest. There is no version history; the manifest always reflects the most recent generation.
-- **Corrupt file detection** — If an existing manifest file is present but contains invalid content, boilerplate exits with an error rather than silently overwriting it. This protects against accidentally clobbering a file that was not actually a manifest.
-- **Checksums** — Checksums are computed after all files have been generated, using streaming SHA256 over each file. Binary files (images, compiled assets) are checksummed the same way as text files.
+Boilerplate writes the manifest **after** all files have been generated. A few things to be aware of:
+
+- Each run overwrites the previous manifest, so it always reflects the most recent generation. If you need to preserve history across runs, track the manifest in version control (e.g. Git).
+- If an existing manifest file is present but contains invalid content (i.e. it cannot be parsed as JSON or YAML), boilerplate exits with an error rather than silently overwriting it. This guards against accidentally clobbering a file that was not actually a manifest.
