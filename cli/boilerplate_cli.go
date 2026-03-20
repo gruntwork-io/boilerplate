@@ -4,9 +4,11 @@ package cli
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 
 	"github.com/urfave/cli/v2"
 
+	"github.com/gruntwork-io/boilerplate/internal/manifest"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/templates"
 	"github.com/gruntwork-io/boilerplate/variables"
@@ -95,6 +97,14 @@ func CreateBoilerplateCli() *cli.App {
 			Name:  options.OptDisableDependencyPrompt,
 			Usage: fmt.Sprintf("Do not prompt for confirmation to include dependencies. Has the same effect as --%s, without disabling variable prompts.", options.OptNonInteractive),
 		},
+		&cli.BoolFlag{
+			Name:  options.OptManifest,
+			Usage: "Write a manifest of all generated files (with checksums) to the output directory.",
+		},
+		&cli.StringFlag{
+			Name:  options.OptManifestFile,
+			Usage: "Write the manifest to `FILE` instead of the default location. Implies --manifest. Format is auto-detected from extension (.yaml/.yml for YAML, otherwise JSON).",
+		},
 	}
 
 	// We pass JSON/YAML content to various CLI flags, such as --var, and this JSON/YAML content may contain commas or
@@ -123,5 +133,49 @@ func runApp(cliContext *cli.Context) error {
 	// The root boilerplate.yml is not itself a dependency, so we pass an empty Dependency.
 	emptyDep := variables.Dependency{}
 
-	return templates.ProcessTemplateWithContext(ctx, opts, opts, &emptyDep)
+	result, err := templates.ProcessTemplateWithContext(ctx, opts, opts, &emptyDep)
+	if err != nil {
+		return err
+	}
+
+	if opts.Manifest {
+		files, checksumErr := computeChecksums(opts.OutputFolder, result.GeneratedFiles)
+		if checksumErr != nil {
+			return checksumErr
+		}
+
+		m := manifest.NewManifest(opts.TemplateURL, opts.OutputFolder, result.SourceChecksum, files, result.Variables, result.Dependencies)
+
+		manifestPath := filepath.Join(opts.OutputFolder, manifest.DefaultManifestFilename)
+		if opts.ManifestFile != "" {
+			manifestPath = opts.ManifestFile
+		}
+
+		if err := manifest.WriteManifest(manifestPath, m); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// computeChecksums streams each generated file through a SHA256 hasher.
+func computeChecksums(outputDir string, relativePaths []string) ([]manifest.GeneratedFile, error) {
+	files := make([]manifest.GeneratedFile, 0, len(relativePaths))
+
+	for _, relPath := range relativePaths {
+		absPath := filepath.Join(outputDir, relPath)
+
+		checksum, err := manifest.SHA256File(absPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to compute checksum for %s: %w", absPath, err)
+		}
+
+		files = append(files, manifest.GeneratedFile{
+			Path:     relPath,
+			Checksum: checksum,
+		})
+	}
+
+	return files, nil
 }

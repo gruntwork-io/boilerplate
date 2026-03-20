@@ -15,21 +15,25 @@ const OptMissingConfigAction = "missing-config-action"
 const OptNoHooks = "no-hooks"
 const OptNoShell = "no-shell"
 const OptDisableDependencyPrompt = "disable-dependency-prompt"
+const OptManifest = "manifest"
+const OptManifestFile = "manifest-file"
 
 // BoilerplateOptions represents the command-line options for the boilerplate app
 type BoilerplateOptions struct {
 	Vars                    map[string]any
 	ShellCommandAnswers     map[string]bool
-	TemplateURL             string
+	OnMissingConfig         MissingConfigAction
 	TemplateFolder          string
 	OutputFolder            string
 	OnMissingKey            MissingKeyAction
-	OnMissingConfig         MissingConfigAction
+	TemplateURL             string
+	ManifestFile            string
 	NonInteractive          bool
 	NoHooks                 bool
 	NoShell                 bool
 	DisableDependencyPrompt bool
 	ExecuteAllShellCommands bool
+	Manifest                bool
 }
 
 // MissingKeyAction is an enum that represents what we can do when a template looks up a missing key. This typically happens

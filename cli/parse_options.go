@@ -53,6 +53,8 @@ func ParseCLIContext(cliContext *cli.Context) (*options.BoilerplateOptions, erro
 		DisableDependencyPrompt: cliContext.Bool(options.OptDisableDependencyPrompt),
 		ExecuteAllShellCommands: false,
 		ShellCommandAnswers:     make(map[string]bool),
+		Manifest:                cliContext.Bool(options.OptManifest) || cliContext.String(options.OptManifestFile) != "",
+		ManifestFile:            cliContext.String(options.OptManifestFile),
 	}
 
 	if err := validateOptions(opts); err != nil {

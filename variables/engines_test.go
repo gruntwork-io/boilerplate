@@ -40,7 +40,7 @@ func TestEnginesRequiresSupportedTemplateEngine(t *testing.T) {
 
 			mockFields := map[string]any{
 				"engines": []any{
-					map[any]any{
+					map[string]any{
 						"path":            "foo." + tc.name,
 						"template_engine": tc.typeStr,
 					},

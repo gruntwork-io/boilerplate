@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"io/fs"
+	"maps"
 	"net/url"
 	"os"
 	"path"
@@ -14,6 +16,7 @@ import (
 	"github.com/gruntwork-io/boilerplate/getterhelper"
 	"github.com/gruntwork-io/boilerplate/internal/fileutil"
 	"github.com/gruntwork-io/boilerplate/internal/logging"
+	"github.com/gruntwork-io/boilerplate/internal/manifest"
 	"github.com/gruntwork-io/boilerplate/internal/shell"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/prompt"
@@ -21,6 +24,14 @@ import (
 	"github.com/gruntwork-io/boilerplate/util"
 	"github.com/gruntwork-io/boilerplate/variables"
 )
+
+// ProcessResult holds the outputs of a template processing run.
+type ProcessResult struct {
+	Variables      map[string]any
+	Dependencies   []manifest.ManifestDependency
+	SourceChecksum string
+	GeneratedFiles []string
+}
 
 // The name of the variable that contains the current value of the loop in each iteration of for_each
 const eachVarName = "__each__"
@@ -33,86 +44,140 @@ const defaultDirPerm = 0o777
 // dependent boilerplate templates, and then execute this template. Note that we pass in rootOptions so that template
 // dependencies can inspect properties of the root template.
 func ProcessTemplate(options, rootOpts *options.BoilerplateOptions, thisDep *variables.Dependency) error {
-	return ProcessTemplateWithContext(context.Background(), options, rootOpts, thisDep)
+	_, err := ProcessTemplateWithContext(context.Background(), options, rootOpts, thisDep)
+	return err
 }
 
 // ProcessTemplateWithContext is like ProcessTemplate but accepts a context for cancellation and timeouts.
-func ProcessTemplateWithContext(ctx context.Context, options, rootOpts *options.BoilerplateOptions, thisDep *variables.Dependency) error {
-	// If TemplateFolder is already set, use that directly as it is a local template. Otherwise, download to a temporary
-	// working directory.
-	if options.TemplateFolder == "" {
-		workingDir, templateFolder, downloadErr := getterhelper.DownloadTemplatesToTemporaryFolder(options.TemplateURL)
+// Returns a ProcessResult containing the list of generated file paths and source checksum.
+func ProcessTemplateWithContext(ctx context.Context, options, rootOpts *options.BoilerplateOptions, thisDep *variables.Dependency) (*ProcessResult, error) {
+	cleanup, cloneDir, err := resolveTemplate(options)
+	if cleanup != nil {
+		defer cleanup()
+	}
 
-		defer func() {
-			logging.Logger.Printf("Cleaning up working directory.")
+	if err != nil {
+		return nil, err
+	}
 
-			if rmErr := os.RemoveAll(workingDir); rmErr != nil {
-				logging.Logger.Printf("Failed to clean up working directory %s: %v", workingDir, rmErr)
-			}
-		}()
+	// Compute source checksum while the working directory (and clone dir) still exist.
+	var sourceChecksum string
 
-		if downloadErr != nil {
-			return downloadErr
-		}
-
-		// Set the TemplateFolder of the options to the download dir
-		options.TemplateFolder = templateFolder
+	if options.Manifest {
+		sourceChecksum = computeSourceChecksum(options.TemplateFolder, cloneDir)
 	}
 
 	rootBoilerplateConfig, rootCfgErr := config.LoadBoilerplateConfig(rootOpts)
 	if rootCfgErr != nil {
-		return rootCfgErr
+		return nil, rootCfgErr
 	}
 
 	if err := config.EnforceRequiredVersion(rootBoilerplateConfig); err != nil {
-		return err
+		return nil, err
 	}
 
 	boilerplateConfig, cfgErr := config.LoadBoilerplateConfig(options)
 	if cfgErr != nil {
-		return cfgErr
+		return nil, cfgErr
 	}
 
 	if err := config.EnforceRequiredVersion(boilerplateConfig); err != nil {
-		return err
+		return nil, err
 	}
 
 	vars, err := config.GetVariablesWithContext(ctx, options, boilerplateConfig, rootBoilerplateConfig, thisDep)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	err = os.MkdirAll(options.OutputFolder, defaultDirPerm)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	err = processHooks(ctx, boilerplateConfig.Hooks.BeforeHooks, options, vars)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	err = processDependencies(ctx, boilerplateConfig.Dependencies, options, boilerplateConfig.GetVariablesMap(), vars)
+	deps, err := processDependencies(ctx, boilerplateConfig.Dependencies, options, boilerplateConfig.GetVariablesMap(), vars)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	partials, err := processPartials(ctx, boilerplateConfig.Partials, options, vars)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	err = processTemplateFolder(ctx, boilerplateConfig, options, vars, partials)
+	generatedFilePaths, err := processTemplateFolder(ctx, boilerplateConfig, options, vars, partials)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	err = processHooks(ctx, boilerplateConfig.Hooks.AfterHooks, options, vars)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	// Filter out builtin variables so the manifest only records user-defined ones.
+	userVars := make(map[string]any, len(vars))
+	for k, v := range vars {
+		switch k {
+		case "BoilerplateConfigVars", "BoilerplateConfigDeps", "This":
+			continue
+		default:
+			userVars[k] = v
+		}
+	}
+
+	return &ProcessResult{
+		GeneratedFiles: generatedFilePaths,
+		SourceChecksum: sourceChecksum,
+		Variables:      userVars,
+		Dependencies:   deps,
+	}, nil
+}
+
+// resolveTemplate ensures opts.TemplateFolder is set, downloading remote
+// templates if necessary. It returns a cleanup function (nil for local templates)
+// and the clone directory (empty for local templates). The cleanup function must
+// be deferred by the caller before checking the error.
+func resolveTemplate(opts *options.BoilerplateOptions) (cleanup func(), cloneDir string, err error) {
+	if opts.TemplateFolder != "" {
+		return nil, "", nil
+	}
+
+	workingDir, templateFolder, downloadErr := getterhelper.DownloadTemplatesToTemporaryFolder(opts.TemplateURL)
+
+	cleanup = func() {
+		logging.Logger.Printf("Cleaning up working directory.")
+
+		if rmErr := os.RemoveAll(workingDir); rmErr != nil {
+			logging.Logger.Printf("Failed to clean up working directory %s: %v", workingDir, rmErr)
+		}
+	}
+
+	if downloadErr != nil {
+		return cleanup, "", downloadErr
+	}
+
+	opts.TemplateFolder = templateFolder
+
+	return cleanup, filepath.Join(workingDir, getterhelper.CloneSubdir), nil
+}
+
+// computeSourceChecksum computes the source checksum, logging a warning on
+// error and returning an empty string.
+func computeSourceChecksum(templateDir, cloneDir string) string {
+	cs, err := manifest.ComputeSourceChecksum(templateDir, cloneDir)
+	if err != nil {
+		logging.Logger.Printf("Warning: failed to compute source checksum: %v", err)
+
+		return ""
+	}
+
+	return cs
 }
 
 func processPartials(ctx context.Context, partials []string, opts *options.BoilerplateOptions, vars map[string]any) ([]string, error) {
@@ -404,74 +469,139 @@ func processDependencies(
 	opts *options.BoilerplateOptions,
 	variablesInConfig map[string]variables.Variable,
 	variables map[string]any,
-) error {
+) ([]manifest.ManifestDependency, error) {
+	var allDeps []manifest.ManifestDependency
+
 	for i := range dependencies {
-		err := processDependency(ctx, &dependencies[i], opts, variablesInConfig, variables)
+		deps, err := processDependency(ctx, &dependencies[i], opts, variablesInConfig, variables)
 		if err != nil {
-			return err
+			return nil, err
 		}
+
+		allDeps = append(allDeps, deps...)
 	}
 
-	return nil
+	return allDeps, nil
 }
 
-// processDependency is like processDependency but accepts a context for cancellation and timeouts.
+// processDependency processes a single dependency and returns manifest entries for it.
+// A single dependency with for_each can produce multiple entries.
 func processDependency(
 	ctx context.Context,
 	dependency *variables.Dependency,
 	opts *options.BoilerplateOptions,
 	variablesInConfig map[string]variables.Variable,
 	originalVars map[string]any,
-) error {
+) ([]manifest.ManifestDependency, error) {
 	shouldProcess, err := shouldProcessDependency(ctx, dependency, opts, originalVars)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	if shouldProcess {
-		doProcess := func(updatedVars map[string]any) error {
-			dependencyOptions, err := cloneOptionsForDependency(ctx, dependency, opts, variablesInConfig, updatedVars)
-			if err != nil {
-				return err
-			}
-
-			logging.Logger.Printf("Processing dependency %s, with template folder %s and output folder %s", dependency.Name, dependencyOptions.TemplateFolder, dependencyOptions.OutputFolder)
-
-			return ProcessTemplateWithContext(ctx, dependencyOptions, opts, dependency)
-		}
-
-		forEach := dependency.ForEach
-
-		if len(dependency.ForEachReference) > 0 {
-			renderedReference, err := render.RenderTemplateFromStringWithContext(ctx, opts.TemplateFolder, dependency.ForEachReference, originalVars, opts)
-			if err != nil {
-				return err
-			}
-
-			value, err := variables.UnmarshalListOfStrings(originalVars, renderedReference)
-			if err != nil {
-				return err
-			}
-
-			forEach = value
-		}
-
-		if len(forEach) > 0 {
-			for _, item := range forEach {
-				updatedVars := util.MergeMaps(originalVars, map[string]any{eachVarName: item})
-				if err := doProcess(updatedVars); err != nil {
-					return err
-				}
-			}
-
-			return nil
-		} else {
-			return doProcess(originalVars)
-		}
-	} else {
+	if !shouldProcess {
 		logging.Logger.Printf("Skipping dependency %s", dependency.Name)
+
+		// Record skipped dependency with the rendered skip expression.
+		renderedSkip, skipErr := render.RenderTemplateFromStringWithContext(ctx, opts.TemplateFolder, dependency.Skip, originalVars, opts)
+		if skipErr != nil {
+			renderedSkip = dependency.Skip
+		}
+
+		return []manifest.ManifestDependency{{
+			Name:                 dependency.Name,
+			TemplateURL:          dependency.TemplateURL,
+			OutputFolder:         dependency.OutputFolder,
+			Skip:                 renderedSkip,
+			ForEach:              dependency.ForEach,
+			ForEachReference:     dependency.ForEachReference,
+			DontInheritVariables: dependency.DontInheritVariables,
+		}}, nil
+	}
+
+	var allDeps []manifest.ManifestDependency
+
+	doProcess := func(updatedVars map[string]any, forEach []string) error {
+		dependencyOptions, cloneErr := cloneOptionsForDependency(ctx, dependency, opts, variablesInConfig, updatedVars)
+		if cloneErr != nil {
+			return cloneErr
+		}
+
+		logging.Logger.Printf("Processing dependency %s, with template folder %s and output folder %s", dependency.Name, dependencyOptions.TemplateFolder, dependencyOptions.OutputFolder)
+
+		depResult, processErr := ProcessTemplateWithContext(ctx, dependencyOptions, opts, dependency)
+		if processErr != nil {
+			return processErr
+		}
+
+		// Use the dependency's result variables, which already have builtins filtered out.
+		resolvedVars := maps.Clone(depResult.Variables)
+
+		// Compute checksums for files generated by this dependency.
+		var depFiles []manifest.GeneratedFile
+
+		if opts.Manifest {
+			for _, relPath := range depResult.GeneratedFiles {
+				absPath := filepath.Join(dependencyOptions.OutputFolder, relPath)
+
+				checksum, csErr := manifest.SHA256File(absPath)
+				if csErr != nil {
+					return csErr
+				}
+
+				depFiles = append(depFiles, manifest.GeneratedFile{
+					Path:     relPath,
+					Checksum: checksum,
+				})
+			}
+		}
+
+		allDeps = append(allDeps, manifest.ManifestDependency{
+			Name:                 dependency.Name,
+			TemplateURL:          dependencyOptions.TemplateURL,
+			OutputFolder:         dependencyOptions.OutputFolder,
+			SourceChecksum:       depResult.SourceChecksum,
+			Skip:                 dependency.Skip,
+			ForEach:              forEach,
+			ForEachReference:     dependency.ForEachReference,
+			VarFiles:             dependency.VarFiles,
+			Variables:            resolvedVars,
+			Files:                depFiles,
+			DontInheritVariables: dependency.DontInheritVariables,
+		})
+
 		return nil
 	}
+
+	forEach := dependency.ForEach
+
+	if len(dependency.ForEachReference) > 0 {
+		renderedReference, renderErr := render.RenderTemplateFromStringWithContext(ctx, opts.TemplateFolder, dependency.ForEachReference, originalVars, opts)
+		if renderErr != nil {
+			return nil, renderErr
+		}
+
+		value, unmarshalErr := variables.UnmarshalListOfStrings(originalVars, renderedReference)
+		if unmarshalErr != nil {
+			return nil, unmarshalErr
+		}
+
+		forEach = value
+	}
+
+	if len(forEach) > 0 {
+		for _, item := range forEach {
+			updatedVars := util.MergeMaps(originalVars, map[string]any{eachVarName: item})
+			if processErr := doProcess(updatedVars, []string{item}); processErr != nil {
+				return nil, processErr
+			}
+		}
+	} else {
+		if processErr := doProcess(originalVars, nil); processErr != nil {
+			return nil, processErr
+		}
+	}
+
+	return allDeps, nil
 }
 
 // Clone the given options for use when rendering the given dependency. The dependency will get the same options as
@@ -689,28 +819,30 @@ func shouldSkipDependency(ctx context.Context, dependency *variables.Dependency,
 }
 
 // processTemplateFolder copies all the files and folders in templateFolder to outputFolder, passing text files through the Go template engine
-// with the given set of variables as the data.
+// with the given set of variables as the data. Returns the list of generated file paths relative to the output directory.
 func processTemplateFolder(
 	ctx context.Context,
 	config *config.BoilerplateConfig,
 	opts *options.BoilerplateOptions,
 	variables map[string]any,
 	partials []string,
-) error {
+) ([]string, error) {
 	logging.Logger.Printf("Processing templates in %s and outputting generated files to %s", opts.TemplateFolder, opts.OutputFolder)
 
 	// Process and render skip files and engines before walking so we only do the rendering operation once.
 	processedSkipFiles, err := processSkipFiles(ctx, config.SkipFiles, opts, variables)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	processedEngines, err := processEngines(ctx, config.Engines, opts, variables)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return filepath.Walk(opts.TemplateFolder, func(path string, info os.FileInfo, err error) error {
+	var generatedFilePaths []string
+
+	walkErr := filepath.WalkDir(opts.TemplateFolder, func(path string, d fs.DirEntry, err error) error {
 		path = filepath.ToSlash(path)
 
 		switch {
@@ -721,13 +853,25 @@ func processTemplateFolder(
 			return createOutputDir(ctx, path, opts, variables)
 		default:
 			engine := determineTemplateEngine(processedEngines, path)
-			return processFile(ctx, path, opts, variables, partials, engine)
+
+			filePath, processErr := processFile(ctx, path, opts, variables, partials, engine)
+			if processErr != nil {
+				return processErr
+			}
+
+			if filePath != "" {
+				generatedFilePaths = append(generatedFilePaths, filePath)
+			}
+
+			return nil
 		}
 	})
+
+	return generatedFilePaths, walkErr
 }
 
 // processFile copies the given path, which is in the folder templateFolder, to the outputFolder, passing it through the Go template
-// engine with the given set of variables as the data if it's a text file.
+// engine with the given set of variables as the data if it's a text file. Returns the relative path of the generated file.
 func processFile(
 	ctx context.Context,
 	path string,
@@ -735,10 +879,10 @@ func processFile(
 	variables map[string]any,
 	partials []string,
 	engine variables.TemplateEngineType,
-) error {
+) (string, error) {
 	isText, err := fileutil.IsTextFile(path)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	if isText {
@@ -794,20 +938,30 @@ func outPath(ctx context.Context, file string, opts *options.BoilerplateOptions,
 	return path.Join(opts.OutputFolder, relPath), nil
 }
 
-// Copy the given file, which is in options.TemplateFolder, to options.OutputFolder
-func copyFile(ctx context.Context, file string, opts *options.BoilerplateOptions, variables map[string]any) error {
+// Copy the given file, which is in options.TemplateFolder, to options.OutputFolder.
+// Returns the relative path of the copied file from the output directory.
+func copyFile(ctx context.Context, file string, opts *options.BoilerplateOptions, variables map[string]any) (string, error) {
 	destination, err := outPath(ctx, file, opts, variables)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	logging.Logger.Printf("Copying %s to %s", file, destination)
 
-	return fileutil.CopyFile(file, destination)
+	if err := fileutil.CopyFile(file, destination); err != nil {
+		return "", err
+	}
+
+	relPath, err := filepath.Rel(opts.OutputFolder, destination)
+	if err != nil {
+		relPath = destination
+	}
+
+	return relPath, nil
 }
 
 // processTemplate runs the template at templatePath, which is in templateFolder, through the Go template engine with the given
-// variables as data and write the result to outputFolder
+// variables as data and writes the result to outputFolder. Returns the relative path of the generated file.
 func processTemplate(
 	ctx context.Context,
 	templatePath string,
@@ -815,10 +969,10 @@ func processTemplate(
 	vars map[string]any,
 	partials []string,
 	engine variables.TemplateEngineType,
-) error {
+) (string, error) {
 	destination, err := outPath(ctx, templatePath, opts, vars)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	var out string
@@ -827,18 +981,27 @@ func processTemplate(
 	case variables.GoTemplate:
 		out, err = render.RenderTemplateWithPartialsWithContext(ctx, templatePath, partials, vars, opts)
 		if err != nil {
-			return err
+			return "", err
 		}
 	case variables.Jsonnet:
 		out, err = render.RenderJsonnetTemplate(templatePath, vars, opts)
 		if err != nil {
-			return err
+			return "", err
 		}
 		// Strip the jsonnet extension from the destination, if it exists.
 		destination = strings.TrimSuffix(destination, ".jsonnet")
 	}
 
-	return fileutil.WriteFileWithSamePermissions(templatePath, destination, []byte(out))
+	if err := fileutil.WriteFileWithSamePermissions(templatePath, destination, []byte(out)); err != nil {
+		return "", err
+	}
+
+	relPath, err := filepath.Rel(opts.OutputFolder, destination)
+	if err != nil {
+		relPath = destination
+	}
+
+	return relPath, nil
 }
 
 // Return true if this is a path that should not be copied

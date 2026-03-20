@@ -26,7 +26,7 @@ import (
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/prompt"
 	"github.com/gruntwork-io/boilerplate/variables"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"

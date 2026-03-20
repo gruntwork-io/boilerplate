@@ -8,10 +8,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/gruntwork-io/boilerplate/cli"
 	"github.com/gruntwork-io/boilerplate/internal/fileutil"
+	"github.com/gruntwork-io/boilerplate/internal/manifest"
 	"github.com/gruntwork-io/boilerplate/options"
 )
 
@@ -95,4 +97,44 @@ func testExample(t *testing.T, templateFolder string, outputFolder string, varFi
 	if expectedOutputFolder != "" {
 		assertDirectoriesEqual(t, expectedOutputFolder, outputFolder)
 	}
+}
+func TestExampleWithManifest(t *testing.T) {
+	t.Parallel()
+
+	templateFolder := "../examples/for-learning-and-testing/website"
+	varFile := "../test-fixtures/examples-var-files/website/vars.yml"
+
+	outputFolder := t.TempDir()
+
+	app := cli.CreateBoilerplateCli()
+	args := []string{
+		"boilerplate",
+		"--template-url", templateFolder,
+		"--output-folder", outputFolder,
+		"--var-file", varFile,
+		"--manifest",
+		"--non-interactive",
+	}
+
+	err := app.Run(args)
+	require.NoError(t, err)
+
+	// Check manifest file was created in output directory
+	manifestPath := path.Join(outputFolder, "boilerplate-manifest.yaml")
+	require.FileExists(t, manifestPath)
+
+	// Read and verify manifest content
+	manifestContent, err := os.ReadFile(manifestPath)
+	require.NoError(t, err)
+
+	manifestStr := string(manifestContent)
+	// Verify single-generation manifest structure
+	assert.Contains(t, manifestStr, "SchemaVersion")
+	assert.Contains(t, manifestStr, manifest.SchemaURL)
+	assert.Contains(t, manifestStr, "Timestamp")
+	assert.Contains(t, manifestStr, "Checksum")
+	assert.Contains(t, manifestStr, "index.html")
+	assert.Contains(t, manifestStr, "logo.png")
+	assert.Contains(t, manifestStr, "TemplateURL")
+	assert.Contains(t, manifestStr, "BoilerplateVersion")
 }

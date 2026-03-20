@@ -10,7 +10,7 @@ import (
 
 	"github.com/gruntwork-io/boilerplate/version"
 	goversion "github.com/hashicorp/go-version"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
 	"github.com/gruntwork-io/boilerplate/internal/fileutil"
 	"github.com/gruntwork-io/boilerplate/internal/logging"
@@ -218,7 +218,7 @@ func LoadBoilerplateConfig(opts *options.BoilerplateOptions) (*BoilerplateConfig
 func ParseBoilerplateConfig(configContents []byte) (*BoilerplateConfig, error) {
 	boilerplateConfig := &BoilerplateConfig{}
 
-	if err := yaml.Unmarshal(configContents, boilerplateConfig); err != nil {
+	if err := yaml.Unmarshal(configContents, boilerplateConfig); err != nil { //nolint:musttag // BoilerplateConfig uses custom UnmarshalYAML
 		return nil, err
 	}
 

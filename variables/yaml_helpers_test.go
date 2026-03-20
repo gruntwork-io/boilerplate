@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -92,7 +92,7 @@ func TestConvert(t *testing.T) {
 			expectedType: "string",
 		},
 		{
-			input: map[any]any{
+			input: map[string]any{
 				"key1": "value1",
 				"key2": "value2",
 			},
@@ -106,7 +106,7 @@ func TestConvert(t *testing.T) {
 		},
 		{
 			input: []any{
-				map[any]any{
+				map[string]any{
 					"key1": "value1",
 				},
 				"",
@@ -141,7 +141,7 @@ func TestConvertNested(t *testing.T) {
 		{
 			name: "map nested in map",
 			input: map[string]any{
-				"key1": map[any]any{
+				"key1": map[string]any{
 					"nested": "value",
 				},
 			},
@@ -149,7 +149,7 @@ func TestConvertNested(t *testing.T) {
 		{
 			name: "map nested in list",
 			input: []any{
-				map[any]any{
+				map[string]any{
 					"nested": "value",
 				},
 			},
