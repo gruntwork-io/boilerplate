@@ -25,7 +25,7 @@ func TestForEachConcurrent_AllItemsProcessed(t *testing.T) {
 	opts := createForEachFixture(t, items)
 	opts.Parallelism = 4
 
-	err := templates.ProcessTemplateWithContext(t.Context(), opts, opts, &variables.Dependency{})
+	_, err := templates.ProcessTemplateWithContext(t.Context(), opts, opts, &variables.Dependency{})
 	require.NoError(t, err)
 
 	for _, item := range items {
@@ -46,7 +46,7 @@ func TestForEachConcurrent_VariableIsolation(t *testing.T) {
 	opts := createForEachFixture(t, items)
 	opts.Parallelism = runtime.NumCPU()
 
-	err := templates.ProcessTemplateWithContext(t.Context(), opts, opts, &variables.Dependency{})
+	_, err := templates.ProcessTemplateWithContext(t.Context(), opts, opts, &variables.Dependency{})
 	require.NoError(t, err)
 
 	for _, item := range items {
@@ -62,7 +62,7 @@ func TestForEachConcurrent_ParallelismOne_Sequential(t *testing.T) {
 	opts := createForEachFixture(t, items)
 	opts.Parallelism = 1
 
-	err := templates.ProcessTemplateWithContext(t.Context(), opts, opts, &variables.Dependency{})
+	_, err := templates.ProcessTemplateWithContext(t.Context(), opts, opts, &variables.Dependency{})
 	require.NoError(t, err)
 
 	for _, item := range items {
@@ -111,7 +111,7 @@ dependencies:
 		Parallelism:             4,
 	}
 
-	err := templates.ProcessTemplateWithContext(t.Context(), opts, opts, &variables.Dependency{})
+	_, err := templates.ProcessTemplateWithContext(t.Context(), opts, opts, &variables.Dependency{})
 	require.Error(t, err, "expected error from undefined variable to propagate")
 }
 
@@ -163,7 +163,7 @@ dependencies:
 		Parallelism:             runtime.NumCPU(),
 	}
 
-	err := templates.ProcessTemplateWithContext(t.Context(), opts, opts, &variables.Dependency{})
+	_, err := templates.ProcessTemplateWithContext(t.Context(), opts, opts, &variables.Dependency{})
 	require.NoError(t, err)
 
 	// CLI vars must not have been modified (no __each__ key injected, etc.)
@@ -207,7 +207,7 @@ dependencies:
 		Parallelism:             4,
 	}
 
-	err := templates.ProcessTemplateWithContext(t.Context(), opts, opts, &variables.Dependency{})
+	_, err := templates.ProcessTemplateWithContext(t.Context(), opts, opts, &variables.Dependency{})
 	require.NoError(t, err)
 
 	// The non-for_each path should have produced output in "out/"
@@ -259,7 +259,7 @@ dependencies:
 		Parallelism:             4,
 	}
 
-	err := templates.ProcessTemplateWithContext(t.Context(), opts, opts, &variables.Dependency{})
+	_, err := templates.ProcessTemplateWithContext(t.Context(), opts, opts, &variables.Dependency{})
 	require.NoError(t, err)
 
 	for _, item := range []string{"one", "two", "three"} {
@@ -322,7 +322,7 @@ hooks:
 		Parallelism:             1,
 	}
 
-	err := templates.ProcessTemplateWithContext(t.Context(), opts, opts, &variables.Dependency{})
+	_, err := templates.ProcessTemplateWithContext(t.Context(), opts, opts, &variables.Dependency{})
 	require.NoError(t, err)
 
 	modTimes := make([]time.Time, 0, len(items))
@@ -350,7 +350,7 @@ func TestForEachConcurrent_EachIterationGetsDistinctOutputDir(t *testing.T) {
 	opts := createForEachFixture(t, items)
 	opts.Parallelism = runtime.NumCPU()
 
-	err := templates.ProcessTemplateWithContext(t.Context(), opts, opts, &variables.Dependency{})
+	_, err := templates.ProcessTemplateWithContext(t.Context(), opts, opts, &variables.Dependency{})
 	require.NoError(t, err)
 
 	entries, err := os.ReadDir(opts.OutputFolder)
@@ -390,7 +390,7 @@ func TestForEachConcurrent_SharedVarsReadSafety(t *testing.T) {
 	}
 
 	// The race detector (go test -race) will catch concurrent map read/write issues.
-	err := templates.ProcessTemplateWithContext(t.Context(), opts, opts, &variables.Dependency{})
+	_, err := templates.ProcessTemplateWithContext(t.Context(), opts, opts, &variables.Dependency{})
 	require.NoError(t, err)
 
 	for _, item := range items {
@@ -442,7 +442,7 @@ dependencies:
 		Parallelism:             1,
 	}
 
-	err := templates.ProcessTemplateWithContext(t.Context(), opts, opts, &variables.Dependency{})
+	_, err := templates.ProcessTemplateWithContext(t.Context(), opts, opts, &variables.Dependency{})
 	require.Error(t, err, "should propagate error from failing iteration")
 }
 

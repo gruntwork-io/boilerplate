@@ -522,6 +522,7 @@ func processDependency(
 	}
 
 	var allDeps []manifest.ManifestDependency
+
 	var mu sync.Mutex
 
 	doProcess := func(ctx context.Context, updatedVars map[string]any, forEach []string) error {
@@ -574,6 +575,7 @@ func processDependency(
 		}
 
 		mu.Lock()
+
 		allDeps = append(allDeps, dep)
 		mu.Unlock()
 
