@@ -41,20 +41,21 @@ func ParseCLIContext(cliContext *cli.Context) (*options.BoilerplateOptions, erro
 	}
 
 	opts := &options.BoilerplateOptions{
+		Vars:                    vars,
+		ShellCommandAnswers:     make(map[string]bool),
 		TemplateURL:             templateURL,
 		TemplateFolder:          templateFolder,
 		OutputFolder:            cliContext.String(options.OptOutputFolder),
-		NonInteractive:          cliContext.Bool(options.OptNonInteractive),
 		OnMissingKey:            missingKeyAction,
 		OnMissingConfig:         missingConfigAction,
-		Vars:                    vars,
+		NonInteractive:          cliContext.Bool(options.OptNonInteractive),
 		NoHooks:                 cliContext.Bool(options.OptNoHooks),
 		NoShell:                 cliContext.Bool(options.OptNoShell),
 		DisableDependencyPrompt: cliContext.Bool(options.OptDisableDependencyPrompt),
 		ExecuteAllShellCommands: false,
-		ShellCommandAnswers:     make(map[string]bool),
 		Manifest:                cliContext.Bool(options.OptManifest) || cliContext.String(options.OptManifestFile) != "",
 		ManifestFile:            cliContext.String(options.OptManifestFile),
+		Parallelism:             cliContext.Int(options.OptParallelism),
 	}
 
 	if err := validateOptions(opts); err != nil {

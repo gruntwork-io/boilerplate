@@ -169,6 +169,12 @@ dependencies:
 
 Inside the child template, access the current item with `{{ "{{" }} .__each__ {{ "}}" }}`.
 
+`for_each` iterations are processed **concurrently** by default, using up to one goroutine per CPU. You can control this with the [`--parallelism`](/docs/cli/flags/) flag. If your dependency has side effects that require sequential execution (e.g., writing to the same file, depending on ordering), disable concurrency with:
+
+```bash
+boilerplate --parallelism=1 ...
+```
+
 ### `for_each_reference`
 
 Reference a list variable instead of a static list:

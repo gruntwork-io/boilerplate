@@ -13,10 +13,10 @@ import (
 	"github.com/gruntwork-io/boilerplate/internal/shell"
 )
 
-// ComputeSourceChecksum computes a checksum for the template source.
-// For remote (git) sources, it returns the git commit SHA. For local sources,
-// it computes a deterministic directory hash. If git detection fails, it falls
-// back to directory hashing.
+// ComputeSourceChecksum computes a checksum for the template source identified
+// by templateDir and cloneDir. When cloneDir points to a git repository it
+// delegates to [GitSourceChecksum]; otherwise (or if git detection fails) it
+// falls back to [DirectorySourceChecksum].
 func ComputeSourceChecksum(templateDir, cloneDir string) (string, error) {
 	if cloneDir == "" {
 		return DirectorySourceChecksum(templateDir)
@@ -39,8 +39,9 @@ func ComputeSourceChecksum(templateDir, cloneDir string) (string, error) {
 	return checksum, nil
 }
 
-// GitSourceChecksum returns the HEAD commit hash of the git repo in cloneDir,
-// prefixed with the object format (e.g. "git-sha1:<hash>" or "git-sha256:<hash>").
+// GitSourceChecksum returns the HEAD commit hash of the git repository at
+// cloneDir, prefixed with the object format: "git-sha1:<hash>" for
+// SHA-1 repos or "git-sha256:<hash>" for SHA-256 repos.
 func GitSourceChecksum(cloneDir string) (string, error) {
 	format, err := shell.RunShellCommandAndGetOutput(cloneDir, nil, "git", "rev-parse", "--show-object-format")
 	if err != nil {
@@ -60,8 +61,10 @@ func GitSourceChecksum(cloneDir string) (string, error) {
 }
 
 // DirectorySourceChecksum computes a deterministic SHA-256 checksum over all
-// regular files in dir (skipping .git). Files are walked in lexical order;
-// each file contributes its relative path and contents to the hash.
+// regular files in dir, skipping the .git directory. Files are walked in
+// lexical order and each file contributes its relative path (forward-slash
+// normalised) and contents to the hash. The returned string has the form
+// "sha256:<hex>".
 func DirectorySourceChecksum(dir string) (string, error) {
 	h := sha256.New()
 

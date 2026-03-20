@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://boilerplate.gruntwork.io/schemas/manifest/v1/schema.json",
+  "properties": {
+    "Variables": {
+      "type": "object",
+      "description": "User-defined template variables used during generation"
+    },
+    "SchemaVersion": {
+      "type": "string"
+    },
+    "Timestamp": {
+      "type": "string"
+    },
+    "TemplateURL": {
+      "type": "string"
+    },
+    "BoilerplateVersion": {
+      "type": "string"
+    },
+    "SourceChecksum": {
+      "type": "string",
+      "pattern": "^(git-sha1|git-sha256|sha256):.+$",
+      "description": "Checksum of the template source. For git sources: git-sha1:{commit} or git-sha256:{commit}. For local sources: sha256:{hex}."
+    },
+    "OutputDir": {
+      "type": "string"
+    },
+    "Dependencies": {
+      "items": {
+        "properties": {
+          "Variables": {
+            "type": "object"
+          },
+          "Name": {
+            "type": "string"
+          },
+          "TemplateURL": {
+            "type": "string"
+          },
+          "OutputFolder": {
+            "type": "string"
+          },
+          "SourceChecksum": {
+            "type": "string"
+          },
+          "Skip": {
+            "type": "string"
+          },
+          "ForEachReference": {
+            "type": "string"
+          },
+          "Files": {
+            "items": {
+              "properties": {
+                "Path": {
+                  "type": "string"
+                },
+                "Checksum": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9]+:.+$",
+                  "description": "Hash of the file contents, prefixed with the algorithm (e.g. sha256:abcdef…)"
+                }
+              },
+              "additionalProperties": false,
+              "type": "object",
+              "required": [
+                "Path",
+                "Checksum"
+              ]
+            },
+            "type": "array"
+          },
+          "VarFiles": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "ForEach": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "DontInheritVariables": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "Name",
+          "TemplateURL",
+          "OutputFolder"
+        ]
+      },
+      "type": "array"
+    },
+    "Files": {
+      "items": {
+        "properties": {
+          "Path": {
+            "type": "string"
+          },
+          "Checksum": {
+            "type": "string",
+            "pattern": "^[a-z0-9]+:.+$",
+            "description": "Hash of the file contents, prefixed with the algorithm (e.g. sha256:abcdef…)"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "Path",
+          "Checksum"
+        ]
+      },
+      "type": "array"
+    }
+  },
+  "additionalProperties": false,
+  "type": "object",
+  "required": [
+    "Variables",
+    "SchemaVersion",
+    "Timestamp",
+    "TemplateURL",
+    "BoilerplateVersion",
+    "SourceChecksum",
+    "OutputDir",
+    "Dependencies",
+    "Files"
+  ],
+  "title": "Boilerplate Manifest Schema",
+  "description": "Schema for boilerplate generation manifest"
+}

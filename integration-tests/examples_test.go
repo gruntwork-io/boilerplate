@@ -13,7 +13,7 @@ import (
 
 	"github.com/gruntwork-io/boilerplate/cli"
 	"github.com/gruntwork-io/boilerplate/internal/fileutil"
-	"github.com/gruntwork-io/boilerplate/internal/manifest"
+	"github.com/gruntwork-io/boilerplate/manifest"
 	"github.com/gruntwork-io/boilerplate/options"
 )
 

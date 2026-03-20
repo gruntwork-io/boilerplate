@@ -5,10 +5,11 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"runtime"
 
 	"github.com/urfave/cli/v2"
 
-	"github.com/gruntwork-io/boilerplate/internal/manifest"
+	"github.com/gruntwork-io/boilerplate/manifest"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/templates"
 	"github.com/gruntwork-io/boilerplate/variables"
@@ -104,6 +105,11 @@ func CreateBoilerplateCli() *cli.App {
 		&cli.StringFlag{
 			Name:  options.OptManifestFile,
 			Usage: "Write the manifest to `FILE` instead of the default location. Implies --manifest. Format is auto-detected from extension (.yaml/.yml for YAML, otherwise JSON).",
+		},
+		&cli.IntFlag{
+			Name:  options.OptParallelism,
+			Value: runtime.NumCPU(),
+			Usage: "Maximum number of parallel operations Boilerplate will perform at once (default: number of CPUs).",
 		},
 	}
 
