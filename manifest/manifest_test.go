@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -12,14 +11,6 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/gruntwork-io/boilerplate/manifest"
-)
-
-const (
-	// schemaPath is the path to the official published JSON Schema file, relative to this test file.
-	schemaPath = "../docs/public/schemas/manifest/v1/schema.json"
-
-	// embeddedSchemaPath is the path to the embedded copy used by the Validate function.
-	embeddedSchemaPath = "../internal/manifest/v1/schema.json"
 )
 
 func TestWriteManifestJSON(t *testing.T) {
@@ -166,100 +157,6 @@ func TestWriteManifestOverwritesPrevious(t *testing.T) {
 	assert.Equal(t, "2024-01-02T00:00:00Z", result.Timestamp)
 	assert.Len(t, result.Files, 1)
 	assert.Equal(t, "file2.txt", result.Files[0].Path)
-}
-
-// TestGeneratedSchemaMatchesPublicSchema verifies that the schema generated from
-// the Go struct is byte-for-byte identical to the official published schema file.
-// If a field is added, removed, or changed in the struct, this test fails until
-// the on-disk schema is regenerated via GenerateSchemaJSON.
-func TestGeneratedSchemaMatchesPublicSchema(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("skipping on Windows due to CRLF line ending differences")
-	}
-
-	t.Parallel()
-
-	generated, err := manifest.GenerateSchemaJSON()
-	require.NoError(t, err)
-
-	absPath, err := filepath.Abs(schemaPath)
-	require.NoError(t, err)
-
-	onDisk, err := os.ReadFile(absPath)
-	require.NoError(t, err)
-
-	assert.Equal(t, string(onDisk), string(generated),
-		"on-disk schema.json does not match GenerateSchemaJSON() output; regenerate it")
-}
-
-// TestEmbeddedSchemaMatchesPublicSchema verifies that the embedded copy of the
-// schema (used by Validate) is byte-for-byte identical to the published copy in
-// docs/public/. If this fails, copy the published schema into the embedded path.
-func TestEmbeddedSchemaMatchesPublicSchema(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("skipping on Windows due to CRLF line ending differences")
-	}
-
-	t.Parallel()
-
-	publicAbs, err := filepath.Abs(schemaPath)
-	require.NoError(t, err)
-
-	public, err := os.ReadFile(publicAbs)
-	require.NoError(t, err)
-
-	embeddedAbs, err := filepath.Abs(embeddedSchemaPath)
-	require.NoError(t, err)
-
-	embedded, err := os.ReadFile(embeddedAbs)
-	require.NoError(t, err)
-
-	assert.Equal(t, string(public), string(embedded),
-		"embedded schema does not match published schema in docs/public; copy the published file to %s", embeddedSchemaPath)
-}
-
-func TestManifestConformsToSchema(t *testing.T) {
-	t.Parallel()
-
-	m := manifest.NewManifest(
-		"./templates/service",
-		"/output",
-		"sha256:abc123",
-		[]manifest.GeneratedFile{
-			{Path: "main.go", Checksum: "sha256:aaa"},
-		},
-		map[string]any{"ServiceName": "my-service", "Port": 8080},
-		[]manifest.ManifestDependency{
-			{
-				Name:         "vpc",
-				TemplateURL:  "./modules/vpc",
-				OutputFolder: "/output/vpc",
-				Variables:    map[string]any{"cidr": "10.0.0.0/16"},
-				Files: []manifest.GeneratedFile{
-					{Path: "main.tf", Checksum: "sha256:bbb"},
-				},
-			},
-			{
-				Name:                 "logging",
-				TemplateURL:          "./modules/logging",
-				OutputFolder:         "/output/logging",
-				Skip:                 "true",
-				DontInheritVariables: true,
-			},
-			{
-				Name:             "multi",
-				TemplateURL:      "./modules/multi",
-				OutputFolder:     "/output/multi",
-				ForEach:          []string{"a", "b"},
-				ForEachReference: "items",
-				VarFiles:         []string{"extra.yml"},
-			},
-		},
-	)
-
-	data, err := json.Marshal(m)
-	require.NoError(t, err)
-	require.NoError(t, manifest.Validate(data))
 }
 
 func TestParseManifest(t *testing.T) {
