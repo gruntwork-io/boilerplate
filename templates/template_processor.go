@@ -682,6 +682,8 @@ func cloneOptionsForDependency(
 		NoHooks:                 originalOpts.NoHooks,
 		NoShell:                 originalOpts.NoShell,
 		DisableDependencyPrompt: originalOpts.DisableDependencyPrompt,
+		Manifest:                originalOpts.Manifest,
+		ManifestFile:            originalOpts.ManifestFile,
 		Parallelism:             originalOpts.Parallelism,
 	}, nil
 }
