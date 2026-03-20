@@ -11,8 +11,6 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
-	"sync"
-
 	"golang.org/x/sync/errgroup"
 
 	"github.com/gruntwork-io/boilerplate/config"
@@ -521,21 +519,17 @@ func processDependency(
 		}}, nil
 	}
 
-	var allDeps []manifest.ManifestDependency
-
-	var mu sync.Mutex
-
-	doProcess := func(ctx context.Context, updatedVars map[string]any, forEach []string) error {
+	doProcess := func(ctx context.Context, updatedVars map[string]any, forEach []string) (manifest.ManifestDependency, error) {
 		dependencyOptions, cloneErr := cloneOptionsForDependency(ctx, dependency, opts, variablesInConfig, updatedVars)
 		if cloneErr != nil {
-			return cloneErr
+			return manifest.ManifestDependency{}, cloneErr
 		}
 
 		logging.Logger.Printf("Processing dependency %s, with template folder %s and output folder %s", dependency.Name, dependencyOptions.TemplateFolder, dependencyOptions.OutputFolder)
 
 		depResult, processErr := ProcessTemplateWithContext(ctx, dependencyOptions, opts, dependency)
 		if processErr != nil {
-			return processErr
+			return manifest.ManifestDependency{}, processErr
 		}
 
 		// Use the dependency's result variables, which already have builtins filtered out.
@@ -550,7 +544,7 @@ func processDependency(
 
 				checksum, csErr := manifest.SHA256File(absPath)
 				if csErr != nil {
-					return csErr
+					return manifest.ManifestDependency{}, csErr
 				}
 
 				depFiles = append(depFiles, manifest.GeneratedFile{
@@ -560,7 +554,7 @@ func processDependency(
 			}
 		}
 
-		dep := manifest.ManifestDependency{
+		return manifest.ManifestDependency{
 			Name:                 dependency.Name,
 			TemplateURL:          dependencyOptions.TemplateURL,
 			OutputFolder:         dependencyOptions.OutputFolder,
@@ -572,14 +566,7 @@ func processDependency(
 			Variables:            resolvedVars,
 			Files:                depFiles,
 			DontInheritVariables: dependency.DontInheritVariables,
-		}
-
-		mu.Lock()
-
-		allDeps = append(allDeps, dep)
-		mu.Unlock()
-
-		return nil
+		}, nil
 	}
 
 	forEach := dependency.ForEach
@@ -599,28 +586,42 @@ func processDependency(
 	}
 
 	if len(forEach) > 0 {
+		// Pre-allocate results to preserve input ordering regardless of goroutine scheduling.
+		allDeps := make([]manifest.ManifestDependency, len(forEach))
+
 		g, ctx := errgroup.WithContext(ctx)
 		if opts.Parallelism > 0 {
 			g.SetLimit(opts.Parallelism)
 		}
 
-		for _, item := range forEach {
+		for i, item := range forEach {
 			g.Go(func() error {
 				updatedVars := util.MergeMaps(originalVars, map[string]any{eachVarName: item})
-				return doProcess(ctx, updatedVars, []string{item})
+
+				dep, processErr := doProcess(ctx, updatedVars, []string{item})
+				if processErr != nil {
+					return processErr
+				}
+
+				allDeps[i] = dep
+
+				return nil
 			})
 		}
 
 		if err := g.Wait(); err != nil {
 			return nil, err
 		}
-	} else {
-		if processErr := doProcess(ctx, originalVars, nil); processErr != nil {
-			return nil, processErr
-		}
+
+		return allDeps, nil
 	}
 
-	return allDeps, nil
+	dep, processErr := doProcess(ctx, originalVars, nil)
+	if processErr != nil {
+		return nil, processErr
+	}
+
+	return []manifest.ManifestDependency{dep}, nil
 }
 
 // Clone the given options for use when rendering the given dependency. The dependency will get the same options as
