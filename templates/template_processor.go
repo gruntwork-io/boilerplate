@@ -524,7 +524,7 @@ func processDependency(
 	var allDeps []manifest.ManifestDependency
 	var mu sync.Mutex
 
-	doProcess := func(updatedVars map[string]any, forEach []string) error {
+	doProcess := func(ctx context.Context, updatedVars map[string]any, forEach []string) error {
 		dependencyOptions, cloneErr := cloneOptionsForDependency(ctx, dependency, opts, variablesInConfig, updatedVars)
 		if cloneErr != nil {
 			return cloneErr
@@ -598,7 +598,6 @@ func processDependency(
 
 	if len(forEach) > 0 {
 		g, ctx := errgroup.WithContext(ctx)
-		_ = ctx // available for future use
 		if opts.Parallelism > 0 {
 			g.SetLimit(opts.Parallelism)
 		}
@@ -606,7 +605,7 @@ func processDependency(
 		for _, item := range forEach {
 			g.Go(func() error {
 				updatedVars := util.MergeMaps(originalVars, map[string]any{eachVarName: item})
-				return doProcess(updatedVars, []string{item})
+				return doProcess(ctx, updatedVars, []string{item})
 			})
 		}
 
@@ -614,7 +613,7 @@ func processDependency(
 			return nil, err
 		}
 	} else {
-		if processErr := doProcess(originalVars, nil); processErr != nil {
+		if processErr := doProcess(ctx, originalVars, nil); processErr != nil {
 			return nil, processErr
 		}
 	}
