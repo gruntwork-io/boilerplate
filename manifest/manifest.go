@@ -149,12 +149,34 @@ func WriteManifest(manifestPath string, m *Manifest) error {
 	return os.WriteFile(manifestPath, data, defaultFilePerm)
 }
 
-// Validate validates m against the JSON Schema that corresponds to m's
-// SchemaVersion field. This allows manifests produced by older versions of
-// boilerplate to be validated against the schema they were written with.
-// It returns an error if the schema version is unrecognised or if any schema
-// violations are found.
-func Validate(m *Manifest) error {
+// Validate validates raw manifest bytes against the JSON Schema that
+// corresponds to the manifest's SchemaVersion field. The format (JSON or YAML)
+// is auto-detected the same way as [ParseManifest]. This allows manifests
+// produced by older versions of boilerplate to be validated against the schema
+// they were written with. It returns an error if the data cannot be parsed, the
+// schema version is unrecognised, or any schema violations are found.
+func Validate(data []byte) error {
+	m, err := ParseManifest(data)
+	if err != nil {
+		return fmt.Errorf("parsing manifest for validation: %w", err)
+	}
+
+	return validate(m)
+}
+
+// ValidateFile reads a manifest file from disk and validates it against the
+// JSON Schema that corresponds to the manifest's SchemaVersion field. The
+// format is auto-detected the same way as [ParseManifestFile].
+func ValidateFile(path string) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+
+	return Validate(data)
+}
+
+func validate(m *Manifest) error {
 	schemaLoader, ok := schemaRegistry[m.SchemaVersion]
 	if !ok {
 		return fmt.Errorf("unknown manifest schema version: %q", m.SchemaVersion)

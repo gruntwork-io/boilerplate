@@ -9,7 +9,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/xeipuuv/gojsonschema"
 	"gopkg.in/yaml.v3"
 
 	"github.com/gruntwork-io/boilerplate/manifest"
@@ -219,35 +218,7 @@ func TestEmbeddedSchemaMatchesPublicSchema(t *testing.T) {
 		"embedded schema does not match published schema in docs/public; copy the published file to %s", embeddedSchemaPath)
 }
 
-// validateManifestAgainstSchema marshals the manifest to JSON and validates it
-// against the official on-disk schema file. This ensures the Go types and the
-// published schema stay in sync.
-func validateManifestAgainstSchema(t *testing.T, m *manifest.Manifest) {
-	t.Helper()
-
-	absSchema, err := filepath.Abs(schemaPath)
-	require.NoError(t, err)
-
-	schemaLoader := gojsonschema.NewReferenceLoader("file://" + absSchema)
-
-	data, err := json.Marshal(m)
-	require.NoError(t, err)
-
-	documentLoader := gojsonschema.NewBytesLoader(data)
-
-	result, err := gojsonschema.Validate(schemaLoader, documentLoader)
-	require.NoError(t, err)
-
-	for _, desc := range result.Errors() {
-		t.Errorf("schema violation: %s", desc)
-	}
-}
-
 func TestManifestConformsToSchema(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("skipping on Windows due to file:// URL path differences")
-	}
-
 	t.Parallel()
 
 	m := manifest.NewManifest(
@@ -286,7 +257,9 @@ func TestManifestConformsToSchema(t *testing.T) {
 		},
 	)
 
-	validateManifestAgainstSchema(t, m)
+	data, err := json.Marshal(m)
+	require.NoError(t, err)
+	require.NoError(t, manifest.Validate(data))
 }
 
 func TestParseManifest(t *testing.T) {
@@ -525,103 +498,189 @@ func TestParseManifestRoundTrip(t *testing.T) {
 func TestValidate(t *testing.T) {
 	t.Parallel()
 
-	validManifest := func() *manifest.Manifest {
-		return &manifest.Manifest{
-			SchemaVersion:      manifest.SchemaVersion,
-			Timestamp:          "2024-01-01T00:00:00Z",
-			TemplateURL:        "my-template",
-			BoilerplateVersion: "v1.0.0",
-			SourceChecksum:     "sha256:abc123",
-			OutputDir:          "/output",
-			Variables:          map[string]any{"Name": "svc"},
-			Files:              []manifest.GeneratedFile{{Path: "a.txt", Checksum: "sha256:aaa"}},
-			Dependencies:       []manifest.ManifestDependency{},
-		}
-	}
+	validJSON := `{
+		"SchemaVersion": "` + manifest.SchemaVersion + `",
+		"Timestamp": "2024-01-01T00:00:00Z",
+		"TemplateURL": "my-template",
+		"BoilerplateVersion": "v1.0.0",
+		"SourceChecksum": "sha256:abc123",
+		"OutputDir": "/output",
+		"Variables": {"Name": "svc"},
+		"Files": [{"Path": "a.txt", "Checksum": "sha256:aaa"}],
+		"Dependencies": []
+	}`
+
+	validYAML := `SchemaVersion: "` + manifest.SchemaVersion + `"
+Timestamp: "2024-01-01T00:00:00Z"
+TemplateURL: my-template
+BoilerplateVersion: v1.0.0
+SourceChecksum: "sha256:abc123"
+OutputDir: /output
+Variables:
+  Name: svc
+Files:
+  - Path: a.txt
+    Checksum: "sha256:aaa"
+Dependencies: []
+`
 
 	tests := []struct {
-		modify  func(m *manifest.Manifest)
 		name    string
+		input   []byte
 		errMsg  string
 		wantErr bool
 	}{
 		{
-			name:   "valid manifest",
-			modify: func(m *manifest.Manifest) {},
+			name:  "valid JSON",
+			input: []byte(validJSON),
+		},
+		{
+			name:  "valid YAML",
+			input: []byte(validYAML),
+		},
+		{
+			name:    "unparseable input",
+			input:   []byte(":::not valid\t\t[[["),
+			wantErr: true,
+			errMsg:  "parsing manifest for validation",
 		},
 		{
 			name: "unknown schema version",
-			modify: func(m *manifest.Manifest) {
-				m.SchemaVersion = "https://example.com/unknown/v99/schema.json"
-			},
+			input: []byte(`{
+				"SchemaVersion": "https://example.com/unknown/v99/schema.json",
+				"Timestamp": "2024-01-01T00:00:00Z",
+				"TemplateURL": "t",
+				"BoilerplateVersion": "v1.0.0",
+				"SourceChecksum": "sha256:abc",
+				"OutputDir": "/out",
+				"Variables": {},
+				"Files": [],
+				"Dependencies": []
+			}`),
 			wantErr: true,
 			errMsg:  "unknown manifest schema version",
 		},
 		{
 			name: "empty schema version",
-			modify: func(m *manifest.Manifest) {
-				m.SchemaVersion = ""
-			},
+			input: []byte(`{
+				"SchemaVersion": "",
+				"Timestamp": "2024-01-01T00:00:00Z",
+				"TemplateURL": "t",
+				"BoilerplateVersion": "v1.0.0",
+				"SourceChecksum": "sha256:abc",
+				"OutputDir": "/out",
+				"Variables": {},
+				"Files": [],
+				"Dependencies": []
+			}`),
 			wantErr: true,
 			errMsg:  "unknown manifest schema version",
 		},
 		{
 			name: "missing required SourceChecksum",
-			modify: func(m *manifest.Manifest) {
-				m.SourceChecksum = ""
-			},
+			input: []byte(`{
+				"SchemaVersion": "` + manifest.SchemaVersion + `",
+				"Timestamp": "2024-01-01T00:00:00Z",
+				"TemplateURL": "t",
+				"BoilerplateVersion": "v1.0.0",
+				"SourceChecksum": "",
+				"OutputDir": "/out",
+				"Variables": {},
+				"Files": [],
+				"Dependencies": []
+			}`),
 			wantErr: true,
 			errMsg:  "failed schema validation",
 		},
 		{
-			name: "nil Files fails type check",
-			modify: func(m *manifest.Manifest) {
-				m.Files = nil
-			},
+			name: "null Files fails type check",
+			input: []byte(`{
+				"SchemaVersion": "` + manifest.SchemaVersion + `",
+				"Timestamp": "2024-01-01T00:00:00Z",
+				"TemplateURL": "t",
+				"BoilerplateVersion": "v1.0.0",
+				"SourceChecksum": "sha256:abc",
+				"OutputDir": "/out",
+				"Variables": {},
+				"Files": null,
+				"Dependencies": []
+			}`),
 			wantErr: true,
 			errMsg:  "failed schema validation",
 		},
 		{
-			name: "nil Dependencies fails type check",
-			modify: func(m *manifest.Manifest) {
-				m.Dependencies = nil
-			},
+			name: "null Dependencies fails type check",
+			input: []byte(`{
+				"SchemaVersion": "` + manifest.SchemaVersion + `",
+				"Timestamp": "2024-01-01T00:00:00Z",
+				"TemplateURL": "t",
+				"BoilerplateVersion": "v1.0.0",
+				"SourceChecksum": "sha256:abc",
+				"OutputDir": "/out",
+				"Variables": {},
+				"Files": [],
+				"Dependencies": null
+			}`),
 			wantErr: true,
 			errMsg:  "failed schema validation",
 		},
 		{
 			name: "invalid SourceChecksum pattern",
-			modify: func(m *manifest.Manifest) {
-				m.SourceChecksum = "bad-no-prefix"
-			},
+			input: []byte(`{
+				"SchemaVersion": "` + manifest.SchemaVersion + `",
+				"Timestamp": "2024-01-01T00:00:00Z",
+				"TemplateURL": "t",
+				"BoilerplateVersion": "v1.0.0",
+				"SourceChecksum": "bad-no-prefix",
+				"OutputDir": "/out",
+				"Variables": {},
+				"Files": [],
+				"Dependencies": []
+			}`),
 			wantErr: true,
 			errMsg:  "failed schema validation",
 		},
 		{
 			name: "valid git-sha1 SourceChecksum",
-			modify: func(m *manifest.Manifest) {
-				m.SourceChecksum = "git-sha1:abc123def"
-			},
+			input: []byte(`{
+				"SchemaVersion": "` + manifest.SchemaVersion + `",
+				"Timestamp": "2024-01-01T00:00:00Z",
+				"TemplateURL": "t",
+				"BoilerplateVersion": "v1.0.0",
+				"SourceChecksum": "git-sha1:abc123def",
+				"OutputDir": "/out",
+				"Variables": {},
+				"Files": [],
+				"Dependencies": []
+			}`),
 		},
 		{
 			name: "valid git-sha256 SourceChecksum",
-			modify: func(m *manifest.Manifest) {
-				m.SourceChecksum = "git-sha256:abc123def"
-			},
+			input: []byte(`{
+				"SchemaVersion": "` + manifest.SchemaVersion + `",
+				"Timestamp": "2024-01-01T00:00:00Z",
+				"TemplateURL": "t",
+				"BoilerplateVersion": "v1.0.0",
+				"SourceChecksum": "git-sha256:abc123def",
+				"OutputDir": "/out",
+				"Variables": {},
+				"Files": [],
+				"Dependencies": []
+			}`),
 		},
 		{
 			name: "with dependencies",
-			modify: func(m *manifest.Manifest) {
-				m.Dependencies = []manifest.ManifestDependency{
-					{Name: "vpc", TemplateURL: "./vpc", OutputFolder: "/out/vpc"},
-				}
-			},
-		},
-		{
-			name: "NewManifest output validates",
-			modify: func(_ *manifest.Manifest) {
-				// replaced entirely in the test body
-			},
+			input: []byte(`{
+				"SchemaVersion": "` + manifest.SchemaVersion + `",
+				"Timestamp": "2024-01-01T00:00:00Z",
+				"TemplateURL": "t",
+				"BoilerplateVersion": "v1.0.0",
+				"SourceChecksum": "sha256:abc",
+				"OutputDir": "/out",
+				"Variables": {},
+				"Files": [],
+				"Dependencies": [{"Name":"vpc","TemplateURL":"./vpc","OutputFolder":"/out/vpc"}]
+			}`),
 		},
 	}
 
@@ -629,20 +688,7 @@ func TestValidate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			var m *manifest.Manifest
-			if tt.name == "NewManifest output validates" {
-				m = manifest.NewManifest(
-					"./tpl", "/out", "sha256:aaa",
-					[]manifest.GeneratedFile{{Path: "f.txt", Checksum: "sha256:bbb"}},
-					map[string]any{"k": "v"},
-					[]manifest.ManifestDependency{},
-				)
-			} else {
-				m = validManifest()
-				tt.modify(m)
-			}
-
-			err := manifest.Validate(m)
+			err := manifest.Validate(tt.input)
 			if tt.wantErr {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tt.errMsg)
@@ -653,6 +699,106 @@ func TestValidate(t *testing.T) {
 			require.NoError(t, err)
 		})
 	}
+}
+
+func TestValidateFile(t *testing.T) {
+	t.Parallel()
+
+	validJSON := `{
+		"SchemaVersion": "` + manifest.SchemaVersion + `",
+		"Timestamp": "2024-01-01T00:00:00Z",
+		"TemplateURL": "my-template",
+		"BoilerplateVersion": "v1.0.0",
+		"SourceChecksum": "sha256:abc123",
+		"OutputDir": "/output",
+		"Variables": {},
+		"Files": [{"Path": "a.txt", "Checksum": "sha256:aaa"}],
+		"Dependencies": []
+	}`
+
+	tests := []struct {
+		name     string
+		filename string
+		content  string
+		wantErr  bool
+		errMsg   string
+	}{
+		{
+			name:     "valid JSON file",
+			filename: "manifest.json",
+			content:  validJSON,
+		},
+		{
+			name:    "nonexistent file",
+			filename: "",
+			wantErr: true,
+		},
+		{
+			name:     "invalid content on disk",
+			filename: "bad.yaml",
+			content:  ":::not valid\t\t[[[",
+			wantErr:  true,
+			errMsg:   "parsing manifest for validation",
+		},
+		{
+			name:     "schema violation on disk",
+			filename: "bad-schema.json",
+			content: `{
+				"SchemaVersion": "` + manifest.SchemaVersion + `",
+				"Timestamp": "2024-01-01T00:00:00Z",
+				"TemplateURL": "t",
+				"BoilerplateVersion": "v1.0.0",
+				"SourceChecksum": "bad-no-prefix",
+				"OutputDir": "/out",
+				"Variables": {},
+				"Files": [],
+				"Dependencies": []
+			}`,
+			wantErr: true,
+			errMsg:  "failed schema validation",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var filePath string
+			if tt.filename == "" {
+				filePath = filepath.Join(t.TempDir(), "does-not-exist.json")
+			} else {
+				filePath = filepath.Join(t.TempDir(), tt.filename)
+				require.NoError(t, os.WriteFile(filePath, []byte(tt.content), 0o644))
+			}
+
+			err := manifest.ValidateFile(filePath)
+			if tt.wantErr {
+				require.Error(t, err)
+				if tt.errMsg != "" {
+					assert.Contains(t, err.Error(), tt.errMsg)
+				}
+
+				return
+			}
+
+			require.NoError(t, err)
+		})
+	}
+}
+
+func TestValidateNewManifestOutput(t *testing.T) {
+	t.Parallel()
+
+	m := manifest.NewManifest(
+		"./tpl", "/out", "sha256:aaa",
+		[]manifest.GeneratedFile{{Path: "f.txt", Checksum: "sha256:bbb"}},
+		map[string]any{"k": "v"},
+		[]manifest.ManifestDependency{},
+	)
+
+	data, err := json.Marshal(m)
+	require.NoError(t, err)
+	require.NoError(t, manifest.Validate(data))
 }
 
 func TestNewManifest(t *testing.T) {
