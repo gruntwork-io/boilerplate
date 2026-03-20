@@ -526,8 +526,8 @@ Dependencies: []
 
 	tests := []struct {
 		name    string
-		input   []byte
 		errMsg  string
+		input   []byte
 		wantErr bool
 	}{
 		{
@@ -539,7 +539,7 @@ Dependencies: []
 			input: []byte(validYAML),
 		},
 		{
-			name:    "unparseable input",
+			name:    "unparsable input",
 			input:   []byte(":::not valid\t\t[[["),
 			wantErr: true,
 			errMsg:  "parsing manifest for validation",
@@ -720,8 +720,8 @@ func TestValidateFile(t *testing.T) {
 		name     string
 		filename string
 		content  string
-		wantErr  bool
 		errMsg   string
+		wantErr  bool
 	}{
 		{
 			name:     "valid JSON file",
@@ -729,9 +729,9 @@ func TestValidateFile(t *testing.T) {
 			content:  validJSON,
 		},
 		{
-			name:    "nonexistent file",
+			name:     "nonexistent file",
 			filename: "",
-			wantErr: true,
+			wantErr:  true,
 		},
 		{
 			name:     "invalid content on disk",
@@ -774,6 +774,7 @@ func TestValidateFile(t *testing.T) {
 			err := manifest.ValidateFile(filePath)
 			if tt.wantErr {
 				require.Error(t, err)
+
 				if tt.errMsg != "" {
 					assert.Contains(t, err.Error(), tt.errMsg)
 				}
