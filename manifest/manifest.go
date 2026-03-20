@@ -1,10 +1,9 @@
-// Package manifest provides functionality for reading and writing boilerplate generation manifests.
+// Package manifest provides functionality for reading, writing, and validating
+// boilerplate generation manifests.
 package manifest
 
 import (
-	"bytes"
 	"crypto/sha256"
-	_ "embed"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -14,10 +13,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/invopop/jsonschema"
-	"github.com/xeipuuv/gojsonschema"
 	"gopkg.in/yaml.v3"
 
+	v1 "github.com/gruntwork-io/boilerplate/internal/manifest/v1"
 	"github.com/gruntwork-io/boilerplate/version"
 )
 
@@ -27,56 +25,29 @@ const (
 	DefaultManifestFilename = "boilerplate-manifest.yaml"
 
 	// SchemaURL is the canonical URL of the current manifest JSON Schema.
-	SchemaURL = "https://boilerplate.gruntwork.io/schemas/manifest/v1/schema.json"
+	SchemaURL = v1.SchemaURL
 
 	// SchemaVersion is the value written into the SchemaVersion field of every
 	// manifest produced by this version of boilerplate. It currently equals
 	// SchemaURL but is a separate constant so callers can distinguish between
 	// "where the schema lives" and "which version this code emits".
-	SchemaVersion = SchemaURL
+	SchemaVersion = v1.SchemaVersion
 )
 
-const defaultFilePerm = 0o644
+// Type aliases for the current manifest version. These allow consumers to
+// reference the types without importing the internal package directly.
+type (
+	// Manifest represents the output manifest for a single boilerplate
+	// generation run.
+	Manifest = v1.Manifest
 
-// Manifest represents the output manifest for a single boilerplate generation
-// run. It captures the template that was used, the files that were generated,
-// the variables that were supplied, and the dependencies that were processed.
-type Manifest struct {
-	Variables          map[string]any       `json:"Variables" yaml:"Variables" jsonschema:"required" jsonschema_description:"User-defined template variables used during generation"`
-	SchemaVersion      string               `json:"SchemaVersion" yaml:"SchemaVersion" jsonschema:"required"`
-	Timestamp          string               `json:"Timestamp" yaml:"Timestamp" jsonschema:"required"`
-	TemplateURL        string               `json:"TemplateURL" yaml:"TemplateURL" jsonschema:"required"`
-	BoilerplateVersion string               `json:"BoilerplateVersion" yaml:"BoilerplateVersion" jsonschema:"required"`
-	SourceChecksum     string               `json:"SourceChecksum" yaml:"SourceChecksum" jsonschema:"required,pattern=^(git-sha1|git-sha256|sha256):.+$" jsonschema_description:"Checksum of the template source. For git sources: git-sha1:{commit} or git-sha256:{commit}. For local sources: sha256:{hex}."`
-	OutputDir          string               `json:"OutputDir" yaml:"OutputDir" jsonschema:"required"`
-	Dependencies       []ManifestDependency `json:"Dependencies" yaml:"Dependencies" jsonschema:"required"`
-	Files              []GeneratedFile      `json:"Files" yaml:"Files" jsonschema:"required"`
-}
+	// ManifestDependency represents a single dependency that was processed
+	// during a boilerplate run.
+	ManifestDependency = v1.ManifestDependency
 
-// ManifestDependency represents a single dependency that was processed during a
-// boilerplate run, including its resolved template URL, output folder, and any
-// files it generated.
-type ManifestDependency struct {
-	Variables            map[string]any  `json:"Variables,omitempty" yaml:"Variables,omitempty"`
-	Name                 string          `json:"Name" yaml:"Name" jsonschema:"required"`
-	TemplateURL          string          `json:"TemplateURL" yaml:"TemplateURL" jsonschema:"required"`
-	OutputFolder         string          `json:"OutputFolder" yaml:"OutputFolder" jsonschema:"required"`
-	SourceChecksum       string          `json:"SourceChecksum,omitempty" yaml:"SourceChecksum,omitempty"`
-	Skip                 string          `json:"Skip,omitempty" yaml:"Skip,omitempty"`
-	ForEachReference     string          `json:"ForEachReference,omitempty" yaml:"ForEachReference,omitempty"`
-	Files                []GeneratedFile `json:"Files,omitempty" yaml:"Files,omitempty"`
-	VarFiles             []string        `json:"VarFiles,omitempty" yaml:"VarFiles,omitempty"`
-	ForEach              []string        `json:"ForEach,omitempty" yaml:"ForEach,omitempty"`
-	DontInheritVariables bool            `json:"DontInheritVariables,omitempty" yaml:"DontInheritVariables,omitempty"`
-}
-
-// GeneratedFile represents a single file produced by boilerplate, identified by
-// its path relative to the output directory and a content checksum (e.g.
-// "sha256:abcdef...").
-type GeneratedFile struct {
-	Path     string `json:"Path" yaml:"Path" jsonschema:"required"`
-	Checksum string `json:"Checksum" yaml:"Checksum" jsonschema:"required,pattern=^[a-z0-9]+:.+$" jsonschema_description:"Hash of the file contents, prefixed with the algorithm (e.g. sha256:abcdef…)"`
-}
+	// GeneratedFile represents a single file produced by boilerplate.
+	GeneratedFile = v1.GeneratedFile
+)
 
 // NewManifest creates a new Manifest populated with the current timestamp,
 // the running boilerplate version, and the latest [SchemaVersion]. Callers
@@ -117,7 +88,7 @@ func ParseManifest(data []byte) (*Manifest, error) {
 }
 
 // ParseManifestFile reads and parses a Manifest from a file on disk. The
-// format is auto-detected the same way as ParseManifest.
+// format is auto-detected the same way as [ParseManifest].
 func ParseManifestFile(path string) (*Manifest, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -161,7 +132,12 @@ func Validate(data []byte) error {
 		return fmt.Errorf("parsing manifest for validation: %w", err)
 	}
 
-	return validate(m)
+	validate, ok := validators[m.SchemaVersion]
+	if !ok {
+		return fmt.Errorf("unknown manifest schema version: %q", m.SchemaVersion)
+	}
+
+	return validate(data)
 }
 
 // ValidateFile reads a manifest file from disk and validates it against the
@@ -176,35 +152,11 @@ func ValidateFile(path string) error {
 	return Validate(data)
 }
 
-func validate(m *Manifest) error {
-	schemaLoader, ok := schemaRegistry[m.SchemaVersion]
-	if !ok {
-		return fmt.Errorf("unknown manifest schema version: %q", m.SchemaVersion)
-	}
-
-	data, err := json.Marshal(m)
-	if err != nil {
-		return fmt.Errorf("marshalling manifest for validation: %w", err)
-	}
-
-	result, err := gojsonschema.Validate(schemaLoader, gojsonschema.NewBytesLoader(data))
-	if err != nil {
-		return fmt.Errorf("validating manifest: %w", err)
-	}
-
-	if result.Valid() {
-		return nil
-	}
-
-	var buf strings.Builder
-
-	fmt.Fprintf(&buf, "manifest failed schema validation (%s):", m.SchemaVersion)
-
-	for _, desc := range result.Errors() {
-		fmt.Fprintf(&buf, "\n  - %s", desc)
-	}
-
-	return fmt.Errorf("%s", buf.String())
+// GenerateSchemaJSON returns the canonical JSON encoding of the current
+// manifest schema. This is the authoritative output that the on-disk
+// schema.json must match.
+func GenerateSchemaJSON() ([]byte, error) {
+	return v1.GenerateSchemaJSON()
 }
 
 // SHA256File computes the SHA256 checksum of a file and returns it as "sha256:<hex>".
@@ -223,46 +175,28 @@ func SHA256File(path string) (string, error) {
 	return "sha256:" + hex.EncodeToString(h.Sum(nil)), nil
 }
 
-// GenerateSchema returns a [jsonschema.Schema] reflecting the current
-// [Manifest] struct. The returned schema is suitable for programmatic
-// inspection or further serialisation.
-func GenerateSchema() *jsonschema.Schema {
-	reflector := jsonschema.Reflector{
-		DoNotReference: true,
-	}
-	schema := reflector.Reflect(&Manifest{})
-	schema.ID = jsonschema.ID(SchemaURL)
-	schema.Title = "Boilerplate Manifest Schema"
-	schema.Description = "Schema for boilerplate generation manifest"
+const defaultFilePerm = 0o644
 
-	return schema
+// validators maps SchemaVersion values to their version-specific validation
+// function. When a new schema version is added, register its validator here.
+var validators = map[string]func(data []byte) error{
+	v1.SchemaURL: validateV1,
 }
 
-// GenerateSchemaJSON returns the canonical JSON encoding of the manifest schema.
-// This is the authoritative output that the on-disk schema.json must match.
-func GenerateSchemaJSON() ([]byte, error) {
-	schema := GenerateSchema()
+func validateV1(data []byte) error {
+	var m v1.Manifest
 
-	var buf bytes.Buffer
-
-	enc := json.NewEncoder(&buf)
-	enc.SetIndent("", "  ")
-	enc.SetEscapeHTML(false)
-
-	if err := enc.Encode(schema); err != nil {
-		return nil, err
+	if json.Valid(data) {
+		if err := json.Unmarshal(data, &m); err != nil {
+			return fmt.Errorf("parsing manifest for validation: %w", err)
+		}
+	} else {
+		if err := yaml.Unmarshal(data, &m); err != nil {
+			return fmt.Errorf("parsing manifest for validation: %w", err)
+		}
 	}
 
-	return buf.Bytes(), nil
-}
-
-//go:embed schemas/manifest/v1/schema.json
-var schemaV1 []byte
-
-// schemaRegistry maps SchemaVersion values to their pre-loaded JSON Schema.
-// When a new schema version is published, embed its file and add an entry here.
-var schemaRegistry = map[string]gojsonschema.JSONLoader{
-	SchemaURL: gojsonschema.NewBytesLoader(schemaV1),
+	return v1.Validate(&m)
 }
 
 func isJSONExtension(path string) bool {

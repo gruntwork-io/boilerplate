@@ -19,7 +19,7 @@ const (
 	schemaPath = "../docs/public/schemas/manifest/v1/schema.json"
 
 	// embeddedSchemaPath is the path to the embedded copy used by the Validate function.
-	embeddedSchemaPath = "schemas/manifest/v1/schema.json"
+	embeddedSchemaPath = "../internal/manifest/v1/schema.json"
 )
 
 func TestWriteManifestJSON(t *testing.T) {
