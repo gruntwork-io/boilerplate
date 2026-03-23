@@ -16,6 +16,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	v1 "github.com/gruntwork-io/boilerplate/internal/manifest/v1"
+	v2 "github.com/gruntwork-io/boilerplate/internal/manifest/v2"
 	"github.com/gruntwork-io/boilerplate/version"
 )
 
@@ -25,13 +26,13 @@ const (
 	DefaultManifestFilename = "boilerplate-manifest.yaml"
 
 	// SchemaURL is the canonical URL of the current manifest JSON Schema.
-	SchemaURL = v1.SchemaURL
+	SchemaURL = v2.SchemaURL
 
 	// SchemaVersion is the value written into the SchemaVersion field of every
 	// manifest produced by this version of boilerplate. It currently equals
 	// SchemaURL but is a separate constant so callers can distinguish between
 	// "where the schema lives" and "which version this code emits".
-	SchemaVersion = v1.SchemaVersion
+	SchemaVersion = v2.SchemaVersion
 )
 
 // Type aliases for the current manifest version. These allow consumers to
@@ -39,14 +40,14 @@ const (
 type (
 	// Manifest represents the output manifest for a single boilerplate
 	// generation run.
-	Manifest = v1.Manifest
+	Manifest = v2.Manifest
 
 	// ManifestDependency represents a single dependency that was processed
 	// during a boilerplate run.
-	ManifestDependency = v1.ManifestDependency
+	ManifestDependency = v2.ManifestDependency
 
 	// GeneratedFile represents a single file produced by boilerplate.
-	GeneratedFile = v1.GeneratedFile
+	GeneratedFile = v2.GeneratedFile
 )
 
 // NewManifest creates a new Manifest populated with the current timestamp,
@@ -156,7 +157,7 @@ func ValidateFile(path string) error {
 // manifest schema. This is the authoritative output that the on-disk
 // schema.json must match.
 func GenerateSchemaJSON() ([]byte, error) {
-	return v1.GenerateSchemaJSON()
+	return v2.GenerateSchemaJSON()
 }
 
 // SHA256File computes the SHA256 checksum of a file and returns it as "sha256:<hex>".
@@ -181,6 +182,7 @@ const defaultFilePerm = 0o644
 // function. When a new schema version is added, register its validator here.
 var validators = map[string]func(data []byte) error{
 	v1.SchemaURL: validateV1,
+	v2.SchemaURL: validateV2,
 }
 
 func validateV1(data []byte) error {
@@ -197,6 +199,22 @@ func validateV1(data []byte) error {
 	}
 
 	return v1.Validate(&m)
+}
+
+func validateV2(data []byte) error {
+	var m v2.Manifest
+
+	if json.Valid(data) {
+		if err := json.Unmarshal(data, &m); err != nil {
+			return fmt.Errorf("parsing manifest for validation: %w", err)
+		}
+	} else {
+		if err := yaml.Unmarshal(data, &m); err != nil {
+			return fmt.Errorf("parsing manifest for validation: %w", err)
+		}
+	}
+
+	return v2.Validate(&m)
 }
 
 func isJSONExtension(path string) bool {

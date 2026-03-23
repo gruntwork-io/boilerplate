@@ -392,6 +392,67 @@ func TestParseManifestRoundTrip(t *testing.T) {
 	}
 }
 
+func TestParseManifestRoundTripNestedDependencies(t *testing.T) {
+	t.Parallel()
+
+	original := &manifest.Manifest{
+		SchemaVersion:      manifest.SchemaVersion,
+		Timestamp:          "2024-06-15T12:00:00Z",
+		TemplateURL:        "nested-template",
+		BoilerplateVersion: "v2.0.0",
+		SourceChecksum:     "sha256:deadbeef",
+		OutputDir:          "/nested",
+		Variables:          map[string]any{"Key": "value"},
+		Files:              []manifest.GeneratedFile{{Path: "f.txt", Checksum: "sha256:fff"}},
+		Dependencies: []manifest.ManifestDependency{
+			{
+				Name:         "parent",
+				TemplateURL:  "./parent",
+				OutputFolder: "/nested/parent",
+				Dependencies: []manifest.ManifestDependency{
+					{
+						Name:         "child",
+						TemplateURL:  "./child",
+						OutputFolder: "/nested/parent/child",
+						Files:        []manifest.GeneratedFile{{Path: "c.txt", Checksum: "sha256:ccc"}},
+					},
+				},
+			},
+		},
+	}
+
+	tests := []struct {
+		name     string
+		filename string
+	}{
+		{name: "JSON round-trip", filename: "manifest.json"},
+		{name: "YAML round-trip", filename: "manifest.yaml"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			path := filepath.Join(t.TempDir(), tt.filename)
+			require.NoError(t, manifest.WriteManifest(path, original))
+
+			parsed, err := manifest.ParseManifestFile(path)
+			require.NoError(t, err)
+
+			require.Len(t, parsed.Dependencies, 1)
+			parentDep := parsed.Dependencies[0]
+			assert.Equal(t, "parent", parentDep.Name)
+
+			require.Len(t, parentDep.Dependencies, 1)
+			childDep := parentDep.Dependencies[0]
+			assert.Equal(t, "child", childDep.Name)
+			assert.Equal(t, "/nested/parent/child", childDep.OutputFolder)
+			require.Len(t, childDep.Files, 1)
+			assert.Equal(t, "c.txt", childDep.Files[0].Path)
+		})
+	}
+}
+
 func TestValidate(t *testing.T) {
 	t.Parallel()
 
@@ -579,6 +640,43 @@ Dependencies: []
 				"Dependencies": [{"Name":"vpc","TemplateURL":"./vpc","OutputFolder":"/out/vpc"}]
 			}`),
 		},
+		{
+			name: "with nested dependencies",
+			input: []byte(`{
+				"SchemaVersion": "` + manifest.SchemaVersion + `",
+				"Timestamp": "2024-01-01T00:00:00Z",
+				"TemplateURL": "t",
+				"BoilerplateVersion": "v1.0.0",
+				"SourceChecksum": "sha256:abc",
+				"OutputDir": "/out",
+				"Variables": {},
+				"Files": [],
+				"Dependencies": [{
+					"Name":"parent",
+					"TemplateURL":"./parent",
+					"OutputFolder":"/out/parent",
+					"Dependencies": [{
+						"Name":"child",
+						"TemplateURL":"./child",
+						"OutputFolder":"/out/parent/child"
+					}]
+				}]
+			}`),
+		},
+		{
+			name: "valid v1 manifest",
+			input: []byte(`{
+				"SchemaVersion": "https://boilerplate.gruntwork.io/schemas/manifest/v1/schema.json",
+				"Timestamp": "2024-01-01T00:00:00Z",
+				"TemplateURL": "t",
+				"BoilerplateVersion": "v1.0.0",
+				"SourceChecksum": "sha256:abc",
+				"OutputDir": "/out",
+				"Variables": {},
+				"Files": [],
+				"Dependencies": []
+			}`),
+		},
 	}
 
 	for _, tt := range tests {
@@ -728,4 +826,40 @@ func TestNewManifest(t *testing.T) {
 	assert.Equal(t, files, m.Files)
 	assert.Equal(t, vars, m.Variables)
 	assert.Equal(t, deps, m.Dependencies)
+}
+
+func TestNewManifestWithNestedDependencies(t *testing.T) {
+	t.Parallel()
+
+	deps := []manifest.ManifestDependency{
+		{
+			Name:         "parent",
+			TemplateURL:  "./parent",
+			OutputFolder: "/output/parent",
+			Dependencies: []manifest.ManifestDependency{
+				{
+					Name:         "child",
+					TemplateURL:  "./child",
+					OutputFolder: "/output/parent/child",
+				},
+			},
+		},
+	}
+
+	m := manifest.NewManifest(
+		"my-template", "/output", "sha256:abc123",
+		[]manifest.GeneratedFile{{Path: "a.txt", Checksum: "sha256:abc"}},
+		map[string]any{},
+		deps,
+	)
+
+	require.Len(t, m.Dependencies, 1)
+	assert.Equal(t, "parent", m.Dependencies[0].Name)
+	require.Len(t, m.Dependencies[0].Dependencies, 1)
+	assert.Equal(t, "child", m.Dependencies[0].Dependencies[0].Name)
+
+	// Verify it validates against the v2 schema.
+	data, err := json.Marshal(m)
+	require.NoError(t, err)
+	require.NoError(t, manifest.Validate(data))
 }
