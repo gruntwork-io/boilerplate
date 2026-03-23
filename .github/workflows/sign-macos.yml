@@ -87,7 +87,7 @@ jobs:
           done
 
       - name: Upload signed darwin_amd64
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: boilerplate_darwin_amd64
           path: bin/boilerplate_darwin_amd64
@@ -95,7 +95,7 @@ jobs:
           overwrite: true
 
       - name: Upload signed darwin_arm64
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: boilerplate_darwin_arm64
           path: bin/boilerplate_darwin_arm64
