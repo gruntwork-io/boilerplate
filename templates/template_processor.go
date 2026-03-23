@@ -567,6 +567,7 @@ func processDependency(
 			Variables:            resolvedVars,
 			Files:                depFiles,
 			DontInheritVariables: dependency.DontInheritVariables,
+			Dependencies:         depResult.Dependencies,
 		}, nil
 	}
 

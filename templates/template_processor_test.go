@@ -221,6 +221,67 @@ func TestCloneVariablesForDependency(t *testing.T) {
 	}
 }
 
+func TestProcessTemplateTracksAncestorDependencies(t *testing.T) {
+	t.Parallel()
+
+	// Create a 3-level hierarchy: grandparent -> parent -> child
+	tempDir := t.TempDir()
+
+	grandparentDir := filepath.Join(tempDir, "grandparent")
+	parentDir := filepath.Join(tempDir, "parent")
+	childDir := filepath.Join(tempDir, "child")
+	outputDir := filepath.Join(tempDir, "output")
+
+	require.NoError(t, os.MkdirAll(grandparentDir, 0o755))
+	require.NoError(t, os.MkdirAll(parentDir, 0o755))
+	require.NoError(t, os.MkdirAll(childDir, 0o755))
+	require.NoError(t, os.MkdirAll(outputDir, 0o755))
+
+	// grandparent/boilerplate.yml -> depends on parent
+	require.NoError(t, os.WriteFile(filepath.Join(grandparentDir, "boilerplate.yml"), []byte(`
+dependencies:
+  - name: parent
+    template-url: ../parent
+    output-folder: ./parent
+`), 0o644))
+
+	// parent/boilerplate.yml -> depends on child; has output.txt
+	require.NoError(t, os.WriteFile(filepath.Join(parentDir, "boilerplate.yml"), []byte(`
+dependencies:
+  - name: child
+    template-url: ../child
+    output-folder: ./child
+`), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(parentDir, "output.txt"), []byte("parent output"), 0o644))
+
+	// child/boilerplate.yml -> no deps; has output.txt
+	require.NoError(t, os.WriteFile(filepath.Join(childDir, "boilerplate.yml"), []byte(""), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(childDir, "output.txt"), []byte("child output"), 0o644))
+
+	opts := &options.BoilerplateOptions{
+		TemplateFolder:  grandparentDir,
+		OutputFolder:    outputDir,
+		NonInteractive:  true,
+		OnMissingKey:    options.ExitWithError,
+		OnMissingConfig: options.Exit,
+		Manifest:        true,
+	}
+
+	dep := variables.Dependency{}
+	result, err := ProcessTemplateWithContext(t.Context(), opts, opts, &dep)
+	require.NoError(t, err)
+
+	// The result should have 1 dependency (parent)
+	require.Len(t, result.Dependencies, 1, "expected 1 top-level dependency (parent)")
+	parentDep := result.Dependencies[0]
+	assert.Equal(t, "parent", parentDep.Name)
+
+	// The parent dependency should have 1 nested dependency (child)
+	require.Len(t, parentDep.Dependencies, 1, "expected parent to have 1 nested dependency (child)")
+	childDep := parentDep.Dependencies[0]
+	assert.Equal(t, "child", childDep.Name)
+}
+
 func TestForEachReferenceRendersAsTemplate(t *testing.T) {
 	t.Parallel()
 
