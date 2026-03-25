@@ -3,6 +3,7 @@ package getterhelper
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -10,8 +11,6 @@ import (
 
 	getter "github.com/hashicorp/go-getter"
 	urlhelper "github.com/hashicorp/go-getter/helper/url"
-
-	"github.com/gruntwork-io/boilerplate/internal/logging"
 )
 
 // CloneSubdir is the subdirectory name used inside the temporary working
@@ -136,7 +135,7 @@ func DownloadTemplatesToTemporaryFolder(templateURL string) (string, string, err
 	// Always set a subdir path because go-getter can not clone into an existing dir.
 	cloneDir := filepath.Join(workingDir, CloneSubdir)
 
-	logging.Logger.Printf("Downloading templates to %s", workingDir)
+	slog.Default().Info("Downloading templates to " + workingDir)
 
 	// If there is a subdir component, we download everything and combine the path at the end to return the working path
 	mainPath, subDir := getter.SourceDirSubdir(templateURL)

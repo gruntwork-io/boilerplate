@@ -31,6 +31,7 @@ func TestSliceParsing(t *testing.T) {
 		"--var",
 		"MapValue=" + mapValue,
 		"--non-interactive",
+		"--silent",
 	}
 
 	runErr := app.Run(args)

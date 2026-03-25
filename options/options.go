@@ -18,6 +18,7 @@ const OptDisableDependencyPrompt = "disable-dependency-prompt"
 const OptManifest = "manifest"
 const OptManifestFile = "manifest-file"
 const OptParallelism = "parallelism"
+const OptSilent = "silent"
 
 // BoilerplateOptions represents the command-line options for the boilerplate app
 type BoilerplateOptions struct {
@@ -29,13 +30,14 @@ type BoilerplateOptions struct {
 	OnMissingKey            MissingKeyAction
 	TemplateURL             string
 	ManifestFile            string
+	Parallelism             int
 	NonInteractive          bool
 	NoHooks                 bool
 	NoShell                 bool
 	DisableDependencyPrompt bool
 	ExecuteAllShellCommands bool
 	Manifest                bool
-	Parallelism             int
+	Silent                  bool
 }
 
 // MissingKeyAction is an enum that represents what we can do when a template looks up a missing key. This typically happens
