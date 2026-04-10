@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"log/slog"
 	"maps"
 	"sort"
 
@@ -12,7 +13,6 @@ import (
 	"github.com/AlecAivazis/survey/v2/terminal"
 	ozzo "github.com/go-ozzo/ozzo-validation"
 	"github.com/gruntwork-io/boilerplate/internal/color"
-	"github.com/gruntwork-io/boilerplate/internal/logging"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/render"
 	"github.com/gruntwork-io/boilerplate/variables"
@@ -188,15 +188,15 @@ func getVariable(variable variables.Variable, opts *options.BoilerplateOptions) 
 
 	switch {
 	case valueSpecifiedInVars:
-		logging.Logger.Printf("Using value specified via command line options for variable '%s': %s", variable.FullName(), valueFromVars)
+		slog.Default().Info(fmt.Sprintf("Using value specified via command line options for variable '%s': %s", variable.FullName(), valueFromVars))
 		return valueFromVars, nil
 	case opts.NonInteractive && variable.Default() != nil:
-		logging.Logger.Printf("Using default value for variable '%s': %v", variable.FullName(), variable.Default())
+		slog.Default().Info(fmt.Sprintf("Using default value for variable '%s': %v", variable.FullName(), variable.Default()))
 		return variable.Default(), nil
 	case opts.NonInteractive:
 		return nil, MissingVariableWithNonInteractiveMode(variable.FullName())
 	case variable.Default() != nil && !variable.Confirm():
-		logging.Logger.Printf("Using default value for variable '%s': %v", variable.FullName(), variable.Default())
+		slog.Default().Info(fmt.Sprintf("Using default value for variable '%s': %v", variable.FullName(), variable.Default()))
 		return variable.Default(), nil
 	default:
 		return getVariableFromUser(variable, variables.InvalidEntries{})
@@ -247,7 +247,7 @@ func getVariableFromUser(variable variables.Variable, invalidEntries variables.I
 
 	if value == "" {
 		// TODO: what if the user wanted an empty string instead of the default?
-		logging.Logger.Printf("Using default value for variable '%s': %v", variable.FullName(), variable.Default())
+		slog.Default().Info(fmt.Sprintf("Using default value for variable '%s': %v", variable.FullName(), variable.Default()))
 		return variable.Default(), nil
 	}
 
