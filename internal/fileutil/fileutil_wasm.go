@@ -12,10 +12,11 @@ import (
 // gabriel-vasile/mimetype library ships a ~2MB signature table that would
 // dominate the compressed WASM artifact, so we use a byte-level heuristic
 // instead: a file is "text" if its first 512 bytes contain no NUL bytes and
-// form valid UTF-8 (or are empty). This matches how Git detects binary files
-// and is sufficient for the boilerplate template walker, which only needs to
-// distinguish templated text files from images/binaries it should copy
-// verbatim.
+// form valid UTF-8.
+//
+// Empty files are reported as NOT text to match the CLI build
+// (fileutil_cli.go: "consider empty file as binary file"), so the template
+// walker copies empty files verbatim in both builds.
 func IsTextFile(path string) (bool, error) {
 	if !PathExists(path) {
 		return false, NoSuchFile(path)

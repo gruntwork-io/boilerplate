@@ -185,7 +185,9 @@ func TestBuildBoilerplateOptionsValidation(t *testing.T) {
 	}
 }
 
-func TestBuildBoilerplateOptionsVarFiles(t *testing.T) {
+// VarFiles override inline vars on key conflict — matches variables.ParseVars
+// precedence. Inline vars are preserved only for keys the file does not set.
+func TestBuildBoilerplateOptions_VarFilesOverrideInlineVars(t *testing.T) {
 	t.Parallel()
 
 	dir := t.TempDir()
@@ -235,7 +237,7 @@ func TestBuildBoilerplateOptionsVarFileMissing(t *testing.T) {
 func TestErrorResponse(t *testing.T) {
 	t.Parallel()
 
-	resp := ErrorResponse(nil)
+	resp := ErrorResponse(nil, nil)
 	if resp.Error != "" {
 		t.Errorf("nil err should yield empty message, got %q", resp.Error)
 	}
@@ -244,16 +246,24 @@ func TestErrorResponse(t *testing.T) {
 		t.Error("GeneratedFiles should be non-nil empty slice")
 	}
 
-	resp = ErrorResponse(os.ErrNotExist)
+	if resp.Warnings == nil {
+		t.Error("Warnings should be non-nil empty slice")
+	}
+
+	resp = ErrorResponse(os.ErrNotExist, []string{"w1", "w2"})
 	if resp.Error == "" {
 		t.Error("expected non-empty error message")
+	}
+
+	if len(resp.Warnings) != 2 || resp.Warnings[0] != "w1" {
+		t.Errorf("warnings not passed through: %+v", resp.Warnings)
 	}
 }
 
 func TestSuccessResponse(t *testing.T) {
 	t.Parallel()
 
-	resp := SuccessResponse([]string{"a", "b"}, "deadbeef")
+	resp := SuccessResponse([]string{"a", "b"}, "deadbeef", []string{"w1"})
 	if resp.Error != "" {
 		t.Errorf("error should be empty: %q", resp.Error)
 	}
@@ -262,8 +272,16 @@ func TestSuccessResponse(t *testing.T) {
 		t.Errorf("fields not set: %+v", resp)
 	}
 
-	resp = SuccessResponse(nil, "")
+	if len(resp.Warnings) != 1 || resp.Warnings[0] != "w1" {
+		t.Errorf("warnings not set: %+v", resp.Warnings)
+	}
+
+	resp = SuccessResponse(nil, "", nil)
 	if resp.GeneratedFiles == nil {
 		t.Error("GeneratedFiles should be non-nil empty slice")
+	}
+
+	if resp.Warnings == nil {
+		t.Error("Warnings should be non-nil empty slice")
 	}
 }

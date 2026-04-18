@@ -9,6 +9,7 @@ import (
 	"syscall/js"
 
 	"github.com/gruntwork-io/boilerplate/cmd/wasm/bridge"
+	"github.com/gruntwork-io/boilerplate/config"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/render"
 	"github.com/gruntwork-io/boilerplate/templates"
@@ -90,6 +91,23 @@ func renderTemplate(this js.Value, args []js.Value) any {
 //	onMissingConfig         "exit"|"ignore"          ("ignore")
 //	manifest                bool                     (false)
 //
+// Defaults that diverge from the CLI — these are deliberate for WASM and
+// should not be "fixed" to match cli/parse_options.go:
+//
+//   - nonInteractive=true (CLI default: false). Interactive prompts call
+//     syscall/js-hostile code (survey/tty); in WASM they would deadlock the
+//     Go runtime since the JS event loop is blocked on our FuncOf callback.
+//   - noShell=true (CLI default: false). There is no host shell under
+//     GOOS=js, and running hooks would fail noisily. Block them up front.
+//   - disableDependencyPrompt=true (CLI default: false). Dependency confirm
+//     prompts are interactive — same deadlock risk as above.
+//   - onMissingConfig="ignore" (CLI default: "exit"). WASM callers frequently
+//     invoke boilerplate against plain template folders that lack a
+//     boilerplate.yml. Failing hard would break the common case.
+//
+// Var-file precedence also matches the CLI: values from varFiles override
+// inline vars on key conflict (see variables/yaml_helpers.go ParseVars).
+//
 // Argument-shape errors (wrong arity, bad JSON) reject the Promise with a JS
 // Error, matching the convention used by boilerplateRenderTemplate. Render
 // failures resolve the Promise with a response whose `error` field is set so
@@ -101,10 +119,14 @@ func processTemplate(this js.Value, args []js.Value) any {
 
 	reqJSON := args[0].String()
 
+	// Drain any warnings left over from a previous run before we start, so
+	// whatever we collect during this invocation is scoped to this invocation.
+	_ = config.DrainValidationWarnings()
+
 	return newPromise(func(resolve, reject js.Value) {
 		defer func() {
 			if r := recover(); r != nil {
-				resolve.Invoke(responseToJS(bridge.ErrorResponse(fmt.Errorf("panic: %v", r))))
+				resolve.Invoke(responseToJS(bridge.ErrorResponse(fmt.Errorf("panic: %v", r), config.DrainValidationWarnings())))
 			}
 		}()
 
@@ -116,17 +138,18 @@ func processTemplate(this js.Value, args []js.Value) any {
 
 		opts, err := bridge.BuildBoilerplateOptions(req)
 		if err != nil {
-			resolve.Invoke(responseToJS(bridge.ErrorResponse(err)))
+			resolve.Invoke(responseToJS(bridge.ErrorResponse(err, config.DrainValidationWarnings())))
 			return
 		}
 
 		result, processErr := runProcessTemplate(opts)
+		warnings := config.DrainValidationWarnings()
 		if processErr != nil {
-			resolve.Invoke(responseToJS(bridge.ErrorResponse(processErr)))
+			resolve.Invoke(responseToJS(bridge.ErrorResponse(processErr, warnings)))
 			return
 		}
 
-		resolve.Invoke(responseToJS(bridge.SuccessResponse(result.GeneratedFiles, result.SourceChecksum)))
+		resolve.Invoke(responseToJS(bridge.SuccessResponse(result.GeneratedFiles, result.SourceChecksum, warnings)))
 	})
 }
 
@@ -137,7 +160,7 @@ func processTemplate(this js.Value, args []js.Value) any {
 // callback while Go is blocked awaiting a JS callback.
 func newPromise(body func(resolve, reject js.Value)) js.Value {
 	var executor js.Func
-	executor = js.FuncOf(func(this js.Value, args []js.Value) any {
+	executor = js.FuncOf(func(_ js.Value, args []js.Value) any {
 		resolve := args[0]
 		reject := args[1]
 		go func() {
@@ -154,6 +177,14 @@ func rejectedPromise(reason js.Value) js.Value {
 	return js.Global().Get("Promise").Call("reject", reason)
 }
 
+// runProcessTemplate invokes the process pipeline for the WASM entry point.
+//
+// Passes opts as both `options` and `rootOpts` because the WASM entry point
+// is always a top-level run — there is no outer template invoking us as a
+// dependency. Nested dependency processing is handled internally by
+// ProcessTemplateWithContext, which re-enters itself with its own rootOpts
+// for each dependency it discovers. thisDep is nil for the same reason: the
+// top-level run is not itself a dependency of anything.
 func runProcessTemplate(opts *options.BoilerplateOptions) (result *templates.ProcessResult, err error) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -173,9 +204,15 @@ func responseToJS(resp *bridge.ProcessTemplateResponse) any {
 		generated[i] = p
 	}
 
+	warnings := make([]any, len(resp.Warnings))
+	for i, w := range resp.Warnings {
+		warnings[i] = w
+	}
+
 	return map[string]any{
 		"error":          resp.Error,
 		"generatedFiles": generated,
 		"sourceChecksum": resp.SourceChecksum,
+		"warnings":       warnings,
 	}
 }

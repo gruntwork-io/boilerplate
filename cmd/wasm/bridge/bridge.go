@@ -33,10 +33,13 @@ type ProcessTemplateRequest struct {
 
 // ProcessTemplateResponse is the JSON output shape returned by the WASM
 // boilerplateProcessTemplate entry point. Error is the empty string on success.
+// Warnings is a list of non-fatal notices emitted during the run — e.g. that
+// custom variable validations were skipped in the WASM build.
 type ProcessTemplateResponse struct {
 	Error          string   `json:"error"`
 	GeneratedFiles []string `json:"generatedFiles"`
 	SourceChecksum string   `json:"sourceChecksum"`
+	Warnings       []string `json:"warnings"`
 }
 
 // ParseProcessTemplateRequest decodes the JSON-encoded request payload.
@@ -56,8 +59,10 @@ func ParseProcessTemplateRequest(reqJSON string) (*ProcessTemplateRequest, error
 // BuildBoilerplateOptions converts a request into a *options.BoilerplateOptions
 // suitable for passing to templates.ProcessTemplateWithContext. VarFiles on
 // disk are read here so that an invalid var file produces a validation error
-// synchronously (matching CLI behavior). Values from var files are merged on
-// top of inline vars — the same precedence applied by cli/parse_options.go.
+// synchronously (matching CLI behavior). Values from var files override inline
+// vars on key conflict — the same precedence applied by variables.ParseVars
+// (see variables/yaml_helpers.go: MergeMaps is called with inline vars first
+// and var-file vars last, so var-file values win).
 func BuildBoilerplateOptions(req *ProcessTemplateRequest) (*options.BoilerplateOptions, error) {
 	if req == nil {
 		return nil, errors.New("request is nil")
@@ -128,17 +133,23 @@ func BuildBoilerplateOptions(req *ProcessTemplateRequest) (*options.BoilerplateO
 // ErrorResponse builds a ProcessTemplateResponse representing a failed run.
 // Callers return an error in a data field rather than throwing a JS Error so
 // that the downstream consumer can branch on result.error without wrapping the
-// call in try/catch.
-func ErrorResponse(err error) *ProcessTemplateResponse {
+// call in try/catch. Any warnings accumulated before the failure are still
+// passed through so the caller can see them.
+func ErrorResponse(err error, warnings []string) *ProcessTemplateResponse {
 	msg := ""
 	if err != nil {
 		msg = err.Error()
+	}
+
+	if warnings == nil {
+		warnings = []string{}
 	}
 
 	return &ProcessTemplateResponse{
 		Error:          msg,
 		GeneratedFiles: []string{},
 		SourceChecksum: "",
+		Warnings:       warnings,
 	}
 }
 
@@ -146,15 +157,20 @@ func ErrorResponse(err error) *ProcessTemplateResponse {
 // tuple. Pass generated and checksum directly rather than importing
 // templates.ProcessResult to keep this package free of build-tagged
 // dependencies.
-func SuccessResponse(generated []string, checksum string) *ProcessTemplateResponse {
+func SuccessResponse(generated []string, checksum string, warnings []string) *ProcessTemplateResponse {
 	if generated == nil {
 		generated = []string{}
+	}
+
+	if warnings == nil {
+		warnings = []string{}
 	}
 
 	return &ProcessTemplateResponse{
 		Error:          "",
 		GeneratedFiles: generated,
 		SourceChecksum: checksum,
+		Warnings:       warnings,
 	}
 }
 

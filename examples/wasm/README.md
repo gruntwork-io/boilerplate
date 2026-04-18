@@ -54,6 +54,17 @@ Because Go's filesystem syscalls are asynchronous under `GOOS=js`, the function 
 
 Anything not listed above uses `BoilerplateOptions` defaults.
 
+#### Defaults that diverge from the CLI
+
+A handful of defaults are deliberately stricter than the CLI (`cli/parse_options.go`). They are not bugs:
+
+| Field | WASM default | CLI default | Why |
+|---|---|---|---|
+| `nonInteractive` | `true` | `false` | Prompts call TTY code that would deadlock the Go runtime under `GOOS=js` (JS event loop is blocked on our `FuncOf` callback). |
+| `noShell` | `true` | `false` | No host shell exists under `GOOS=js`; hooks would fail noisily. |
+| `disableDependencyPrompt` | `true` | `false` | Same deadlock risk as `nonInteractive`. |
+| `onMissingConfig` | `"ignore"` | `"exit"` | WASM callers frequently invoke against plain template folders with no `boilerplate.yml`; failing hard breaks the common case. |
+
 The resolved `Result` object is:
 
 ```ts
@@ -61,10 +72,16 @@ The resolved `Result` object is:
   error: string,            // empty on success; failure message otherwise
   generatedFiles: string[], // paths to files written by this run
   sourceChecksum: string,   // populated only when manifest=true
+  warnings: string[],       // non-fatal notices (e.g. custom validations skipped in WASM)
 }
 ```
 
 Argument-shape failures (wrong arity, invalid JSON, invalid enum values) reject the Promise with a JS `Error`. Render failures resolve the Promise with a populated `error` field, so callers can branch on a field instead of wrapping in `try`/`catch`.
+
+#### WASM-specific caveats
+
+- **Custom `validations` on variables are not enforced.** The ozzo-validation library pulls in transitive crypto code that is excluded from the WASM binary, so the `runValidation` helper is a no-op under `GOOS=js`. If a template declares `validations`, the run emits a `warnings` entry and proceeds.
+- **Jsonnet templates are not supported.** `google/go-jsonnet` does not compile under `GOOS=js`; any `.jsonnet` in the template folder produces an error rather than being silently skipped.
 
 ### Host setup for Node
 
