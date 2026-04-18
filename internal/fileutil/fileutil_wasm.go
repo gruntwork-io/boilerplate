@@ -8,15 +8,9 @@ import (
 	"unicode/utf8"
 )
 
-// IsTextFile is a lightweight WASM build of the mimetype-based helper. The
-// gabriel-vasile/mimetype library ships a ~2MB signature table that would
-// dominate the compressed WASM artifact, so we use a byte-level heuristic
-// instead: a file is "text" if its first 512 bytes contain no NUL bytes and
-// form valid UTF-8.
-//
-// Empty files are reported as NOT text to match the CLI build
-// (fileutil_cli.go: "consider empty file as binary file"), so the template
-// walker copies empty files verbatim in both builds.
+// IsTextFile uses a byte-level heuristic instead of the ~2MB mimetype
+// signature table, which would dominate the WASM artifact. Empty files are
+// reported as non-text to match the CLI build.
 func IsTextFile(path string) (bool, error) {
 	if !PathExists(path) {
 		return false, NoSuchFile(path)

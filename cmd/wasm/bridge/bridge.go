@@ -1,7 +1,5 @@
-// Package bridge provides the JSON request/response types and translation
-// helpers used by the WASM entry points in cmd/wasm. Keeping the marshalling
-// code in a separate, build-tag-free package lets the host-side tests exercise
-// it without a js runtime.
+// Package bridge holds the JSON request/response types for the WASM entry
+// points. Kept free of build tags so host-side tests can exercise it.
 package bridge
 
 import (
@@ -14,10 +12,7 @@ import (
 	"github.com/gruntwork-io/boilerplate/variables"
 )
 
-// ProcessTemplateRequest is the JSON input shape accepted by the WASM
-// boilerplateProcessTemplate entry point. Fields mirror a conservative subset
-// of options.BoilerplateOptions; anything not listed here uses the defaults
-// encoded in NewBoilerplateOptions.
+// ProcessTemplateRequest is the JSON input for boilerplateProcessTemplate.
 type ProcessTemplateRequest struct {
 	TemplateFolder          string         `json:"templateFolder"`
 	OutputFolder            string         `json:"outputFolder"`
@@ -31,10 +26,8 @@ type ProcessTemplateRequest struct {
 	Manifest                *bool          `json:"manifest,omitempty"`
 }
 
-// ProcessTemplateResponse is the JSON output shape returned by the WASM
-// boilerplateProcessTemplate entry point. Error is the empty string on success.
-// Warnings is a list of non-fatal notices emitted during the run — e.g. that
-// custom variable validations were skipped in the WASM build.
+// ProcessTemplateResponse is the JSON output for boilerplateProcessTemplate.
+// Error is empty on success.
 type ProcessTemplateResponse struct {
 	Error          string   `json:"error"`
 	GeneratedFiles []string `json:"generatedFiles"`
@@ -42,7 +35,6 @@ type ProcessTemplateResponse struct {
 	Warnings       []string `json:"warnings"`
 }
 
-// ParseProcessTemplateRequest decodes the JSON-encoded request payload.
 func ParseProcessTemplateRequest(reqJSON string) (*ProcessTemplateRequest, error) {
 	if reqJSON == "" {
 		return nil, errors.New("request JSON is empty")
@@ -56,13 +48,8 @@ func ParseProcessTemplateRequest(reqJSON string) (*ProcessTemplateRequest, error
 	return req, nil
 }
 
-// BuildBoilerplateOptions converts a request into a *options.BoilerplateOptions
-// suitable for passing to templates.ProcessTemplateWithContext. VarFiles on
-// disk are read here so that an invalid var file produces a validation error
-// synchronously (matching CLI behavior). Values from var files override inline
-// vars on key conflict — the same precedence applied by variables.ParseVars
-// (see variables/yaml_helpers.go: MergeMaps is called with inline vars first
-// and var-file vars last, so var-file values win).
+// BuildBoilerplateOptions converts a request into BoilerplateOptions. Values
+// from varFiles override inline vars on key conflict, matching the CLI.
 func BuildBoilerplateOptions(req *ProcessTemplateRequest) (*options.BoilerplateOptions, error) {
 	if req == nil {
 		return nil, errors.New("request is nil")
@@ -130,11 +117,8 @@ func BuildBoilerplateOptions(req *ProcessTemplateRequest) (*options.BoilerplateO
 	return opts, nil
 }
 
-// ErrorResponse builds a ProcessTemplateResponse representing a failed run.
-// Callers return an error in a data field rather than throwing a JS Error so
-// that the downstream consumer can branch on result.error without wrapping the
-// call in try/catch. Any warnings accumulated before the failure are still
-// passed through so the caller can see them.
+// ErrorResponse returns a failure response. The error goes in a data field
+// rather than a thrown JS Error so callers can branch on result.error.
 func ErrorResponse(err error, warnings []string) *ProcessTemplateResponse {
 	msg := ""
 	if err != nil {
@@ -153,10 +137,8 @@ func ErrorResponse(err error, warnings []string) *ProcessTemplateResponse {
 	}
 }
 
-// SuccessResponse builds a ProcessTemplateResponse from a ProcessResult-like
-// tuple. Pass generated and checksum directly rather than importing
-// templates.ProcessResult to keep this package free of build-tagged
-// dependencies.
+// SuccessResponse takes generated and checksum directly to keep this package
+// free of build-tagged dependencies on templates.ProcessResult.
 func SuccessResponse(generated []string, checksum string, warnings []string) *ProcessTemplateResponse {
 	if generated == nil {
 		generated = []string{}

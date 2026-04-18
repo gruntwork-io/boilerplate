@@ -1,4 +1,4 @@
-//go:build !js || !wasm
+//go:build !(js && wasm)
 
 package config
 
@@ -8,28 +8,18 @@ import (
 	"github.com/gruntwork-io/boilerplate/internal/logging"
 )
 
-// DrainValidationWarnings returns and clears any warnings the runValidation
-// stub recorded. In the CLI build there is no stub and validation runs for
-// real, so there are never any warnings to drain — this exists only so that
-// the WASM entry point (and any future non-CLI host) can share code paths
-// with the CLI and still surface skipped-validation notices to callers.
+// DrainValidationWarnings is a no-op in the CLI build; it exists so the WASM
+// build can share the same call sites.
 func DrainValidationWarnings() []string {
 	return nil
 }
 
-// runValidation applies a single custom validation rule to the given value.
-// The validator is typed as any so that the signature is identical to the
-// WASM stub in validation_runner_wasm.go, which cannot import ozzo.
-//
-// In the CLI build, validator is always populated from
-// validation.CustomValidationRule.Validator (declared as ozzo.Rule), so the
-// type assertion below should always succeed. The !ok branch exists only to
-// flag drift — e.g. a future change to the CustomValidationRule schema that
-// quietly breaks type compatibility — rather than silently passing bad input.
+// runValidation uses any-typed parameters to match the WASM stub's signature,
+// which cannot import ozzo.
 func runValidation(value any, validator any) error {
 	rule, ok := validator.(ozzo.Rule)
 	if !ok {
-		logging.Logger.Printf("runValidation: validator is not an ozzo.Rule (got %T); skipping. This indicates a bug in the validation schema wiring.", validator)
+		logging.Logger.Printf("runValidation: validator is not an ozzo.Rule (got %T); skipping", validator)
 		return nil
 	}
 
