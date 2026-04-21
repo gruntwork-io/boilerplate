@@ -1,10 +1,11 @@
-package bridge
+package bridge_test
 
 import (
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/gruntwork-io/boilerplate/cmd/wasm/bridge"
 	"github.com/gruntwork-io/boilerplate/options"
 )
 
@@ -21,7 +22,7 @@ func TestParseProcessTemplateRequest(t *testing.T) {
 	    "manifest": true
 	}`
 
-	req, err := ParseProcessTemplateRequest(in)
+	req, err := bridge.ParseProcessTemplateRequest(in)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -54,11 +55,11 @@ func TestParseProcessTemplateRequest(t *testing.T) {
 func TestParseProcessTemplateRequestEmpty(t *testing.T) {
 	t.Parallel()
 
-	if _, err := ParseProcessTemplateRequest(""); err == nil {
+	if _, err := bridge.ParseProcessTemplateRequest(""); err == nil {
 		t.Fatal("expected error for empty JSON")
 	}
 
-	if _, err := ParseProcessTemplateRequest("not-json"); err == nil {
+	if _, err := bridge.ParseProcessTemplateRequest("not-json"); err == nil {
 		t.Fatal("expected error for invalid JSON")
 	}
 }
@@ -66,7 +67,7 @@ func TestParseProcessTemplateRequestEmpty(t *testing.T) {
 func TestBuildBoilerplateOptionsDefaults(t *testing.T) {
 	t.Parallel()
 
-	opts, err := BuildBoilerplateOptions(&ProcessTemplateRequest{
+	opts, err := bridge.BuildBoilerplateOptions(&bridge.ProcessTemplateRequest{
 		TemplateFolder: "/tmpl",
 		OutputFolder:   "/out",
 	})
@@ -117,7 +118,7 @@ func TestBuildBoilerplateOptionsOverrides(t *testing.T) {
 	falsePtr := false
 	truePtr := true
 
-	opts, err := BuildBoilerplateOptions(&ProcessTemplateRequest{
+	opts, err := bridge.BuildBoilerplateOptions(&bridge.ProcessTemplateRequest{
 		TemplateFolder:          "/tmpl",
 		OutputFolder:            "/out",
 		Vars:                    map[string]any{"Name": "alice"},
@@ -156,19 +157,19 @@ func TestBuildBoilerplateOptionsOverrides(t *testing.T) {
 func TestBuildBoilerplateOptionsValidation(t *testing.T) {
 	t.Parallel()
 
-	if _, err := BuildBoilerplateOptions(nil); err == nil {
+	if _, err := bridge.BuildBoilerplateOptions(nil); err == nil {
 		t.Error("expected error for nil request")
 	}
 
-	if _, err := BuildBoilerplateOptions(&ProcessTemplateRequest{OutputFolder: "/out"}); err == nil {
+	if _, err := bridge.BuildBoilerplateOptions(&bridge.ProcessTemplateRequest{OutputFolder: "/out"}); err == nil {
 		t.Error("expected error for missing templateFolder")
 	}
 
-	if _, err := BuildBoilerplateOptions(&ProcessTemplateRequest{TemplateFolder: "/tmpl"}); err == nil {
+	if _, err := bridge.BuildBoilerplateOptions(&bridge.ProcessTemplateRequest{TemplateFolder: "/tmpl"}); err == nil {
 		t.Error("expected error for missing outputFolder")
 	}
 
-	if _, err := BuildBoilerplateOptions(&ProcessTemplateRequest{
+	if _, err := bridge.BuildBoilerplateOptions(&bridge.ProcessTemplateRequest{
 		TemplateFolder: "/tmpl",
 		OutputFolder:   "/out",
 		OnMissingKey:   "nonsense",
@@ -176,7 +177,7 @@ func TestBuildBoilerplateOptionsValidation(t *testing.T) {
 		t.Error("expected error for invalid onMissingKey")
 	}
 
-	if _, err := BuildBoilerplateOptions(&ProcessTemplateRequest{
+	if _, err := bridge.BuildBoilerplateOptions(&bridge.ProcessTemplateRequest{
 		TemplateFolder:  "/tmpl",
 		OutputFolder:    "/out",
 		OnMissingConfig: "nonsense",
@@ -197,7 +198,7 @@ func TestBuildBoilerplateOptions_VarFilesOverrideInlineVars(t *testing.T) {
 		t.Fatalf("write var file: %v", err)
 	}
 
-	opts, err := BuildBoilerplateOptions(&ProcessTemplateRequest{
+	opts, err := bridge.BuildBoilerplateOptions(&bridge.ProcessTemplateRequest{
 		TemplateFolder: "/tmpl",
 		OutputFolder:   "/out",
 		Vars:           map[string]any{"Name": "fromInline", "Extra": "keep"},
@@ -224,7 +225,7 @@ func TestBuildBoilerplateOptions_VarFilesOverrideInlineVars(t *testing.T) {
 func TestBuildBoilerplateOptionsVarFileMissing(t *testing.T) {
 	t.Parallel()
 
-	_, err := BuildBoilerplateOptions(&ProcessTemplateRequest{
+	_, err := bridge.BuildBoilerplateOptions(&bridge.ProcessTemplateRequest{
 		TemplateFolder: "/tmpl",
 		OutputFolder:   "/out",
 		VarFiles:       []string{"/definitely/does/not/exist.yml"},
@@ -237,7 +238,7 @@ func TestBuildBoilerplateOptionsVarFileMissing(t *testing.T) {
 func TestErrorResponse(t *testing.T) {
 	t.Parallel()
 
-	resp := ErrorResponse(nil, nil)
+	resp := bridge.ErrorResponse(nil, nil)
 	if resp.Error != "" {
 		t.Errorf("nil err should yield empty message, got %q", resp.Error)
 	}
@@ -250,7 +251,7 @@ func TestErrorResponse(t *testing.T) {
 		t.Error("Warnings should be non-nil empty slice")
 	}
 
-	resp = ErrorResponse(os.ErrNotExist, []string{"w1", "w2"})
+	resp = bridge.ErrorResponse(os.ErrNotExist, []string{"w1", "w2"})
 	if resp.Error == "" {
 		t.Error("expected non-empty error message")
 	}
@@ -263,7 +264,7 @@ func TestErrorResponse(t *testing.T) {
 func TestSuccessResponse(t *testing.T) {
 	t.Parallel()
 
-	resp := SuccessResponse([]string{"a", "b"}, "deadbeef", []string{"w1"})
+	resp := bridge.SuccessResponse([]string{"a", "b"}, "deadbeef", []string{"w1"})
 	if resp.Error != "" {
 		t.Errorf("error should be empty: %q", resp.Error)
 	}
@@ -276,7 +277,7 @@ func TestSuccessResponse(t *testing.T) {
 		t.Errorf("warnings not set: %+v", resp.Warnings)
 	}
 
-	resp = SuccessResponse(nil, "", nil)
+	resp = bridge.SuccessResponse(nil, "", nil)
 	if resp.GeneratedFiles == nil {
 		t.Error("GeneratedFiles should be non-nil empty slice")
 	}

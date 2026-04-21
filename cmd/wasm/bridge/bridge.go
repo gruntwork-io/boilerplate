@@ -14,16 +14,16 @@ import (
 
 // ProcessTemplateRequest is the JSON input for boilerplateProcessTemplate.
 type ProcessTemplateRequest struct {
-	TemplateFolder          string         `json:"templateFolder"`
-	OutputFolder            string         `json:"outputFolder"`
 	Vars                    map[string]any `json:"vars,omitempty"`
-	VarFiles                []string       `json:"varFiles,omitempty"`
 	NonInteractive          *bool          `json:"nonInteractive,omitempty"`
 	NoShell                 *bool          `json:"noShell,omitempty"`
 	DisableDependencyPrompt *bool          `json:"disableDependencyPrompt,omitempty"`
+	Manifest                *bool          `json:"manifest,omitempty"`
+	TemplateFolder          string         `json:"templateFolder"`
+	OutputFolder            string         `json:"outputFolder"`
 	OnMissingKey            string         `json:"onMissingKey,omitempty"`
 	OnMissingConfig         string         `json:"onMissingConfig,omitempty"`
-	Manifest                *bool          `json:"manifest,omitempty"`
+	VarFiles                []string       `json:"varFiles,omitempty"`
 }
 
 // ProcessTemplateResponse is the JSON output for boilerplateProcessTemplate.
@@ -82,6 +82,7 @@ func BuildBoilerplateOptions(req *ProcessTemplateRequest) (*options.BoilerplateO
 	mergedVars := util.MergeMaps(inlineVars, varsFromFiles)
 
 	missingKey := options.ExitWithError
+
 	if req.OnMissingKey != "" {
 		parsed, err := options.ParseMissingKeyAction(req.OnMissingKey)
 		if err != nil {
@@ -92,6 +93,7 @@ func BuildBoilerplateOptions(req *ProcessTemplateRequest) (*options.BoilerplateO
 	}
 
 	missingConfig := options.Ignore
+
 	if req.OnMissingConfig != "" {
 		parsed, err := options.ParseMissingConfigAction(req.OnMissingConfig)
 		if err != nil {
