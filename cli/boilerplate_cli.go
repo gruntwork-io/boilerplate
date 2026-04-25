@@ -4,6 +4,7 @@ package cli
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 	"runtime"
 
@@ -11,6 +12,7 @@ import (
 
 	"github.com/gruntwork-io/boilerplate/manifest"
 	"github.com/gruntwork-io/boilerplate/options"
+	"github.com/gruntwork-io/boilerplate/pkg/logging"
 	"github.com/gruntwork-io/boilerplate/templates"
 	"github.com/gruntwork-io/boilerplate/variables"
 	"github.com/gruntwork-io/boilerplate/version"
@@ -139,7 +141,9 @@ func runApp(cliContext *cli.Context) error {
 	// The root boilerplate.yml is not itself a dependency, so we pass an empty Dependency.
 	emptyDep := variables.Dependency{}
 
-	result, err := templates.ProcessTemplateWithContext(ctx, opts, opts, &emptyDep)
+	l := logging.New(os.Stdout, logging.LevelInfo)
+
+	result, err := templates.ProcessTemplateWithContext(ctx, l, opts, opts, &emptyDep)
 	if err != nil {
 		return err
 	}

@@ -19,62 +19,69 @@ points used most often are `templates.ProcessTemplateWithContext` for end-to-end
 
 ### Configuring diagnostic output
 
-Boilerplate emits diagnostic output through the `pkg/logging` package. The defaults match the
-CLI: `Info` level, written to `os.Stdout`, with the `[boilerplate] ` prefix and a stdlib
-timestamp. Library callers can redirect the writer and adjust the minimum severity.
+Boilerplate emits diagnostic output through the `pkg/logging` package. The logger is passed
+explicitly into every public API as the first parameter (or right after `context.Context` when
+present, by convention named `l`), so library callers control writer and level on a per-call
+basis without touching any global state.
 
 ```go
 import (
+    "context"
     "os"
 
+    "github.com/gruntwork-io/boilerplate/options"
     "github.com/gruntwork-io/boilerplate/pkg/logging"
+    "github.com/gruntwork-io/boilerplate/templates"
+    "github.com/gruntwork-io/boilerplate/variables"
 )
 
-// Send everything at Debug or above into a custom writer. The writer receives one Write per
-// emitted record, so adapters that forward each line into a structured logger can split on
-// writes without re-buffering.
-logging.SetWriter(myWriter)
-logging.SetLevel(logging.LevelDebug)
+// Match CLI defaults: Info level, written to os.Stdout, with the "[boilerplate] " prefix and a
+// stdlib timestamp.
+l := logging.New(os.Stdout, logging.LevelInfo)
 
-// Restore defaults.
-logging.SetWriter(os.Stdout)
-logging.SetLevel(logging.LevelInfo)
+opts := &options.BoilerplateOptions{ /* ... */ }
+_, err := templates.ProcessTemplateWithContext(context.Background(), l, opts, opts, &variables.Dependency{})
 ```
 
 The package exposes:
 
 | Symbol | Purpose |
 |---|---|
-| `SetWriter(io.Writer)` | Redirect output. Panics on `nil`. |
-| `SetLevel(Level)` | Set the minimum severity that is emitted. |
-| `CurrentWriter()` / `CurrentLevel()` | Read the current configuration. |
-| `Debugf` / `Infof` / `Warnf` / `Errorf` | Emit at a specific level. |
-| `New(io.Writer, Level) *Logger` | Construct an isolated logger (useful in tests). |
+| `New(io.Writer, Level) Logger` | Construct a logger. Panics on a nil writer. |
+| `Discard() Logger` | A logger that drops every record. Useful in tests or when boilerplate should stay silent. |
+| `Logger` | Interface with `Debugf` / `Infof` / `Warnf` / `Errorf`. Implement it directly to forward records into your own structured logger. |
+| `Level` | Severity, with `LevelDebug`, `LevelInfo`, `LevelWarn`, `LevelError`. |
 
-Levels are ordered `LevelDebug < LevelInfo < LevelWarn < LevelError`. At the default `LevelInfo`,
+The returned `Logger` is immutable. To change writer or level, construct a new one. Each level
+method emits exactly one log record per call, so a writer set on `New` receives one Write per
+record and may split on writes without re-buffering.
+
+Levels are ordered `LevelDebug < LevelInfo < LevelWarn < LevelError`. At `LevelInfo`,
 boilerplate stays mostly quiet: per-file activity, variable resolution, and shell-execution
 narration are emitted at `LevelDebug`. Warnings (declined shell prompts, missing config files,
 checksum fallbacks) and errors (failed cleanup, glob failures) still surface.
 
-### Adapting to a structured logger
+### Forwarding into a structured logger
 
-Wrap a destination logger as an `io.Writer` and hand it to `SetWriter`. Each call to a level
-function is a single `Write`, so the adapter does not need a line-buffered scanner.
+Implement `logging.Logger` directly against your destination logger to bypass the text format
+entirely.
 
 ```go
-type forwarder struct{ dst *slog.Logger }
+import "log/slog"
 
-func (f *forwarder) Write(p []byte) (int, error) {
-    f.dst.Debug(strings.TrimRight(string(p), "\n"))
-    return len(p), nil
-}
+type slogAdapter struct{ dst *slog.Logger }
 
-logging.SetWriter(&forwarder{dst: app.Logger})
-logging.SetLevel(logging.LevelDebug)
+func (a *slogAdapter) Debugf(format string, args ...any) { a.dst.Debug(fmt.Sprintf(format, args...)) }
+func (a *slogAdapter) Infof(format string, args ...any)  { a.dst.Info(fmt.Sprintf(format, args...)) }
+func (a *slogAdapter) Warnf(format string, args ...any)  { a.dst.Warn(fmt.Sprintf(format, args...)) }
+func (a *slogAdapter) Errorf(format string, args ...any) { a.dst.Error(fmt.Sprintf(format, args...)) }
+
+l := &slogAdapter{dst: app.Logger}
+_, err := templates.ProcessTemplateWithContext(ctx, l, opts, opts, &variables.Dependency{})
 ```
 
-Set the level to `LevelDebug` if the host wants to receive every record and decide filtering on
-its end; warnings and errors still flow through the same writer.
+A direct `Logger` implementation is the cleanest path; `New` is the right choice when you want
+boilerplate's exact text format on a writer of your choosing.
 
 ## As a WebAssembly module
 

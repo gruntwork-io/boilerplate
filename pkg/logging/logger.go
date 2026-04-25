@@ -1,27 +1,34 @@
-// Package logging provides a process-global, level-gated logger for boilerplate.
+// Package logging provides a level-gated logger interface for boilerplate.
 //
-// The implementation wraps stdlib log.Logger rather than log/slog so the on-the-wire format
-// stays identical to historical boilerplate output ("[boilerplate] 2006/01/02 15:04:05 message"),
-// which CLI users already depend on.
+// The standard implementation wraps stdlib log.Logger rather than log/slog so the on-the-wire
+// format stays identical to historical boilerplate output ("[boilerplate] 2006/01/02 15:04:05
+// message"), which CLI users already depend on.
 //
-// Each level method (Debugf, Infof, Warnf, Errorf) emits exactly one log record per call via
-// log.Printf, so a writer set with SetWriter receives one Write per record and may split on
-// writes without re-buffering.
+// Each level method emits exactly one log record per call via log.Printf, so a writer passed
+// to New receives one Write per record and may split on writes without re-buffering.
 package logging
 
 import (
 	"fmt"
 	"io"
 	"log"
-	"os"
-	"sync"
 )
 
-// Level controls which records are written. Records at or above the configured level are emitted;
-// the rest are dropped.
+// Logger receives boilerplate's diagnostic output. Implementations must be safe for
+// concurrent use. Construct one with New, or implement the interface directly to forward
+// records into a structured logger.
+type Logger interface {
+	Debugf(format string, args ...any)
+	Infof(format string, args ...any)
+	Warnf(format string, args ...any)
+	Errorf(format string, args ...any)
+}
+
+// Level controls which records are written. Records at or above the configured level are
+// emitted; the rest are dropped.
 type Level int
 
-// Levels in ascending order of severity. Use these with SetLevel and compare against CurrentLevel.
+// Levels in ascending order of severity.
 const (
 	LevelDebug Level = iota
 	LevelInfo
@@ -33,17 +40,6 @@ const (
 	logPrefix = "[boilerplate] "
 	logFlags  = log.LstdFlags
 )
-
-// Logger is a level-gated wrapper around stdlib log.Logger. The zero value is not usable; obtain
-// an instance with New. A Logger is safe for concurrent use.
-type Logger struct {
-	log    *log.Logger
-	writer io.Writer
-	mu     sync.RWMutex
-	level  Level
-}
-
-var defaultLogger = New(os.Stdout, LevelInfo)
 
 // String returns the lowercase name of the level (debug, info, warn, error). Unknown values
 // render as "level(N)" so misuse is visible in output rather than silent.
@@ -62,124 +58,58 @@ func (l Level) String() string {
 	}
 }
 
-// New constructs a Logger that writes to w at the given minimum level, using the standard
-// boilerplate prefix and timestamp format.
-func New(w io.Writer, l Level) *Logger {
-	return &Logger{
-		log:    log.New(w, logPrefix, logFlags),
-		writer: w,
-		level:  l,
-	}
-}
-
-// SetWriter redirects the default logger's output to w. The writer receives one Write per
-// emitted record, so adapters that split lines need not buffer across calls. Passing nil panics.
-func SetWriter(w io.Writer) {
-	defaultLogger.SetWriter(w)
-}
-
-// SetLevel sets the minimum severity emitted by the default logger. Records below l are dropped.
-func SetLevel(l Level) {
-	defaultLogger.SetLevel(l)
-}
-
-// CurrentWriter returns the io.Writer currently receiving output from the default logger.
-func CurrentWriter() io.Writer {
-	return defaultLogger.CurrentWriter()
-}
-
-// CurrentLevel returns the minimum severity currently configured on the default logger.
-func CurrentLevel() Level {
-	return defaultLogger.CurrentLevel()
-}
-
-// Debugf emits a record at Debug severity through the default logger.
-func Debugf(format string, args ...any) {
-	defaultLogger.logAt(LevelDebug, format, args...)
-}
-
-// Infof emits a record at Info severity through the default logger.
-func Infof(format string, args ...any) {
-	defaultLogger.logAt(LevelInfo, format, args...)
-}
-
-// Warnf emits a record at Warn severity through the default logger.
-func Warnf(format string, args ...any) {
-	defaultLogger.logAt(LevelWarn, format, args...)
-}
-
-// Errorf emits a record at Error severity through the default logger.
-func Errorf(format string, args ...any) {
-	defaultLogger.logAt(LevelError, format, args...)
-}
-
-// SetWriter redirects this logger's output to w. Passing nil panics.
-func (lg *Logger) SetWriter(w io.Writer) {
+// New returns a Logger that writes to w at the given minimum level, using the boilerplate
+// prefix and stdlib timestamp format. Passing a nil writer panics; the returned Logger is
+// immutable, so callers wanting to change writer or level should construct a new one.
+func New(w io.Writer, l Level) Logger {
 	if w == nil {
-		panic("logging: SetWriter called with nil writer")
+		panic("logging: New called with nil writer")
 	}
 
-	lg.mu.Lock()
-	defer lg.mu.Unlock()
-
-	lg.writer = w
-	lg.log = log.New(w, logPrefix, logFlags)
+	return &stdLogger{
+		log:   log.New(w, logPrefix, logFlags),
+		level: l,
+	}
 }
 
-// SetLevel sets this logger's minimum severity.
-func (lg *Logger) SetLevel(l Level) {
-	lg.mu.Lock()
-	defer lg.mu.Unlock()
-
-	lg.level = l
+// Discard returns a Logger that drops every record. Useful in tests and for callers that
+// want boilerplate to stay silent.
+func Discard() Logger {
+	return discardLogger{}
 }
 
-// CurrentWriter returns this logger's current writer.
-func (lg *Logger) CurrentWriter() io.Writer {
-	lg.mu.RLock()
-	defer lg.mu.RUnlock()
-
-	return lg.writer
+type stdLogger struct {
+	log   *log.Logger
+	level Level
 }
 
-// CurrentLevel returns this logger's current minimum severity.
-func (lg *Logger) CurrentLevel() Level {
-	lg.mu.RLock()
-	defer lg.mu.RUnlock()
-
-	return lg.level
+func (s *stdLogger) Debugf(format string, args ...any) {
+	s.logAt(LevelDebug, format, args...)
 }
 
-// Debugf emits a record at Debug severity through this logger.
-func (lg *Logger) Debugf(format string, args ...any) {
-	lg.logAt(LevelDebug, format, args...)
+func (s *stdLogger) Infof(format string, args ...any) {
+	s.logAt(LevelInfo, format, args...)
 }
 
-// Infof emits a record at Info severity through this logger.
-func (lg *Logger) Infof(format string, args ...any) {
-	lg.logAt(LevelInfo, format, args...)
+func (s *stdLogger) Warnf(format string, args ...any) {
+	s.logAt(LevelWarn, format, args...)
 }
 
-// Warnf emits a record at Warn severity through this logger.
-func (lg *Logger) Warnf(format string, args ...any) {
-	lg.logAt(LevelWarn, format, args...)
+func (s *stdLogger) Errorf(format string, args ...any) {
+	s.logAt(LevelError, format, args...)
 }
 
-// Errorf emits a record at Error severity through this logger.
-func (lg *Logger) Errorf(format string, args ...any) {
-	lg.logAt(LevelError, format, args...)
-}
-
-func (lg *Logger) logAt(l Level, format string, args ...any) {
-	lg.mu.RLock()
-
-	if l < lg.level {
-		lg.mu.RUnlock()
+func (s *stdLogger) logAt(at Level, format string, args ...any) {
+	if at < s.level {
 		return
 	}
 
-	target := lg.log
-	lg.mu.RUnlock()
-
-	target.Printf(format, args...)
+	s.log.Printf(format, args...)
 }
+
+type discardLogger struct{}
+
+func (discardLogger) Debugf(string, ...any) {}
+func (discardLogger) Infof(string, ...any)  {}
+func (discardLogger) Warnf(string, ...any)  {}
+func (discardLogger) Errorf(string, ...any) {}

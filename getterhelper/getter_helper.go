@@ -127,7 +127,7 @@ func NewGetterClient(src string, dst string) (*getter.Client, error) {
 // DownloadTemplatesToTemporaryFolder uses the go-getter library to fetch the templates from the configured URL to a
 // temporary folder and returns the path to that folder. If there is a subdir in the template URL, return the combined
 // path as well.
-func DownloadTemplatesToTemporaryFolder(templateURL string) (string, string, error) {
+func DownloadTemplatesToTemporaryFolder(l logging.Logger, templateURL string) (string, string, error) {
 	workingDir, err := getTempFolder()
 	if err != nil {
 		return workingDir, workingDir, err
@@ -136,7 +136,7 @@ func DownloadTemplatesToTemporaryFolder(templateURL string) (string, string, err
 	// Always set a subdir path because go-getter can not clone into an existing dir.
 	cloneDir := filepath.Join(workingDir, CloneSubdir)
 
-	logging.Debugf("Downloading templates to %s", workingDir)
+	l.Debugf("Downloading templates to %s", workingDir)
 
 	// If there is a subdir component, we download everything and combine the path at the end to return the working path
 	mainPath, subDir := getter.SourceDirSubdir(templateURL)
