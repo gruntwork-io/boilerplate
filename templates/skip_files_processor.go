@@ -6,8 +6,8 @@ import (
 
 	zglob "github.com/mattn/go-zglob"
 
-	"github.com/gruntwork-io/boilerplate/internal/logging"
 	"github.com/gruntwork-io/boilerplate/options"
+	"github.com/gruntwork-io/boilerplate/pkg/logging"
 	"github.com/gruntwork-io/boilerplate/render"
 	"github.com/gruntwork-io/boilerplate/variables"
 )
@@ -77,25 +77,23 @@ func skipFileIfCondition(ctx context.Context, skipFile variables.SkipFile, opts 
 		return false, err
 	}
 
-	// TODO: logger-debug - switch to debug
 	switch {
 	case skipFile.Path != "":
-		logging.Logger.Printf("If attribute for SkipFile Path %s evaluated to '%s'", skipFile.Path, rendered)
+		logging.Debugf("If attribute for SkipFile Path %s evaluated to '%s'", skipFile.Path, rendered)
 	case skipFile.NotPath != "":
-		logging.Logger.Printf("If attribute for SkipFile NotPath %s evaluated to '%s'", skipFile.NotPath, rendered)
+		logging.Debugf("If attribute for SkipFile NotPath %s evaluated to '%s'", skipFile.NotPath, rendered)
 	default:
-		logging.Logger.Printf("WARN: SkipFile has no path or not_path!")
+		logging.Warnf("SkipFile has no path or not_path!")
 	}
 
 	return rendered == "true", nil
 }
 
 func debugLogForMatchedPaths(sourcePath string, paths []string, directiveName string, directiveAttribute string) {
-	// TODO: logger-debug - switch to debug
-	logging.Logger.Printf("Following paths were picked up by %s attribute for %s (%s):", directiveAttribute, directiveName, sourcePath)
+	logging.Debugf("Following paths were picked up by %s attribute for %s (%s):", directiveAttribute, directiveName, sourcePath)
 
 	for _, path := range paths {
-		logging.Logger.Printf("\t- %s", path)
+		logging.Debugf("\t- %s", path)
 	}
 }
 
@@ -115,8 +113,7 @@ func renderGlobPath(ctx context.Context, opts *options.BoilerplateOptions, path 
 
 	rawMatchedPaths, err := zglob.Glob(globPath)
 	if err != nil {
-		// TODO: logger-debug - switch to debug
-		logging.Logger.Printf("ERROR: could not glob %s", globPath)
+		logging.Errorf("could not glob %s", globPath)
 		return nil, err
 	}
 	// Canonicalize the matched paths prior to storage

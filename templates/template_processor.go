@@ -17,10 +17,10 @@ import (
 	"github.com/gruntwork-io/boilerplate/config"
 	"github.com/gruntwork-io/boilerplate/getterhelper"
 	"github.com/gruntwork-io/boilerplate/internal/fileutil"
-	"github.com/gruntwork-io/boilerplate/internal/logging"
 	"github.com/gruntwork-io/boilerplate/internal/shell"
 	"github.com/gruntwork-io/boilerplate/manifest"
 	"github.com/gruntwork-io/boilerplate/options"
+	"github.com/gruntwork-io/boilerplate/pkg/logging"
 	"github.com/gruntwork-io/boilerplate/prompt"
 	"github.com/gruntwork-io/boilerplate/render"
 	"github.com/gruntwork-io/boilerplate/util"
@@ -153,10 +153,10 @@ func resolveTemplate(opts *options.BoilerplateOptions) (cleanup func(), cloneDir
 	workingDir, templateFolder, downloadErr := getterhelper.DownloadTemplatesToTemporaryFolder(opts.TemplateURL)
 
 	cleanup = func() {
-		logging.Logger.Printf("Cleaning up working directory.")
+		logging.Debugf("Cleaning up working directory.")
 
 		if rmErr := os.RemoveAll(workingDir); rmErr != nil {
-			logging.Logger.Printf("Failed to clean up working directory %s: %v", workingDir, rmErr)
+			logging.Errorf("Failed to clean up working directory %s: %v", workingDir, rmErr)
 		}
 	}
 
@@ -174,7 +174,7 @@ func resolveTemplate(opts *options.BoilerplateOptions) (cleanup func(), cloneDir
 func computeSourceChecksum(templateDir, cloneDir string) string {
 	cs, err := manifest.ComputeSourceChecksum(templateDir, cloneDir)
 	if err != nil {
-		logging.Logger.Printf("Warning: failed to compute source checksum: %v", err)
+		logging.Warnf("failed to compute source checksum: %v", err)
 
 		return ""
 	}
@@ -201,7 +201,7 @@ func processPartials(ctx context.Context, partials []string, opts *options.Boile
 func processHooks(ctx context.Context, hooks []variables.Hook, opts *options.BoilerplateOptions, vars map[string]any) error {
 	if len(hooks) == 0 || opts.NoHooks {
 		if opts.NoHooks {
-			logging.Logger.Printf("Hooks are disabled, skipping %d hook(s)", len(hooks))
+			logging.Debugf("Hooks are disabled, skipping %d hook(s)", len(hooks))
 		}
 
 		return nil
@@ -216,7 +216,7 @@ func processHooks(ctx context.Context, hooks []variables.Hook, opts *options.Boi
 		skip, err := shouldSkipHook(ctx, hook, opts, vars)
 		if err != nil || skip {
 			if skip {
-				logging.Logger.Printf("Skipping hook with command '%s'", hook.Command)
+				logging.Debugf("Skipping hook with command '%s'", hook.Command)
 			}
 
 			if err != nil {
@@ -336,11 +336,11 @@ func handlePreviousHookConfirmation(hookKey string, hookAnswers map[string]bool,
 	}
 
 	if seen && !confirmed {
-		logging.Logger.Printf("Skipping hook (previously declined)")
+		logging.Warnf("Skipping hook (previously declined)")
 		return false
 	}
 
-	logging.Logger.Printf("Executing hook (%s)", "previously confirmed or all confirmed")
+	logging.Debugf("Executing hook (%s)", "previously confirmed or all confirmed")
 
 	return true
 }
@@ -358,19 +358,19 @@ func handleHookUserConfirmation(hookDetails string, hookKey string, hookAnswers 
 	case prompt.UserResponseYes:
 		hookAnswers[hookKey] = true
 
-		logging.Logger.Printf("Executing hook (user confirmed)")
+		logging.Debugf("Executing hook (user confirmed)")
 
 		return true, false, nil // should execute, don't set executeAll
 	case prompt.UserResponseAll:
 		hookAnswers[hookKey] = true
 
-		logging.Logger.Printf("Executing hook (user confirmed all)")
+		logging.Debugf("Executing hook (user confirmed all)")
 
 		return true, true, nil // should execute, set executeAll
 	case prompt.UserResponseNo:
 		hookAnswers[hookKey] = false
 
-		logging.Logger.Printf("Skipping hook (user declined)")
+		logging.Warnf("Skipping hook (user declined)")
 
 		return false, false, nil // don't execute, don't set executeAll
 	}
@@ -386,11 +386,11 @@ func generateHookKey(hookDetails string) string {
 
 // printHookDetails prints the details of a hook that will be executed
 func printHookDetails(hookDetails string) {
-	logging.Logger.Printf("Hook details:")
+	logging.Debugf("Hook details:")
 
 	lines := strings.SplitSeq(hookDetails, "\n")
 	for line := range lines {
-		logging.Logger.Printf("  %s", line)
+		logging.Debugf("  %s", line)
 	}
 }
 
@@ -459,7 +459,7 @@ func shouldSkipHook(ctx context.Context, hook *variables.Hook, opts *options.Boi
 		return false, err
 	}
 
-	logging.Logger.Printf("Skip attribute for hook with command '%s' evaluated to '%s'", hook.Command, rendered)
+	logging.Debugf("Skip attribute for hook with command '%s' evaluated to '%s'", hook.Command, rendered)
 
 	return rendered == "true", nil
 }
@@ -501,7 +501,7 @@ func processDependency(
 	}
 
 	if !shouldProcess {
-		logging.Logger.Printf("Skipping dependency %s", dependency.Name)
+		logging.Debugf("Skipping dependency %s", dependency.Name)
 
 		// Record skipped dependency with the rendered skip expression.
 		renderedSkip, skipErr := render.RenderTemplateFromStringWithContext(ctx, opts.TemplateFolder, dependency.Skip, originalVars, opts)
@@ -526,7 +526,7 @@ func processDependency(
 			return manifest.ManifestDependency{}, cloneErr
 		}
 
-		logging.Logger.Printf("Processing dependency %s, with template folder %s and output folder %s", dependency.Name, dependencyOptions.TemplateFolder, dependencyOptions.OutputFolder)
+		logging.Debugf("Processing dependency %s, with template folder %s and output folder %s", dependency.Name, dependencyOptions.TemplateFolder, dependencyOptions.OutputFolder)
 
 		depResult, processErr := ProcessTemplateWithContext(ctx, dependencyOptions, opts, dependency)
 		if processErr != nil {
@@ -838,7 +838,7 @@ func shouldSkipDependency(ctx context.Context, dependency *variables.Dependency,
 		return false, err
 	}
 
-	logging.Logger.Printf("Skip attribute for dependency %s evaluated to '%s'", dependency.Name, rendered)
+	logging.Debugf("Skip attribute for dependency %s evaluated to '%s'", dependency.Name, rendered)
 
 	return rendered == "true", nil
 }
@@ -852,7 +852,7 @@ func processTemplateFolder(
 	variables map[string]any,
 	partials []string,
 ) ([]string, error) {
-	logging.Logger.Printf("Processing templates in %s and outputting generated files to %s", opts.TemplateFolder, opts.OutputFolder)
+	logging.Debugf("Processing templates in %s and outputting generated files to %s", opts.TemplateFolder, opts.OutputFolder)
 
 	// Process and render skip files and engines before walking so we only do the rendering operation once.
 	processedSkipFiles, err := processSkipFiles(ctx, config.SkipFiles, opts, variables)
@@ -872,7 +872,7 @@ func processTemplateFolder(
 
 		switch {
 		case shouldSkipPath(path, opts, processedSkipFiles):
-			logging.Logger.Printf("Skipping %s", path)
+			logging.Debugf("Skipping %s", path)
 			return nil
 		case fileutil.IsDir(path):
 			return createOutputDir(ctx, path, opts, variables)
@@ -924,7 +924,7 @@ func createOutputDir(ctx context.Context, dir string, opts *options.BoilerplateO
 		return err
 	}
 
-	logging.Logger.Printf("Creating folder %s", destination)
+	logging.Debugf("Creating folder %s", destination)
 
 	return os.MkdirAll(destination, defaultDirPerm)
 }
@@ -971,7 +971,7 @@ func copyFile(ctx context.Context, file string, opts *options.BoilerplateOptions
 		return "", err
 	}
 
-	logging.Logger.Printf("Copying %s to %s", file, destination)
+	logging.Debugf("Copying %s to %s", file, destination)
 
 	if err := fileutil.CopyFile(file, destination); err != nil {
 		return "", err

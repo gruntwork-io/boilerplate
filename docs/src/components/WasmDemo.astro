@@ -1,0 +1,147 @@
+---
+// Live, in-browser demo of boilerplate's WASM build. The WASM artifact and
+// wasm_exec.js are fetched from the latest GitHub Release at docs build time
+// (see scripts/fetch-wasm.mjs) and served same-origin from /wasm/.
+//
+// The demo lazy-loads on first "Render" click so visitors who only read the
+// page don't pay the WASM download cost.
+---
+
+<div class="wasm-demo">
+	<p>
+		<strong>Try it:</strong> the editor below renders a Go template with the
+		variables you provide, all client-side via the WASM build. The first
+		render downloads the binary (cached by your browser thereafter).
+	</p>
+
+	<label for="wasm-demo-template">Template</label>
+	<textarea id="wasm-demo-template" rows="3" spellcheck="false">Hello, &#123;&#123; .Name &#125;&#125;! You have &#123;&#123; .Inbox &#125;&#125; new messages.</textarea>
+
+	<label for="wasm-demo-vars">Variables (JSON)</label>
+	<textarea id="wasm-demo-vars" rows="3" spellcheck="false">&#123;"Name": "world", "Inbox": 7&#125;</textarea>
+
+	<button type="button" id="wasm-demo-run">Render</button>
+	<span id="wasm-demo-status" aria-live="polite"></span>
+
+	<label for="wasm-demo-output">Output</label>
+	<pre id="wasm-demo-output"><code></code></pre>
+</div>
+
+<script is:inline src="/wasm/wasm_exec.js"></script>
+
+<script>
+	const root = document.querySelector(".wasm-demo");
+	if (root) {
+		const button = root.querySelector("#wasm-demo-run") as HTMLButtonElement;
+		const status = root.querySelector("#wasm-demo-status") as HTMLElement;
+		const tpl = root.querySelector("#wasm-demo-template") as HTMLTextAreaElement;
+		const vars = root.querySelector("#wasm-demo-vars") as HTMLTextAreaElement;
+		const out = root.querySelector("#wasm-demo-output code") as HTMLElement;
+
+		let ready: Promise<void> | null = null;
+
+		const load = () => {
+			if (ready) return ready;
+
+			status.textContent = "loading boilerplate.wasm…";
+
+			const GoCtor = (window as unknown as { Go?: new () => { run: (i: WebAssembly.Instance) => void; importObject: WebAssembly.Imports } }).Go;
+			if (!GoCtor) {
+				ready = Promise.reject(new Error("wasm_exec.js did not load (missing Go global)"));
+				return ready;
+			}
+
+			const go = new GoCtor();
+
+			ready = WebAssembly.instantiateStreaming(fetch("/wasm/boilerplate.wasm"), go.importObject)
+				.then((res) => {
+					go.run(res.instance);
+					status.textContent = "ready";
+				})
+				.catch((err: Error) => {
+					status.textContent = `failed to load: ${err.message}`;
+					throw err;
+				});
+
+			return ready;
+		};
+
+		button.addEventListener("click", async () => {
+			button.disabled = true;
+			out.textContent = "";
+
+			try {
+				await load();
+
+				const fn = (window as unknown as { boilerplateRenderTemplate?: (t: string, v: string) => string | Error }).boilerplateRenderTemplate;
+				if (!fn) {
+					throw new Error("boilerplateRenderTemplate not found on window");
+				}
+
+				const result = fn(tpl.value, vars.value);
+				if (result instanceof Error) {
+					out.textContent = `Error: ${result.message}`;
+				} else {
+					out.textContent = result;
+				}
+
+				status.textContent = "ready";
+			} catch (err) {
+				out.textContent = `Error: ${(err as Error).message}`;
+			} finally {
+				button.disabled = false;
+			}
+		});
+	}
+</script>
+
+<style>
+	.wasm-demo {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+		padding: 1rem;
+		border: 1px solid var(--sl-color-gray-5);
+		border-radius: 0.5rem;
+		background: var(--sl-color-gray-6);
+	}
+
+	.wasm-demo label {
+		font-weight: 600;
+		font-size: 0.875rem;
+	}
+
+	.wasm-demo textarea {
+		width: 100%;
+		font-family: var(--sl-font-mono);
+		font-size: 0.875rem;
+		padding: 0.5rem;
+		border: 1px solid var(--sl-color-gray-5);
+		border-radius: 0.25rem;
+		background: var(--sl-color-bg);
+		color: var(--sl-color-text);
+		resize: vertical;
+	}
+
+	.wasm-demo button {
+		align-self: flex-start;
+		padding: 0.5rem 1rem;
+		border: none;
+		border-radius: 0.25rem;
+		background: var(--sl-color-accent);
+		color: var(--sl-color-white);
+		font-weight: 600;
+		cursor: pointer;
+	}
+
+	.wasm-demo button:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+
+	.wasm-demo #wasm-demo-status {
+		font-size: 0.875rem;
+		color: var(--sl-color-gray-3);
+		margin-left: 0.5rem;
+	}
+</style>

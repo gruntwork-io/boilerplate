@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/gruntwork-io/boilerplate/internal/logging"
 	"github.com/gruntwork-io/boilerplate/internal/shell"
+	"github.com/gruntwork-io/boilerplate/pkg/logging"
 )
 
 // ComputeSourceChecksum computes a checksum for the template source identified
@@ -31,7 +31,7 @@ func ComputeSourceChecksum(templateDir, cloneDir string) (string, error) {
 
 	checksum, err := GitSourceChecksum(cloneDir)
 	if err != nil {
-		logging.Logger.Printf("Warning: git source checksum failed, falling back to directory checksum: %v", err)
+		logging.Warnf("git source checksum failed, falling back to directory checksum: %v", err)
 
 		return DirectorySourceChecksum(templateDir)
 	}
