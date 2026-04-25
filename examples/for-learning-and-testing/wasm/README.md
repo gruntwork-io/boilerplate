@@ -15,23 +15,36 @@ From the repository root:
 make wasm
 ```
 
-This compiles the WASM binary, compresses it with brotli, and copies the Go WASM support JS into `examples/wasm/`. The resulting files are:
+This compiles both WASM binaries, compresses them with brotli, and copies the Go WASM support JS into `examples/wasm/`. The resulting files are:
 
 | File | Description |
 |---|---|
-| `boilerplate.wasm` | Uncompressed WASM binary |
-| `boilerplate.wasm.br` | Brotli-compressed WASM binary |
+| `boilerplate.wasm` | Lite build — only `boilerplateRenderTemplate` |
+| `boilerplate.wasm.br` | Brotli-compressed lite build |
+| `boilerplate-full.wasm` | Full build — adds `boilerplateProcessTemplate` |
+| `boilerplate-full.wasm.br` | Brotli-compressed full build |
 | `wasm_exec.js` | Go's WASM runtime support (copied from `GOROOT`) |
+
+The lite build excludes the `templates` package and its dependencies, so it is roughly 6x smaller than the full build. Choose lite if you only need to render template strings; choose full if you need the directory-walking pipeline (`boilerplate.yml`, dependencies, partials, manifest, etc.).
+
+You can also build them individually:
+
+```sh
+make build-wasm-lite   # boilerplate.wasm only
+make build-wasm-full   # boilerplate-full.wasm only
+```
 
 ## JS API
 
-Loading the WASM binary registers two functions on `globalThis`:
-
 ### `boilerplateRenderTemplate(templateStr, varsJSON) => string`
+
+Available in **both lite and full** builds.
 
 Synchronously renders a single Go template string against a map of variables. Returns the rendered string, or a `js.Error` if arguments are malformed or rendering fails. This wraps `render.RenderTemplateFromString` — no directory walk, no `boilerplate.yml`, no dependencies.
 
 ### `boilerplateProcessTemplate(optionsJSON) => Promise<Result>`
+
+Available in the **full** build only.
 
 Runs the full `templates.ProcessTemplateWithContext` pipeline against a template folder on the host filesystem. Use this when you need feature parity with the boilerplate CLI — directory walks, `skip_files`, dependencies, partials, path-name templating, manifest generation, etc. — without the overhead of spawning a subprocess.
 
@@ -89,5 +102,6 @@ The shipped `wasm_exec.js` is the generic Go runtime. Under Node, you must popul
 
 ## Examples
 
-- **[Browser](browser/)** — Interactive demo page that renders Go templates client-side.
-- **[Node.js](node/)** — Command-line script that renders a Go template using Node.js.
+- **[Browser](browser/)** — Interactive demo page that renders Go templates client-side (lite build).
+- **[Node.js](node/)** — Command-line script that renders a Go template using Node.js (lite build).
+- **[Node.js, full build](node-full/)** — Runs the full `boilerplateProcessTemplate` pipeline against a template folder on disk. Includes the host-side `globalThis.fs/path/crypto` wiring required for fs syscalls.

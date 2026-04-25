@@ -1,0 +1,8 @@
+variables:
+  - name: Name
+    description: Who to greet
+    type: string
+
+  - name: Items
+    description: Items to list in the greeting
+    type: list

@@ -1,0 +1,5 @@
+Hello, {{ .Name | upper }}!
+
+Items:
+{{ range .Items }}- {{ . }}
+{{ end }}
