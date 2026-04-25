@@ -14,6 +14,7 @@ require (
 	github.com/hashicorp/go-version v1.8.0
 	github.com/invopop/jsonschema v0.13.0
 	github.com/mattn/go-zglob v0.0.6
+	github.com/spf13/afero v1.15.0
 	github.com/stretchr/testify v1.11.1
 	github.com/stuart-warren/yamlfmt v0.1.2
 	github.com/urfave/cli/v2 v2.27.7
