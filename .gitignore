@@ -6,5 +6,7 @@ vendor
 boilerplate
 boilerplate.wasm
 boilerplate.wasm.br
+boilerplate-full.wasm
+boilerplate-full.wasm.br
 wasm_exec.js
 /wasm
