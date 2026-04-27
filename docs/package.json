@@ -13,7 +13,7 @@
   "dependencies": {
     "@astrojs/starlight": "0.37.6",
     "@vercel/analytics": "^1.6.1",
-    "astro": "5.18.1",
+    "astro": "6.1.6",
     "sharp": "^0.34.2"
   },
   "devDependencies": {
