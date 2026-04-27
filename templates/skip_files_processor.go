@@ -8,6 +8,7 @@ import (
 
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/pkg/logging"
+	"github.com/gruntwork-io/boilerplate/pkg/vfs"
 	"github.com/gruntwork-io/boilerplate/render"
 	"github.com/gruntwork-io/boilerplate/variables"
 )
@@ -27,11 +28,11 @@ type ProcessedSkipFile struct {
 // processSkipFiles will take the skip_files list and process them in the current boilerplate context. This includes:
 // - Rendering the glob expression for the Path attribute.
 // - Rendering the if attribute using the provided variables.
-func processSkipFiles(ctx context.Context, l logging.Logger, skipFiles []variables.SkipFile, opts *options.BoilerplateOptions, variables map[string]any) ([]ProcessedSkipFile, error) {
+func processSkipFiles(ctx context.Context, l logging.Logger, fsys vfs.FS, skipFiles []variables.SkipFile, opts *options.BoilerplateOptions, variables map[string]any) ([]ProcessedSkipFile, error) {
 	output := []ProcessedSkipFile{}
 
 	for _, skipFile := range skipFiles {
-		matchedPaths, err := renderGlobPath(ctx, l, opts, skipFile.Path, variables)
+		matchedPaths, err := renderGlobPath(ctx, l, fsys, opts, skipFile.Path, variables)
 		if err != nil {
 			return nil, err
 		}
@@ -40,7 +41,7 @@ func processSkipFiles(ctx context.Context, l logging.Logger, skipFiles []variabl
 			debugLogForMatchedPaths(l, skipFile.Path, matchedPaths, "SkipFile", "Path")
 		}
 
-		matchedNotPaths, err := renderGlobPath(ctx, l, opts, skipFile.NotPath, variables)
+		matchedNotPaths, err := renderGlobPath(ctx, l, fsys, opts, skipFile.NotPath, variables)
 		if err != nil {
 			return nil, err
 		}
@@ -49,7 +50,7 @@ func processSkipFiles(ctx context.Context, l logging.Logger, skipFiles []variabl
 			debugLogForMatchedPaths(l, skipFile.NotPath, matchedNotPaths, "SkipFile", "NotPath")
 		}
 
-		renderedSkipIf, err := skipFileIfCondition(ctx, l, skipFile, opts, variables)
+		renderedSkipIf, err := skipFileIfCondition(ctx, l, fsys, skipFile, opts, variables)
 		if err != nil {
 			return nil, err
 		}
@@ -66,13 +67,13 @@ func processSkipFiles(ctx context.Context, l logging.Logger, skipFiles []variabl
 }
 
 // Return true if the if parameter of the given SkipFile evaluates to a "true" value.
-func skipFileIfCondition(ctx context.Context, l logging.Logger, skipFile variables.SkipFile, opts *options.BoilerplateOptions, variables map[string]any) (bool, error) {
+func skipFileIfCondition(ctx context.Context, l logging.Logger, fsys vfs.FS, skipFile variables.SkipFile, opts *options.BoilerplateOptions, variables map[string]any) (bool, error) {
 	// If the "if" attribute of skip_files was not specified, then default to true.
 	if skipFile.If == "" {
 		return true, nil
 	}
 
-	rendered, err := render.RenderTemplateFromStringWithContext(ctx, l, opts.TemplateFolder, skipFile.If, variables, opts)
+	rendered, err := render.RenderTemplateFromStringWithContext(ctx, l, fsys, opts.TemplateFolder, skipFile.If, variables, opts)
 	if err != nil {
 		return false, err
 	}
@@ -99,12 +100,12 @@ func debugLogForMatchedPaths(l logging.Logger, sourcePath string, paths []string
 
 // renderGlobPath will render the glob of the given path in the template folder and return the list of matched paths.
 // Note that the paths will be canonicalized to unix slashes regardless of OS.
-func renderGlobPath(ctx context.Context, l logging.Logger, opts *options.BoilerplateOptions, path string, variables map[string]any) ([]string, error) {
+func renderGlobPath(ctx context.Context, l logging.Logger, fsys vfs.FS, opts *options.BoilerplateOptions, path string, variables map[string]any) ([]string, error) {
 	if path == "" {
 		return []string{}, nil
 	}
 
-	rendered, err := render.RenderTemplateFromStringWithContext(ctx, l, opts.TemplateFolder, path, variables, opts)
+	rendered, err := render.RenderTemplateFromStringWithContext(ctx, l, fsys, opts.TemplateFolder, path, variables, opts)
 	if err != nil {
 		return nil, err
 	}

@@ -7,7 +7,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/gruntwork-io/boilerplate/internal/vfs"
+	"github.com/gruntwork-io/boilerplate/pkg/vfs"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

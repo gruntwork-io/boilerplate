@@ -5,17 +5,19 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"os"
 
 	"github.com/hashicorp/go-getter"
 
 	"github.com/gruntwork-io/boilerplate/internal/fileutil"
+	"github.com/gruntwork-io/boilerplate/pkg/vfs"
 )
 
 // FileCopyGetter is a custom getter.Getter implementation that uses file copying instead of symlinks. Symlinks are
 // faster and use less disk space, but they cause issues in Windows and with infinite loops, so we copy files/folders
 // instead.
 type FileCopyGetter struct {
+	// Vfs is the filesystem used for the copy. Callers must set this before invoking Get.
+	Vfs vfs.FS
 	getter.FileGetter
 }
 
@@ -28,13 +30,13 @@ func (g *FileCopyGetter) Get(dst string, u *url.URL) error {
 	}
 
 	// The source path must exist and be a directory to be usable.
-	if fi, err := os.Stat(path); err != nil {
+	if fi, err := g.Vfs.Stat(path); err != nil {
 		return fmt.Errorf("source path error: %w", err)
 	} else if !fi.IsDir() {
 		return errors.New("source path must be a directory")
 	}
 
-	return fileutil.CopyFolder(path, dst)
+	return fileutil.CopyFolder(g.Vfs, path, dst)
 }
 
 // GetFile implements file copying for the FileCopyGetter. The original FileGetter already knows how to do file copying so long as we set the Copy flag to true, so just

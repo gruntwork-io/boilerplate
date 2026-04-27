@@ -7,7 +7,6 @@ import (
 	"io/fs"
 	"maps"
 	"net/url"
-	"os"
 	"path"
 	"path/filepath"
 	"strings"
@@ -21,6 +20,7 @@ import (
 	"github.com/gruntwork-io/boilerplate/manifest"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/pkg/logging"
+	"github.com/gruntwork-io/boilerplate/pkg/vfs"
 	"github.com/gruntwork-io/boilerplate/prompt"
 	"github.com/gruntwork-io/boilerplate/render"
 	"github.com/gruntwork-io/boilerplate/util"
@@ -45,15 +45,15 @@ const defaultDirPerm = 0o777
 // function will load any missing variables (either from command line options or by prompting the user), execute all the
 // dependent boilerplate templates, and then execute this template. Note that we pass in rootOptions so that template
 // dependencies can inspect properties of the root template.
-func ProcessTemplate(l logging.Logger, options, rootOpts *options.BoilerplateOptions, thisDep *variables.Dependency) error {
-	_, err := ProcessTemplateWithContext(context.Background(), l, options, rootOpts, thisDep)
+func ProcessTemplate(l logging.Logger, fsys vfs.FS, options, rootOpts *options.BoilerplateOptions, thisDep *variables.Dependency) error {
+	_, err := ProcessTemplateWithContext(context.Background(), l, fsys, options, rootOpts, thisDep)
 	return err
 }
 
 // ProcessTemplateWithContext is like ProcessTemplate but accepts a context for cancellation and timeouts.
 // Returns a ProcessResult containing the list of generated file paths and source checksum.
-func ProcessTemplateWithContext(ctx context.Context, l logging.Logger, options, rootOpts *options.BoilerplateOptions, thisDep *variables.Dependency) (*ProcessResult, error) {
-	cleanup, cloneDir, err := resolveTemplate(l, options)
+func ProcessTemplateWithContext(ctx context.Context, l logging.Logger, fsys vfs.FS, options, rootOpts *options.BoilerplateOptions, thisDep *variables.Dependency) (*ProcessResult, error) {
+	cleanup, cloneDir, err := resolveTemplate(l, fsys, options)
 	if cleanup != nil {
 		defer cleanup()
 	}
@@ -66,10 +66,10 @@ func ProcessTemplateWithContext(ctx context.Context, l logging.Logger, options, 
 	var sourceChecksum string
 
 	if options.Manifest {
-		sourceChecksum = computeSourceChecksum(l, options.TemplateFolder, cloneDir)
+		sourceChecksum = computeSourceChecksum(l, fsys, options.TemplateFolder, cloneDir)
 	}
 
-	rootBoilerplateConfig, rootCfgErr := config.LoadBoilerplateConfig(l, rootOpts)
+	rootBoilerplateConfig, rootCfgErr := config.LoadBoilerplateConfig(l, fsys, rootOpts)
 	if rootCfgErr != nil {
 		return nil, rootCfgErr
 	}
@@ -78,7 +78,7 @@ func ProcessTemplateWithContext(ctx context.Context, l logging.Logger, options, 
 		return nil, err
 	}
 
-	boilerplateConfig, cfgErr := config.LoadBoilerplateConfig(l, options)
+	boilerplateConfig, cfgErr := config.LoadBoilerplateConfig(l, fsys, options)
 	if cfgErr != nil {
 		return nil, cfgErr
 	}
@@ -87,37 +87,37 @@ func ProcessTemplateWithContext(ctx context.Context, l logging.Logger, options, 
 		return nil, err
 	}
 
-	vars, err := config.GetVariablesWithContext(ctx, l, options, boilerplateConfig, rootBoilerplateConfig, thisDep)
+	vars, err := config.GetVariablesWithContext(ctx, l, fsys, options, boilerplateConfig, rootBoilerplateConfig, thisDep)
 	if err != nil {
 		return nil, err
 	}
 
-	err = os.MkdirAll(options.OutputFolder, defaultDirPerm)
+	err = fsys.MkdirAll(options.OutputFolder, defaultDirPerm)
 	if err != nil {
 		return nil, err
 	}
 
-	err = processHooks(ctx, l, boilerplateConfig.Hooks.BeforeHooks, options, vars)
+	err = processHooks(ctx, l, fsys, boilerplateConfig.Hooks.BeforeHooks, options, vars)
 	if err != nil {
 		return nil, err
 	}
 
-	deps, err := processDependencies(ctx, l, boilerplateConfig.Dependencies, options, boilerplateConfig.GetVariablesMap(), vars)
+	deps, err := processDependencies(ctx, l, fsys, boilerplateConfig.Dependencies, options, boilerplateConfig.GetVariablesMap(), vars)
 	if err != nil {
 		return nil, err
 	}
 
-	partials, err := processPartials(ctx, l, boilerplateConfig.Partials, options, vars)
+	partials, err := processPartials(ctx, l, fsys, boilerplateConfig.Partials, options, vars)
 	if err != nil {
 		return nil, err
 	}
 
-	generatedFilePaths, err := processTemplateFolder(ctx, l, boilerplateConfig, options, vars, partials)
+	generatedFilePaths, err := processTemplateFolder(ctx, l, fsys, boilerplateConfig, options, vars, partials)
 	if err != nil {
 		return nil, err
 	}
 
-	err = processHooks(ctx, l, boilerplateConfig.Hooks.AfterHooks, options, vars)
+	err = processHooks(ctx, l, fsys, boilerplateConfig.Hooks.AfterHooks, options, vars)
 	if err != nil {
 		return nil, err
 	}
@@ -145,17 +145,17 @@ func ProcessTemplateWithContext(ctx context.Context, l logging.Logger, options, 
 // templates if necessary. It returns a cleanup function (nil for local templates)
 // and the clone directory (empty for local templates). The cleanup function must
 // be deferred by the caller before checking the error.
-func resolveTemplate(l logging.Logger, opts *options.BoilerplateOptions) (cleanup func(), cloneDir string, err error) {
+func resolveTemplate(l logging.Logger, fsys vfs.FS, opts *options.BoilerplateOptions) (cleanup func(), cloneDir string, err error) {
 	if opts.TemplateFolder != "" {
 		return nil, "", nil
 	}
 
-	workingDir, templateFolder, downloadErr := getterhelper.DownloadTemplatesToTemporaryFolder(l, opts.TemplateURL)
+	workingDir, templateFolder, downloadErr := getterhelper.DownloadTemplatesToTemporaryFolder(l, fsys, opts.TemplateURL)
 
 	cleanup = func() {
 		l.Debugf("Cleaning up working directory.")
 
-		if rmErr := os.RemoveAll(workingDir); rmErr != nil {
+		if rmErr := fsys.RemoveAll(workingDir); rmErr != nil {
 			l.Errorf("Failed to clean up working directory %s: %v", workingDir, rmErr)
 		}
 	}
@@ -171,8 +171,8 @@ func resolveTemplate(l logging.Logger, opts *options.BoilerplateOptions) (cleanu
 
 // computeSourceChecksum computes the source checksum, logging a warning on
 // error and returning an empty string.
-func computeSourceChecksum(l logging.Logger, templateDir, cloneDir string) string {
-	cs, err := manifest.ComputeSourceChecksum(l, templateDir, cloneDir)
+func computeSourceChecksum(l logging.Logger, fsys vfs.FS, templateDir, cloneDir string) string {
+	cs, err := manifest.ComputeSourceChecksum(l, fsys, templateDir, cloneDir)
 	if err != nil {
 		l.Warnf("failed to compute source checksum: %v", err)
 
@@ -182,11 +182,11 @@ func computeSourceChecksum(l logging.Logger, templateDir, cloneDir string) strin
 	return cs
 }
 
-func processPartials(ctx context.Context, l logging.Logger, partials []string, opts *options.BoilerplateOptions, vars map[string]any) ([]string, error) {
+func processPartials(ctx context.Context, l logging.Logger, fsys vfs.FS, partials []string, opts *options.BoilerplateOptions, vars map[string]any) ([]string, error) {
 	renderedPartials := make([]string, 0, len(partials))
 
 	for _, partial := range partials {
-		renderedPartial, err := render.RenderTemplateFromStringWithContext(ctx, l, config.BoilerplateConfigPath(opts.TemplateFolder), partial, vars, opts)
+		renderedPartial, err := render.RenderTemplateFromStringWithContext(ctx, l, fsys, config.BoilerplateConfigPath(opts.TemplateFolder), partial, vars, opts)
 		if err != nil {
 			return []string{}, err
 		}
@@ -198,7 +198,7 @@ func processPartials(ctx context.Context, l logging.Logger, partials []string, o
 }
 
 // processHooks processes the given list of hooks, which are scripts that should be executed at the command-line
-func processHooks(ctx context.Context, l logging.Logger, hooks []variables.Hook, opts *options.BoilerplateOptions, vars map[string]any) error {
+func processHooks(ctx context.Context, l logging.Logger, fsys vfs.FS, hooks []variables.Hook, opts *options.BoilerplateOptions, vars map[string]any) error {
 	if len(hooks) == 0 || opts.NoHooks {
 		if opts.NoHooks {
 			l.Debugf("Hooks are disabled, skipping %d hook(s)", len(hooks))
@@ -213,7 +213,7 @@ func processHooks(ctx context.Context, l logging.Logger, hooks []variables.Hook,
 	for i := range hooks {
 		hook := &hooks[i]
 
-		skip, err := shouldSkipHook(ctx, l, hook, opts, vars)
+		skip, err := shouldSkipHook(ctx, l, fsys, hook, opts, vars)
 		if err != nil || skip {
 			if skip {
 				l.Debugf("Skipping hook with command '%s'", hook.Command)
@@ -226,7 +226,7 @@ func processHooks(ctx context.Context, l logging.Logger, hooks []variables.Hook,
 			continue
 		}
 
-		hookDetails, err := renderHookDetails(ctx, l, hook, opts, vars)
+		hookDetails, err := renderHookDetails(ctx, l, fsys, hook, opts, vars)
 		if err != nil {
 			return err
 		}
@@ -256,7 +256,7 @@ func processHooks(ctx context.Context, l logging.Logger, hooks []variables.Hook,
 		}
 
 		// Execute the hook
-		if err := processHook(ctx, l, hook, opts, vars); err != nil {
+		if err := processHook(ctx, l, fsys, hook, opts, vars); err != nil {
 			return err
 		}
 	}
@@ -265,10 +265,10 @@ func processHooks(ctx context.Context, l logging.Logger, hooks []variables.Hook,
 }
 
 // renderHookDetails renders the hook details and returns a pre-rendered string representation
-func renderHookDetails(ctx context.Context, l logging.Logger, hook *variables.Hook, opts *options.BoilerplateOptions, vars map[string]any) (string, error) {
+func renderHookDetails(ctx context.Context, l logging.Logger, fsys vfs.FS, hook *variables.Hook, opts *options.BoilerplateOptions, vars map[string]any) (string, error) {
 	base := config.BoilerplateConfigPath(opts.TemplateFolder)
 	render := func(s string) (string, error) {
-		return render.RenderTemplateFromStringWithContext(ctx, l, base, s, vars, opts)
+		return render.RenderTemplateFromStringWithContext(ctx, l, fsys, base, s, vars, opts)
 	}
 
 	cmd, renderErr := render(hook.Command)
@@ -395,8 +395,8 @@ func printHookDetails(l logging.Logger, hookDetails string) {
 }
 
 // processHook processes the given hook, which is a script that should be execute at the command-line
-func processHook(ctx context.Context, l logging.Logger, hook *variables.Hook, opts *options.BoilerplateOptions, vars map[string]any) error {
-	cmd, hookRenderErr := render.RenderTemplateFromStringWithContext(ctx, l, config.BoilerplateConfigPath(opts.TemplateFolder), hook.Command, vars, opts)
+func processHook(ctx context.Context, l logging.Logger, fsys vfs.FS, hook *variables.Hook, opts *options.BoilerplateOptions, vars map[string]any) error {
+	cmd, hookRenderErr := render.RenderTemplateFromStringWithContext(ctx, l, fsys, config.BoilerplateConfigPath(opts.TemplateFolder), hook.Command, vars, opts)
 	if hookRenderErr != nil {
 		return hookRenderErr
 	}
@@ -404,7 +404,7 @@ func processHook(ctx context.Context, l logging.Logger, hook *variables.Hook, op
 	args := []string{}
 
 	for _, arg := range hook.Args {
-		renderedArg, hookRenderErr := render.RenderTemplateFromStringWithContext(ctx, l, config.BoilerplateConfigPath(opts.TemplateFolder), arg, vars, opts)
+		renderedArg, hookRenderErr := render.RenderTemplateFromStringWithContext(ctx, l, fsys, config.BoilerplateConfigPath(opts.TemplateFolder), arg, vars, opts)
 		if hookRenderErr != nil {
 			return hookRenderErr
 		}
@@ -415,12 +415,12 @@ func processHook(ctx context.Context, l logging.Logger, hook *variables.Hook, op
 	envVars := []string{}
 
 	for key, value := range hook.Env {
-		renderedKey, hookRenderErr := render.RenderTemplateFromStringWithContext(ctx, l, config.BoilerplateConfigPath(opts.TemplateFolder), key, vars, opts)
+		renderedKey, hookRenderErr := render.RenderTemplateFromStringWithContext(ctx, l, fsys, config.BoilerplateConfigPath(opts.TemplateFolder), key, vars, opts)
 		if hookRenderErr != nil {
 			return hookRenderErr
 		}
 
-		renderedValue, hookRenderErr := render.RenderTemplateFromStringWithContext(ctx, l, config.BoilerplateConfigPath(opts.TemplateFolder), value, vars, opts)
+		renderedValue, hookRenderErr := render.RenderTemplateFromStringWithContext(ctx, l, fsys, config.BoilerplateConfigPath(opts.TemplateFolder), value, vars, opts)
 		if hookRenderErr != nil {
 			return hookRenderErr
 		}
@@ -434,6 +434,7 @@ func processHook(ctx context.Context, l logging.Logger, hook *variables.Hook, op
 		renderedWd, wdErr := render.RenderTemplateFromStringWithContext(
 			ctx,
 			l,
+			fsys,
 			config.BoilerplateConfigPath(opts.TemplateFolder),
 			hook.WorkingDir,
 			vars,
@@ -450,12 +451,12 @@ func processHook(ctx context.Context, l logging.Logger, hook *variables.Hook, op
 }
 
 // Return true if the "skip" condition of this hook evaluates to true
-func shouldSkipHook(ctx context.Context, l logging.Logger, hook *variables.Hook, opts *options.BoilerplateOptions, vars map[string]any) (bool, error) {
+func shouldSkipHook(ctx context.Context, l logging.Logger, fsys vfs.FS, hook *variables.Hook, opts *options.BoilerplateOptions, vars map[string]any) (bool, error) {
 	if hook.Skip == "" {
 		return false, nil
 	}
 
-	rendered, err := render.RenderTemplateFromStringWithContext(ctx, l, opts.TemplateFolder, hook.Skip, vars, opts)
+	rendered, err := render.RenderTemplateFromStringWithContext(ctx, l, fsys, opts.TemplateFolder, hook.Skip, vars, opts)
 	if err != nil {
 		return false, err
 	}
@@ -469,6 +470,7 @@ func shouldSkipHook(ctx context.Context, l logging.Logger, hook *variables.Hook,
 func processDependencies(
 	ctx context.Context,
 	l logging.Logger,
+	fsys vfs.FS,
 	dependencies []variables.Dependency,
 	opts *options.BoilerplateOptions,
 	variablesInConfig map[string]variables.Variable,
@@ -477,7 +479,7 @@ func processDependencies(
 	var allDeps []manifest.ManifestDependency
 
 	for i := range dependencies {
-		deps, err := processDependency(ctx, l, &dependencies[i], opts, variablesInConfig, variables)
+		deps, err := processDependency(ctx, l, fsys, &dependencies[i], opts, variablesInConfig, variables)
 		if err != nil {
 			return nil, err
 		}
@@ -493,12 +495,13 @@ func processDependencies(
 func processDependency(
 	ctx context.Context,
 	l logging.Logger,
+	fsys vfs.FS,
 	dependency *variables.Dependency,
 	opts *options.BoilerplateOptions,
 	variablesInConfig map[string]variables.Variable,
 	originalVars map[string]any,
 ) ([]manifest.ManifestDependency, error) {
-	shouldProcess, err := shouldProcessDependency(ctx, l, dependency, opts, originalVars)
+	shouldProcess, err := shouldProcessDependency(ctx, l, fsys, dependency, opts, originalVars)
 	if err != nil {
 		return nil, err
 	}
@@ -507,7 +510,7 @@ func processDependency(
 		l.Debugf("Skipping dependency %s", dependency.Name)
 
 		// Record skipped dependency with the rendered skip expression.
-		renderedSkip, skipErr := render.RenderTemplateFromStringWithContext(ctx, l, opts.TemplateFolder, dependency.Skip, originalVars, opts)
+		renderedSkip, skipErr := render.RenderTemplateFromStringWithContext(ctx, l, fsys, opts.TemplateFolder, dependency.Skip, originalVars, opts)
 		if skipErr != nil {
 			renderedSkip = dependency.Skip
 		}
@@ -524,14 +527,14 @@ func processDependency(
 	}
 
 	doProcess := func(ctx context.Context, updatedVars map[string]any, forEach []string) (manifest.ManifestDependency, error) {
-		dependencyOptions, cloneErr := cloneOptionsForDependency(ctx, l, dependency, opts, variablesInConfig, updatedVars)
+		dependencyOptions, cloneErr := cloneOptionsForDependency(ctx, l, fsys, dependency, opts, variablesInConfig, updatedVars)
 		if cloneErr != nil {
 			return manifest.ManifestDependency{}, cloneErr
 		}
 
 		l.Debugf("Processing dependency %s, with template folder %s and output folder %s", dependency.Name, dependencyOptions.TemplateFolder, dependencyOptions.OutputFolder)
 
-		depResult, processErr := ProcessTemplateWithContext(ctx, l, dependencyOptions, opts, dependency)
+		depResult, processErr := ProcessTemplateWithContext(ctx, l, fsys, dependencyOptions, opts, dependency)
 		if processErr != nil {
 			return manifest.ManifestDependency{}, processErr
 		}
@@ -546,7 +549,7 @@ func processDependency(
 			for _, relPath := range depResult.GeneratedFiles {
 				absPath := filepath.Join(dependencyOptions.OutputFolder, relPath)
 
-				checksum, csErr := manifest.SHA256File(absPath)
+				checksum, csErr := manifest.SHA256File(fsys, absPath)
 				if csErr != nil {
 					return manifest.ManifestDependency{}, csErr
 				}
@@ -577,7 +580,7 @@ func processDependency(
 	forEach := dependency.ForEach
 
 	if len(dependency.ForEachReference) > 0 {
-		renderedReference, renderErr := render.RenderTemplateFromStringWithContext(ctx, l, opts.TemplateFolder, dependency.ForEachReference, originalVars, opts)
+		renderedReference, renderErr := render.RenderTemplateFromStringWithContext(ctx, l, fsys, opts.TemplateFolder, dependency.ForEachReference, originalVars, opts)
 		if renderErr != nil {
 			return nil, renderErr
 		}
@@ -634,17 +637,18 @@ func processDependency(
 func cloneOptionsForDependency(
 	ctx context.Context,
 	l logging.Logger,
+	fsys vfs.FS,
 	dependency *variables.Dependency,
 	originalOpts *options.BoilerplateOptions,
 	variablesInConfig map[string]variables.Variable,
 	variables map[string]any,
 ) (*options.BoilerplateOptions, error) {
-	renderedTemplateURL, err := render.RenderTemplateFromStringWithContext(ctx, l, originalOpts.TemplateFolder, dependency.TemplateURL, variables, originalOpts)
+	renderedTemplateURL, err := render.RenderTemplateFromStringWithContext(ctx, l, fsys, originalOpts.TemplateFolder, dependency.TemplateURL, variables, originalOpts)
 	if err != nil {
 		return nil, err
 	}
 
-	renderedOutputFolder, err := render.RenderTemplateFromStringWithContext(ctx, l, originalOpts.TemplateFolder, dependency.OutputFolder, variables, originalOpts)
+	renderedOutputFolder, err := render.RenderTemplateFromStringWithContext(ctx, l, fsys, originalOpts.TemplateFolder, dependency.OutputFolder, variables, originalOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -655,16 +659,16 @@ func cloneOptionsForDependency(
 	}
 	// If local, make sure to return relative path in context of original template folder
 	if templateFolder != "" {
-		templateFolder = render.PathRelativeToTemplate(originalOpts.TemplateFolder, renderedTemplateURL)
+		templateFolder = render.PathRelativeToTemplate(fsys, originalOpts.TemplateFolder, renderedTemplateURL)
 	}
 
 	// Output folder should be local path relative to original output folder, or absolute path
-	outputFolder := render.PathRelativeToTemplate(originalOpts.OutputFolder, renderedOutputFolder)
+	outputFolder := render.PathRelativeToTemplate(fsys, originalOpts.OutputFolder, renderedOutputFolder)
 
 	renderedVarFiles := []string{}
 
 	for _, varFilePath := range dependency.VarFiles {
-		renderedVarFilePath, err := render.RenderTemplateFromStringWithContext(ctx, l, originalOpts.TemplateFolder, varFilePath, variables, originalOpts)
+		renderedVarFilePath, err := render.RenderTemplateFromStringWithContext(ctx, l, fsys, originalOpts.TemplateFolder, varFilePath, variables, originalOpts)
 		if err != nil {
 			return nil, err
 		}
@@ -672,7 +676,7 @@ func cloneOptionsForDependency(
 		renderedVarFiles = append(renderedVarFiles, renderedVarFilePath)
 	}
 
-	vars, err := cloneVariablesForDependency(ctx, l, originalOpts, dependency, variablesInConfig, variables, renderedVarFiles)
+	vars, err := cloneVariablesForDependency(ctx, l, fsys, originalOpts, dependency, variablesInConfig, variables, renderedVarFiles)
 	if err != nil {
 		return nil, err
 	}
@@ -705,6 +709,7 @@ func cloneOptionsForDependency(
 func cloneVariablesForDependency(
 	ctx context.Context,
 	l logging.Logger,
+	fsys vfs.FS,
 	opts *options.BoilerplateOptions,
 	dependency *variables.Dependency,
 	variablesInConfig map[string]variables.Variable,
@@ -746,7 +751,7 @@ func cloneVariablesForDependency(
 		}
 	}
 
-	varFileVars, err := variables.ParseVars(nil, renderedVarFiles)
+	varFileVars, err := variables.ParseVars(fsys, nil, renderedVarFiles)
 	if err != nil {
 		return nil, err
 	}
@@ -766,7 +771,7 @@ func cloneVariablesForDependency(
 		}
 		// If the value is a string, render it
 		if strValue, ok := varValue.(string); ok {
-			renderedValue, err := render.RenderTemplateFromStringWithContext(ctx, l, opts.TemplateFolder, strValue, currentVariables, opts)
+			renderedValue, err := render.RenderTemplateFromStringWithContext(ctx, l, fsys, opts.TemplateFolder, strValue, currentVariables, opts)
 			if err != nil {
 				return nil, err
 			}
@@ -814,11 +819,12 @@ func cloneVariablesForDependency(
 func shouldProcessDependency(
 	ctx context.Context,
 	l logging.Logger,
+	fsys vfs.FS,
 	dependency *variables.Dependency,
 	opts *options.BoilerplateOptions,
 	variables map[string]any,
 ) (bool, error) {
-	shouldSkip, err := shouldSkipDependency(ctx, l, dependency, opts, variables)
+	shouldSkip, err := shouldSkipDependency(ctx, l, fsys, dependency, opts, variables)
 	if err != nil {
 		return false, err
 	}
@@ -835,12 +841,12 @@ func shouldProcessDependency(
 }
 
 // Return true if the skip parameter of the given dependency evaluates to a "true" value
-func shouldSkipDependency(ctx context.Context, l logging.Logger, dependency *variables.Dependency, opts *options.BoilerplateOptions, variables map[string]any) (bool, error) {
+func shouldSkipDependency(ctx context.Context, l logging.Logger, fsys vfs.FS, dependency *variables.Dependency, opts *options.BoilerplateOptions, variables map[string]any) (bool, error) {
 	if dependency.Skip == "" {
 		return false, nil
 	}
 
-	rendered, err := render.RenderTemplateFromStringWithContext(ctx, l, opts.TemplateFolder, dependency.Skip, variables, opts)
+	rendered, err := render.RenderTemplateFromStringWithContext(ctx, l, fsys, opts.TemplateFolder, dependency.Skip, variables, opts)
 	if err != nil {
 		return false, err
 	}
@@ -855,6 +861,7 @@ func shouldSkipDependency(ctx context.Context, l logging.Logger, dependency *var
 func processTemplateFolder(
 	ctx context.Context,
 	l logging.Logger,
+	fsys vfs.FS,
 	config *config.BoilerplateConfig,
 	opts *options.BoilerplateOptions,
 	variables map[string]any,
@@ -863,31 +870,31 @@ func processTemplateFolder(
 	l.Debugf("Processing templates in %s and outputting generated files to %s", opts.TemplateFolder, opts.OutputFolder)
 
 	// Process and render skip files and engines before walking so we only do the rendering operation once.
-	processedSkipFiles, err := processSkipFiles(ctx, l, config.SkipFiles, opts, variables)
+	processedSkipFiles, err := processSkipFiles(ctx, l, fsys, config.SkipFiles, opts, variables)
 	if err != nil {
 		return nil, err
 	}
 
-	processedEngines, err := processEngines(ctx, l, config.Engines, opts, variables)
+	processedEngines, err := processEngines(ctx, l, fsys, config.Engines, opts, variables)
 	if err != nil {
 		return nil, err
 	}
 
 	var generatedFilePaths []string
 
-	walkErr := filepath.WalkDir(opts.TemplateFolder, func(path string, d fs.DirEntry, err error) error {
+	walkErr := vfs.WalkDir(fsys, opts.TemplateFolder, func(path string, d fs.DirEntry, err error) error {
 		path = filepath.ToSlash(path)
 
 		switch {
 		case shouldSkipPath(path, opts, processedSkipFiles):
 			l.Debugf("Skipping %s", path)
 			return nil
-		case fileutil.IsDir(path):
-			return createOutputDir(ctx, l, path, opts, variables)
+		case fileutil.IsDir(fsys, path):
+			return createOutputDir(ctx, l, fsys, path, opts, variables)
 		default:
 			engine := determineTemplateEngine(processedEngines, path)
 
-			filePath, processErr := processFile(ctx, l, path, opts, variables, partials, engine)
+			filePath, processErr := processFile(ctx, l, fsys, path, opts, variables, partials, engine)
 			if processErr != nil {
 				return processErr
 			}
@@ -908,40 +915,41 @@ func processTemplateFolder(
 func processFile(
 	ctx context.Context,
 	l logging.Logger,
+	fsys vfs.FS,
 	path string,
 	opts *options.BoilerplateOptions,
 	variables map[string]any,
 	partials []string,
 	engine variables.TemplateEngineType,
 ) (string, error) {
-	isText, err := fileutil.IsTextFile(path)
+	isText, err := fileutil.IsTextFile(fsys, path)
 	if err != nil {
 		return "", err
 	}
 
 	if isText {
-		return processTemplate(ctx, l, path, opts, variables, partials, engine)
-	} else {
-		return copyFile(ctx, l, path, opts, variables)
+		return processTemplate(ctx, l, fsys, path, opts, variables, partials, engine)
 	}
+
+	return copyFile(ctx, l, fsys, path, opts, variables)
 }
 
 // Create the given directory, which is in templateFolder, in the given outputFolder
-func createOutputDir(ctx context.Context, l logging.Logger, dir string, opts *options.BoilerplateOptions, variables map[string]any) error {
-	destination, err := outPath(ctx, l, dir, opts, variables)
+func createOutputDir(ctx context.Context, l logging.Logger, fsys vfs.FS, dir string, opts *options.BoilerplateOptions, variables map[string]any) error {
+	destination, err := outPath(ctx, l, fsys, dir, opts, variables)
 	if err != nil {
 		return err
 	}
 
 	l.Debugf("Creating folder %s", destination)
 
-	return os.MkdirAll(destination, defaultDirPerm)
+	return fsys.MkdirAll(destination, defaultDirPerm)
 }
 
 // Compute the path where the given file, which is in templateFolder, should be copied in outputFolder. If the file
 // path contains boilerplate syntax, use the given options and variables to render it to determine the final output
 // path.
-func outPath(ctx context.Context, l logging.Logger, file string, opts *options.BoilerplateOptions, variables map[string]any) (string, error) {
+func outPath(ctx context.Context, l logging.Logger, fsys vfs.FS, file string, opts *options.BoilerplateOptions, variables map[string]any) (string, error) {
 	templateFolderAbsPath, err := filepath.Abs(opts.TemplateFolder)
 	if err != nil {
 		return "", err
@@ -954,7 +962,7 @@ func outPath(ctx context.Context, l logging.Logger, file string, opts *options.B
 		return "", err
 	}
 
-	interpolatedFilePath, err := render.RenderTemplateFromStringWithContext(ctx, l, file, urlDecodedFile, variables, opts)
+	interpolatedFilePath, err := render.RenderTemplateFromStringWithContext(ctx, l, fsys, file, urlDecodedFile, variables, opts)
 	if err != nil {
 		return "", err
 	}
@@ -974,15 +982,15 @@ func outPath(ctx context.Context, l logging.Logger, file string, opts *options.B
 
 // Copy the given file, which is in options.TemplateFolder, to options.OutputFolder.
 // Returns the relative path of the copied file from the output directory.
-func copyFile(ctx context.Context, l logging.Logger, file string, opts *options.BoilerplateOptions, variables map[string]any) (string, error) {
-	destination, err := outPath(ctx, l, file, opts, variables)
+func copyFile(ctx context.Context, l logging.Logger, fsys vfs.FS, file string, opts *options.BoilerplateOptions, variables map[string]any) (string, error) {
+	destination, err := outPath(ctx, l, fsys, file, opts, variables)
 	if err != nil {
 		return "", err
 	}
 
 	l.Debugf("Copying %s to %s", file, destination)
 
-	if err := fileutil.CopyFile(file, destination); err != nil {
+	if err := fileutil.CopyFile(fsys, file, destination); err != nil {
 		return "", err
 	}
 
@@ -999,13 +1007,14 @@ func copyFile(ctx context.Context, l logging.Logger, file string, opts *options.
 func processTemplate(
 	ctx context.Context,
 	l logging.Logger,
+	fsys vfs.FS,
 	templatePath string,
 	opts *options.BoilerplateOptions,
 	vars map[string]any,
 	partials []string,
 	engine variables.TemplateEngineType,
 ) (string, error) {
-	destination, err := outPath(ctx, l, templatePath, opts, vars)
+	destination, err := outPath(ctx, l, fsys, templatePath, opts, vars)
 	if err != nil {
 		return "", err
 	}
@@ -1014,12 +1023,12 @@ func processTemplate(
 
 	switch engine {
 	case variables.GoTemplate:
-		out, err = render.RenderTemplateWithPartialsWithContext(ctx, l, templatePath, partials, vars, opts)
+		out, err = render.RenderTemplateWithPartialsWithContext(ctx, l, fsys, templatePath, partials, vars, opts)
 		if err != nil {
 			return "", err
 		}
 	case variables.Jsonnet:
-		out, err = render.RenderJsonnetTemplate(templatePath, vars, opts)
+		out, err = render.RenderJsonnetTemplate(fsys, templatePath, vars, opts)
 		if err != nil {
 			return "", err
 		}
@@ -1027,7 +1036,7 @@ func processTemplate(
 		destination = strings.TrimSuffix(destination, ".jsonnet")
 	}
 
-	if err := fileutil.WriteFileWithSamePermissions(templatePath, destination, []byte(out)); err != nil {
+	if err := fileutil.WriteFileWithSamePermissions(fsys, templatePath, destination, []byte(out)); err != nil {
 		return "", err
 	}
 

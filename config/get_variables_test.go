@@ -11,6 +11,7 @@ import (
 
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/pkg/logging"
+	"github.com/gruntwork-io/boilerplate/pkg/vfs"
 	"github.com/gruntwork-io/boilerplate/testutil"
 	"github.com/gruntwork-io/boilerplate/variables"
 )
@@ -155,7 +156,7 @@ func TestGetVariablesNoVariables(t *testing.T) {
 	rootBoilerplateConfig := &BoilerplateConfig{}
 	dependency := &variables.Dependency{}
 
-	actual, err := GetVariables(logging.Discard(), opts, boilerplateConfig, rootBoilerplateConfig, dependency)
+	actual, err := GetVariables(logging.Discard(), vfs.NewOSFS(), opts, boilerplateConfig, rootBoilerplateConfig, dependency)
 	expected := map[string]any{
 		"BoilerplateConfigVars": map[string]variables.Variable{},
 		"BoilerplateConfigDeps": map[string]*variables.Dependency{},
@@ -182,7 +183,7 @@ func TestGetVariablesNoMatchNonInteractive(t *testing.T) {
 	rootBoilerplateConfig := &BoilerplateConfig{}
 	dependency := &variables.Dependency{}
 
-	_, err := GetVariables(logging.Discard(), opts, boilerplateConfig, rootBoilerplateConfig, dependency)
+	_, err := GetVariables(logging.Discard(), vfs.NewOSFS(), opts, boilerplateConfig, rootBoilerplateConfig, dependency)
 
 	require.Error(t, err)
 	assert.ErrorIs(t, err, MissingVariableWithNonInteractiveMode("foo"), "Expected a MissingVariableWithNonInteractiveMode error but got %s", reflect.TypeOf(err))
@@ -209,7 +210,7 @@ func TestGetVariablesMatchFromVars(t *testing.T) {
 
 	dependency := &variables.Dependency{}
 
-	actual, err := GetVariables(logging.Discard(), opts, boilerplateConfig, rootBoilerplateConfig, dependency)
+	actual, err := GetVariables(logging.Discard(), vfs.NewOSFS(), opts, boilerplateConfig, rootBoilerplateConfig, dependency)
 	expected := map[string]any{
 		"foo":                   "bar",
 		"BoilerplateConfigVars": map[string]variables.Variable{},
@@ -249,7 +250,7 @@ func TestGetVariablesMatchFromVarsAndDefaults(t *testing.T) {
 
 	dependency := &variables.Dependency{}
 
-	actual, err := GetVariables(logging.Discard(), opts, boilerplateConfig, rootBoilerplateConfig, dependency)
+	actual, err := GetVariables(logging.Discard(), vfs.NewOSFS(), opts, boilerplateConfig, rootBoilerplateConfig, dependency)
 	expected := map[string]any{
 		"key1":                  "value1",
 		"key2":                  "value2",

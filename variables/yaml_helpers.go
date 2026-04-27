@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/gruntwork-io/boilerplate/pkg/vfs"
 	"github.com/gruntwork-io/boilerplate/util"
 	"gopkg.in/yaml.v3"
 )
@@ -338,13 +339,13 @@ func ParseYamlString(str string) (any, error) {
 	return parsedValue, nil
 }
 
-// Parse a list of YAML files that define variables into a map from variable name to variable value. Along the way,
-// each value is parsed as YAML.
-func parseVariablesFromVarFiles(varFileList []string) (map[string]any, error) {
+// Parse a list of YAML files on the given filesystem that define variables into a map from
+// variable name to variable value. Along the way, each value is parsed as YAML.
+func parseVariablesFromVarFiles(fsys vfs.FS, varFileList []string) (map[string]any, error) {
 	vars := map[string]any{}
 
 	for _, varFile := range varFileList {
-		varsInFile, err := ParseVariablesFromVarFile(varFile)
+		varsInFile, err := ParseVariablesFromVarFile(fsys, varFile)
 		if err != nil {
 			return vars, err
 		}
@@ -355,10 +356,11 @@ func parseVariablesFromVarFiles(varFileList []string) (map[string]any, error) {
 	return vars, nil
 }
 
-// ParseVariablesFromVarFile parses the variables in the given YAML file into a map of variable name to variable value. Along the way, each value
-// is parsed as YAML.
-func ParseVariablesFromVarFile(varFilePath string) (map[string]any, error) {
-	bytes, err := os.ReadFile(varFilePath)
+// ParseVariablesFromVarFile parses the variables in the given YAML file on the given
+// filesystem into a map of variable name to variable value. Along the way, each value is
+// parsed as YAML.
+func ParseVariablesFromVarFile(fsys vfs.FS, varFilePath string) (map[string]any, error) {
+	bytes, err := vfs.ReadFile(fsys, varFilePath)
 	if err != nil {
 		return map[string]any{}, err
 	}
@@ -388,10 +390,11 @@ func parseVariablesFromVarFileContents(varFileContents []byte) (map[string]any, 
 	return vars, nil
 }
 
-// ParseVars parses variables passed in via command line options, either as a list of NAME=VALUE variable pairs in varsList, or a
-// list of paths to YAML files that define NAME: VALUE pairs. Return a map of the NAME: VALUE pairs. Along the way,
-// each VALUE is parsed as YAML.
-func ParseVars(varsList []string, varFileList []string) (map[string]any, error) {
+// ParseVars parses variables passed in via command line options, either as a list of
+// NAME=VALUE variable pairs in varsList, or a list of paths to YAML files (read from the
+// given filesystem) that define NAME: VALUE pairs. Return a map of the NAME: VALUE pairs.
+// Along the way, each VALUE is parsed as YAML.
+func ParseVars(fsys vfs.FS, varsList []string, varFileList []string) (map[string]any, error) {
 	variables := map[string]any{}
 
 	varsFromEnv, err := parseVariablesFromEnvironmentVariables()
@@ -404,7 +407,7 @@ func ParseVars(varsList []string, varFileList []string) (map[string]any, error) 
 		return variables, err
 	}
 
-	varsFromVarFiles, err := parseVariablesFromVarFiles(varFileList)
+	varsFromVarFiles, err := parseVariablesFromVarFiles(fsys, varFileList)
 	if err != nil {
 		return variables, err
 	}

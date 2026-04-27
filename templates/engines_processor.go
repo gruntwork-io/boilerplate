@@ -7,6 +7,7 @@ import (
 
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/pkg/logging"
+	"github.com/gruntwork-io/boilerplate/pkg/vfs"
 	"github.com/gruntwork-io/boilerplate/util"
 	"github.com/gruntwork-io/boilerplate/variables"
 )
@@ -21,6 +22,7 @@ type ProcessedEngine struct {
 func processEngines(
 	ctx context.Context,
 	l logging.Logger,
+	fsys vfs.FS,
 	engines []variables.Engine,
 	opts *options.BoilerplateOptions,
 	variables map[string]any,
@@ -28,7 +30,7 @@ func processEngines(
 	output := []ProcessedEngine{}
 
 	for _, engine := range engines {
-		matchedPaths, err := renderGlobPath(ctx, l, opts, engine.Path, variables)
+		matchedPaths, err := renderGlobPath(ctx, l, fsys, opts, engine.Path, variables)
 		if err != nil {
 			return nil, err
 		}

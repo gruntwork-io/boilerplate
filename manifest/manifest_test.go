@@ -11,6 +11,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/gruntwork-io/boilerplate/manifest"
+	"github.com/gruntwork-io/boilerplate/pkg/vfs"
 )
 
 func TestWriteManifestJSON(t *testing.T) {
@@ -34,7 +35,7 @@ func TestWriteManifestJSON(t *testing.T) {
 		},
 	}
 
-	err := manifest.WriteManifest(manifestPath, m)
+	err := manifest.WriteManifest(vfs.NewOSFS(), manifestPath, m)
 	require.NoError(t, err)
 
 	data, err := os.ReadFile(manifestPath)
@@ -75,7 +76,7 @@ func TestWriteManifestYAML(t *testing.T) {
 		},
 	}
 
-	err := manifest.WriteManifest(manifestPath, m)
+	err := manifest.WriteManifest(vfs.NewOSFS(), manifestPath, m)
 	require.NoError(t, err)
 
 	data, err := os.ReadFile(manifestPath)
@@ -104,7 +105,7 @@ func TestWriteManifestYMLExtension(t *testing.T) {
 		Files:         []manifest.GeneratedFile{{Path: "a.txt", Checksum: "sha256:aaa"}},
 	}
 
-	err := manifest.WriteManifest(manifestPath, m)
+	err := manifest.WriteManifest(vfs.NewOSFS(), manifestPath, m)
 	require.NoError(t, err)
 
 	data, err := os.ReadFile(manifestPath)
@@ -131,7 +132,7 @@ func TestWriteManifestOverwritesPrevious(t *testing.T) {
 		TemplateURL:   "template1",
 		Files:         []manifest.GeneratedFile{{Path: "file1.txt", Checksum: "sha256:aaa"}},
 	}
-	err := manifest.WriteManifest(manifestPath, m1)
+	err := manifest.WriteManifest(vfs.NewOSFS(), manifestPath, m1)
 	require.NoError(t, err)
 
 	// Write second manifest (overwrites)
@@ -141,7 +142,7 @@ func TestWriteManifestOverwritesPrevious(t *testing.T) {
 		TemplateURL:   "template2",
 		Files:         []manifest.GeneratedFile{{Path: "file2.txt", Checksum: "sha256:bbb"}},
 	}
-	err = manifest.WriteManifest(manifestPath, m2)
+	err = manifest.WriteManifest(vfs.NewOSFS(), manifestPath, m2)
 	require.NoError(t, err)
 
 	// Read back and verify it's the second manifest
@@ -331,7 +332,7 @@ Dependencies: []
 				require.NoError(t, os.WriteFile(filePath, []byte(tt.content), 0o644))
 			}
 
-			m, err := manifest.ParseManifestFile(filePath)
+			m, err := manifest.ParseManifestFile(vfs.NewOSFS(), filePath)
 			if tt.wantErr {
 				require.Error(t, err)
 				return
@@ -374,9 +375,9 @@ func TestParseManifestRoundTrip(t *testing.T) {
 			t.Parallel()
 
 			path := filepath.Join(t.TempDir(), tt.filename)
-			require.NoError(t, manifest.WriteManifest(path, original))
+			require.NoError(t, manifest.WriteManifest(vfs.NewOSFS(), path, original))
 
-			parsed, err := manifest.ParseManifestFile(path)
+			parsed, err := manifest.ParseManifestFile(vfs.NewOSFS(), path)
 			require.NoError(t, err)
 
 			assert.Equal(t, original.SchemaVersion, parsed.SchemaVersion)
@@ -434,9 +435,9 @@ func TestParseManifestRoundTripNestedDependencies(t *testing.T) {
 			t.Parallel()
 
 			path := filepath.Join(t.TempDir(), tt.filename)
-			require.NoError(t, manifest.WriteManifest(path, original))
+			require.NoError(t, manifest.WriteManifest(vfs.NewOSFS(), path, original))
 
-			parsed, err := manifest.ParseManifestFile(path)
+			parsed, err := manifest.ParseManifestFile(vfs.NewOSFS(), path)
 			require.NoError(t, err)
 
 			require.Len(t, parsed.Dependencies, 1)
@@ -766,7 +767,7 @@ func TestValidateFile(t *testing.T) {
 				require.NoError(t, os.WriteFile(filePath, []byte(tt.content), 0o644))
 			}
 
-			err := manifest.ValidateFile(filePath)
+			err := manifest.ValidateFile(vfs.NewOSFS(), filePath)
 			if tt.wantErr {
 				require.Error(t, err)
 

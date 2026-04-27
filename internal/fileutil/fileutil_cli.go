@@ -3,20 +3,21 @@
 package fileutil
 
 import (
-	"os"
+	"errors"
 
 	"github.com/gabriel-vasile/mimetype"
+	"github.com/gruntwork-io/boilerplate/pkg/vfs"
 )
 
 const textMimeType = "text/plain"
 
-// IsTextFile - usage of mimetype library to identify if the file is binary or text.
-func IsTextFile(path string) (bool, error) {
-	if !PathExists(path) {
+// IsTextFile uses the mimetype library to identify whether the file at the given path is text or binary.
+func IsTextFile(fsys vfs.FS, path string) (isText bool, err error) {
+	if !PathExists(fsys, path) {
 		return false, NoSuchFile(path)
 	}
 	// consider empty file as binary file
-	fileInfo, err := os.Stat(path)
+	fileInfo, err := fsys.Stat(path)
 	if err != nil {
 		return false, err
 	}
@@ -25,7 +26,18 @@ func IsTextFile(path string) (bool, error) {
 		return false, nil
 	}
 
-	detectedMIME, err := mimetype.DetectFile(path)
+	f, err := fsys.Open(path)
+	if err != nil {
+		return false, err
+	}
+
+	defer func() {
+		if closeErr := f.Close(); closeErr != nil {
+			err = errors.Join(err, closeErr)
+		}
+	}()
+
+	detectedMIME, err := mimetype.DetectReader(f)
 	if err != nil {
 		return false, err
 	}

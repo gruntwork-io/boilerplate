@@ -6,9 +6,9 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -17,6 +17,7 @@ import (
 
 	v1 "github.com/gruntwork-io/boilerplate/internal/manifest/v1"
 	v2 "github.com/gruntwork-io/boilerplate/internal/manifest/v2"
+	"github.com/gruntwork-io/boilerplate/pkg/vfs"
 	"github.com/gruntwork-io/boilerplate/version"
 )
 
@@ -88,10 +89,10 @@ func ParseManifest(data []byte) (*Manifest, error) {
 	return &m, nil
 }
 
-// ParseManifestFile reads and parses a Manifest from a file on disk. The
+// ParseManifestFile reads and parses a Manifest from a file on the given filesystem. The
 // format is auto-detected the same way as [ParseManifest].
-func ParseManifestFile(path string) (*Manifest, error) {
-	data, err := os.ReadFile(path)
+func ParseManifestFile(fsys vfs.FS, path string) (*Manifest, error) {
+	data, err := vfs.ReadFile(fsys, path)
 	if err != nil {
 		return nil, err
 	}
@@ -99,10 +100,10 @@ func ParseManifestFile(path string) (*Manifest, error) {
 	return ParseManifest(data)
 }
 
-// WriteManifest writes the manifest to the given path. The format (JSON or YAML)
-// is auto-detected from the file extension: .json produces JSON, everything else
-// produces YAML.
-func WriteManifest(manifestPath string, m *Manifest) error {
+// WriteManifest writes the manifest to the given path on the given filesystem. The format
+// (JSON or YAML) is auto-detected from the file extension: .json produces JSON, everything
+// else produces YAML.
+func WriteManifest(fsys vfs.FS, manifestPath string, m *Manifest) error {
 	var (
 		data []byte
 		err  error
@@ -118,7 +119,7 @@ func WriteManifest(manifestPath string, m *Manifest) error {
 		return err
 	}
 
-	return os.WriteFile(manifestPath, data, defaultFilePerm)
+	return vfs.WriteFile(fsys, manifestPath, data, defaultFilePerm)
 }
 
 // Validate validates raw manifest bytes against the JSON Schema that
@@ -141,11 +142,11 @@ func Validate(data []byte) error {
 	return validate(data)
 }
 
-// ValidateFile reads a manifest file from disk and validates it against the
-// JSON Schema that corresponds to the manifest's SchemaVersion field. The
-// format is auto-detected the same way as [ParseManifestFile].
-func ValidateFile(path string) error {
-	data, err := os.ReadFile(path)
+// ValidateFile reads a manifest file from the given filesystem and validates it against the
+// JSON Schema that corresponds to the manifest's SchemaVersion field. The format is
+// auto-detected the same way as [ParseManifestFile].
+func ValidateFile(fsys vfs.FS, path string) error {
+	data, err := vfs.ReadFile(fsys, path)
 	if err != nil {
 		return err
 	}
@@ -160,13 +161,19 @@ func GenerateSchemaJSON() ([]byte, error) {
 	return v2.GenerateSchemaJSON()
 }
 
-// SHA256File computes the SHA256 checksum of a file and returns it as "sha256:<hex>".
-func SHA256File(path string) (string, error) {
-	f, err := os.Open(path)
+// SHA256File computes the SHA256 checksum of a file on the given filesystem and returns
+// it as "sha256:<hex>".
+func SHA256File(fsys vfs.FS, path string) (checksum string, err error) {
+	f, err := fsys.Open(path)
 	if err != nil {
 		return "", err
 	}
-	defer f.Close()
+
+	defer func() {
+		if closeErr := f.Close(); closeErr != nil {
+			err = errors.Join(err, closeErr)
+		}
+	}()
 
 	h := sha256.New()
 	if _, err := io.Copy(h, f); err != nil {

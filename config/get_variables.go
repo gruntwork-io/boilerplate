@@ -14,6 +14,7 @@ import (
 	"github.com/gruntwork-io/boilerplate/internal/color"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/pkg/logging"
+	"github.com/gruntwork-io/boilerplate/pkg/vfs"
 	"github.com/gruntwork-io/boilerplate/render"
 	"github.com/gruntwork-io/boilerplate/variables"
 	"github.com/hashicorp/go-multierror"
@@ -24,8 +25,8 @@ const MaxReferenceDepth = 20
 // GetVariables gets a value for each of the variables specified in boilerplateConfig, other than those already in existingVariables.
 // The value for a variable can come from the user (if the non-interactive option isn't set), the default value in the
 // config, or a command line option.
-func GetVariables(l logging.Logger, opts *options.BoilerplateOptions, boilerplateConfig, rootBoilerplateConfig *BoilerplateConfig, thisDep *variables.Dependency) (map[string]any, error) {
-	return GetVariablesWithContext(context.Background(), l, opts, boilerplateConfig, rootBoilerplateConfig, thisDep)
+func GetVariables(l logging.Logger, fsys vfs.FS, opts *options.BoilerplateOptions, boilerplateConfig, rootBoilerplateConfig *BoilerplateConfig, thisDep *variables.Dependency) (map[string]any, error) {
+	return GetVariablesWithContext(context.Background(), l, fsys, opts, boilerplateConfig, rootBoilerplateConfig, thisDep)
 }
 
 // GetVariablesWithContext collects variables from the user, variable defaults in the boilerplate.yml config, command line options, and environment
@@ -33,7 +34,7 @@ func GetVariables(l logging.Logger, opts *options.BoilerplateOptions, boilerplat
 //
 // The value for a variable can come from the user (if the non-interactive option isn't set), the default value in the
 // config, or a command line option.
-func GetVariablesWithContext(ctx context.Context, l logging.Logger, opts *options.BoilerplateOptions, boilerplateConfig, rootBoilerplateConfig *BoilerplateConfig, thisDep *variables.Dependency) (map[string]any, error) {
+func GetVariablesWithContext(ctx context.Context, l logging.Logger, fsys vfs.FS, opts *options.BoilerplateOptions, boilerplateConfig, rootBoilerplateConfig *BoilerplateConfig, thisDep *variables.Dependency) (map[string]any, error) {
 	renderedVariables := map[string]any{}
 
 	// Add a variable for all variables contained in the root config file. This will allow Golang template users
@@ -114,7 +115,7 @@ func GetVariablesWithContext(ctx context.Context, l logging.Logger, opts *option
 
 	// Pass all the user provided variables through a rendering pipeline to ensure they are evaluated down to
 	// primitives.
-	newlyRenderedVariables, err := render.RenderVariablesWithContext(ctx, l, opts, variablesToRender, renderedVariables)
+	newlyRenderedVariables, err := render.RenderVariablesWithContext(ctx, l, fsys, opts, variablesToRender, renderedVariables)
 	if err != nil {
 		return nil, err
 	}

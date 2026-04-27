@@ -5,10 +5,12 @@ package render
 
 import (
 	"encoding/json"
+	"path"
 
 	jsonnet "github.com/google/go-jsonnet"
 
 	"github.com/gruntwork-io/boilerplate/options"
+	"github.com/gruntwork-io/boilerplate/pkg/vfs"
 	"github.com/gruntwork-io/boilerplate/util"
 )
 
@@ -24,23 +26,58 @@ var incompatibleVariables = []string{
 // - templateFolder
 // - outputFolder
 func RenderJsonnetTemplate(
+	fsys vfs.FS,
 	templatePath string,
 	variables map[string]any,
 	opts *options.BoilerplateOptions,
 ) (string, error) {
 	jsonnetVM := jsonnet.MakeVM()
+	jsonnetVM.Importer(&vfsImporter{fsys: fsys, anchor: templatePath})
 	configureExternalVars(opts, jsonnetVM)
 
 	if err := configureTLAVarsFromBoilerplateVars(jsonnetVM, variables); err != nil {
 		return "", err
 	}
 
-	output, err := jsonnetVM.EvaluateFile(templatePath)
+	contents, err := vfs.ReadFile(fsys, templatePath)
+	if err != nil {
+		return "", err
+	}
+
+	output, err := jsonnetVM.EvaluateAnonymousSnippet(templatePath, string(contents))
 	if err != nil {
 		return "", err
 	}
 
 	return output, nil
+}
+
+// vfsImporter is a jsonnet.Importer that loads imports through a vfs.FS.
+// anchor is the path the top-level snippet was loaded from; it is used to resolve
+// relative imports when the importing file is not known (e.g. the entry snippet).
+type vfsImporter struct {
+	fsys   vfs.FS
+	anchor string
+}
+
+// Import implements jsonnet.Importer by reading files through the configured filesystem.
+func (i *vfsImporter) Import(importedFrom, importedPath string) (jsonnet.Contents, string, error) {
+	from := importedFrom
+	if from == "" {
+		from = i.anchor
+	}
+
+	resolved := importedPath
+	if !path.IsAbs(resolved) && from != "" {
+		resolved = path.Join(path.Dir(from), importedPath)
+	}
+
+	data, err := vfs.ReadFile(i.fsys, resolved)
+	if err != nil {
+		return jsonnet.Contents{}, "", err
+	}
+
+	return jsonnet.MakeContents(string(data)), resolved, nil
 }
 
 // configureExternalVars registers the helper values as external variables for the jsonnet template engine.

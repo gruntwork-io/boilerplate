@@ -13,6 +13,7 @@ import (
 
 	"github.com/gruntwork-io/boilerplate/manifest"
 	"github.com/gruntwork-io/boilerplate/pkg/logging"
+	"github.com/gruntwork-io/boilerplate/pkg/vfs"
 )
 
 func TestDirectorySourceChecksum(t *testing.T) {
@@ -22,7 +23,7 @@ func TestDirectorySourceChecksum(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "a.txt"), []byte("hello"), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "b.txt"), []byte("world"), 0o644))
 
-	checksum, err := manifest.DirectorySourceChecksum(dir)
+	checksum, err := manifest.DirectorySourceChecksum(vfs.NewOSFS(), dir)
 	require.NoError(t, err)
 	assert.True(t, strings.HasPrefix(checksum, "sha256:"), "expected sha256 prefix, got %s", checksum)
 	assert.Len(t, strings.TrimPrefix(checksum, "sha256:"), 64)
@@ -40,10 +41,10 @@ func TestDirectorySourceChecksum_Deterministic(t *testing.T) {
 		require.NoError(t, os.WriteFile(filepath.Join(dir, "sub", "b.txt"), []byte("bbb"), 0o644))
 	}
 
-	c1, err := manifest.DirectorySourceChecksum(dir1)
+	c1, err := manifest.DirectorySourceChecksum(vfs.NewOSFS(), dir1)
 	require.NoError(t, err)
 
-	c2, err := manifest.DirectorySourceChecksum(dir2)
+	c2, err := manifest.DirectorySourceChecksum(vfs.NewOSFS(), dir2)
 	require.NoError(t, err)
 
 	assert.Equal(t, c1, c2)
@@ -62,10 +63,10 @@ func TestDirectorySourceChecksum_SkipsGitDir(t *testing.T) {
 	require.NoError(t, os.MkdirAll(filepath.Join(dir2, ".git"), 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(dir2, ".git", "HEAD"), []byte("ref: refs/heads/main"), 0o644))
 
-	c1, err := manifest.DirectorySourceChecksum(dir1)
+	c1, err := manifest.DirectorySourceChecksum(vfs.NewOSFS(), dir1)
 	require.NoError(t, err)
 
-	c2, err := manifest.DirectorySourceChecksum(dir2)
+	c2, err := manifest.DirectorySourceChecksum(vfs.NewOSFS(), dir2)
 	require.NoError(t, err)
 
 	assert.Equal(t, c1, c2)
@@ -113,7 +114,7 @@ func TestComputeSourceChecksum_FallbackOnNonGit(t *testing.T) {
 	dir := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "file.txt"), []byte("data"), 0o644))
 
-	checksum, err := manifest.ComputeSourceChecksum(logging.Discard(), dir, "")
+	checksum, err := manifest.ComputeSourceChecksum(logging.Discard(), vfs.NewOSFS(), dir, "")
 	require.NoError(t, err)
 	assert.True(t, strings.HasPrefix(checksum, "sha256:"), "expected sha256 prefix, got %s", checksum)
 }
@@ -124,7 +125,7 @@ func TestComputeSourceChecksum_FallbackOnNonGitCloneDir(t *testing.T) {
 	dir := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "file.txt"), []byte("data"), 0o644))
 
-	checksum, err := manifest.ComputeSourceChecksum(logging.Discard(), dir, dir)
+	checksum, err := manifest.ComputeSourceChecksum(logging.Discard(), vfs.NewOSFS(), dir, dir)
 	require.NoError(t, err)
 	assert.True(t, strings.HasPrefix(checksum, "sha256:"), "expected sha256 prefix, got %s", checksum)
 }

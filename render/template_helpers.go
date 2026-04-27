@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"maps"
 	"math"
@@ -24,6 +25,7 @@ import (
 	shellcmd "github.com/gruntwork-io/boilerplate/internal/shell"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/pkg/logging"
+	"github.com/gruntwork-io/boilerplate/pkg/vfs"
 	"github.com/gruntwork-io/boilerplate/prompt"
 	"github.com/gruntwork-io/boilerplate/variables"
 	"gopkg.in/yaml.v3"
@@ -53,13 +55,12 @@ var camelCaseRegex = regexp.MustCompile(
 	"(^([[:lower:]]|[[:digit:]])+)|" + // Handle lower camel case
 		"([[:upper:]]*([[:lower:]]|[[:digit:]]|$)*)") // Handle normal camel case
 
-// TemplateHelper represents all boilerplate template helpers. They get the path of the template they are rendering as
-// the first arg, the Boilerplate Options as the second arg, and then any arguments the user passed when calling the
-// helper.
-type TemplateHelper func(ctx context.Context, l logging.Logger, templatePath string, opts *options.BoilerplateOptions, args ...string) (string, error)
+// TemplateHelper represents all boilerplate template helpers. They get the filesystem, the path of the template they
+// are rendering, the Boilerplate Options, and then any arguments the user passed when calling the helper.
+type TemplateHelper func(ctx context.Context, l logging.Logger, fsys vfs.FS, templatePath string, opts *options.BoilerplateOptions, args ...string) (string, error)
 
 // CreateTemplateHelpers creates a map of custom template helpers exposed by boilerplate.
-func CreateTemplateHelpers(ctx context.Context, l logging.Logger, templatePath string, opts *options.BoilerplateOptions, tmpl *template.Template) template.FuncMap {
+func CreateTemplateHelpers(ctx context.Context, l logging.Logger, fsys vfs.FS, templatePath string, opts *options.BoilerplateOptions, tmpl *template.Template) template.FuncMap {
 	sprigFuncs := sprig.FuncMap()
 	// We rename a few sprig functions that overlap with boilerplate implementations. See DEPRECATED note on boilerplate
 	// functions below for more details.
@@ -94,10 +95,10 @@ func CreateTemplateHelpers(ctx context.Context, l logging.Logger, templatePath s
 		"numRange":   slice,
 		"keysSorted": keys,
 
-		"snippet":    wrapWithTemplatePath(ctx, l, templatePath, opts, snippet),
-		"include":    wrapIncludeWithTemplatePath(ctx, l, templatePath, opts),
-		"shell":      wrapWithTemplatePath(ctx, l, templatePath, opts, shell),
-		"pathExists": fileutil.PathExists,
+		"snippet":    wrapWithTemplatePath(ctx, l, fsys, templatePath, opts, snippet),
+		"include":    wrapIncludeWithTemplatePath(ctx, l, fsys, templatePath, opts),
+		"shell":      wrapWithTemplatePath(ctx, l, fsys, templatePath, opts, shell),
+		"pathExists": func(path string) bool { return fileutil.PathExists(fsys, path) },
 
 		"templateIsDefined": wrapIsDefinedWithTemplate(tmpl),
 
@@ -193,16 +194,16 @@ func CreateTemplateHelpers(ctx context.Context, l logging.Logger, templatePath s
 // issue, this function can be used to wrap boilerplate template helpers to make the path of the template itself
 // available as the first argument and the BoilerplateOptions as the second argument. The helper can use that path to
 // relativize other paths, if necessary.
-func wrapWithTemplatePath(ctx context.Context, l logging.Logger, templatePath string, opts *options.BoilerplateOptions, helper TemplateHelper) func(...string) (string, error) {
+func wrapWithTemplatePath(ctx context.Context, l logging.Logger, fsys vfs.FS, templatePath string, opts *options.BoilerplateOptions, helper TemplateHelper) func(...string) (string, error) {
 	return func(args ...string) (string, error) {
-		return helper(ctx, l, templatePath, opts, args...)
+		return helper(ctx, l, fsys, templatePath, opts, args...)
 	}
 }
 
 // This works exactly like wrapWithTemplatePath, but it is adapted to the function args for the include helper function.
-func wrapIncludeWithTemplatePath(ctx context.Context, l logging.Logger, templatePath string, opts *options.BoilerplateOptions) func(string, map[string]any) (string, error) {
+func wrapIncludeWithTemplatePath(ctx context.Context, l logging.Logger, fsys vfs.FS, templatePath string, opts *options.BoilerplateOptions) func(string, map[string]any) (string, error) {
 	return func(path string, varData map[string]any) (string, error) {
-		return include(ctx, l, templatePath, opts, path, varData)
+		return include(ctx, l, fsys, templatePath, opts, path, varData)
 	}
 }
 
@@ -233,14 +234,14 @@ func templateIsDefined(tmpl *template.Template, name string) bool {
 // It returns the contents of PATH, relative to TEMPLATE_PATH, as a string. If SNIPPET_NAME is specified, only the
 // contents of that snippet with that name will be returned. A snippet is any text in the file surrounded by a line on
 // each side of the format "boilerplate-snippet: NAME" (typically using the comment syntax for the language).
-func snippet(_ context.Context, _ logging.Logger, templatePath string, _ *options.BoilerplateOptions, args ...string) (string, error) {
+func snippet(_ context.Context, _ logging.Logger, fsys vfs.FS, templatePath string, _ *options.BoilerplateOptions, args ...string) (string, error) {
 	const snippetArgsWithName = 2
 
 	switch len(args) {
 	case 1:
-		return readFile(templatePath, args[0])
+		return readFile(fsys, templatePath, args[0])
 	case snippetArgsWithName:
-		return readSnippetFromFile(templatePath, args[0], args[1])
+		return readSnippetFromFile(fsys, templatePath, args[0], args[1])
 	default:
 		return "", InvalidSnippetArguments(args)
 	}
@@ -252,28 +253,28 @@ func snippet(_ context.Context, _ logging.Logger, templatePath string, _ *option
 //
 // This helper returns the contents of PATH, relative to TEMPLAT_PATH, but rendered through the boilerplate templating
 // engine with the given variables.
-func include(ctx context.Context, l logging.Logger, templatePath string, opts *options.BoilerplateOptions, path string, varData map[string]any) (string, error) {
-	templateContents, err := readFile(templatePath, path)
+func include(ctx context.Context, l logging.Logger, fsys vfs.FS, templatePath string, opts *options.BoilerplateOptions, path string, varData map[string]any) (string, error) {
+	templateContents, err := readFile(fsys, templatePath, path)
 	if err != nil {
 		return "", err
 	}
 
-	return RenderTemplateFromStringWithContext(ctx, l, templatePath, templateContents, varData, opts)
+	return RenderTemplateFromStringWithContext(ctx, l, fsys, templatePath, templateContents, varData, opts)
 }
 
-// PathRelativeToTemplate returns the given filePath relative to the given templatePath. If filePath is already an absolute path, returns it
-// unchanged.
+// PathRelativeToTemplate returns the given filePath relative to the given templatePath on
+// the given filesystem. If filePath is already an absolute path, returns it unchanged.
 //
 // Example:
 //
-// pathRelativeToTemplate("/foo/bar/template-file.txt, "../src/code.java")
+// pathRelativeToTemplate(fsys, "/foo/bar/template-file.txt", "../src/code.java")
 //
 //	Returns: "/foo/src/code.java"
-func PathRelativeToTemplate(templatePath string, filePath string) string {
+func PathRelativeToTemplate(fsys vfs.FS, templatePath string, filePath string) string {
 	switch {
 	case path.IsAbs(filePath):
 		return filePath
-	case fileutil.IsDir(templatePath):
+	case fileutil.IsDir(fsys, templatePath):
 		return filepath.Join(templatePath, filePath)
 	default:
 		templateDir := filepath.Dir(templatePath)
@@ -281,11 +282,12 @@ func PathRelativeToTemplate(templatePath string, filePath string) string {
 	}
 }
 
-// Returns the contents of the file at path, relative to templatePath, as a string
-func readFile(templatePath, path string) (string, error) {
-	relativePath := PathRelativeToTemplate(templatePath, path)
+// Returns the contents of the file at path, relative to templatePath, on the given
+// filesystem, as a string.
+func readFile(fsys vfs.FS, templatePath, path string) (string, error) {
+	relativePath := PathRelativeToTemplate(fsys, templatePath, path)
 
-	bytes, err := os.ReadFile(relativePath)
+	bytes, err := vfs.ReadFile(fsys, relativePath)
 	if err != nil {
 		return "", err
 	}
@@ -293,16 +295,21 @@ func readFile(templatePath, path string) (string, error) {
 	return string(bytes), nil
 }
 
-// Returns the contents of snippet snippetName from the file at path, relative to templatePath.
-func readSnippetFromFile(templatePath string, path string, snippetName string) (string, error) {
-	relativePath := PathRelativeToTemplate(templatePath, path)
+// Returns the contents of snippet snippetName from the file at path, relative to
+// templatePath, on the given filesystem.
+func readSnippetFromFile(fsys vfs.FS, templatePath string, path string, snippetName string) (snippet string, err error) {
+	relativePath := PathRelativeToTemplate(fsys, templatePath, path)
 
-	file, err := os.Open(relativePath)
+	file, err := fsys.Open(relativePath)
 	if err != nil {
 		return "", err
 	}
 
-	defer file.Close()
+	defer func() {
+		if closeErr := file.Close(); closeErr != nil {
+			err = errors.Join(err, closeErr)
+		}
+	}()
 
 	scanner := bufio.NewScanner(file)
 
@@ -669,7 +676,7 @@ func printShellCommandDetails(l logging.Logger, args []string, envVars []string,
 
 // Run the given shell command specified in args in the working dir specified by templatePath and return stdout as a
 // string.
-func shell(ctx context.Context, l logging.Logger, templatePath string, opts *options.BoilerplateOptions, rawArgs ...string) (string, error) {
+func shell(ctx context.Context, l logging.Logger, _ vfs.FS, templatePath string, opts *options.BoilerplateOptions, rawArgs ...string) (string, error) {
 	if opts.NoShell {
 		l.Warnf("Shell helpers are disabled. Will not execute shell command '%v'. Returning placeholder value '%s'.", rawArgs, shellDisabledPlaceholder)
 		return shellDisabledPlaceholder, nil

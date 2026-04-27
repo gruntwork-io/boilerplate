@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/gruntwork-io/boilerplate/options"
+	"github.com/gruntwork-io/boilerplate/pkg/vfs"
 )
 
 func TestRenderJsonnet(t *testing.T) {
@@ -41,7 +42,7 @@ func TestRenderJsonnet(t *testing.T) {
 			var variables map[string]any
 			require.NoError(t, json.Unmarshal(variablesJSON, &variables))
 
-			outputJSON, err := RenderJsonnetTemplate(templateFPath, variables, testBoilerplateOptions)
+			outputJSON, err := RenderJsonnetTemplate(vfs.NewOSFS(), templateFPath, variables, testBoilerplateOptions)
 			require.NoError(t, err)
 
 			var output map[string]any

@@ -10,6 +10,7 @@ import (
 
 	"github.com/gruntwork-io/boilerplate/getterhelper"
 	"github.com/gruntwork-io/boilerplate/pkg/logging"
+	"github.com/gruntwork-io/boilerplate/pkg/vfs"
 )
 
 func TestDownloadTemplatesToTempDir(t *testing.T) {
@@ -17,7 +18,7 @@ func TestDownloadTemplatesToTempDir(t *testing.T) {
 
 	templateURL := "git::https://github.com/gruntwork-io/boilerplate.git//examples/for-learning-and-testing/variables?ref=v0.12.1"
 
-	workingDir, workPath, err := getterhelper.DownloadTemplatesToTemporaryFolder(logging.Discard(), templateURL)
+	workingDir, workPath, err := getterhelper.DownloadTemplatesToTemporaryFolder(logging.Discard(), vfs.NewOSFS(), templateURL)
 	defer os.RemoveAll(workingDir)
 
 	require.NoError(t, err)

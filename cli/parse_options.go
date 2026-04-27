@@ -5,12 +5,14 @@ import (
 
 	"github.com/gruntwork-io/boilerplate/getterhelper"
 	"github.com/gruntwork-io/boilerplate/options"
+	"github.com/gruntwork-io/boilerplate/pkg/vfs"
 	"github.com/gruntwork-io/boilerplate/variables"
 )
 
 // ParseCLIContext parses the command line context provided by the user and returns the BoilerplateOptions struct.
-func ParseCLIContext(cliContext *cli.Context) (*options.BoilerplateOptions, error) {
-	vars, err := variables.ParseVars(cliContext.StringSlice(options.OptVar), cliContext.StringSlice(options.OptVarFile))
+// The given filesystem is used for any filesystem reads required to construct the options (currently only var-files).
+func ParseCLIContext(cliContext *cli.Context, fsys vfs.FS) (*options.BoilerplateOptions, error) {
+	vars, err := variables.ParseVars(fsys, cliContext.StringSlice(options.OptVar), cliContext.StringSlice(options.OptVarFile))
 	if err != nil {
 		return nil, err
 	}

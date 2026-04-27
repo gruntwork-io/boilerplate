@@ -4,7 +4,6 @@ package config
 import (
 	"fmt"
 	"net/url"
-	"os"
 	"path"
 	"strings"
 
@@ -15,6 +14,7 @@ import (
 	"github.com/gruntwork-io/boilerplate/internal/fileutil"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/pkg/logging"
+	"github.com/gruntwork-io/boilerplate/pkg/vfs"
 	"github.com/gruntwork-io/boilerplate/util"
 	"github.com/gruntwork-io/boilerplate/variables"
 )
@@ -191,15 +191,15 @@ func (config *BoilerplateConfig) MarshalYAML() (any, error) {
 	return configYml, nil
 }
 
-// LoadBoilerplateConfig loads the boilerplate.yml config contents for the folder specified in the given options.
-func LoadBoilerplateConfig(l logging.Logger, opts *options.BoilerplateOptions) (*BoilerplateConfig, error) {
+// LoadBoilerplateConfig loads the boilerplate.yml config contents for the folder specified in the given options, using the given filesystem.
+func LoadBoilerplateConfig(l logging.Logger, fsys vfs.FS, opts *options.BoilerplateOptions) (*BoilerplateConfig, error) {
 	configPath := BoilerplateConfigPath(opts.TemplateFolder)
 
 	switch {
-	case fileutil.PathExists(configPath):
+	case fileutil.PathExists(fsys, configPath):
 		l.Debugf("Loading boilerplate config from %s", configPath)
 
-		bytes, err := os.ReadFile(configPath)
+		bytes, err := vfs.ReadFile(fsys, configPath)
 		if err != nil {
 			return nil, err
 		}

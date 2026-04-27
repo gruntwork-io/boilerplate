@@ -13,6 +13,7 @@ import (
 	"github.com/gruntwork-io/boilerplate/manifest"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/pkg/logging"
+	"github.com/gruntwork-io/boilerplate/pkg/vfs"
 	"github.com/gruntwork-io/boilerplate/templates"
 	"github.com/gruntwork-io/boilerplate/variables"
 	"github.com/gruntwork-io/boilerplate/version"
@@ -131,7 +132,9 @@ func runApp(cliContext *cli.Context) error {
 		return cli.ShowAppHelp(cliContext)
 	}
 
-	opts, err := ParseCLIContext(cliContext)
+	fsys := vfs.NewOSFS()
+
+	opts, err := ParseCLIContext(cliContext, fsys)
 	if err != nil {
 		return err
 	}
@@ -143,13 +146,13 @@ func runApp(cliContext *cli.Context) error {
 
 	l := logging.New(os.Stdout, logging.LevelInfo)
 
-	result, err := templates.ProcessTemplateWithContext(ctx, l, opts, opts, &emptyDep)
+	result, err := templates.ProcessTemplateWithContext(ctx, l, fsys, opts, opts, &emptyDep)
 	if err != nil {
 		return err
 	}
 
 	if opts.Manifest {
-		files, checksumErr := computeChecksums(opts.OutputFolder, result.GeneratedFiles)
+		files, checksumErr := computeChecksums(fsys, opts.OutputFolder, result.GeneratedFiles)
 		if checksumErr != nil {
 			return checksumErr
 		}
@@ -161,7 +164,7 @@ func runApp(cliContext *cli.Context) error {
 			manifestPath = opts.ManifestFile
 		}
 
-		if err := manifest.WriteManifest(manifestPath, m); err != nil {
+		if err := manifest.WriteManifest(fsys, manifestPath, m); err != nil {
 			return err
 		}
 	}
@@ -170,13 +173,13 @@ func runApp(cliContext *cli.Context) error {
 }
 
 // computeChecksums streams each generated file through a SHA256 hasher.
-func computeChecksums(outputDir string, relativePaths []string) ([]manifest.GeneratedFile, error) {
+func computeChecksums(fsys vfs.FS, outputDir string, relativePaths []string) ([]manifest.GeneratedFile, error) {
 	files := make([]manifest.GeneratedFile, 0, len(relativePaths))
 
 	for _, relPath := range relativePaths {
 		absPath := filepath.Join(outputDir, relPath)
 
-		checksum, err := manifest.SHA256File(absPath)
+		checksum, err := manifest.SHA256File(fsys, absPath)
 		if err != nil {
 			return nil, fmt.Errorf("failed to compute checksum for %s: %w", absPath, err)
 		}

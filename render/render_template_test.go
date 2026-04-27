@@ -11,6 +11,7 @@ import (
 
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/pkg/logging"
+	"github.com/gruntwork-io/boilerplate/pkg/vfs"
 	"github.com/gruntwork-io/boilerplate/testutil"
 )
 
@@ -116,7 +117,7 @@ func TestRenderTemplate(t *testing.T) {
 			opts := testutil.CreateTestOptionsWithOutput("/templates", defaultOutputDir)
 			opts.OnMissingKey = tc.missingKeyAction
 
-			actualOutput, err := RenderTemplateFromStringWithContext(t.Context(), logging.Discard(), pwd+"/template.txt", tc.templateContents, tc.variables, opts)
+			actualOutput, err := RenderTemplateFromStringWithContext(t.Context(), logging.Discard(), vfs.NewOSFS(), pwd+"/template.txt", tc.templateContents, tc.variables, opts)
 			if tc.expectedErrorText == "" {
 				assert.NoError(t, err, "template = %s, variables = %s, missingKeyAction = %s, err = %v", tc.templateContents, tc.variables, tc.missingKeyAction, err)
 				assert.Equal(t, tc.expectedOutput, actualOutput, "template = %s, variables = %s, missingKeyAction = %s", tc.templateContents, tc.variables, tc.missingKeyAction)

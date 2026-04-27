@@ -12,6 +12,7 @@ import (
 	urlhelper "github.com/hashicorp/go-getter/helper/url"
 
 	"github.com/gruntwork-io/boilerplate/pkg/logging"
+	"github.com/gruntwork-io/boilerplate/pkg/vfs"
 )
 
 // CloneSubdir is the subdirectory name used inside the temporary working
@@ -93,8 +94,10 @@ func DetermineTemplateConfig(templateURL string) (string, string, error) {
 	return templateURL, "", nil
 }
 
-// NewGetterClient creates a new getter client that forces go-getter to copy files instead of creating symlinks.
-func NewGetterClient(src string, dst string) (*getter.Client, error) {
+// NewGetterClient creates a new getter client that forces go-getter to copy files instead
+// of creating symlinks. The given filesystem is used by the file getter when it copies
+// folders.
+func NewGetterClient(fsys vfs.FS, src string, dst string) (*getter.Client, error) {
 	pwd, err := os.Getwd()
 	if err != nil {
 		return nil, err
@@ -115,7 +118,7 @@ func NewGetterClient(src string, dst string) (*getter.Client, error) {
 
 	for getterName, getterValue := range getter.Getters {
 		if getterName == "file" {
-			client.Getters[getterName] = &FileCopyGetter{}
+			client.Getters[getterName] = &FileCopyGetter{Vfs: fsys}
 		} else {
 			client.Getters[getterName] = getterValue
 		}
@@ -127,7 +130,7 @@ func NewGetterClient(src string, dst string) (*getter.Client, error) {
 // DownloadTemplatesToTemporaryFolder uses the go-getter library to fetch the templates from the configured URL to a
 // temporary folder and returns the path to that folder. If there is a subdir in the template URL, return the combined
 // path as well.
-func DownloadTemplatesToTemporaryFolder(l logging.Logger, templateURL string) (string, string, error) {
+func DownloadTemplatesToTemporaryFolder(l logging.Logger, fsys vfs.FS, templateURL string) (string, string, error) {
 	workingDir, err := getTempFolder()
 	if err != nil {
 		return workingDir, workingDir, err
@@ -142,7 +145,7 @@ func DownloadTemplatesToTemporaryFolder(l logging.Logger, templateURL string) (s
 	mainPath, subDir := getter.SourceDirSubdir(templateURL)
 	outDir := filepath.Clean(filepath.Join(cloneDir, subDir))
 
-	client, err := NewGetterClient(mainPath, cloneDir)
+	client, err := NewGetterClient(fsys, mainPath, cloneDir)
 	if err != nil {
 		return workingDir, outDir, err
 	}

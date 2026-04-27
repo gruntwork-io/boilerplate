@@ -13,6 +13,7 @@ import (
 
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/pkg/logging"
+	"github.com/gruntwork-io/boilerplate/pkg/vfs"
 	"github.com/gruntwork-io/boilerplate/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -221,7 +222,7 @@ func TestPathRelativeToTemplate(t *testing.T) {
 				return
 			}
 
-			actual := PathRelativeToTemplate(tt.templatePath, tt.path)
+			actual := PathRelativeToTemplate(vfs.NewOSFS(), tt.templatePath, tt.path)
 			assert.Equal(t, tt.expected, filepath.ToSlash(actual))
 		})
 	}
@@ -241,9 +242,10 @@ func TestWrapWithTemplatePath(t *testing.T) {
 	wrappedFunc := wrapWithTemplatePath(
 		t.Context(),
 		logging.Discard(),
+		vfs.NewOSFS(),
 		expectedPath,
 		expectedOpts,
-		func(_ context.Context, _ logging.Logger, templatePath string, opts *options.BoilerplateOptions, _ ...string) (string, error) {
+		func(_ context.Context, _ logging.Logger, _ vfs.FS, templatePath string, opts *options.BoilerplateOptions, _ ...string) (string, error) {
 			actualPath = templatePath
 			actualOpts = opts
 
@@ -467,10 +469,10 @@ func TestShellSuccess(t *testing.T) {
 
 	if runtime.GOOS == windowsOS {
 		eol = "\r\n"
-		output, err = shell(t.Context(), logging.Discard(), ".", opts, "cmd.exe", "/C", "echo", "hi")
+		output, err = shell(t.Context(), logging.Discard(), vfs.NewOSFS(), ".", opts, "cmd.exe", "/C", "echo", "hi")
 	} else {
 		eol = "\n"
-		output, err = shell(t.Context(), logging.Discard(), ".", opts, "echo", "hi")
+		output, err = shell(t.Context(), logging.Discard(), vfs.NewOSFS(), ".", opts, "echo", "hi")
 	}
 
 	require.NoError(t, err, "Unexpected error: %v", err)
@@ -482,7 +484,7 @@ func TestShellError(t *testing.T) {
 
 	opts := testutil.CreateTestOptionsForShell(true, false)
 
-	_, err := shell(t.Context(), logging.Discard(), ".", opts, "not-a-real-command")
+	_, err := shell(t.Context(), logging.Discard(), vfs.NewOSFS(), ".", opts, "not-a-real-command")
 	if assert.Error(t, err) {
 		if runtime.GOOS == windowsOS {
 			assert.Contains(t, err.Error(), "executable file not found in %PATH%", "Unexpected error message: %s", err.Error())
@@ -496,7 +498,7 @@ func TestShellDisabled(t *testing.T) {
 	t.Parallel()
 
 	opts := testutil.CreateTestOptionsForShell(true, true)
-	output, err := shell(t.Context(), logging.Discard(), ".", opts, "echo", "hi")
+	output, err := shell(t.Context(), logging.Discard(), vfs.NewOSFS(), ".", opts, "echo", "hi")
 	require.NoError(t, err, "Unexpected error: %v", err)
 	assert.Equal(t, shellDisabledPlaceholder, output)
 }
