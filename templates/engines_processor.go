@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/gruntwork-io/boilerplate/options"
+	"github.com/gruntwork-io/boilerplate/pkg/logging"
 	"github.com/gruntwork-io/boilerplate/util"
 	"github.com/gruntwork-io/boilerplate/variables"
 )
@@ -19,6 +20,7 @@ type ProcessedEngine struct {
 // rendering the glob expression for the Path attribute.
 func processEngines(
 	ctx context.Context,
+	l logging.Logger,
 	engines []variables.Engine,
 	opts *options.BoilerplateOptions,
 	variables map[string]any,
@@ -26,12 +28,12 @@ func processEngines(
 	output := []ProcessedEngine{}
 
 	for _, engine := range engines {
-		matchedPaths, err := renderGlobPath(ctx, opts, engine.Path, variables)
+		matchedPaths, err := renderGlobPath(ctx, l, opts, engine.Path, variables)
 		if err != nil {
 			return nil, err
 		}
 
-		debugLogForMatchedPaths(engine.Path, matchedPaths, "Engine", "Path")
+		debugLogForMatchedPaths(l, engine.Path, matchedPaths, "Engine", "Path")
 
 		processedEngine := ProcessedEngine{
 			EvaluatedPaths: matchedPaths,

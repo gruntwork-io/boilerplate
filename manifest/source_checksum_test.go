@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/gruntwork-io/boilerplate/manifest"
+	"github.com/gruntwork-io/boilerplate/pkg/logging"
 )
 
 func TestDirectorySourceChecksum(t *testing.T) {
@@ -97,7 +98,7 @@ func TestGitSourceChecksum(t *testing.T) {
 
 	expectedHash := gitCmd("rev-parse", "HEAD")
 
-	checksum, err := manifest.GitSourceChecksum(dir)
+	checksum, err := manifest.GitSourceChecksum(logging.Discard(), dir)
 	require.NoError(t, err)
 
 	assert.True(t, strings.HasPrefix(checksum, "git-sha1:") || strings.HasPrefix(checksum, "git-sha256:"),
@@ -112,7 +113,7 @@ func TestComputeSourceChecksum_FallbackOnNonGit(t *testing.T) {
 	dir := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "file.txt"), []byte("data"), 0o644))
 
-	checksum, err := manifest.ComputeSourceChecksum(dir, "")
+	checksum, err := manifest.ComputeSourceChecksum(logging.Discard(), dir, "")
 	require.NoError(t, err)
 	assert.True(t, strings.HasPrefix(checksum, "sha256:"), "expected sha256 prefix, got %s", checksum)
 }
@@ -123,7 +124,7 @@ func TestComputeSourceChecksum_FallbackOnNonGitCloneDir(t *testing.T) {
 	dir := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "file.txt"), []byte("data"), 0o644))
 
-	checksum, err := manifest.ComputeSourceChecksum(dir, dir)
+	checksum, err := manifest.ComputeSourceChecksum(logging.Discard(), dir, dir)
 	require.NoError(t, err)
 	assert.True(t, strings.HasPrefix(checksum, "sha256:"), "expected sha256 prefix, got %s", checksum)
 }

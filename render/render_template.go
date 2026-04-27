@@ -9,6 +9,7 @@ import (
 	"text/template"
 
 	"github.com/gruntwork-io/boilerplate/options"
+	"github.com/gruntwork-io/boilerplate/pkg/logging"
 	"github.com/hashicorp/go-multierror"
 )
 
@@ -17,15 +18,15 @@ const MaxRenderAttempts = 15
 // RenderTemplateWithPartials renders the template at templatePath with the contents of the root template (the template
 // named by the user on the command line) as well as all of the partials matched by the provided globs using the Go
 // template engine, passing in the given variables as data.
-func RenderTemplateWithPartials(templatePath string, partials []string, variables map[string]any, opts *options.BoilerplateOptions) (string, error) {
-	return RenderTemplateWithPartialsWithContext(context.Background(), templatePath, partials, variables, opts)
+func RenderTemplateWithPartials(l logging.Logger, templatePath string, partials []string, variables map[string]any, opts *options.BoilerplateOptions) (string, error) {
+	return RenderTemplateWithPartialsWithContext(context.Background(), l, templatePath, partials, variables, opts)
 }
 
 // RenderTemplateWithPartialsWithContext renders the template at templatePath with the contents of the root template (the template
 // named by the user on the command line) as well as all of the partials matched by the provided globs using the Go
 // template engine, passing in the given variables as data.
-func RenderTemplateWithPartialsWithContext(ctx context.Context, templatePath string, partials []string, variables map[string]any, opts *options.BoilerplateOptions) (string, error) {
-	tmpl, err := getTemplate(ctx, templatePath, opts).ParseGlob(templatePath)
+func RenderTemplateWithPartialsWithContext(ctx context.Context, l logging.Logger, templatePath string, partials []string, variables map[string]any, opts *options.BoilerplateOptions) (string, error) {
+	tmpl, err := getTemplate(ctx, l, templatePath, opts).ParseGlob(templatePath)
 	if err != nil {
 		return "", err
 	}
@@ -38,7 +39,7 @@ func RenderTemplateWithPartialsWithContext(ctx context.Context, templatePath str
 		// relative to the path passed in by the user
 		relativePath := PathRelativeToTemplate(opts.TemplateFolder, globOfPartials)
 
-		parsedTemplate, err := getTemplate(ctx, templatePath, opts).ParseGlob(relativePath)
+		parsedTemplate, err := getTemplate(ctx, l, templatePath, opts).ParseGlob(relativePath)
 		if err != nil {
 			return "", err
 		}
@@ -55,8 +56,8 @@ func RenderTemplateWithPartialsWithContext(ctx context.Context, templatePath str
 
 // RenderTemplateFromString renders the template at templatePath, with contents templateContents, using the Go template engine, passing in the
 // given variables as data.
-func RenderTemplateFromString(templatePath string, templateContents string, variables map[string]any, opts *options.BoilerplateOptions) (string, error) {
-	tmpl := getTemplate(context.Background(), templatePath, opts)
+func RenderTemplateFromString(l logging.Logger, templatePath string, templateContents string, variables map[string]any, opts *options.BoilerplateOptions) (string, error) {
+	tmpl := getTemplate(context.Background(), l, templatePath, opts)
 
 	parsedTemplate, err := tmpl.Parse(templateContents)
 	if err != nil {
@@ -68,8 +69,8 @@ func RenderTemplateFromString(templatePath string, templateContents string, vari
 
 // RenderTemplateFromStringWithContext renders the template at templatePath, with contents templateContents, using the Go template engine, passing in the
 // given variables as data.
-func RenderTemplateFromStringWithContext(ctx context.Context, templatePath string, templateContents string, variables map[string]any, opts *options.BoilerplateOptions) (string, error) {
-	tmpl := getTemplate(ctx, templatePath, opts)
+func RenderTemplateFromStringWithContext(ctx context.Context, l logging.Logger, templatePath string, templateContents string, variables map[string]any, opts *options.BoilerplateOptions) (string, error) {
+	tmpl := getTemplate(ctx, l, templatePath, opts)
 
 	parsedTemplate, err := tmpl.Parse(templateContents)
 	if err != nil {
@@ -77,24 +78,6 @@ func RenderTemplateFromStringWithContext(ctx context.Context, templatePath strin
 	}
 
 	return executeTemplate(parsedTemplate, variables)
-}
-
-// getTemplate returns new template initialized with options and helper functions
-func getTemplate(ctx context.Context, templatePath string, opts *options.BoilerplateOptions) *template.Template {
-	tmpl := template.New(path.Base(templatePath))
-	option := "missingkey=" + string(opts.OnMissingKey)
-
-	return tmpl.Funcs(CreateTemplateHelpers(ctx, templatePath, opts, tmpl)).Option(option)
-}
-
-// executeTemplate executes a parsed template with a given set of variable inputs and return the output as a string
-func executeTemplate(tmpl *template.Template, variables map[string]any) (string, error) {
-	var output bytes.Buffer
-	if err := tmpl.Execute(&output, variables); err != nil {
-		return "", err
-	}
-
-	return output.String(), nil
 }
 
 // RenderVariables will render each of the variables that need to be rendered by running it through the go templating
@@ -113,11 +96,12 @@ func executeTemplate(tmpl *template.Template, variables map[string]any) (string,
 // Note that this is NOT a multi pass algorithm - that is, we do NOT attempt to render the template multiple times.
 // Instead, we do a single template render on each run and reject any that return with an error.
 func RenderVariables(
+	l logging.Logger,
 	opts *options.BoilerplateOptions,
 	variablesToRender map[string]any,
 	alreadyRenderedVariables map[string]any,
 ) (map[string]any, error) {
-	return RenderVariablesWithContext(context.Background(), opts, variablesToRender, alreadyRenderedVariables)
+	return RenderVariablesWithContext(context.Background(), l, opts, variablesToRender, alreadyRenderedVariables)
 }
 
 // RenderVariablesWithContext will render each of the variables that need to be rendered by running it through the go templating
@@ -137,6 +121,7 @@ func RenderVariables(
 // Instead, we do a single template render on each run and reject any that return with an error.
 func RenderVariablesWithContext(
 	ctx context.Context,
+	l logging.Logger,
 	opts *options.BoilerplateOptions,
 	variablesToRender map[string]any,
 	alreadyRenderedVariables map[string]any,
@@ -171,7 +156,7 @@ func RenderVariablesWithContext(
 			return nil, MaxRenderAttemptsErr{}
 		}
 
-		attemptRenderOutput, err := attemptRenderVariables(ctx, &optsForRender, unrenderedVariables, renderedVariables, variablesToRender)
+		attemptRenderOutput, err := attemptRenderVariables(ctx, l, &optsForRender, unrenderedVariables, renderedVariables, variablesToRender)
 		unrenderedVariables = attemptRenderOutput.unrenderedVariables
 		renderedVariables = attemptRenderOutput.renderedVariables
 		rendered = attemptRenderOutput.variablesWereRendered
@@ -185,6 +170,24 @@ func RenderVariablesWithContext(
 	return renderedVariables, nil
 }
 
+// getTemplate returns new template initialized with options and helper functions.
+func getTemplate(ctx context.Context, l logging.Logger, templatePath string, opts *options.BoilerplateOptions) *template.Template {
+	tmpl := template.New(path.Base(templatePath))
+	option := "missingkey=" + string(opts.OnMissingKey)
+
+	return tmpl.Funcs(CreateTemplateHelpers(ctx, l, templatePath, opts, tmpl)).Option(option)
+}
+
+// executeTemplate executes a parsed template with a given set of variable inputs and return the output as a string.
+func executeTemplate(tmpl *template.Template, variables map[string]any) (string, error) {
+	var output bytes.Buffer
+	if err := tmpl.Execute(&output, variables); err != nil {
+		return "", err
+	}
+
+	return output.String(), nil
+}
+
 // attemptRenderVariables is a helper function that drives the multiple trial algorithm. This represents a single trial
 // of evaluating all the unrendered variables. This function goes through each unrendered variable and attempts to
 // render them using the currently rendered variables. This will return:
@@ -193,6 +196,7 @@ func RenderVariablesWithContext(
 // - a boolean indicating whether any new variables were rendered
 func attemptRenderVariables(
 	ctx context.Context,
+	l logging.Logger,
 	opts *options.BoilerplateOptions,
 	unrenderedVariables []string,
 	renderedVariables map[string]any,
@@ -204,7 +208,7 @@ func attemptRenderVariables(
 	var allRenderErr error
 
 	for _, variableName := range unrenderedVariables {
-		rendered, err := attemptRenderVariable(ctx, opts, variables[variableName], renderedVariables)
+		rendered, err := attemptRenderVariable(ctx, l, opts, variables[variableName], renderedVariables)
 		if err != nil {
 			newUnrenderedVariables = append(newUnrenderedVariables, variableName)
 			allRenderErr = multierror.Append(allRenderErr, err)
@@ -227,17 +231,17 @@ func attemptRenderVariables(
 // references.
 // NOTE: This function is not responsible for converting the output type to the expected type configured on the
 // boilerplate config, and will always use string as the primitive output.
-func attemptRenderVariable(ctx context.Context, opts *options.BoilerplateOptions, variable any, renderedVariables map[string]any) (any, error) {
+func attemptRenderVariable(ctx context.Context, l logging.Logger, opts *options.BoilerplateOptions, variable any, renderedVariables map[string]any) (any, error) {
 	valueType := reflect.ValueOf(variable)
 
 	switch valueType.Kind() { //nolint:exhaustive // TODO: Add missing reflect.Kind cases for exhaustive coverage
 	case reflect.String:
-		return RenderTemplateFromStringWithContext(ctx, opts.TemplateFolder, variable.(string), renderedVariables, opts)
+		return RenderTemplateFromStringWithContext(ctx, l, opts.TemplateFolder, variable.(string), renderedVariables, opts)
 	case reflect.Slice:
 		values := []any{}
 
 		for i := 0; i < valueType.Len(); i++ {
-			rendered, err := attemptRenderVariable(ctx, opts, valueType.Index(i).Interface(), renderedVariables)
+			rendered, err := attemptRenderVariable(ctx, l, opts, valueType.Index(i).Interface(), renderedVariables)
 			if err != nil {
 				return nil, err
 			}
@@ -250,12 +254,12 @@ func attemptRenderVariable(ctx context.Context, opts *options.BoilerplateOptions
 		values := map[string]any{}
 
 		for _, key := range valueType.MapKeys() {
-			renderedKey, err := attemptRenderVariable(ctx, opts, key.Interface(), renderedVariables)
+			renderedKey, err := attemptRenderVariable(ctx, l, opts, key.Interface(), renderedVariables)
 			if err != nil {
 				return nil, err
 			}
 
-			renderedValue, err := attemptRenderVariable(ctx, opts, valueType.MapIndex(key).Interface(), renderedVariables)
+			renderedValue, err := attemptRenderVariable(ctx, l, opts, valueType.MapIndex(key).Interface(), renderedVariables)
 			if err != nil {
 				return nil, err
 			}

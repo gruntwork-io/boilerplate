@@ -9,15 +9,15 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/gruntwork-io/boilerplate/internal/logging"
 	"github.com/gruntwork-io/boilerplate/internal/shell"
+	"github.com/gruntwork-io/boilerplate/pkg/logging"
 )
 
 // ComputeSourceChecksum computes a checksum for the template source identified
 // by templateDir and cloneDir. When cloneDir points to a git repository it
 // delegates to [GitSourceChecksum]; otherwise (or if git detection fails) it
 // falls back to [DirectorySourceChecksum].
-func ComputeSourceChecksum(templateDir, cloneDir string) (string, error) {
+func ComputeSourceChecksum(l logging.Logger, templateDir, cloneDir string) (string, error) {
 	if cloneDir == "" {
 		return DirectorySourceChecksum(templateDir)
 	}
@@ -29,9 +29,9 @@ func ComputeSourceChecksum(templateDir, cloneDir string) (string, error) {
 		return DirectorySourceChecksum(templateDir)
 	}
 
-	checksum, err := GitSourceChecksum(cloneDir)
+	checksum, err := GitSourceChecksum(l, cloneDir)
 	if err != nil {
-		logging.Logger.Printf("Warning: git source checksum failed, falling back to directory checksum: %v", err)
+		l.Warnf("git source checksum failed, falling back to directory checksum: %v", err)
 
 		return DirectorySourceChecksum(templateDir)
 	}
@@ -42,15 +42,15 @@ func ComputeSourceChecksum(templateDir, cloneDir string) (string, error) {
 // GitSourceChecksum returns the HEAD commit hash of the git repository at
 // cloneDir, prefixed with the object format: "git-sha1:<hash>" for
 // SHA-1 repos or "git-sha256:<hash>" for SHA-256 repos.
-func GitSourceChecksum(cloneDir string) (string, error) {
-	format, err := shell.RunShellCommandAndGetOutput(cloneDir, nil, "git", "rev-parse", "--show-object-format")
+func GitSourceChecksum(l logging.Logger, cloneDir string) (string, error) {
+	format, err := shell.RunShellCommandAndGetOutput(l, cloneDir, nil, "git", "rev-parse", "--show-object-format")
 	if err != nil {
 		return "", fmt.Errorf("failed to detect git object format: %w", err)
 	}
 
 	format = strings.TrimSpace(format)
 
-	hash, err := shell.RunShellCommandAndGetOutput(cloneDir, nil, "git", "rev-parse", "HEAD")
+	hash, err := shell.RunShellCommandAndGetOutput(l, cloneDir, nil, "git", "rev-parse", "HEAD")
 	if err != nil {
 		return "", fmt.Errorf("failed to get HEAD commit: %w", err)
 	}

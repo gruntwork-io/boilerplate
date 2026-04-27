@@ -49,7 +49,11 @@
     "giter8",
     "snakecase",
     "kebabcase",
-    "nindent"
+    "nindent",
+    "Debugf",
+    "Infof",
+    "Warnf",
+    "Errorf"
   ],
   "ignorePaths": [
     "node_modules",
