@@ -1,6 +1,9 @@
 # build output
 dist/
 
+# wasm artifacts fetched from GitHub Releases at build time (see scripts/fetch-wasm.mjs)
+public/wasm/
+
 # generated types
 .astro/
 

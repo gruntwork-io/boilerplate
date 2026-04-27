@@ -8,6 +8,7 @@ import (
 	"syscall/js"
 
 	"github.com/gruntwork-io/boilerplate/options"
+	"github.com/gruntwork-io/boilerplate/pkg/logging"
 	"github.com/gruntwork-io/boilerplate/render"
 )
 
@@ -45,7 +46,7 @@ func renderTemplate(this js.Value, args []js.Value) any {
 		OnMissingConfig: options.Ignore,
 	}
 
-	result, err := render.RenderTemplateFromString("template", templateStr, variables, opts)
+	result, err := render.RenderTemplateFromString(logging.Discard(), "template", templateStr, variables, opts)
 	if err != nil {
 		return js.Global().Get("Error").New(fmt.Sprintf("template rendering failed: %v", err))
 	}

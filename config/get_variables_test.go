@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/gruntwork-io/boilerplate/options"
+	"github.com/gruntwork-io/boilerplate/pkg/logging"
 	"github.com/gruntwork-io/boilerplate/testutil"
 	"github.com/gruntwork-io/boilerplate/variables"
 )
@@ -100,7 +101,7 @@ func TestGetVariableNoMatchNonInteractive(t *testing.T) {
 	variable := variables.NewStringVariable("foo")
 	opts := testutil.CreateTestOptionsForShell(true, false)
 
-	_, err := getVariable(variable, opts)
+	_, err := getVariable(logging.Discard(), variable, opts)
 
 	require.Error(t, err)
 	assert.ErrorIs(t, err, MissingVariableWithNonInteractiveMode("foo"), "Expected a MissingVariableWithNonInteractiveMode error but got %s", reflect.TypeOf(err))
@@ -119,7 +120,7 @@ func TestGetVariableInVarsNonInteractive(t *testing.T) {
 		},
 	}
 
-	actual, err := getVariable(variable, opts)
+	actual, err := getVariable(logging.Discard(), variable, opts)
 	expected := "bar"
 
 	require.NoError(t, err)
@@ -139,7 +140,7 @@ func TestGetVariableDefaultNonInteractive(t *testing.T) {
 		},
 	}
 
-	actual, err := getVariable(variable, opts)
+	actual, err := getVariable(logging.Discard(), variable, opts)
 	expected := "bar"
 
 	require.NoError(t, err)
@@ -154,7 +155,7 @@ func TestGetVariablesNoVariables(t *testing.T) {
 	rootBoilerplateConfig := &BoilerplateConfig{}
 	dependency := &variables.Dependency{}
 
-	actual, err := GetVariables(opts, boilerplateConfig, rootBoilerplateConfig, dependency)
+	actual, err := GetVariables(logging.Discard(), opts, boilerplateConfig, rootBoilerplateConfig, dependency)
 	expected := map[string]any{
 		"BoilerplateConfigVars": map[string]variables.Variable{},
 		"BoilerplateConfigDeps": map[string]*variables.Dependency{},
@@ -181,7 +182,7 @@ func TestGetVariablesNoMatchNonInteractive(t *testing.T) {
 	rootBoilerplateConfig := &BoilerplateConfig{}
 	dependency := &variables.Dependency{}
 
-	_, err := GetVariables(opts, boilerplateConfig, rootBoilerplateConfig, dependency)
+	_, err := GetVariables(logging.Discard(), opts, boilerplateConfig, rootBoilerplateConfig, dependency)
 
 	require.Error(t, err)
 	assert.ErrorIs(t, err, MissingVariableWithNonInteractiveMode("foo"), "Expected a MissingVariableWithNonInteractiveMode error but got %s", reflect.TypeOf(err))
@@ -208,7 +209,7 @@ func TestGetVariablesMatchFromVars(t *testing.T) {
 
 	dependency := &variables.Dependency{}
 
-	actual, err := GetVariables(opts, boilerplateConfig, rootBoilerplateConfig, dependency)
+	actual, err := GetVariables(logging.Discard(), opts, boilerplateConfig, rootBoilerplateConfig, dependency)
 	expected := map[string]any{
 		"foo":                   "bar",
 		"BoilerplateConfigVars": map[string]variables.Variable{},
@@ -248,7 +249,7 @@ func TestGetVariablesMatchFromVarsAndDefaults(t *testing.T) {
 
 	dependency := &variables.Dependency{}
 
-	actual, err := GetVariables(opts, boilerplateConfig, rootBoilerplateConfig, dependency)
+	actual, err := GetVariables(logging.Discard(), opts, boilerplateConfig, rootBoilerplateConfig, dependency)
 	expected := map[string]any{
 		"key1":                  "value1",
 		"key2":                  "value2",
@@ -275,7 +276,7 @@ func TestGetVariableInteractiveWithDefaultSkipsPrompt(t *testing.T) {
 		Vars:           map[string]any{},
 	}
 
-	actual, err := getVariable(variable, opts)
+	actual, err := getVariable(logging.Discard(), variable, opts)
 	require.NoError(t, err)
 	assert.Equal(t, "default-val", actual)
 }
@@ -294,7 +295,7 @@ func TestGetVariableInteractiveWithDefaultAndConfirmDoesNotSkipPrompt(t *testing
 		Vars:           map[string]any{},
 	}
 
-	actual, err := getVariable(variable, opts)
+	actual, err := getVariable(logging.Discard(), variable, opts)
 	require.NoError(t, err)
 	assert.Equal(t, "default-val", actual)
 }
@@ -308,7 +309,7 @@ func TestGetVariableInteractiveFormulaDefaultSkipsPrompt(t *testing.T) {
 		Vars:           map[string]any{},
 	}
 
-	actual, err := getVariable(variable, opts)
+	actual, err := getVariable(logging.Discard(), variable, opts)
 	require.NoError(t, err)
 	assert.Equal(t, "{{ .Primary }}", actual)
 }

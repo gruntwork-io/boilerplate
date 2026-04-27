@@ -14,6 +14,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/gruntwork-io/boilerplate/options"
+	"github.com/gruntwork-io/boilerplate/pkg/logging"
 	"github.com/gruntwork-io/boilerplate/testutil"
 	"github.com/gruntwork-io/boilerplate/variables"
 
@@ -621,7 +622,7 @@ func TestParseBoilerplateConfigMultipleHooks(t *testing.T) {
 func TestLoadBoilerplateConfigFullConfig(t *testing.T) {
 	t.Parallel()
 
-	actual, err := LoadBoilerplateConfig(testutil.CreateTestOptions("../test-fixtures/config-test/full-config"))
+	actual, err := LoadBoilerplateConfig(logging.Discard(), testutil.CreateTestOptions("../test-fixtures/config-test/full-config"))
 	expected := &BoilerplateConfig{
 		Partials: []string{"../templates/foo"},
 		Variables: []variables.Variable{
@@ -655,7 +656,7 @@ func TestLoadBoilerplateConfigNoConfig(t *testing.T) {
 	t.Parallel()
 
 	templateFolder := "../test-fixtures/config-test/no-config"
-	_, err := LoadBoilerplateConfig(testutil.CreateTestOptions(templateFolder))
+	_, err := LoadBoilerplateConfig(logging.Discard(), testutil.CreateTestOptions(templateFolder))
 	expectedErr := BoilerplateConfigNotFound(path.Join(templateFolder, "boilerplate.yml"))
 
 	assert.ErrorIs(t, err, expectedErr, "Expected error %v but got %v", expectedErr, err)
@@ -667,7 +668,7 @@ func TestLoadBoilerplateConfigNoConfigIgnore(t *testing.T) {
 	templateFolder := "../test-fixtures/config-test/no-config"
 	opts := testutil.CreateTestOptions(templateFolder)
 	opts.OnMissingConfig = options.Ignore
-	actual, err := LoadBoilerplateConfig(opts)
+	actual, err := LoadBoilerplateConfig(logging.Discard(), opts)
 	expected := &BoilerplateConfig{}
 
 	require.NoError(t, err, "Unexpected error: %v", err)
@@ -677,7 +678,7 @@ func TestLoadBoilerplateConfigNoConfigIgnore(t *testing.T) {
 func TestLoadBoilerplateConfigInvalidConfig(t *testing.T) {
 	t.Parallel()
 
-	_, err := LoadBoilerplateConfig(testutil.CreateTestOptions("../test-fixtures/config-test/invalid-config"))
+	_, err := LoadBoilerplateConfig(logging.Discard(), testutil.CreateTestOptions("../test-fixtures/config-test/invalid-config"))
 
 	require.Error(t, err)
 
