@@ -13,6 +13,7 @@ import (
 	"github.com/gruntwork-io/boilerplate/cmd/wasm/bridge"
 	"github.com/gruntwork-io/boilerplate/config"
 	"github.com/gruntwork-io/boilerplate/options"
+	"github.com/gruntwork-io/boilerplate/pkg/logging"
 	"github.com/gruntwork-io/boilerplate/templates"
 )
 
@@ -98,7 +99,7 @@ func runProcessTemplate(opts *options.BoilerplateOptions) (result *templates.Pro
 		}
 	}()
 
-	return templates.ProcessTemplateWithContext(context.Background(), opts, opts, nil)
+	return templates.ProcessTemplateWithContext(context.Background(), logging.Discard(), opts, opts, nil)
 }
 
 // responseToJS rebuilds slices as []any because js.ValueOf rejects []string

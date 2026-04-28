@@ -2,12 +2,16 @@
 
 package config
 
-import "sync"
+import (
+	"sync"
+
+	"github.com/gruntwork-io/boilerplate/pkg/logging"
+)
 
 // runValidation is a stub: ozzo is excluded from the WASM binary (see
 // validation/validation_wasm.go). Records a deduplicated warning that the
 // entry point drains into the Promise result.
-func runValidation(_ any, _ any) error {
+func runValidation(_ logging.Logger, _ any, _ any) error {
 	validationWarningMu.Lock()
 	defer validationWarningMu.Unlock()
 

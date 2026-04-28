@@ -1,0 +1,149 @@
+---
+title: Embedding Boilerplate
+sidebar:
+  order: 7
+description: Use boilerplate from another Go program or from a WebAssembly host.
+---
+
+import WasmDemo from "../../../components/WasmDemo.astro";
+
+Boilerplate is published as a Go module and can be driven directly from another program. This
+page covers two embedding paths: importing the Go packages, and running the WebAssembly build
+from a browser or Node.js host.
+
+## As a Go library
+
+Import the packages you need under `github.com/gruntwork-io/boilerplate/...`. The two entry
+points used most often are `templates.ProcessTemplateWithContext` for end-to-end rendering and
+`render.RenderTemplateFromString` for one-off string rendering.
+
+### Configuring diagnostic output
+
+Boilerplate emits diagnostic output through the `pkg/logging` package. The logger is passed
+explicitly into every public API as the first parameter (or right after `context.Context` when
+present, by convention named `l`), so library callers control writer and level on a per-call
+basis without touching any global state.
+
+```go
+import (
+    "context"
+    "os"
+
+    "github.com/gruntwork-io/boilerplate/options"
+    "github.com/gruntwork-io/boilerplate/pkg/logging"
+    "github.com/gruntwork-io/boilerplate/templates"
+    "github.com/gruntwork-io/boilerplate/variables"
+)
+
+// Match CLI defaults: Info level, written to os.Stdout, with the "[boilerplate] " prefix and a
+// stdlib timestamp.
+l := logging.New(os.Stdout, logging.LevelInfo)
+
+opts := &options.BoilerplateOptions{ /* ... */ }
+_, err := templates.ProcessTemplateWithContext(context.Background(), l, opts, opts, &variables.Dependency{})
+```
+
+The package exposes:
+
+| Symbol | Purpose |
+|---|---|
+| `New(io.Writer, Level) Logger` | Construct a logger. Panics on a nil writer. |
+| `Discard() Logger` | A logger that drops every record. Useful in tests or when boilerplate should stay silent. |
+| `Logger` | Interface with `Debugf` / `Infof` / `Warnf` / `Errorf`. Implement it directly to forward records into your own structured logger. |
+| `Level` | Severity, with `LevelDebug`, `LevelInfo`, `LevelWarn`, `LevelError`. |
+
+The returned `Logger` is immutable. To change writer or level, construct a new one. Each level
+method emits exactly one log record per call, so a writer set on `New` receives one Write per
+record and may split on writes without re-buffering.
+
+Levels are ordered `LevelDebug < LevelInfo < LevelWarn < LevelError`. At `LevelInfo`,
+boilerplate stays mostly quiet: per-file activity, variable resolution, and shell-execution
+narration are emitted at `LevelDebug`. Warnings (declined shell prompts, missing config files,
+checksum fallbacks) and errors (failed cleanup, glob failures) still surface.
+
+### Forwarding into a structured logger
+
+Implement `logging.Logger` directly against your destination logger to bypass the text format
+entirely.
+
+```go
+import "log/slog"
+
+type slogAdapter struct{ dst *slog.Logger }
+
+func (a *slogAdapter) Debugf(format string, args ...any) { a.dst.Debug(fmt.Sprintf(format, args...)) }
+func (a *slogAdapter) Infof(format string, args ...any)  { a.dst.Info(fmt.Sprintf(format, args...)) }
+func (a *slogAdapter) Warnf(format string, args ...any)  { a.dst.Warn(fmt.Sprintf(format, args...)) }
+func (a *slogAdapter) Errorf(format string, args ...any) { a.dst.Error(fmt.Sprintf(format, args...)) }
+
+l := &slogAdapter{dst: app.Logger}
+_, err := templates.ProcessTemplateWithContext(ctx, l, opts, opts, &variables.Dependency{})
+```
+
+A direct `Logger` implementation is the cleanest path; `New` is the right choice when you want
+boilerplate's exact text format on a writer of your choosing.
+
+## As a WebAssembly module
+
+The repository ships a WebAssembly build of the rendering engine under `cmd/wasm`. It exposes a
+single global function, `boilerplateRenderTemplate(templateStr, varsJSON)`, suitable for both
+browsers and Node.js. Shell helpers and interactive prompts are disabled in the WASM build, and
+config loading is set to ignore missing files.
+
+### Building
+
+From the repository root:
+
+```sh
+make wasm
+```
+
+That target compiles the WASM binary, compresses it with brotli, and copies Go's
+`wasm_exec.js` runtime into `examples/wasm/`:
+
+| File | Description |
+|---|---|
+| `boilerplate.wasm` | Uncompressed WASM binary |
+| `boilerplate.wasm.br` | Brotli-compressed binary |
+| `wasm_exec.js` | Go WASM runtime support, copied from `GOROOT` |
+
+You will need a recent Go toolchain (see `.mise.toml`) and `brotli` available on `PATH`.
+
+### Browser usage
+
+<WasmDemo />
+
+The demo above is the WASM binary attached to the latest GitHub Release, served from the docs
+site. To run it in your own page, load `wasm_exec.js`, instantiate the WASM module, and call the
+global function. A complete runnable example lives in `examples/wasm/browser/`.
+
+```html
+<script src="wasm_exec.js"></script>
+<script>
+  const go = new Go();
+  WebAssembly.instantiateStreaming(fetch("boilerplate.wasm"), go.importObject).then((res) => {
+      go.run(res.instance);
+      const out = boilerplateRenderTemplate("Hello {{ .Name }}", JSON.stringify({ Name: "world" }));
+      console.log(out);
+  });
+</script>
+```
+
+`boilerplateRenderTemplate` returns the rendered string on success, or a JavaScript `Error` if
+parsing the variables JSON fails or the template fails to render.
+
+### Node.js usage
+
+Node can load the same artifact through `wasm_exec.js`. See `examples/wasm/node/` for a working
+script. The function signature is identical to the browser case.
+
+### What the WASM build does not include
+
+- Shell helpers (`shell` template function): always returns the disabled placeholder.
+- Interactive prompts: variables must be supplied through the `varsJSON` argument.
+- Remote template downloads via `go-getter`: only inline template strings are supported.
+- File-system writes: the function returns the rendered string; persisting it is the host's
+  responsibility.
+
+If you need any of these, drive boilerplate from a Go process instead and use the library API
+described above.

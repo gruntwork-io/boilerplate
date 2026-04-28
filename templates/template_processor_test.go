@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/gruntwork-io/boilerplate/options"
+	"github.com/gruntwork-io/boilerplate/pkg/logging"
 	"github.com/gruntwork-io/boilerplate/testutil"
 	"github.com/gruntwork-io/boilerplate/variables"
 	"github.com/stretchr/testify/assert"
@@ -41,7 +42,7 @@ func TestOutPath(t *testing.T) {
 			OnMissingKey:    options.ExitWithError,
 			OnMissingConfig: options.Exit,
 		}
-		actual, err := outPath(t.Context(), testCase.file, &opts, testCase.variables)
+		actual, err := outPath(t.Context(), logging.Discard(), testCase.file, &opts, testCase.variables)
 		require.NoError(t, err, "Got unexpected error (file = %s, templateFolder = %s, outputFolder = %s, and variables = %s): %v", testCase.file, testCase.templateFolder, testCase.outputFolder, testCase.variables, err)
 		assert.Equal(t, filepath.FromSlash(testCase.expected), filepath.FromSlash(actual), "(file = %s, templateFolder = %s, outputFolder = %s, and variables = %s)", testCase.file, testCase.templateFolder, testCase.outputFolder, testCase.variables)
 	}
@@ -87,7 +88,7 @@ func TestCloneOptionsForDependency(t *testing.T) {
 		t.Run(tt.dependency.Name, func(t *testing.T) {
 			t.Parallel()
 
-			actualOptions, err := cloneOptionsForDependency(t.Context(), tt.dependency, &tt.opts, nil, tt.variables)
+			actualOptions, err := cloneOptionsForDependency(t.Context(), logging.Discard(), tt.dependency, &tt.opts, nil, tt.variables)
 			require.NoError(t, err, "Dependency: %s", tt.dependency)
 			assert.Equal(t, tt.expectedOpts, *actualOptions, "Dependency: %s", tt.dependency)
 		})
@@ -121,7 +122,7 @@ func TestProcessTemplateReturnsFiles(t *testing.T) {
 
 	// Call ProcessTemplate
 	dep := variables.Dependency{}
-	err = ProcessTemplate(opts, opts, &dep)
+	err = ProcessTemplate(logging.Discard(), opts, opts, &dep)
 	require.NoError(t, err)
 
 	// Verify the file content
@@ -157,7 +158,7 @@ func TestProcessTemplate(t *testing.T) {
 
 	// Call ProcessTemplate function
 	dep := variables.Dependency{}
-	err = ProcessTemplate(opts, opts, &dep)
+	err = ProcessTemplate(logging.Discard(), opts, opts, &dep)
 	require.NoError(t, err)
 
 	// Verify the file content
@@ -214,7 +215,7 @@ func TestCloneVariablesForDependency(t *testing.T) {
 
 			opts := testutil.CreateTestOptionsWithOutput("/template/path/", "/output/path/")
 			opts.Vars = tt.optsVars
-			actualVariables, err := cloneVariablesForDependency(t.Context(), opts, tt.dependency, nil, tt.variables, nil)
+			actualVariables, err := cloneVariablesForDependency(t.Context(), logging.Discard(), opts, tt.dependency, nil, tt.variables, nil)
 			require.NoError(t, err)
 			assert.Equal(t, tt.expectedVariables, actualVariables, "Dependency: %s", tt.dependency)
 		})
@@ -268,7 +269,7 @@ dependencies:
 	}
 
 	dep := variables.Dependency{}
-	result, err := ProcessTemplateWithContext(t.Context(), opts, opts, &dep)
+	result, err := ProcessTemplateWithContext(t.Context(), logging.Discard(), opts, opts, &dep)
 	require.NoError(t, err)
 
 	// The result should have 1 dependency (parent)
@@ -317,7 +318,7 @@ func TestForEachReferenceRendersAsTemplate(t *testing.T) {
 
 	opts := testutil.CreateTestOptionsWithOutput(templateFolder, tempDir)
 
-	_, err = processDependency(t.Context(), dependency, opts, nil, vars)
+	_, err = processDependency(t.Context(), logging.Discard(), dependency, opts, nil, vars)
 	require.NoError(t, err)
 
 	// Should create directories "a" and "b" from template1 list

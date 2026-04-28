@@ -7,8 +7,8 @@ import (
 	"sort"
 
 	"github.com/gruntwork-io/boilerplate/internal/color"
-	"github.com/gruntwork-io/boilerplate/internal/logging"
 	"github.com/gruntwork-io/boilerplate/options"
+	"github.com/gruntwork-io/boilerplate/pkg/logging"
 	"github.com/gruntwork-io/boilerplate/render"
 	"github.com/gruntwork-io/boilerplate/variables"
 	"github.com/hashicorp/go-multierror"
@@ -19,8 +19,8 @@ const MaxReferenceDepth = 20
 // GetVariables gets a value for each of the variables specified in boilerplateConfig, other than those already in existingVariables.
 // The value for a variable can come from the user (if the non-interactive option isn't set), the default value in the
 // config, or a command line option.
-func GetVariables(opts *options.BoilerplateOptions, boilerplateConfig, rootBoilerplateConfig *BoilerplateConfig, thisDep *variables.Dependency) (map[string]any, error) {
-	return GetVariablesWithContext(context.Background(), opts, boilerplateConfig, rootBoilerplateConfig, thisDep)
+func GetVariables(l logging.Logger, opts *options.BoilerplateOptions, boilerplateConfig, rootBoilerplateConfig *BoilerplateConfig, thisDep *variables.Dependency) (map[string]any, error) {
+	return GetVariablesWithContext(context.Background(), l, opts, boilerplateConfig, rootBoilerplateConfig, thisDep)
 }
 
 // GetVariablesWithContext collects variables from the user, variable defaults in the boilerplate.yml config, command line options, and environment
@@ -28,7 +28,7 @@ func GetVariables(opts *options.BoilerplateOptions, boilerplateConfig, rootBoile
 //
 // The value for a variable can come from the user (if the non-interactive option isn't set), the default value in the
 // config, or a command line option.
-func GetVariablesWithContext(ctx context.Context, opts *options.BoilerplateOptions, boilerplateConfig, rootBoilerplateConfig *BoilerplateConfig, thisDep *variables.Dependency) (map[string]any, error) {
+func GetVariablesWithContext(ctx context.Context, l logging.Logger, opts *options.BoilerplateOptions, boilerplateConfig, rootBoilerplateConfig *BoilerplateConfig, thisDep *variables.Dependency) (map[string]any, error) {
 	renderedVariables := map[string]any{}
 
 	// Add a variable for all variables contained in the root config file. This will allow Golang template users
@@ -99,7 +99,7 @@ func GetVariablesWithContext(ctx context.Context, opts *options.BoilerplateOptio
 	for _, keyOrderPair := range keyAndOrderPairs {
 		variable := variablesInConfig[keyOrderPair.Key]
 
-		unmarshalled, err := GetValueForVariable(variable, variablesInConfig, variablesToRender, opts, 0)
+		unmarshalled, err := GetValueForVariable(l, variable, variablesInConfig, variablesToRender, opts, 0)
 		if err != nil {
 			return nil, err
 		}
@@ -109,7 +109,7 @@ func GetVariablesWithContext(ctx context.Context, opts *options.BoilerplateOptio
 
 	// Pass all the user provided variables through a rendering pipeline to ensure they are evaluated down to
 	// primitives.
-	newlyRenderedVariables, err := render.RenderVariablesWithContext(ctx, opts, variablesToRender, renderedVariables)
+	newlyRenderedVariables, err := render.RenderVariablesWithContext(ctx, l, opts, variablesToRender, renderedVariables)
 	if err != nil {
 		return nil, err
 	}
@@ -130,6 +130,7 @@ func GetVariablesWithContext(ctx context.Context, opts *options.BoilerplateOptio
 }
 
 func GetValueForVariable(
+	l logging.Logger,
 	variable variables.Variable,
 	variablesInConfig map[string]variables.Variable,
 	valuesForPreviousVariables map[string]any,
@@ -156,11 +157,11 @@ func GetValueForVariable(
 			return nil, MissingReference{VariableName: variable.Name(), ReferenceName: variable.Reference()}
 		}
 
-		return GetValueForVariable(reference, variablesInConfig, valuesForPreviousVariables, opts, referenceDepth+1)
+		return GetValueForVariable(l, reference, variablesInConfig, valuesForPreviousVariables, opts, referenceDepth+1)
 	}
 
 	// Run the value we receive from getVariable through validations, ensuring values provided by --var-files will also be checked
-	value, err := getVariable(variable, opts)
+	value, err := getVariable(l, variable, opts)
 	if err != nil {
 		return value, err
 	}
@@ -169,7 +170,7 @@ func GetValueForVariable(
 	// Run the value through any defined validations for the variable
 	for _, customValidation := range variable.Validations() {
 		// Run the specific validation against the user-provided value and store it in the map
-		err := runValidation(value, customValidation.Validator)
+		err := runValidation(l, value, customValidation.Validator)
 		result = multierror.Append(result, err)
 	}
 
@@ -178,23 +179,23 @@ func GetValueForVariable(
 
 // Get a value for the given variable. The value can come from the user (if the non-interactive option isn't set), the
 // default value in the config, or a command line option.
-func getVariable(variable variables.Variable, opts *options.BoilerplateOptions) (any, error) {
+func getVariable(l logging.Logger, variable variables.Variable, opts *options.BoilerplateOptions) (any, error) {
 	valueFromVars, valueSpecifiedInVars := getVariableFromVars(variable, opts)
 
 	switch {
 	case valueSpecifiedInVars:
-		logging.Logger.Printf("Using value specified via command line options for variable '%s': %s", variable.FullName(), valueFromVars)
+		l.Debugf("Using value specified via command line options for variable '%s': %s", variable.FullName(), valueFromVars)
 		return valueFromVars, nil
 	case opts.NonInteractive && variable.Default() != nil:
-		logging.Logger.Printf("Using default value for variable '%s': %v", variable.FullName(), variable.Default())
+		l.Debugf("Using default value for variable '%s': %v", variable.FullName(), variable.Default())
 		return variable.Default(), nil
 	case opts.NonInteractive:
 		return nil, MissingVariableWithNonInteractiveMode(variable.FullName())
 	case variable.Default() != nil && !variable.Confirm():
-		logging.Logger.Printf("Using default value for variable '%s': %v", variable.FullName(), variable.Default())
+		l.Debugf("Using default value for variable '%s': %v", variable.FullName(), variable.Default())
 		return variable.Default(), nil
 	default:
-		return getVariableFromUser(variable, variables.InvalidEntries{})
+		return getVariableFromUser(l, variable, variables.InvalidEntries{})
 	}
 }
 
@@ -210,7 +211,7 @@ func getVariableFromVars(variable variables.Variable, opts *options.BoilerplateO
 }
 
 // Get the value for the given variable by prompting the user
-func getVariableFromUser(variable variables.Variable, invalidEntries variables.InvalidEntries) (any, error) {
+func getVariableFromUser(l logging.Logger, variable variables.Variable, invalidEntries variables.InvalidEntries) (any, error) {
 	// Add a newline for legibility and padding
 	fmt.Println()
 
@@ -226,7 +227,7 @@ func getVariableFromUser(variable variables.Variable, invalidEntries variables.I
 	// store the validation errors in a map. We'll then recursively call get_variable_from_user
 	// again, this time passing in the validation errors map, so that we can render to the terminal
 	// the exact issues with each submission
-	validationMap, hasValidationErrs := validateUserInput(value, variable)
+	validationMap, hasValidationErrs := validateUserInput(l, value, variable)
 	if hasValidationErrs {
 		ie := variables.InvalidEntries{
 			Issues: []variables.ValidationIssue{
@@ -237,19 +238,19 @@ func getVariableFromUser(variable variables.Variable, invalidEntries variables.I
 			},
 		}
 
-		return getVariableFromUser(variable, ie)
+		return getVariableFromUser(l, variable, ie)
 	}
 
 	if value == "" {
 		// TODO: what if the user wanted an empty string instead of the default?
-		logging.Logger.Printf("Using default value for variable '%s': %v", variable.FullName(), variable.Default())
+		l.Debugf("Using default value for variable '%s': %v", variable.FullName(), variable.Default())
 		return variable.Default(), nil
 	}
 
 	return value, nil
 }
 
-func validateUserInput(value string, variable variables.Variable) (map[string]bool, bool) {
+func validateUserInput(l logging.Logger, value string, variable variables.Variable) (map[string]bool, bool) {
 	var valueToValidate any
 	if value == "" {
 		valueToValidate = variable.Default()
@@ -262,7 +263,7 @@ func validateUserInput(value string, variable variables.Variable) (map[string]bo
 
 	for _, customValidation := range variable.Validations() {
 		// Run the specific validation against the user-provided value and store it in the map
-		err := runValidation(valueToValidate, customValidation.Validator)
+		err := runValidation(l, valueToValidate, customValidation.Validator)
 		val := true
 
 		if err != nil {

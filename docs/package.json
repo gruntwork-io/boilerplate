@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "astro dev",
     "start": "astro dev",
-    "build": "astro build",
+    "build": "bun run scripts/fetch-wasm.ts && astro build",
+    "build:no-wasm": "astro build",
     "preview": "astro preview",
     "spellcheck": "cspell \"src/content/**/*.{md,mdx}\" --no-progress"
   },
