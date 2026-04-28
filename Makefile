@@ -1,4 +1,5 @@
 GOFMT_FILES?=$$(find . -name '*.go' -not -path "./examples/*")
+WASM_DIR?=examples/for-learning-and-testing/wasm
 
 default: build
 
@@ -28,22 +29,31 @@ fmt:
 	@echo "Running source files through gofmt..."
 	gofmt -w $(GOFMT_FILES)
 
-build-wasm:
-	GOOS=js GOARCH=wasm go build -o examples/wasm/boilerplate.wasm -ldflags "-s -w" ./cmd/wasm/
+build-wasm-lite:
+	GOOS=js GOARCH=wasm go build -o $(WASM_DIR)/boilerplate.wasm -ldflags "-s -w" ./cmd/wasm/lite/
+
+build-wasm-full:
+	GOOS=js GOARCH=wasm go build -o $(WASM_DIR)/boilerplate-full.wasm -ldflags "-s -w" ./cmd/wasm/full/
+
+build-wasm: build-wasm-lite build-wasm-full
 
 compress-wasm: build-wasm
 	@command -v brotli >/dev/null 2>&1 || { echo "Error: brotli CLI not found. Install with: brew install brotli (macOS) or apt-get install brotli (Linux)"; exit 1; }
-	brotli --best --force examples/wasm/boilerplate.wasm -o examples/wasm/boilerplate.wasm.br
-	@echo "Uncompressed: $$(wc -c < examples/wasm/boilerplate.wasm | tr -d ' ') bytes"
-	@echo "Compressed:   $$(wc -c < examples/wasm/boilerplate.wasm.br | tr -d ' ') bytes"
+	brotli --best --force $(WASM_DIR)/boilerplate.wasm -o $(WASM_DIR)/boilerplate.wasm.br
+	brotli --best --force $(WASM_DIR)/boilerplate-full.wasm -o $(WASM_DIR)/boilerplate-full.wasm.br
+	@echo "Lite uncompressed: $$(wc -c < $(WASM_DIR)/boilerplate.wasm | tr -d ' ') bytes"
+	@echo "Lite compressed:   $$(wc -c < $(WASM_DIR)/boilerplate.wasm.br | tr -d ' ') bytes"
+	@echo "Full uncompressed: $$(wc -c < $(WASM_DIR)/boilerplate-full.wasm | tr -d ' ') bytes"
+	@echo "Full compressed:   $$(wc -c < $(WASM_DIR)/boilerplate-full.wasm.br | tr -d ' ') bytes"
 
 copy-wasm-exec:
-	cp "$$(go env GOROOT)/lib/wasm/wasm_exec.js" examples/wasm/
+	cp "$$(go env GOROOT)/lib/wasm/wasm_exec.js" $(WASM_DIR)/
 
 wasm: compress-wasm copy-wasm-exec
-	cp examples/wasm/wasm_exec.js examples/wasm/boilerplate.wasm examples/wasm/boilerplate.wasm.br examples/wasm/browser/
-	cp examples/wasm/wasm_exec.js examples/wasm/boilerplate.wasm.br examples/wasm/node/
+	cp $(WASM_DIR)/wasm_exec.js $(WASM_DIR)/boilerplate.wasm $(WASM_DIR)/boilerplate.wasm.br $(WASM_DIR)/browser/
+	cp $(WASM_DIR)/wasm_exec.js $(WASM_DIR)/boilerplate.wasm.br $(WASM_DIR)/node/
+	cp $(WASM_DIR)/wasm_exec.js $(WASM_DIR)/boilerplate-full.wasm.br $(WASM_DIR)/node-full/
 	@echo "WASM build complete:"
-	@ls -lh examples/wasm/boilerplate.wasm examples/wasm/boilerplate.wasm.br
+	@ls -lh $(WASM_DIR)/boilerplate.wasm $(WASM_DIR)/boilerplate.wasm.br $(WASM_DIR)/boilerplate-full.wasm $(WASM_DIR)/boilerplate-full.wasm.br
 
-.PHONY: lint test default update-lint-config build-wasm compress-wasm copy-wasm-exec wasm
+.PHONY: lint test default update-lint-config build-wasm build-wasm-lite build-wasm-full compress-wasm copy-wasm-exec wasm

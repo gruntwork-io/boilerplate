@@ -319,25 +319,25 @@ func TestValidateUserInput(t *testing.T) {
 
 	// An empty variable with no default value should fail validation
 	v := variables.NewStringVariable("foo")
-	m, hasValidationErrs := validateUserInput("", v)
+	m, hasValidationErrs := validateUserInput(logging.Discard(), "", v)
 	assert.True(t, hasValidationErrs)
 	assert.Equal(t, map[string]bool{"Value must be provided": false}, m)
 
 	// An empty variable with a default value should pass validation
 	v = variables.NewStringVariable("foo").WithDefault("bar")
-	m, hasValidationErrs = validateUserInput("", v)
+	m, hasValidationErrs = validateUserInput(logging.Discard(), "", v)
 	assert.False(t, hasValidationErrs)
 	assert.Empty(t, m)
 
 	// A non-empty variable should pass validation
 	v = variables.NewStringVariable("foo")
-	m, hasValidationErrs = validateUserInput("bar", v)
+	m, hasValidationErrs = validateUserInput(logging.Discard(), "bar", v)
 	assert.False(t, hasValidationErrs)
 	assert.Empty(t, m)
 
 	// A variable that cannot be parsed should fail validation
 	v = variables.NewIntVariable("foo")
-	m, hasValidationErrs = validateUserInput("bar", v)
+	m, hasValidationErrs = validateUserInput(logging.Discard(), "bar", v)
 	assert.True(t, hasValidationErrs)
 
 	key := slices.Collect(maps.Keys(m))[0]
