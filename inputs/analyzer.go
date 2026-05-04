@@ -298,17 +298,31 @@ func analyzePartials(loc templateLocation, partialGlobs []string, vars map[strin
 
 	// After collecting per-template refs, expand transitively: if partial A
 	// invokes partial B and B references X, A references X too.
-	expandPartialRefs(out)
+	if !expandPartialRefs(out, partialExpansionMaxIterations) {
+		errs = append(errs, AnalysisError{
+			Kind: "partial_expansion_limit",
+			Message: fmt.Sprintf(
+				"partial-template invocation graph did not reach a fixed point within %d iterations; transitive references through deeply-nested partials may be missing from the result",
+				partialExpansionMaxIterations,
+			),
+		})
+	}
 
 	return out, errs
 }
 
+// partialExpansionMaxIterations bounds the number of fixed-point passes
+// expandPartialRefs may take. In practice the loop converges in a handful of
+// iterations even for complex templates; the cap is a safety net to keep a
+// bug or pathological input from spinning forever.
+const partialExpansionMaxIterations = 100
+
 // expandPartialRefs computes the transitive closure of partial -> partial
 // invocations, so each entry in m has all variables it could reference if
-// expanded.
-func expandPartialRefs(m map[string]*templateRefs) {
-	const maxIterations = 100
-
+// expanded. Returns true if the graph reached a fixed point within
+// maxIterations passes, false if the cap was hit (in which case the result
+// may be incomplete and the caller should surface a soft error).
+func expandPartialRefs(m map[string]*templateRefs, maxIterations int) bool {
 	for i := 0; i < maxIterations; i++ {
 		changed := false
 
@@ -338,9 +352,11 @@ func expandPartialRefs(m map[string]*templateRefs) {
 		}
 
 		if !changed {
-			break
+			return true
 		}
 	}
+
+	return false
 }
 
 // partialFile is a parsed partial file's name + contents.
@@ -429,6 +445,9 @@ func analyzeFiles(loc templateLocation, info *templateInfo, partialRefs map[stri
 	cfgPath := path.Join(loc.dir, config.BoilerplateConfigFile)
 	skipDirs := dependencySkipDirs(loc, info.cfg)
 
+	skipFilter, skipErrs := processSkipFiles(loc, info.cfg.SkipFiles, vars)
+	result.Errors = append(result.Errors, skipErrs...)
+
 	return fs.WalkDir(loc.fsys, walkRoot, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -451,8 +470,15 @@ func analyzeFiles(loc templateLocation, info *templateInfo, partialRefs map[stri
 
 		// Skip any boilerplate.yml in a subdirectory — those belong to nested
 		// templates (typical when fixtures live alongside the parent in FS
-		// mode), not to this template's body.
-		if filepath.Base(p) == config.BoilerplateConfigFile {
+		// mode), not to this template's body. fs.WalkDir always reports
+		// slash-separated paths, so use path.Base, not filepath.Base.
+		if path.Base(p) == config.BoilerplateConfigFile {
+			return nil
+		}
+
+		// Honor skip_files: any file the runtime would exclude from the
+		// rendered output is also excluded from the analyzer's results.
+		if skipFilter.shouldSkip(slashRel(loc.dir, p)) {
 			return nil
 		}
 
@@ -552,19 +578,14 @@ func dependencySkipDirs(loc templateLocation, cfg *config.BoilerplateConfig) map
 // computeOutputPath maps an input file path inside loc.fsys to its output path
 // relative to the root output root. The filename portion may itself contain
 // template syntax; we render it best-effort.
+//
+// inputPath comes from fs.WalkDir, which always uses slash separators
+// regardless of OS, and loc.dir is similarly slash-separated. So path
+// manipulation here uses the path package, not path/filepath, to avoid
+// breaking on Windows where filepath uses backslash.
 func computeOutputPath(loc templateLocation, info *templateInfo, inputPath string, vars map[string]any, result *Result) string {
 	// Path of the file relative to the template directory.
-	rel := inputPath
-	if loc.dir != "" && loc.dir != "." {
-		var trimErr error
-
-		rel, trimErr = filepath.Rel(loc.dir, inputPath)
-		if trimErr != nil {
-			rel = inputPath
-		}
-	}
-
-	rel = filepath.ToSlash(rel)
+	rel := slashRel(loc.dir, inputPath)
 
 	// Match the runtime: `|` is an illegal filename character on Windows, so
 	// boilerplate fixtures URL-encode pipes as %7C / %7c. Decode before
@@ -988,4 +1009,29 @@ func appendUnique(list []string, item string) []string {
 	}
 
 	return append(list, item)
+}
+
+// slashRel returns target relative to base, treating both as slash-separated
+// paths from an fs.FS. It exists because filepath.Rel uses the OS separator
+// and corrupts paths on Windows when the inputs come from fs.WalkDir.
+//
+// If target does not live under base, slashRel returns target unchanged.
+func slashRel(base, target string) string {
+	if base == "" || base == "." {
+		return target
+	}
+
+	cleanBase := path.Clean(base)
+	cleanTarget := path.Clean(target)
+
+	if cleanTarget == cleanBase {
+		return "."
+	}
+
+	prefix := cleanBase + "/"
+	if !strings.HasPrefix(cleanTarget, prefix) {
+		return target
+	}
+
+	return strings.TrimPrefix(cleanTarget, prefix)
 }

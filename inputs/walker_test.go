@@ -1,6 +1,7 @@
 package inputs
 
 import (
+	"fmt"
 	"sort"
 	"testing"
 
@@ -120,11 +121,40 @@ func TestExpandPartialRefs_Transitive(t *testing.T) {
 	c.vars["X"] = struct{}{}
 
 	m := map[string]*templateRefs{"A": a, "B": b, "C": c}
-	expandPartialRefs(m)
+	converged := expandPartialRefs(m, partialExpansionMaxIterations)
 
+	assert.True(t, converged, "small partial graph should converge")
 	assert.Equal(t, []string{"X"}, sortedSetKeys(m["A"].vars))
 	assert.Equal(t, []string{"X"}, sortedSetKeys(m["B"].vars))
 	assert.Equal(t, []string{"X"}, sortedSetKeys(m["C"].vars))
+}
+
+func TestExpandPartialRefs_HitsIterationCap(t *testing.T) {
+	t.Parallel()
+
+	// Build a deep chain and cap the iterations below the chain length so
+	// the loop cannot finish. We pass maxIterations explicitly so the test
+	// doesn't have to construct a graph deeper than the production cap.
+	const chainLen = 10
+
+	m := map[string]*templateRefs{}
+
+	for i := 0; i < chainLen; i++ {
+		name := fmt.Sprintf("p%d", i)
+		refs := newTemplateRefs()
+
+		if i == chainLen-1 {
+			refs.vars["LeafVar"] = struct{}{}
+		} else {
+			refs.invocations[fmt.Sprintf("p%d", i+1)] = struct{}{}
+		}
+
+		m[name] = refs
+	}
+
+	converged := expandPartialRefs(m, 1)
+
+	assert.False(t, converged, "expected expandPartialRefs to report non-convergence when the cap is below the chain depth")
 }
 
 // sortedSetKeys returns the keys of m as a sorted slice. Used to make set

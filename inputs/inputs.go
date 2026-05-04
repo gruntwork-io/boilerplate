@@ -65,6 +65,11 @@ type InputEntry struct {
 //	"filename_render"     — failed to render a template-bearing filename.
 //	"parse"               — failed to parse a template body or value
 //	    expression.
+//	"skip_files"          — failed to render or expand a skip_files entry's
+//	    path, not_path, or if condition.
+//	"partial_expansion_limit" — partial-template invocation graph did not
+//	    reach a fixed point within the analyzer's iteration cap; results
+//	    may be missing some transitive references.
 type AnalysisError struct {
 	Kind     string `json:"kind"`
 	Template string `json:"template,omitempty"`

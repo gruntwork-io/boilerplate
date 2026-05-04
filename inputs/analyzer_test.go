@@ -316,8 +316,12 @@ variables:
 func TestFromFS_CycleDetection(t *testing.T) {
 	t.Parallel()
 
-	// Two templates referencing each other. The resolver should break the
-	// cycle and emit a "cycle" error rather than recursing forever.
+	// Cycle detection keys on the literal template-url string; two templates
+	// that both declare a dependency at the same URL trigger the detector
+	// even without traversing back to a previously-seen directory. The
+	// inner template references itself by the same URL the outer template
+	// uses, which is the simplest reliable way to land in the cycle path
+	// (rather than the unresolvable_dependency path).
 	fsys := fstest.MapFS{
 		"boilerplate.yml": &fstest.MapFile{Data: []byte(`
 variables:
@@ -331,28 +335,25 @@ dependencies:
 variables:
   - name: Bar
 dependencies:
-  - name: back
-    template-url: ../
-    output-folder: .
+  - name: aself
+    template-url: ./a
+    output-folder: ./a
 `)},
 	}
 
 	res := runFS(t, fsys, map[string]any{})
 
-	hasCycle := false
+	var cycleErrs []AnalysisError
 
 	for _, e := range res.Errors {
-		if e.Kind == "cycle" || e.Kind == "unresolvable_dependency" {
-			// On the FS-only resolver, parent-relative `..` paths return an
-			// error from the resolver itself, which surfaces as
-			// unresolvable_dependency. Either resolution is acceptable: the
-			// important thing is the analysis terminates without exploding.
-			hasCycle = true
-			break
+		if e.Kind == "cycle" {
+			cycleErrs = append(cycleErrs, e)
 		}
 	}
 
-	assert.True(t, hasCycle, "expected the analyzer to surface a cycle or unresolvable error rather than recurse forever; got: %+v", res.Errors)
+	require.Len(t, cycleErrs, 1, "expected exactly one cycle error; got all errors: %+v", res.Errors)
+	assert.Equal(t, "aself", cycleErrs[0].Name, "cycle error should name the offending dependency")
+	assert.Contains(t, cycleErrs[0].Message, "./a", "cycle error message should mention the cyclic template-url")
 }
 
 func TestFromFS_PartialsExpandRefs(t *testing.T) {
@@ -400,6 +401,107 @@ variables:
 	require.Contains(t, res.Inputs, ".:Name")
 	// The file should appear under its rendered name.
 	assert.Equal(t, []string{"alice.txt"}, res.Inputs[".:Name"].Files)
+}
+
+func TestFromFS_SkipFilesPath(t *testing.T) {
+	t.Parallel()
+
+	// `secrets.txt` is listed under skip_files with no `if` condition (so it
+	// always skips). It should not appear in the analyzer's output, even
+	// though it references a declared variable.
+	fsys := fstest.MapFS{
+		"boilerplate.yml": &fstest.MapFile{Data: []byte(`
+variables:
+  - name: Region
+skip_files:
+  - path: secrets.txt
+`)},
+		"main.tf":     &fstest.MapFile{Data: []byte(`region = "{{ .Region }}"`)},
+		"secrets.txt": &fstest.MapFile{Data: []byte(`secret={{ .Region }}`)},
+	}
+
+	res := runFS(t, fsys, map[string]any{})
+
+	assert.Equal(t, []string{"main.tf"}, res.Inputs[".:Region"].Files,
+		"skip_files entry should exclude secrets.txt from the input map")
+	assert.NotContains(t, res.Files, "secrets.txt",
+		"skipped file should not appear in inverse files index")
+}
+
+func TestFromFS_SkipFilesIfFalse(t *testing.T) {
+	t.Parallel()
+
+	// When `if` evaluates to "false", the skip rule does not apply and the
+	// file is reported normally.
+	fsys := fstest.MapFS{
+		"boilerplate.yml": &fstest.MapFile{Data: []byte(`
+variables:
+  - name: Region
+  - name: Exclude
+    type: bool
+    default: false
+skip_files:
+  - path: optional.txt
+    if: "{{ .Exclude }}"
+`)},
+		"optional.txt": &fstest.MapFile{Data: []byte(`{{ .Region }}`)},
+	}
+
+	res := runFS(t, fsys, map[string]any{})
+
+	assert.Equal(t, []string{"optional.txt"}, res.Inputs[".:Region"].Files,
+		"skip rule with if=false should leave the file in the analysis")
+}
+
+func TestFromFS_SkipFilesNotPath(t *testing.T) {
+	t.Parallel()
+
+	// `not_path` inverts the rule: only files matching kept.txt are kept;
+	// everything else is skipped.
+	fsys := fstest.MapFS{
+		"boilerplate.yml": &fstest.MapFile{Data: []byte(`
+variables:
+  - name: Region
+skip_files:
+  - not_path: kept.txt
+`)},
+		"kept.txt":   &fstest.MapFile{Data: []byte(`{{ .Region }}`)},
+		"dropped.tf": &fstest.MapFile{Data: []byte(`{{ .Region }}`)},
+	}
+
+	res := runFS(t, fsys, map[string]any{})
+
+	assert.Equal(t, []string{"kept.txt"}, res.Inputs[".:Region"].Files,
+		"not_path rule should keep only the listed files")
+}
+
+func TestFromFS_SkipFilesUnsupportedDoubleStar(t *testing.T) {
+	t.Parallel()
+
+	// `**` is not supported by fs.Glob in FS mode. The analyzer should
+	// surface a soft error rather than silently producing no matches.
+	fsys := fstest.MapFS{
+		"boilerplate.yml": &fstest.MapFile{Data: []byte(`
+variables:
+  - name: Region
+skip_files:
+  - path: "**/*.tf"
+`)},
+		"main.tf": &fstest.MapFile{Data: []byte(`{{ .Region }}`)},
+	}
+
+	res := runFS(t, fsys, map[string]any{})
+
+	hasSkipErr := false
+
+	for _, e := range res.Errors {
+		if e.Kind == "skip_files" {
+			hasSkipErr = true
+			break
+		}
+	}
+
+	assert.True(t, hasSkipErr, "expected a skip_files soft error for `**` in FS mode; got: %+v", res.Errors)
 }
 
 func TestFinalizeResult_DeterministicOrdering(t *testing.T) {
