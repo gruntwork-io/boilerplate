@@ -1,4 +1,4 @@
-package inputs
+package inputs //nolint:testpackage
 
 import (
 	"context"

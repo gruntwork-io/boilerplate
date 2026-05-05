@@ -169,5 +169,8 @@ func writeJSONError(w io.Writer, kind string, err error) {
 
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
-	_ = enc.Encode(doc)
+
+	if encErr := enc.Encode(doc); encErr != nil {
+		_, _ = fmt.Fprintf(w, "{\"errors\":[{\"kind\":\"encode\",\"message\":%q}]}\n", encErr.Error())
+	}
 }

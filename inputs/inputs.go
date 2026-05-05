@@ -46,9 +46,9 @@ type Result struct {
 type InputEntry struct {
 	Name        string   `json:"name"`
 	DeclaredIn  string   `json:"declared_in"`
-	Files       []string `json:"files"`
 	Type        string   `json:"type"`
 	Description string   `json:"description,omitempty"`
+	Files       []string `json:"files"`
 }
 
 // AnalysisError is a soft error encountered during analysis. Soft errors do
@@ -238,7 +238,7 @@ func resolveRootLocation(l logging.Logger, opts *options.BoilerplateOptions) (te
 	}
 
 	if opts.TemplateURL == "" {
-		return templateLocation{}, nil, fmt.Errorf("template-url is required")
+		return templateLocation{}, nil, errors.New("template-url is required")
 	}
 
 	workingDir, templateFolder, err := getterhelper.DownloadTemplatesToTemporaryFolder(l, opts.TemplateURL)

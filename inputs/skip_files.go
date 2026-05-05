@@ -1,6 +1,7 @@
 package inputs
 
 import (
+	"context"
 	"fmt"
 	"io/fs"
 	"path"
@@ -16,9 +17,9 @@ import (
 // `if` condition and the concrete files that the entry's path / not_path
 // glob expanded to. Paths are slash-separated relative to the template root.
 type processedSkipRule struct {
-	skipIf   bool
 	paths    map[string]struct{}
 	notPaths map[string]struct{}
+	skipIf   bool
 }
 
 // skipFileFilter answers "should this walked path be skipped?" for one
@@ -36,7 +37,7 @@ type skipFileFilter struct {
 // skipFileFilter. Path/glob expansion uses zglob on disk (matching the
 // runtime, which supports `**`); in FS mode it falls back to fs.Glob, which
 // supports only the `*` and `?` wildcards.
-func processSkipFiles(loc templateLocation, skipFiles []variables.SkipFile, vars map[string]any) (*skipFileFilter, []AnalysisError) {
+func processSkipFiles(ctx context.Context, loc templateLocation, skipFiles []variables.SkipFile, vars map[string]any) (*skipFileFilter, []AnalysisError) {
 	filter := &skipFileFilter{}
 
 	if len(skipFiles) == 0 {
@@ -55,7 +56,7 @@ func processSkipFiles(loc templateLocation, skipFiles []variables.SkipFile, vars
 		// Render the `if` condition. An empty condition defaults to true,
 		// matching the runtime.
 		if sf.If != "" {
-			rendered, err := renderForAnalysis(loc.absDir, sf.If, vars)
+			rendered, err := renderForAnalysis(ctx, loc.absDir, sf.If, vars)
 			if err != nil {
 				errs = append(errs, AnalysisError{
 					Kind:    "skip_files",
@@ -71,7 +72,7 @@ func processSkipFiles(loc templateLocation, skipFiles []variables.SkipFile, vars
 		}
 
 		if sf.Path != "" {
-			matches, matchErrs := expandSkipGlob(loc, sf.Path, vars, "path")
+			matches, matchErrs := expandSkipGlob(ctx, loc, sf.Path, vars, "path")
 			errs = append(errs, matchErrs...)
 
 			for _, m := range matches {
@@ -80,7 +81,7 @@ func processSkipFiles(loc templateLocation, skipFiles []variables.SkipFile, vars
 		}
 
 		if sf.NotPath != "" {
-			matches, matchErrs := expandSkipGlob(loc, sf.NotPath, vars, "not_path")
+			matches, matchErrs := expandSkipGlob(ctx, loc, sf.NotPath, vars, "not_path")
 			errs = append(errs, matchErrs...)
 
 			for _, m := range matches {
@@ -162,8 +163,8 @@ func (f *skipFileFilter) shouldSkip(walkedPath string) bool {
 // On disk it uses zglob to match the runtime (which supports `**`); in FS
 // mode it uses fs.Glob, which only supports `*` and `?`. Patterns containing
 // `**` in FS mode produce a soft error.
-func expandSkipGlob(loc templateLocation, pattern string, vars map[string]any, attr string) ([]string, []AnalysisError) {
-	rendered, err := renderForAnalysis(loc.absDir, pattern, vars)
+func expandSkipGlob(ctx context.Context, loc templateLocation, pattern string, vars map[string]any, attr string) ([]string, []AnalysisError) {
+	rendered, err := renderForAnalysis(ctx, loc.absDir, pattern, vars)
 	if err != nil {
 		return nil, []AnalysisError{{
 			Kind:    "skip_files",

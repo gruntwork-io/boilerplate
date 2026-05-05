@@ -63,6 +63,7 @@ func analyze(ctx context.Context, root templateLocation, vars map[string]any, re
 	}
 
 	cleanups := []func(){}
+
 	defer func() {
 		for _, c := range cleanups {
 			c()
@@ -124,11 +125,11 @@ func analyzeTree(
 
 	// Parse partials first so file analysis can resolve {{ template "name" }}
 	// invocations transitively.
-	partialRefs, partialErrs := analyzePartials(loc, cfg.Partials, vars)
+	partialRefs, partialErrs := analyzePartials(ctx, loc, cfg.Partials, vars)
 	result.Errors = append(result.Errors, partialErrs...)
 
 	// Walk the template files and collect refs per file.
-	if walkErr := analyzeFiles(loc, info, partialRefs, vars, result); walkErr != nil {
+	if walkErr := analyzeFiles(ctx, loc, info, partialRefs, vars, result); walkErr != nil {
 		return nil, walkErr
 	}
 
@@ -137,7 +138,7 @@ func analyzeTree(
 		dep := &cfg.Dependencies[i]
 
 		// Render template-url and output-folder from parent vars.
-		renderedURL, renderErr := renderForAnalysis(loc.absDir, dep.TemplateURL, vars)
+		renderedURL, renderErr := renderForAnalysis(ctx, loc.absDir, dep.TemplateURL, vars)
 		if renderErr != nil {
 			result.Errors = append(result.Errors, AnalysisError{
 				Kind:     "filename_render",
@@ -149,7 +150,7 @@ func analyzeTree(
 			renderedURL = dep.TemplateURL
 		}
 
-		renderedOutputFolder, renderErr := renderForAnalysis(loc.absDir, dep.OutputFolder, vars)
+		renderedOutputFolder, renderErr := renderForAnalysis(ctx, loc.absDir, dep.OutputFolder, vars)
 		if renderErr != nil {
 			result.Errors = append(result.Errors, AnalysisError{
 				Kind:     "filename_render",
@@ -248,7 +249,7 @@ func loadConfig(loc templateLocation) (*config.BoilerplateConfig, error) {
 
 // analyzePartials parses every partial glob in the config and returns a map
 // from defined-template-name to that template's body refs.
-func analyzePartials(loc templateLocation, partialGlobs []string, vars map[string]any) (map[string]*templateRefs, []AnalysisError) {
+func analyzePartials(ctx context.Context, loc templateLocation, partialGlobs []string, vars map[string]any) (map[string]*templateRefs, []AnalysisError) {
 	out := map[string]*templateRefs{}
 
 	var errs []AnalysisError
@@ -256,7 +257,7 @@ func analyzePartials(loc templateLocation, partialGlobs []string, vars map[strin
 	for _, glob := range partialGlobs {
 		// Render the glob with vars (best effort) to handle any embedded
 		// template syntax.
-		rendered, err := renderForAnalysis(loc.absDir, glob, vars)
+		rendered, err := renderForAnalysis(ctx, loc.absDir, glob, vars)
 		if err != nil {
 			rendered = glob
 		}
@@ -436,7 +437,7 @@ func globPartialFiles(loc templateLocation, pattern string) ([]partialFile, erro
 // of subdirectories that hold local dependencies and skip them during the
 // walk; each dep gets analyzed independently when its turn comes via
 // analyzeTree.
-func analyzeFiles(loc templateLocation, info *templateInfo, partialRefs map[string]*templateRefs, vars map[string]any, result *Result) error {
+func analyzeFiles(ctx context.Context, loc templateLocation, info *templateInfo, partialRefs map[string]*templateRefs, vars map[string]any, result *Result) error {
 	walkRoot := loc.dir
 	if walkRoot == "" {
 		walkRoot = "."
@@ -445,7 +446,7 @@ func analyzeFiles(loc templateLocation, info *templateInfo, partialRefs map[stri
 	cfgPath := path.Join(loc.dir, config.BoilerplateConfigFile)
 	skipDirs := dependencySkipDirs(loc, info.cfg)
 
-	skipFilter, skipErrs := processSkipFiles(loc, info.cfg.SkipFiles, vars)
+	skipFilter, skipErrs := processSkipFiles(ctx, loc, info.cfg.SkipFiles, vars)
 	result.Errors = append(result.Errors, skipErrs...)
 
 	return fs.WalkDir(loc.fsys, walkRoot, func(p string, d fs.DirEntry, err error) error {
@@ -495,7 +496,7 @@ func analyzeFiles(loc templateLocation, info *templateInfo, partialRefs map[stri
 			// not affected by any input variable, but we still record an
 			// empty entry so the file appears in the output. Use the rendered
 			// output path.
-			outPath := computeOutputPath(loc, info, p, vars, result)
+			outPath := computeOutputPath(ctx, loc, info, p, vars, result)
 			if outPath != "" {
 				if _, exists := info.fileRefs[outPath]; !exists {
 					info.fileRefs[outPath] = map[string]struct{}{}
@@ -513,7 +514,8 @@ func analyzeFiles(loc templateLocation, info *templateInfo, partialRefs map[stri
 				Message: parseErr.Error(),
 			})
 
-			return nil
+			// Soft error: record and continue the walk rather than aborting.
+			return nil //nolint:nilerr
 		}
 
 		// Expand template invocations through partials.
@@ -525,7 +527,7 @@ func analyzeFiles(loc templateLocation, info *templateInfo, partialRefs map[stri
 			}
 		}
 
-		outPath := computeOutputPath(loc, info, p, vars, result)
+		outPath := computeOutputPath(ctx, loc, info, p, vars, result)
 		if outPath == "" {
 			return nil
 		}
@@ -556,7 +558,9 @@ func dependencySkipDirs(loc templateLocation, cfg *config.BoilerplateConfig) map
 		return out
 	}
 
-	for _, dep := range cfg.Dependencies {
+	for i := range cfg.Dependencies {
+		dep := &cfg.Dependencies[i]
+
 		url := dep.TemplateURL
 		if url == "" || strings.Contains(url, "://") {
 			continue
@@ -583,7 +587,7 @@ func dependencySkipDirs(loc templateLocation, cfg *config.BoilerplateConfig) map
 // regardless of OS, and loc.dir is similarly slash-separated. So path
 // manipulation here uses the path package, not path/filepath, to avoid
 // breaking on Windows where filepath uses backslash.
-func computeOutputPath(loc templateLocation, info *templateInfo, inputPath string, vars map[string]any, result *Result) string {
+func computeOutputPath(ctx context.Context, loc templateLocation, info *templateInfo, inputPath string, vars map[string]any, result *Result) string {
 	// Path of the file relative to the template directory.
 	rel := slashRel(loc.dir, inputPath)
 
@@ -596,7 +600,7 @@ func computeOutputPath(loc templateLocation, info *templateInfo, inputPath strin
 
 	// Render any template syntax in the filename. Pass the file's basename as
 	// the template name for diagnostic messages.
-	rendered, err := renderForAnalysis(loc.absDir, rel, vars)
+	rendered, err := renderForAnalysis(ctx, loc.absDir, rel, vars)
 	if err != nil {
 		result.Errors = append(result.Errors, AnalysisError{
 			Kind:    "filename_render",
@@ -651,7 +655,7 @@ func joinOutputPath(parent, child string) string {
 // templateFolder is the absolute path of the template folder when known
 // (empty in FS mode); it's only used by helpers that introspect the
 // template path (which filenames almost never invoke).
-func renderForAnalysis(templateFolder, contents string, vars map[string]any) (string, error) {
+func renderForAnalysis(ctx context.Context, templateFolder, contents string, vars map[string]any) (string, error) {
 	if !strings.Contains(contents, "{{") {
 		return contents, nil
 	}
@@ -665,7 +669,7 @@ func renderForAnalysis(templateFolder, contents string, vars map[string]any) (st
 		OnMissingConfig: options.Ignore,
 	}
 
-	return render.RenderTemplateFromString(logging.Discard(), "filename", contents, vars, opts)
+	return render.RenderTemplateFromStringWithContext(ctx, logging.Discard(), "filename", contents, vars, opts)
 }
 
 // computeDepEdges parses every value expression in a dependency's variables
@@ -772,7 +776,7 @@ func composeResult(root *templateInfo, result *Result) {
 		// inputs that propagate to children).
 		for declaredName, decl := range t.declared {
 			key := inputKey(t.declaredIn, declaredName)
-			files := filesAffectedBy(t, declaredName, all, map[string]struct{}{})
+			files := filesAffectedBy(t, declaredName, map[string]struct{}{})
 
 			result.Inputs[key] = InputEntry{
 				Name:        declaredName,
@@ -849,7 +853,7 @@ func flatten(root *templateInfo) []*templateInfo {
 //
 // visiting tracks (declaredIn, varName) currently in the recursion to break
 // cycles.
-func filesAffectedBy(t *templateInfo, varName string, all []*templateInfo, visiting map[string]struct{}) map[string]struct{} {
+func filesAffectedBy(t *templateInfo, varName string, visiting map[string]struct{}) map[string]struct{} {
 	key := t.declaredIn + ":" + varName
 	if _, in := visiting[key]; in {
 		return map[string]struct{}{}
@@ -885,7 +889,7 @@ func filesAffectedBy(t *templateInfo, varName string, all []*templateInfo, visit
 				continue
 			}
 
-			for f := range filesAffectedBy(child, childVar, all, visiting) {
+			for f := range filesAffectedBy(child, childVar, visiting) {
 				out[f] = struct{}{}
 			}
 		}
@@ -898,7 +902,7 @@ func filesAffectedBy(t *templateInfo, varName string, all []*templateInfo, visit
 		if depConfig != nil && !depConfig.DontInheritVariables {
 			if _, declaredInChild := child.declared[varName]; declaredInChild {
 				if _, explicit := edges[varName]; !explicit {
-					for f := range filesAffectedBy(child, varName, all, visiting) {
+					for f := range filesAffectedBy(child, varName, visiting) {
 						out[f] = struct{}{}
 					}
 				}

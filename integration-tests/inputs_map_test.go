@@ -19,9 +19,9 @@ type inputsMapResult struct {
 	Inputs map[string]struct {
 		Name        string   `json:"name"`
 		DeclaredIn  string   `json:"declared_in"`
-		Files       []string `json:"files"`
 		Type        string   `json:"type"`
 		Description string   `json:"description,omitempty"`
+		Files       []string `json:"files"`
 	} `json:"inputs"`
 
 	Files map[string][]string `json:"files"`
@@ -46,6 +46,7 @@ func TestInputsMap_TransitiveFixture(t *testing.T) {
 	app := cli.CreateBoilerplateCli()
 
 	var stdout, stderr bytes.Buffer
+
 	app.Writer = &stdout
 	app.ErrWriter = &stderr
 

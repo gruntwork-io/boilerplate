@@ -32,16 +32,6 @@ func newTemplateRefs() *templateRefs {
 	}
 }
 
-func (r *templateRefs) merge(other *templateRefs) {
-	for v := range other.vars {
-		r.vars[v] = struct{}{}
-	}
-
-	for inv := range other.invocations {
-		r.invocations[inv] = struct{}{}
-	}
-}
-
 // parseTemplateAll parses contents and returns every named template defined
 // (the body itself plus any {{ define "name" }} blocks). Each entry is the
 // parse tree for one of those templates.
