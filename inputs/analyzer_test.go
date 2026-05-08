@@ -504,6 +504,141 @@ skip_files:
 	assert.True(t, hasSkipErr, "expected a skip_files soft error for `**` in FS mode; got: %+v", res.Errors)
 }
 
+func TestFromFS_FilenameRefAffectsFileEvenWhenBodyDoesNot(t *testing.T) {
+	t.Parallel()
+
+	// The body has no template syntax, but the filename uses {{ .Name }}
+	// to choose the directory. Changing Name relocates the file, so Name
+	// must appear as affecting it even though the body never references it.
+	fsys := fstest.MapFS{
+		"boilerplate.yml": &fstest.MapFile{Data: []byte(`
+variables:
+  - name: Name
+`)},
+		"{{.Name}}/static.txt": &fstest.MapFile{Data: []byte(`literal content, no template refs`)},
+	}
+
+	res := runFS(t, fsys, map[string]any{"Name": "alice"})
+
+	require.Contains(t, res.Inputs, ".:Name")
+	assert.Equal(t, []string{"alice/static.txt"}, res.Inputs[".:Name"].Files,
+		"a var used only in the file path should still link to that file")
+	assert.Equal(t, []string{".:Name"}, res.Files["alice/static.txt"])
+}
+
+func TestFromFS_DepOutputFolderAffectsSubtree(t *testing.T) {
+	t.Parallel()
+
+	// The parent's Env shapes the dep's output-folder. The child's file
+	// has no template syntax of its own, but a change to Env relocates
+	// the entire subtree, so Env must reach every file under the dep.
+	fsys := fstest.MapFS{
+		"boilerplate.yml": &fstest.MapFile{Data: []byte(`
+variables:
+  - name: Env
+dependencies:
+  - name: app
+    template-url: ./app
+    output-folder: ./{{ .Env }}/app
+`)},
+		"app/boilerplate.yml": &fstest.MapFile{Data: []byte(``)},
+		"app/main.tf":         &fstest.MapFile{Data: []byte(`literal terraform content`)},
+	}
+
+	res := runFS(t, fsys, map[string]any{"Env": "prod"})
+
+	require.Contains(t, res.Inputs, ".:Env")
+	assert.Equal(t, []string{"prod/app/main.tf"}, res.Inputs[".:Env"].Files,
+		"vars used in dep output-folder should affect every file in the subtree")
+}
+
+func TestFromFS_DepTemplateURLAffectsSubtree(t *testing.T) {
+	t.Parallel()
+
+	// The dep's template-url itself is shaped by a parent var: changing
+	// Flavor would pull in a different child module. Files in the
+	// resolved subtree should link back to Flavor.
+	fsys := fstest.MapFS{
+		"boilerplate.yml": &fstest.MapFile{Data: []byte(`
+variables:
+  - name: Flavor
+dependencies:
+  - name: mod
+    template-url: ./modules/{{ .Flavor }}
+    output-folder: ./mod
+`)},
+		"modules/blue/boilerplate.yml": &fstest.MapFile{Data: []byte(``)},
+		"modules/blue/file.txt":        &fstest.MapFile{Data: []byte(`plain text`)},
+	}
+
+	res := runFS(t, fsys, map[string]any{"Flavor": "blue"})
+
+	require.Contains(t, res.Inputs, ".:Flavor")
+	assert.Equal(t, []string{"mod/file.txt"}, res.Inputs[".:Flavor"].Files,
+		"vars used in dep template-url should affect files in the resolved subtree")
+}
+
+func TestFromFS_SkipFilesPathLinksVar(t *testing.T) {
+	t.Parallel()
+
+	// skip_files.path uses {{ .Env }} to choose which file to skip. A
+	// change to Env shifts which file is excluded — conservatively, link
+	// Env to every output file in the template so consumers know to
+	// re-analyze.
+	fsys := fstest.MapFS{
+		"boilerplate.yml": &fstest.MapFile{Data: []byte(`
+variables:
+  - name: Env
+  - name: Region
+skip_files:
+  - path: "{{ .Env }}-secrets.txt"
+`)},
+		"main.tf":          &fstest.MapFile{Data: []byte(`region = "{{ .Region }}"`)},
+		"prod-secrets.txt": &fstest.MapFile{Data: []byte(`prod`)},
+		"dev-secrets.txt":  &fstest.MapFile{Data: []byte(`dev`)},
+	}
+
+	// With Env=prod the skip rule matches prod-secrets.txt; main.tf and
+	// dev-secrets.txt remain. Env should link to both of them.
+	res := runFS(t, fsys, map[string]any{"Env": "prod"})
+
+	require.Contains(t, res.Inputs, ".:Env")
+	assert.ElementsMatch(t,
+		[]string{"main.tf", "dev-secrets.txt"},
+		res.Inputs[".:Env"].Files,
+		"vars in skip_files.path should link to every file the template currently produces")
+	// Region's existing semantics (body-ref only) should be unaffected.
+	assert.Equal(t, []string{"main.tf"}, res.Inputs[".:Region"].Files)
+}
+
+func TestFromFS_SkipFilesIfLinksVar(t *testing.T) {
+	t.Parallel()
+
+	// skip_files.if depends on Mode. A change to Mode flips whether
+	// optional.txt is included, which is a meaningful dependency the
+	// analyzer should report.
+	fsys := fstest.MapFS{
+		"boilerplate.yml": &fstest.MapFile{Data: []byte(`
+variables:
+  - name: Mode
+  - name: Region
+skip_files:
+  - path: optional.txt
+    if: '{{ eq .Mode "strict" }}'
+`)},
+		"main.tf":      &fstest.MapFile{Data: []byte(`region = "{{ .Region }}"`)},
+		"optional.txt": &fstest.MapFile{Data: []byte(`hi`)},
+	}
+
+	res := runFS(t, fsys, map[string]any{"Mode": "lax"})
+
+	require.Contains(t, res.Inputs, ".:Mode")
+	assert.ElementsMatch(t,
+		[]string{"main.tf", "optional.txt"},
+		res.Inputs[".:Mode"].Files,
+		"vars in skip_files.if should link to every file in the template")
+}
+
 func TestFinalizeResult_DeterministicOrdering(t *testing.T) {
 	t.Parallel()
 

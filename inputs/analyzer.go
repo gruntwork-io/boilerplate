@@ -22,36 +22,16 @@ import (
 
 // templateInfo holds analysis output for a single template (one boilerplate.yml).
 type templateInfo struct {
-	// loc identifies where this template lives.
-	loc templateLocation
-
-	// outputPath is the path where this template's output goes, relative to
-	// the root template's output root. "." for the root.
-	outputPath string
-
-	// declaredIn is the path used in input keys (`<declaredIn>:<name>`). It
-	// matches outputPath but with "." preserved as "." (rather than "" or
-	// some normalized form).
-	declaredIn string
-
-	// config is the parsed boilerplate.yml.
-	cfg *config.BoilerplateConfig
-
-	// declared maps variable name -> declaration.
-	declared map[string]variables.Variable
-
-	// fileRefs[outputFilePath] is the set of variable names referenced when
-	// rendering that file. Output paths are relative to the root output root.
-	fileRefs map[string]map[string]struct{}
-
-	// dependencies are children that this template depends on.
-	dependencies []*templateInfo
-
-	// depEdges records explicit value-expression edges: for each dependency
-	// in this template, for each child variable name, the parent-scope vars
-	// referenced in the value expression. Indexed as
-	// depEdges[depIndex][childVarName] = set of parent var names.
-	depEdges []map[string]map[string]struct{}
+	cfg               *config.BoilerplateConfig
+	declared          map[string]variables.Variable
+	fileRefs          map[string]map[string]struct{}
+	skipFilesRefs     map[string]struct{}
+	loc               templateLocation
+	outputPath        string
+	declaredIn        string
+	dependencies      []*templateInfo
+	depEdges          []map[string]map[string]struct{}
+	pathToSubtreeRefs []map[string]struct{}
 }
 
 // analyze is the top-level entry point used by both FromOptions and FromFS.
@@ -150,6 +130,24 @@ func analyzeTree(
 			renderedURL = dep.TemplateURL
 		}
 
+		renderedURL = strings.TrimSpace(renderedURL)
+
+		// If the rendered URL is empty, the template-url was either blank or
+		// composed entirely of missing-variable placeholders that scrubbed
+		// down to nothing. There is no useful path to resolve; record a soft
+		// error and skip without attempting a stat.
+		if renderedURL == "" {
+			result.Errors = append(result.Errors, AnalysisError{
+				Kind:     "unresolvable_dependency",
+				Template: declaredIn,
+				Name:     dep.Name,
+				Message:  fmt.Sprintf("template-url for dependency %q rendered to empty string (likely missing input variables)", dep.Name),
+			})
+			info.depEdges = append(info.depEdges, nil)
+
+			continue
+		}
+
 		renderedOutputFolder, renderErr := renderForAnalysis(ctx, loc.absDir, dep.OutputFolder, vars)
 		if renderErr != nil {
 			result.Errors = append(result.Errors, AnalysisError{
@@ -224,6 +222,12 @@ func analyzeTree(
 		}
 
 		info.dependencies = append(info.dependencies, childInfo)
+
+		// pathToSubtreeRefs is parallel to info.dependencies (not depEdges /
+		// cfg.Dependencies), so populate it only when a dep resolves and is
+		// added to the tree. A change to any of these parent vars relocates
+		// or replaces the whole subtree rooted at this dep.
+		info.pathToSubtreeRefs = append(info.pathToSubtreeRefs, computeDepPathRefs(dep))
 	}
 
 	return info, nil
@@ -449,6 +453,10 @@ func analyzeFiles(ctx context.Context, loc templateLocation, info *templateInfo,
 	skipFilter, skipErrs := processSkipFiles(ctx, loc, info.cfg.SkipFiles, vars)
 	result.Errors = append(result.Errors, skipErrs...)
 
+	// Record vars referenced in any skip_files expression so a change to
+	// them links to every file this template would produce.
+	info.skipFilesRefs = computeSkipFilesRefs(info.cfg.SkipFiles)
+
 	return fs.WalkDir(loc.fsys, walkRoot, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -492,14 +500,18 @@ func analyzeFiles(ctx context.Context, loc templateLocation, info *templateInfo,
 		}
 
 		if !isLikelyText(data) {
-			// Binary file; boilerplate copies it as-is at render time. It is
-			// not affected by any input variable, but we still record an
-			// empty entry so the file appears in the output. Use the rendered
-			// output path.
+			// Binary file; boilerplate copies it as-is at render time. Its
+			// CONTENTS are not affected by any input variable, but its PATH
+			// may still depend on one (e.g., logo at `{{ .Brand }}/logo.png`),
+			// in which case a change to that var relocates the file.
 			outPath := computeOutputPath(ctx, loc, info, p, vars, result)
 			if outPath != "" {
 				if _, exists := info.fileRefs[outPath]; !exists {
 					info.fileRefs[outPath] = map[string]struct{}{}
+				}
+
+				for v := range extractFilenameRefs(loc, p, result) {
+					info.fileRefs[outPath][v] = struct{}{}
 				}
 			}
 
@@ -525,6 +537,14 @@ func analyzeFiles(ctx context.Context, loc templateLocation, info *templateInfo,
 					refs.vars[v] = struct{}{}
 				}
 			}
+		}
+
+		// Variables referenced in the file's PATH (not just its body) also
+		// affect the rendered output: changing such a var moves where the
+		// file lands. Union them into the same ref set so they propagate
+		// through the rest of the analysis identically to body refs.
+		for v := range extractFilenameRefs(loc, p, result) {
+			refs.vars[v] = struct{}{}
 		}
 
 		outPath := computeOutputPath(ctx, loc, info, p, vars, result)
@@ -579,6 +599,36 @@ func dependencySkipDirs(loc templateLocation, cfg *config.BoilerplateConfig) map
 	return out
 }
 
+// extractFilenameRefs returns the set of variable names referenced in
+// inputPath's filename relative to loc.dir. Returns nil if the filename has
+// no template syntax. Soft parse errors land in result.Errors. The path is
+// URL-decoded the same way computeOutputPath does so the two stay in sync —
+// boilerplate fixtures encode `|` as %7C/%7c so the literal can survive
+// Windows filesystems, and we want to extract refs from the decoded form.
+func extractFilenameRefs(loc templateLocation, inputPath string, result *Result) map[string]struct{} {
+	rel := slashRel(loc.dir, inputPath)
+	if decoded, decodeErr := url.QueryUnescape(rel); decodeErr == nil {
+		rel = decoded
+	}
+
+	if !strings.Contains(rel, "{{") {
+		return nil
+	}
+
+	refs, err := extractRefs("filename:"+inputPath, rel)
+	if err != nil {
+		result.Errors = append(result.Errors, AnalysisError{
+			Kind:    "parse",
+			File:    inputPath,
+			Message: err.Error(),
+		})
+
+		return nil
+	}
+
+	return refs.vars
+}
+
 // computeOutputPath maps an input file path inside loc.fsys to its output path
 // relative to the root output root. The filename portion may itself contain
 // template syntax; we render it best-effort.
@@ -618,9 +668,17 @@ func computeOutputPath(ctx context.Context, loc templateLocation, info *template
 // joinOutputPath joins a parent output path with a child relative path,
 // producing a slash-separated path relative to the root output root. Returns
 // "." for the root only when both inputs are root-equivalent.
+//
+// Output paths are always relative; a leading "/" on either input is treated
+// as a stray (commonly produced by stripping a leading "<no value>" from a
+// rendered output-folder) and removed, since an absolute path here would
+// bubble through to file keys and break the inverse index.
 func joinOutputPath(parent, child string) string {
 	parent = strings.TrimSpace(parent)
 	child = strings.TrimSpace(child)
+
+	parent = strings.TrimLeft(parent, "/")
+	child = strings.TrimLeft(child, "/")
 
 	if parent == "" || parent == "." {
 		parent = ""
@@ -646,11 +704,31 @@ func joinOutputPath(parent, child string) string {
 	return joined
 }
 
+// analysisOutputSentinel is the OutputFolder value passed to the renderer
+// during analysis. The `outputFolder` template helper resolves it via
+// filepath.Abs, which returns cwd + sentinel; we strip that resolved form
+// from the rendered output and replace it with ".". Without this, a
+// dependency declared as `output-folder: "{{ outputFolder }}"` would render
+// to the analyzer process's working directory, polluting every downstream
+// path computation with that absolute prefix.
+const analysisOutputSentinel = "__boilerplate_analysis_output_sentinel__"
+
+// missingValueLiteral is what Go's text/template prints for a missing key
+// when OnMissingKey=zero is used with map[string]any vars. This is a
+// documented quirk of text/template (see render/render_template_test.go);
+// for analysis purposes we treat missing values as empty strings.
+const missingValueLiteral = "<no value>"
+
 // renderForAnalysis renders a small template fragment (filename, glob, or
 // dep field) using the existing render pipeline with shell and hooks
 // disabled and missing-key behavior set to zero-value. This keeps side
 // effects out of the analysis path while still matching what
 // `boilerplate template` would compute for the same inputs.
+//
+// The result is post-processed to (a) collapse the analysis output sentinel
+// back to "." so paths produced via {{ outputFolder }} stay relative, and
+// (b) strip the literal "<no value>" string that text/template emits for
+// missing keys.
 //
 // templateFolder is the absolute path of the template folder when known
 // (empty in FS mode); it's only used by helpers that introspect the
@@ -662,6 +740,7 @@ func renderForAnalysis(ctx context.Context, templateFolder, contents string, var
 
 	opts := &options.BoilerplateOptions{
 		TemplateFolder:  templateFolder,
+		OutputFolder:    analysisOutputSentinel,
 		NonInteractive:  true,
 		NoHooks:         true,
 		NoShell:         true,
@@ -669,7 +748,88 @@ func renderForAnalysis(ctx context.Context, templateFolder, contents string, var
 		OnMissingConfig: options.Ignore,
 	}
 
-	return render.RenderTemplateFromStringWithContext(ctx, logging.Discard(), "filename", contents, vars, opts)
+	rendered, err := render.RenderTemplateFromStringWithContext(ctx, logging.Discard(), "filename", contents, vars, opts)
+	if err != nil {
+		return rendered, err
+	}
+
+	return scrubAnalysisRender(rendered), nil
+}
+
+// scrubAnalysisRender removes analysis-only artifacts from a rendered
+// template fragment: the absolute form of the outputFolder sentinel
+// (collapsed to ".") and the literal "<no value>" placeholder text/template
+// produces for missing map keys.
+func scrubAnalysisRender(rendered string) string {
+	if sentinelAbs, absErr := filepath.Abs(analysisOutputSentinel); absErr == nil {
+		rendered = strings.ReplaceAll(rendered, sentinelAbs, ".")
+	}
+
+	rendered = strings.ReplaceAll(rendered, missingValueLiteral, "")
+
+	return rendered
+}
+
+// computeDepPathRefs returns the set of parent-scope variable names
+// referenced in this dependency's template-url and output-folder fields.
+// These vars don't bind to a specific child variable; they shape *which*
+// subtree gets pulled in and *where* it lands. A change to any of them
+// affects every file under the dependency.
+//
+// Parse errors are swallowed: the runtime would surface them at render
+// time via the existing filename_render / unresolvable_dependency soft
+// errors, so duplicating that surface here adds noise without information.
+func computeDepPathRefs(dep *variables.Dependency) map[string]struct{} {
+	out := map[string]struct{}{}
+
+	for _, expr := range []string{dep.TemplateURL, dep.OutputFolder} {
+		if !strings.Contains(expr, "{{") {
+			continue
+		}
+
+		refs, err := extractRefs("dep-path", expr)
+		if err != nil {
+			continue
+		}
+
+		for v := range refs.vars {
+			out[v] = struct{}{}
+		}
+	}
+
+	return out
+}
+
+// computeSkipFilesRefs returns the set of variable names referenced in any
+// of the supplied skip_files entries' path / not_path / if expressions. A
+// change to any of these vars may include or exclude files in this
+// template's output, so the caller treats them as affecting every file in
+// the template.
+//
+// As with computeDepPathRefs, parse errors are swallowed: the runtime
+// surfaces them via the existing skip_files soft error path, and the
+// per-template ref set should not duplicate that surface.
+func computeSkipFilesRefs(skipFiles []variables.SkipFile) map[string]struct{} {
+	out := map[string]struct{}{}
+
+	for _, sf := range skipFiles {
+		for _, expr := range []string{sf.Path, sf.NotPath, sf.If} {
+			if !strings.Contains(expr, "{{") {
+				continue
+			}
+
+			refs, err := extractRefs("skip-files", expr)
+			if err != nil {
+				continue
+			}
+
+			for v := range refs.vars {
+				out[v] = struct{}{}
+			}
+		}
+	}
+
+	return out
 }
 
 // computeDepEdges parses every value expression in a dependency's variables
@@ -871,6 +1031,16 @@ func filesAffectedBy(t *templateInfo, varName string, visiting map[string]struct
 		}
 	}
 
+	// Skip-files refs: a change to a var that appears in any of this
+	// template's skip_files entries (path / not_path / if) may include or
+	// exclude any of this template's output files. Conservative signal:
+	// link the var to every file currently produced by this template.
+	if _, hits := t.skipFilesRefs[varName]; hits {
+		for filePath := range t.fileRefs {
+			out[filePath] = struct{}{}
+		}
+	}
+
 	// Through explicit value-expression edges to children.
 	for i, child := range t.dependencies {
 		var depConfig *variables.Dependency
@@ -907,6 +1077,42 @@ func filesAffectedBy(t *templateInfo, varName string, visiting map[string]struct
 					}
 				}
 			}
+		}
+
+		// Path-to-subtree edge: a parent var referenced in dep.template-url
+		// or dep.output-folder shapes which subtree gets pulled in and where
+		// it lands. A change to it relocates or replaces every file under
+		// the dep, not just files referencing a specific child var. Index
+		// pathToSubtreeRefs by i directly — it is parallel to dependencies.
+		if i < len(t.pathToSubtreeRefs) {
+			if _, hits := t.pathToSubtreeRefs[i][varName]; hits {
+				for f := range allFilesInSubtree(child) {
+					out[f] = struct{}{}
+				}
+			}
+		}
+	}
+
+	return out
+}
+
+// allFilesInSubtree returns every output path produced by t and its
+// transitive dependencies. Used by path-to-subtree edges, where a change
+// to a path-shaping parent var moves or replaces the whole subtree rather
+// than affecting one specific child variable.
+func allFilesInSubtree(t *templateInfo) map[string]struct{} {
+	out := map[string]struct{}{}
+	if t == nil {
+		return out
+	}
+
+	for f := range t.fileRefs {
+		out[f] = struct{}{}
+	}
+
+	for _, child := range t.dependencies {
+		for f := range allFilesInSubtree(child) {
+			out[f] = struct{}{}
 		}
 	}
 

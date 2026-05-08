@@ -155,18 +155,39 @@ func (r *osResolver) Resolve(_ context.Context, parent templateLocation, templat
 	}
 
 	if templateFolder != "" {
-		// Local relative path. Resolve against the parent's directory using
-		// the absolute disk path, then create a fresh os.DirFS rooted at the
-		// child template directory.
-		if parent.absDir == "" {
-			return templateLocation{}, nil, fmt.Errorf("cannot resolve relative dependency %q: parent has no on-disk path", templateURL)
-		}
+		// Local path. Absolute paths (commonly produced by templates that use
+		// {{ templateFolder }}/../sibling) are used as-is; relative paths are
+		// resolved against the parent template's directory.
+		var joined string
+		if filepath.IsAbs(templateURL) {
+			joined = templateURL
+		} else {
+			if parent.absDir == "" {
+				return templateLocation{}, nil, fmt.Errorf("cannot resolve relative dependency %q: parent has no on-disk path", templateURL)
+			}
 
-		joined := filepath.Join(parent.absDir, templateURL)
+			joined = filepath.Join(parent.absDir, templateURL)
+		}
 
 		abs, absErr := filepath.Abs(joined)
 		if absErr != nil {
 			return templateLocation{}, nil, absErr
+		}
+
+		// Validate up-front that the resolved path exists and is a directory.
+		// Without this check, os.DirFS would happily wrap a non-existent path
+		// and the failure would surface much later as a cryptic
+		// "stat .: no such file or directory" from the file walker. This
+		// commonly happens when an output-folder template renders to junk
+		// because the user's input vars were unset (e.g.,
+		// "<no value>/_global/<no value>-role" pre-scrub).
+		info, statErr := os.Stat(abs)
+		if statErr != nil {
+			return templateLocation{}, nil, fmt.Errorf("local dependency %q does not exist at %s: %w", templateURL, abs, statErr)
+		}
+
+		if !info.IsDir() {
+			return templateLocation{}, nil, fmt.Errorf("local dependency %q resolved to %s, which is not a directory", templateURL, abs)
 		}
 
 		return templateLocation{fsys: os.DirFS(abs), dir: ".", absDir: abs}, nil, nil
