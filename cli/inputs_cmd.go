@@ -52,10 +52,10 @@ Soft errors (e.g., a referenced variable that is not declared in any
 boilerplate.yml in scope) appear in the "errors" array and do not change the
 exit code.`
 
-// addInputsCommand returns the "inputs" command with its "map" subcommand.
+// newInputsCommand returns the "inputs" command with its "map" subcommand.
 // It is exported only via CreateBoilerplateCli; defining it here keeps the
 // subcommand wiring out of the main CLI file.
-func addInputsCommand() *cli.Command {
+func newInputsCommand() *cli.Command {
 	return &cli.Command{
 		Name:  "inputs",
 		Usage: "Inspect declared input variables for a template.",

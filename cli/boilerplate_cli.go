@@ -58,7 +58,7 @@ func CreateBoilerplateCli() *cli.App {
 	app.UsageText = "boilerplate [OPTIONS]"
 	app.Version = version.GetVersion()
 	app.Action = runApp
-	app.Commands = []*cli.Command{addInputsCommand()}
+	app.Commands = []*cli.Command{newInputsCommand()}
 
 	app.Flags = []cli.Flag{
 		&cli.StringFlag{
