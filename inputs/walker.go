@@ -1,10 +1,13 @@
 package inputs
 
 import (
+	"context"
 	"text/template"
 	"text/template/parse"
 
-	"github.com/Masterminds/sprig/v3"
+	"github.com/gruntwork-io/boilerplate/options"
+	"github.com/gruntwork-io/boilerplate/pkg/logging"
+	"github.com/gruntwork-io/boilerplate/render"
 )
 
 // Built-in identifiers that boilerplate exposes via the variables map but that
@@ -165,14 +168,15 @@ func extractRefs(name, contents string) (*templateRefs, error) {
 	return refs, nil
 }
 
-// stubFuncs defines (with no-op implementations) every identifier that
-// boilerplate's render package exposes to templates, plus all sprig helpers.
-// This lets us call template.Parse on arbitrary boilerplate templates without
-// having to actually wire up the real implementations — Parse only needs the
-// identifiers to be known so pipelines type-check.
+// stubFuncs is the FuncMap registered when parsing templates for analysis.
+// It contains every identifier the runtime exposes (sprig + boilerplate
+// helpers) but with each value swapped for a no-op stub. text/template only
+// checks identifier existence at parse time, so the stubs are sufficient to
+// let arbitrary templates parse — and analysis never calls Execute, so the
+// stubs are never invoked.
 //
-// Critically, none of these stubs run during analysis: we never call Execute.
-// They exist purely so Parse does not reject identifiers it does not know.
+// Derived from render.CreateTemplateHelpers so the set automatically picks up
+// any helper added to the runtime, eliminating the prior drift hazard.
 //
 // Built once at package init and shared across every parseTemplateAll call;
 // text/template's Funcs() copies the map internally, so concurrent reuse is
@@ -180,47 +184,16 @@ func extractRefs(name, contents string) (*templateRefs, error) {
 var stubFuncs = buildStubFuncs()
 
 func buildStubFuncs() template.FuncMap {
-	out := template.FuncMap{}
+	real := render.CreateTemplateHelpers(
+		context.Background(),
+		logging.Discard(),
+		"",
+		&options.BoilerplateOptions{NoHooks: true, NoShell: true},
+		template.New(""),
+	)
 
-	// Sprig functions: copy keys, replace each with a no-op stub of the right
-	// shape. text/template only checks identifier existence at parse time, not
-	// arity or types — but the safest stub returns a string.
-	for name := range sprig.FuncMap() {
-		out[name] = stubFunc
-	}
-
-	// Boilerplate-registered helpers and aliases. Keep this list in sync with
-	// render.CreateTemplateHelpers (render/template_helpers.go). Adding an
-	// extra entry here is harmless; missing one means parse will fail on
-	// templates that use it.
-	for _, name := range []string{
-		// Numeric helpers.
-		"roundInt", "ceilInt", "floorInt",
-		"plus", "minus", "times", "divide",
-		"round", "ceil", "floor",
-		// String helpers and case converters.
-		"dasherize", "camelCaseLower", "camelCase", "snakeCase",
-		"replaceOne", "replace", "replaceAll",
-		"trimPrefix", "trimSuffix",
-		"trimPrefixBoilerplate", "trimSuffixBoilerplate",
-		"trimPrefixSprig", "trimSuffixSprig",
-		"downcase", "upcase", "capitalize",
-		// (de)serialization.
-		"toYaml", "fromYaml",
-		// Collection helpers and aliases.
-		"numRange", "keys", "keysSorted", "keysUnordered", "slice", "listSlice",
-		// File / path helpers.
-		"snippet", "include", "pathExists", "relPath",
-		"templateFolder", "templateUrl", "outputFolder",
-		// Boilerplate config introspection.
-		"templateIsDefined", "boilerplateConfigDeps", "boilerplateConfigVars", "vars",
-		// Shell and env. Note: shell is a side-effect helper and should never
-		// be invoked here, but the stub lets templates that *reference* it
-		// parse. NoShell-style behavior is irrelevant since we never Execute.
-		"shell", "env", "envWithDefault", "readEnv",
-		// Float-to-X conversion variants used in render/template_helpers.go.
-		"roundFloat", "ceilFloat", "floorFloat",
-	} {
+	out := make(template.FuncMap, len(real))
+	for name := range real {
 		out[name] = stubFunc
 	}
 

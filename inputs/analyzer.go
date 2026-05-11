@@ -23,19 +23,27 @@ import (
 
 // templateInfo holds analysis output for a single template (one boilerplate.yml).
 type templateInfo struct {
-	cfg               *config.BoilerplateConfig
-	declared          map[string]variables.Variable
-	fileRefs          map[string]map[string]struct{}
-	skipFilesRefs     map[string]struct{}
-	loc               templateLocation
-	outputPath        string
-	declaredIn        string
-	dependencies      []*templateInfo
-	depEdges          []map[string]map[string]struct{}
-	pathToSubtreeRefs []map[string]struct{}
+	cfg           *config.BoilerplateConfig
+	declared      map[string]variables.Variable
+	fileRefs      map[string]map[string]struct{}
+	skipFilesRefs map[string]struct{}
+	loc           templateLocation
+	outputPath    string
+	declaredIn    string
+	deps          []resolvedDep
 }
 
-// analyze is the top-level entry point used by both FromOptions and FromFS.
+// resolvedDep bundles every piece of state for a dependency that successfully
+// resolved and was recursed into. Failed deps (cycles, unresolvable URLs,
+// recursion errors) are recorded as soft errors but do NOT produce a
+// resolvedDep entry, so deps[i] always refers to a fully-analyzed child.
+type resolvedDep struct {
+	child    *templateInfo
+	cfg      *variables.Dependency
+	edges    map[string]map[string]struct{} // childVar -> parent vars referenced in its value expressions
+	pathRefs map[string]struct{}            // parent vars in dep.template-url / dep.output-folder
+}
+
 func analyze(ctx context.Context, root templateLocation, vars map[string]any, resolver dependencyResolver) (*Result, error) {
 	result := &Result{
 		Inputs: map[string]InputEntry{},
@@ -51,7 +59,6 @@ func analyze(ctx context.Context, root templateLocation, vars map[string]any, re
 		}
 	}()
 
-	// Walk the dependency tree and build the per-template analysis.
 	visiting := map[string]struct{}{}
 
 	rootInfo, err := analyzeTree(ctx, root, ".", ".", vars, resolver, result, visiting, &cleanups)
@@ -59,8 +66,6 @@ func analyze(ctx context.Context, root templateLocation, vars map[string]any, re
 		return nil, err
 	}
 
-	// Compose the final input -> files map across the tree, including
-	// transitive propagation through dependency edges.
 	composeResult(rootInfo, result)
 	finalizeResult(result)
 
@@ -104,17 +109,15 @@ func analyzeTree(
 		info.declared[v.Name()] = v
 	}
 
-	// Parse partials first so file analysis can resolve {{ template "name" }}
-	// invocations transitively.
+	// Partials must be parsed before files so {{ template "name" }} invocations
+	// can be expanded transitively into the per-file ref sets.
 	partialRefs, partialErrs := analyzePartials(ctx, loc, cfg.Partials, vars)
 	result.Errors = append(result.Errors, partialErrs...)
 
-	// Walk the template files and collect refs per file.
 	if walkErr := analyzeFiles(ctx, loc, info, partialRefs, vars, result); walkErr != nil {
 		return nil, walkErr
 	}
 
-	// Recurse into dependencies.
 	for i := range cfg.Dependencies {
 		dep := &cfg.Dependencies[i]
 
@@ -122,7 +125,7 @@ func analyzeTree(
 		renderedURL, renderErr := renderForAnalysis(ctx, loc.absDir, dep.TemplateURL, vars)
 		if renderErr != nil {
 			result.Errors = append(result.Errors, AnalysisError{
-				Kind:     "filename_render",
+				Kind:     KindFilenameRender,
 				Template: declaredIn,
 				Name:     dep.Name,
 				Message:  fmt.Sprintf("could not render template-url for dependency %q: %v", dep.Name, renderErr),
@@ -138,7 +141,7 @@ func analyzeTree(
 		// down to nothing. There is no useful path to resolve; record a soft
 		// error and skip without attempting a stat.
 		if renderedURL == "" {
-			info.recordDepFailure(result, "unresolvable_dependency", declaredIn, dep.Name,
+			info.recordDepFailure(result, KindUnresolvableDependency, declaredIn, dep.Name,
 				fmt.Sprintf("template-url for dependency %q rendered to empty string (likely missing input variables)", dep.Name))
 
 			continue
@@ -147,7 +150,7 @@ func analyzeTree(
 		renderedOutputFolder, renderErr := renderForAnalysis(ctx, loc.absDir, dep.OutputFolder, vars)
 		if renderErr != nil {
 			result.Errors = append(result.Errors, AnalysisError{
-				Kind:     "filename_render",
+				Kind:     KindFilenameRender,
 				Template: declaredIn,
 				Name:     dep.Name,
 				Message:  fmt.Sprintf("could not render output-folder for dependency %q: %v", dep.Name, renderErr),
@@ -159,7 +162,7 @@ func analyzeTree(
 		// Cycle detection.
 		cycleKey := renderedURL
 		if _, busy := visiting[cycleKey]; busy {
-			info.recordDepFailure(result, "cycle", declaredIn, dep.Name,
+			info.recordDepFailure(result, KindCycle, declaredIn, dep.Name,
 				fmt.Sprintf("dependency %q forms a cycle (template-url=%s)", dep.Name, renderedURL))
 
 			continue
@@ -174,19 +177,13 @@ func analyzeTree(
 
 		if resolveErr != nil {
 			delete(visiting, cycleKey)
-			info.recordDepFailure(result, "unresolvable_dependency", declaredIn, dep.Name, resolveErr.Error())
+			info.recordDepFailure(result, KindUnresolvableDependency, declaredIn, dep.Name, resolveErr.Error())
 
 			continue
 		}
 
 		childOutputPath := joinOutputPath(outputPath, renderedOutputFolder)
 		childDeclaredIn := joinOutputPath(declaredIn, renderedOutputFolder)
-
-		// Compute explicit value-expression edges from parent vars to this
-		// child's input variables, BEFORE recursing — those edges are
-		// independent of the child's body refs.
-		edges := computeDepEdges(dep, info.declared, declaredIn, result)
-		info.depEdges = append(info.depEdges, edges)
 
 		childInfo, depErr := analyzeTree(ctx, childLoc, childOutputPath, childDeclaredIn, vars, resolver, result, visiting, cleanups)
 		delete(visiting, cycleKey)
@@ -195,7 +192,7 @@ func analyzeTree(
 			// Treat dependency analysis failure as a soft error so the rest
 			// of the result is still useful.
 			result.Errors = append(result.Errors, AnalysisError{
-				Kind:     "parse",
+				Kind:     KindParse,
 				Template: childDeclaredIn,
 				Name:     dep.Name,
 				Message:  depErr.Error(),
@@ -204,21 +201,20 @@ func analyzeTree(
 			continue
 		}
 
-		info.dependencies = append(info.dependencies, childInfo)
-
-		// pathToSubtreeRefs is parallel to info.dependencies (not depEdges /
-		// cfg.Dependencies), so populate it only when a dep resolves and is
-		// added to the tree. A change to any of these parent vars relocates
-		// or replaces the whole subtree rooted at this dep.
-		info.pathToSubtreeRefs = append(info.pathToSubtreeRefs, computeDepPathRefs(dep))
+		info.deps = append(info.deps, resolvedDep{
+			child:    childInfo,
+			cfg:      dep,
+			edges:    computeDepEdges(dep, info.declared, declaredIn, result),
+			pathRefs: computeDepPathRefs(dep),
+		})
 	}
 
 	return info, nil
 }
 
 // recordDepFailure records a soft error for a dependency that couldn't be
-// processed and keeps info.depEdges aligned with cfg.Dependencies by
-// appending a nil edge for the failed entry.
+// processed. Failed deps are absent from info.deps; nothing else needs to stay
+// aligned.
 func (info *templateInfo) recordDepFailure(result *Result, kind, declaredIn, depName, message string) {
 	result.Errors = append(result.Errors, AnalysisError{
 		Kind:     kind,
@@ -226,7 +222,6 @@ func (info *templateInfo) recordDepFailure(result *Result, kind, declaredIn, dep
 		Name:     depName,
 		Message:  message,
 	})
-	info.depEdges = append(info.depEdges, nil)
 }
 
 // loadConfig reads and parses boilerplate.yml from loc.
@@ -265,7 +260,7 @@ func analyzePartials(ctx context.Context, loc templateLocation, partialGlobs []s
 		files, listErr := globPartialFiles(loc, rendered)
 		if listErr != nil {
 			errs = append(errs, AnalysisError{
-				Kind:    "parse",
+				Kind:    KindParse,
 				Message: fmt.Sprintf("could not resolve partial glob %q: %v", glob, listErr),
 			})
 
@@ -276,7 +271,7 @@ func analyzePartials(ctx context.Context, loc templateLocation, partialGlobs []s
 			trees, parseErr := parseTemplateAll(pf.name, pf.contents)
 			if parseErr != nil {
 				errs = append(errs, AnalysisError{
-					Kind:    "parse",
+					Kind:    KindParse,
 					File:    pf.name,
 					Message: parseErr.Error(),
 				})
@@ -301,7 +296,7 @@ func analyzePartials(ctx context.Context, loc templateLocation, partialGlobs []s
 	// invokes partial B and B references X, A references X too.
 	if !expandPartialRefs(out, partialExpansionMaxIterations) {
 		errs = append(errs, AnalysisError{
-			Kind: "partial_expansion_limit",
+			Kind: KindPartialExpansionLimit,
 			Message: fmt.Sprintf(
 				"partial-template invocation graph did not reach a fixed point within %d iterations; transitive references through deeply-nested partials may be missing from the result",
 				partialExpansionMaxIterations,
@@ -517,7 +512,7 @@ func analyzeFiles(ctx context.Context, loc templateLocation, info *templateInfo,
 		refs, parseErr := extractRefs(p, string(data))
 		if parseErr != nil {
 			result.Errors = append(result.Errors, AnalysisError{
-				Kind:    "parse",
+				Kind:    KindParse,
 				File:    p,
 				Message: parseErr.Error(),
 			})
@@ -614,7 +609,7 @@ func extractFilenameRefs(loc templateLocation, inputPath string, result *Result)
 	refs, err := extractRefs("filename:"+inputPath, rel)
 	if err != nil {
 		result.Errors = append(result.Errors, AnalysisError{
-			Kind:    "parse",
+			Kind:    KindParse,
 			File:    inputPath,
 			Message: err.Error(),
 		})
@@ -649,7 +644,7 @@ func computeOutputPath(ctx context.Context, loc templateLocation, info *template
 	rendered, err := renderForAnalysis(ctx, loc.absDir, rel, vars)
 	if err != nil {
 		result.Errors = append(result.Errors, AnalysisError{
-			Kind:    "filename_render",
+			Kind:    KindFilenameRender,
 			File:    inputPath,
 			Message: err.Error(),
 		})
@@ -892,7 +887,7 @@ func collectStringRefs(v any, refs map[string]struct{}, result *Result, declared
 		r, err := extractRefs("dep-default", x)
 		if err != nil {
 			result.Errors = append(result.Errors, AnalysisError{
-				Kind:     "parse",
+				Kind:     KindParse,
 				Template: declaredIn,
 				Name:     name,
 				Message:  err.Error(),
@@ -921,17 +916,17 @@ func collectStringRefs(v any, refs map[string]struct{}, result *Result, declared
 func composeResult(root *templateInfo, result *Result) {
 	all := flatten(root)
 
-	// Build undeclared-variable errors: any var referenced in any file but
-	// not declared in that template's chain (this template + all ancestors
-	// via inherited edges).
 	emittedUndeclared := map[string]struct{}{}
 
-	// Emit one InputEntry per declared input, with files computed via
-	// transitive closure.
+	// Build the inverse index as a set-of-sets so duplicate (file, key) pairs
+	// collapse in O(1); finalize materializes it into the slice form Result
+	// exposes. Without this, repeatedly appending to result.Files via a
+	// linear-search dedup is O(n²) per file in the count of contributing
+	// inputs, and propagation through dependency edges makes that count
+	// non-trivial.
+	inverse := map[string]map[string]struct{}{}
+
 	for _, t := range all {
-		// Build the set of inputs that are reachable from this template's
-		// inputs through outgoing edges (used to compute Files for parent
-		// inputs that propagate to children).
 		for declaredName, decl := range t.declared {
 			key := inputKey(t.declaredIn, declaredName)
 			files := filesAffectedBy(t, declaredName, map[string]struct{}{})
@@ -945,7 +940,13 @@ func composeResult(root *templateInfo, result *Result) {
 			}
 
 			for f := range files {
-				result.Files[f] = appendUnique(result.Files[f], key)
+				bucket, ok := inverse[f]
+				if !ok {
+					bucket = map[string]struct{}{}
+					inverse[f] = bucket
+				}
+
+				bucket[key] = struct{}{}
 			}
 		}
 
@@ -973,13 +974,17 @@ func composeResult(root *templateInfo, result *Result) {
 				emittedUndeclared[ek] = struct{}{}
 
 				result.Errors = append(result.Errors, AnalysisError{
-					Kind:     "undeclared_variable",
+					Kind:     KindUndeclaredVariable,
 					Template: t.declaredIn,
 					Name:     v,
 					File:     filePath,
 				})
 			}
 		}
+	}
+
+	for f, bucket := range inverse {
+		result.Files[f] = sortedKeys(bucket)
 	}
 }
 
@@ -991,8 +996,8 @@ func flatten(root *templateInfo) []*templateInfo {
 
 	out := []*templateInfo{root}
 
-	for _, c := range root.dependencies {
-		out = append(out, flatten(c)...)
+	for _, dep := range root.deps {
+		out = append(out, flatten(dep.child)...)
 	}
 
 	return out
@@ -1040,24 +1045,14 @@ func filesAffectedBy(t *templateInfo, varName string, visiting map[string]struct
 	}
 
 	// Through explicit value-expression edges to children.
-	for i, child := range t.dependencies {
-		var depConfig *variables.Dependency
-		if i < len(t.cfg.Dependencies) {
-			depConfig = &t.cfg.Dependencies[i]
-		}
-
-		var edges map[string]map[string]struct{}
-		if i < len(t.depEdges) {
-			edges = t.depEdges[i]
-		}
-
+	for _, dep := range t.deps {
 		// Explicit edges: parent var -> child var(s) referencing it.
-		for childVar, parentVars := range edges {
+		for childVar, parentVars := range dep.edges {
 			if _, hits := parentVars[varName]; !hits {
 				continue
 			}
 
-			for f := range filesAffectedBy(child, childVar, visiting) {
+			for f := range filesAffectedBy(dep.child, childVar, visiting) {
 				out[f] = struct{}{}
 			}
 		}
@@ -1067,10 +1062,10 @@ func filesAffectedBy(t *templateInfo, varName string, visiting map[string]struct
 		// already provide an explicit override for varName, AND
 		// dont-inherit-variables is false, the parent's value flows into the
 		// child by name. Treat it as an edge.
-		if depConfig != nil && !depConfig.DontInheritVariables {
-			if _, declaredInChild := child.declared[varName]; declaredInChild {
-				if _, explicit := edges[varName]; !explicit {
-					for f := range filesAffectedBy(child, varName, visiting) {
+		if !dep.cfg.DontInheritVariables {
+			if _, declaredInChild := dep.child.declared[varName]; declaredInChild {
+				if _, explicit := dep.edges[varName]; !explicit {
+					for f := range filesAffectedBy(dep.child, varName, visiting) {
 						out[f] = struct{}{}
 					}
 				}
@@ -1080,13 +1075,10 @@ func filesAffectedBy(t *templateInfo, varName string, visiting map[string]struct
 		// Path-to-subtree edge: a parent var referenced in dep.template-url
 		// or dep.output-folder shapes which subtree gets pulled in and where
 		// it lands. A change to it relocates or replaces every file under
-		// the dep, not just files referencing a specific child var. Index
-		// pathToSubtreeRefs by i directly — it is parallel to dependencies.
-		if i < len(t.pathToSubtreeRefs) {
-			if _, hits := t.pathToSubtreeRefs[i][varName]; hits {
-				for f := range allFilesInSubtree(child) {
-					out[f] = struct{}{}
-				}
+		// the dep, not just files referencing a specific child var.
+		if _, hits := dep.pathRefs[varName]; hits {
+			for f := range allFilesInSubtree(dep.child) {
+				out[f] = struct{}{}
 			}
 		}
 	}
@@ -1108,8 +1100,8 @@ func allFilesInSubtree(t *templateInfo) map[string]struct{} {
 		out[f] = struct{}{}
 	}
 
-	for _, child := range t.dependencies {
-		for f := range allFilesInSubtree(child) {
+	for _, dep := range t.deps {
+		for f := range allFilesInSubtree(dep.child) {
 			out[f] = struct{}{}
 		}
 	}
@@ -1128,14 +1120,13 @@ func hasNameMatchAncestor(t *templateInfo, varName string, root *templateInfo) b
 
 	for i := 0; i < len(chain)-1; i++ {
 		ancestor := chain[i]
-		// Find which dep config corresponds to the next step.
 		nextChild := chain[i+1]
 
 		var depCfg *variables.Dependency
 
-		for j, candidate := range ancestor.dependencies {
-			if candidate == nextChild && j < len(ancestor.cfg.Dependencies) {
-				depCfg = &ancestor.cfg.Dependencies[j]
+		for _, dep := range ancestor.deps {
+			if dep.child == nextChild {
+				depCfg = dep.cfg
 				break
 			}
 		}
@@ -1160,8 +1151,8 @@ func findChainTo(root, target *templateInfo, acc []*templateInfo) []*templateInf
 		return acc
 	}
 
-	for _, c := range root.dependencies {
-		if got := findChainTo(c, target, acc); got != nil {
+	for _, dep := range root.deps {
+		if got := findChainTo(dep.child, target, acc); got != nil {
 			return got
 		}
 	}
@@ -1207,16 +1198,6 @@ func sortedKeys(m map[string]struct{}) []string {
 	sort.Strings(out)
 
 	return out
-}
-
-func appendUnique(list []string, item string) []string {
-	for _, existing := range list {
-		if existing == item {
-			return list
-		}
-	}
-
-	return append(list, item)
 }
 
 // slashRel returns target relative to base, treating both as slash-separated

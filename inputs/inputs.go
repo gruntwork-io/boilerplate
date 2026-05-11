@@ -53,23 +53,8 @@ type InputEntry struct {
 
 // AnalysisError is a soft error encountered during analysis. Soft errors do
 // not abort the run; they accumulate in Result.Errors so the caller can
-// surface them to the user.
-//
-// Defined Kind values:
-//
-//	"undeclared_variable" — referenced in a template body but not declared in
-//	    any boilerplate.yml in scope.
-//	"cycle"               — a dependency cycle was detected.
-//	"unresolvable_dependency" — a remote URL in FS-only mode, or a path that
-//	    does not exist.
-//	"filename_render"     — failed to render a template-bearing filename.
-//	"parse"               — failed to parse a template body or value
-//	    expression.
-//	"skip_files"          — failed to render or expand a skip_files entry's
-//	    path, not_path, or if condition.
-//	"partial_expansion_limit" — partial-template invocation graph did not
-//	    reach a fixed point within the analyzer's iteration cap; results
-//	    may be missing some transitive references.
+// surface them to the user. See the Kind* constants for the canonical set of
+// values that may appear in the Kind field.
 type AnalysisError struct {
 	Kind     string `json:"kind"`
 	Template string `json:"template,omitempty"`
@@ -77,6 +62,39 @@ type AnalysisError struct {
 	File     string `json:"file,omitempty"`
 	Message  string `json:"message,omitempty"`
 }
+
+// Kind values that may appear in AnalysisError.Kind. Listed here so callers
+// can switch on a stable identifier rather than a string literal.
+const (
+	// KindUndeclaredVariable: referenced in a template body but not declared
+	// in any boilerplate.yml in scope.
+	KindUndeclaredVariable = "undeclared_variable"
+
+	// KindCycle: a dependency cycle was detected.
+	KindCycle = "cycle"
+
+	// KindUnresolvableDependency: a remote URL in FS-only mode, or a path
+	// that does not exist.
+	KindUnresolvableDependency = "unresolvable_dependency"
+
+	// KindFilenameRender: failed to render a template-bearing filename.
+	KindFilenameRender = "filename_render"
+
+	// KindParse: failed to parse a template body or value expression.
+	KindParse = "parse"
+
+	// KindParseArgs: failed to parse CLI arguments before analysis began.
+	KindParseArgs = "parse_args"
+
+	// KindSkipFiles: failed to render or expand a skip_files entry's path,
+	// not_path, or if condition.
+	KindSkipFiles = "skip_files"
+
+	// KindPartialExpansionLimit: partial-template invocation graph did not
+	// reach a fixed point within the analyzer's iteration cap; results may
+	// be missing some transitive references.
+	KindPartialExpansionLimit = "partial_expansion_limit"
+)
 
 // inputKey builds the fully-qualified input identifier used as a map key.
 func inputKey(templatePath, inputName string) string {

@@ -61,7 +61,7 @@ func processSkipFiles(ctx context.Context, loc templateLocation, skipFiles []var
 			rendered, err := renderForAnalysis(ctx, loc.absDir, sf.If, vars)
 			if err != nil {
 				errs = append(errs, AnalysisError{
-					Kind:    "skip_files",
+					Kind:    KindSkipFiles,
 					Message: fmt.Sprintf("could not render skip_files if condition %q: %v", sf.If, err),
 				})
 				// Be conservative: if we can't render the condition, assume
@@ -169,7 +169,7 @@ func expandSkipGlob(ctx context.Context, loc templateLocation, pattern string, v
 	rendered, err := renderForAnalysis(ctx, loc.absDir, pattern, vars)
 	if err != nil {
 		return nil, []AnalysisError{{
-			Kind:    "skip_files",
+			Kind:    KindSkipFiles,
 			Message: fmt.Sprintf("could not render skip_files %s %q: %v", attr, pattern, err),
 		}}
 	}
@@ -190,7 +190,7 @@ func expandSkipGlob(ctx context.Context, loc templateLocation, pattern string, v
 			}
 
 			return nil, []AnalysisError{{
-				Kind:    "skip_files",
+				Kind:    KindSkipFiles,
 				Message: fmt.Sprintf("could not glob skip_files %s %q: %v", attr, pattern, globErr),
 			}}
 		}
@@ -213,7 +213,7 @@ func expandSkipGlob(ctx context.Context, loc templateLocation, pattern string, v
 	// rather than silently producing an empty match set.
 	if strings.Contains(rendered, "**") {
 		return nil, []AnalysisError{{
-			Kind:    "skip_files",
+			Kind:    KindSkipFiles,
 			Message: fmt.Sprintf("skip_files %s %q uses `**` glob; only `*`/`?` are supported in WASM/FS mode", attr, pattern),
 		}}
 	}
@@ -223,7 +223,7 @@ func expandSkipGlob(ctx context.Context, loc templateLocation, pattern string, v
 	matches, globErr := fs.Glob(loc.fsys, joined)
 	if globErr != nil {
 		return nil, []AnalysisError{{
-			Kind:    "skip_files",
+			Kind:    KindSkipFiles,
 			Message: fmt.Sprintf("could not glob skip_files %s %q: %v", attr, pattern, globErr),
 		}}
 	}

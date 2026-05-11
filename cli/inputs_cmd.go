@@ -106,13 +106,13 @@ func runInputsMap(c *cli.Context) error {
 func runInputsMapTo(c *cli.Context, stdout, stderr io.Writer) error {
 	vars, err := variables.ParseVars(c.StringSlice(options.OptVar), c.StringSlice(options.OptVarFile))
 	if err != nil {
-		writeJSONError(stdout, "parse_args", err)
+		writeJSONError(stdout, inputs.KindParseArgs, err)
 		return cli.Exit("", 1)
 	}
 
 	templateURL, templateFolder, err := getterhelper.DetermineTemplateConfig(c.String(options.OptTemplateURL))
 	if err != nil {
-		writeJSONError(stdout, "parse_args", err)
+		writeJSONError(stdout, inputs.KindParseArgs, err)
 		return cli.Exit("", 1)
 	}
 
@@ -131,7 +131,7 @@ func runInputsMapTo(c *cli.Context, stdout, stderr io.Writer) error {
 
 	result, err := inputs.FromOptions(context.Background(), logger, opts)
 	if err != nil {
-		writeJSONError(stdout, "parse", err)
+		writeJSONError(stdout, inputs.KindParse, err)
 		return cli.Exit("", 1)
 	}
 
