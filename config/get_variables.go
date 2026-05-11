@@ -240,3 +240,14 @@ type CyclicalReference struct {
 func (err CyclicalReference) Error() string {
 	return fmt.Sprintf("Variable %s seems to have an cyclical reference with variable %s", err.VariableName, err.ReferenceName)
 }
+
+type UnsupportedManualInputType struct {
+	VariableName string
+	Type         string
+}
+
+func (err UnsupportedManualInputType) Error() string {
+	return fmt.Sprintf("variable %s of type '%s' does not support manual input and has no default value. "+
+		"Please update the variable in the boilerplate.yml file to include a default value or provide a value via the command line using the --%s option",
+		err.VariableName, err.Type, options.OptVar)
+}

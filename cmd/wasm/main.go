@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"syscall/js"
 	"testing/fstest"
 
@@ -27,7 +28,7 @@ func renderTemplate(this js.Value, args []js.Value) any {
 	defer func() {
 		if r := recover(); r != nil {
 			// Panic recovery is best-effort; the JS caller will see undefined.
-			fmt.Println("boilerplate: recovered from panic:", r)
+			fmt.Fprintln(os.Stderr, "boilerplate: recovered from panic:", r)
 		}
 	}()
 
@@ -58,27 +59,27 @@ func renderTemplate(this js.Value, args []js.Value) any {
 	return result
 }
 
+// templateBundle is the JSON shape accepted by inputsMap. Files is keyed by
+// path relative to RootPath and must include every boilerplate.yml in the
+// dependency tree.
+type templateBundle struct {
+	RootPath string            `json:"rootPath"`
+	Files    map[string]string `json:"files"`
+}
+
 // inputsMap is the WASM-side counterpart to `boilerplate inputs map`. It takes
-// a TemplateBundle (a JSON object describing a template tree) and a JSON vars
-// object, runs the static analysis described in the inputs package, and
-// returns the result as a JSON string. On error it returns an Error.
+// a templateBundle and a JSON vars object, runs the static analysis described
+// in the inputs package, and returns the result as a JSON string. On error it
+// returns an Error. Remote dependency template-urls are not resolvable in WASM
+// and produce "unresolvable_dependency" entries in the result's errors array.
 //
 // JS signature:
 //
 //	boilerplateInputsMap(bundleJSON: string, varsJSON: string) -> string | Error
-//
-// TemplateBundle JSON shape:
-//
-//	{ "rootPath": ".", "files": { "<path>": "<contents>", ... } }
-//
-// The bundle must include every boilerplate.yml in the dependency tree,
-// keyed by its path relative to rootPath. Remote dependency template-urls
-// are not resolvable in WASM and produce "unresolvable_dependency" entries
-// in the result's errors array.
 func inputsMap(this js.Value, args []js.Value) any {
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Println("boilerplate: recovered from panic in inputsMap:", r)
+			fmt.Fprintln(os.Stderr, "boilerplate: recovered from panic in inputsMap:", r)
 		}
 	}()
 
@@ -86,13 +87,11 @@ func inputsMap(this js.Value, args []js.Value) any {
 		return js.Global().Get("Error").New("boilerplateInputsMap requires 2 arguments: bundleJSON, varsJSON")
 	}
 
+	ctx := context.Background()
 	bundleJSON := args[0].String()
 	varsJSON := args[1].String()
 
-	var bundle struct {
-		RootPath string            `json:"rootPath"`
-		Files    map[string]string `json:"files"`
-	}
+	var bundle templateBundle
 
 	if err := json.Unmarshal([]byte(bundleJSON), &bundle); err != nil {
 		return js.Global().Get("Error").New(fmt.Sprintf("failed to parse bundle JSON: %v", err))
@@ -113,7 +112,7 @@ func inputsMap(this js.Value, args []js.Value) any {
 		return js.Global().Get("Error").New(fmt.Sprintf("failed to parse variables JSON: %v", err))
 	}
 
-	result, err := inputs.FromFS(context.Background(), mfs, rootPath, variables)
+	result, err := inputs.FromFS(ctx, mfs, rootPath, variables)
 	if err != nil {
 		return js.Global().Get("Error").New(fmt.Sprintf("inputs analysis failed: %v", err))
 	}
