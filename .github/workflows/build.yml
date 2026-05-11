@@ -84,14 +84,20 @@ jobs:
       - name: Install brotli
         run: sudo apt-get update && sudo apt-get install -y brotli
 
-      - name: Build WASM
-        run: GOOS=js GOARCH=wasm go build -o boilerplate.wasm -ldflags "-s -w" ./cmd/wasm/
+      - name: Build WASM (lite)
+        run: GOOS=js GOARCH=wasm go build -o boilerplate.wasm -ldflags "-s -w" ./cmd/wasm/lite/
+
+      - name: Build WASM (full)
+        run: GOOS=js GOARCH=wasm go build -o boilerplate-full.wasm -ldflags "-s -w" ./cmd/wasm/full/
 
       - name: Compress WASM with brotli
         run: |
           brotli --best boilerplate.wasm -o boilerplate.wasm.br
-          echo "Uncompressed: $(wc -c < boilerplate.wasm | tr -d ' ') bytes"
-          echo "Compressed:   $(wc -c < boilerplate.wasm.br | tr -d ' ') bytes"
+          brotli --best boilerplate-full.wasm -o boilerplate-full.wasm.br
+          echo "Lite uncompressed: $(wc -c < boilerplate.wasm | tr -d ' ') bytes"
+          echo "Lite compressed:   $(wc -c < boilerplate.wasm.br | tr -d ' ') bytes"
+          echo "Full uncompressed: $(wc -c < boilerplate-full.wasm | tr -d ' ') bytes"
+          echo "Full compressed:   $(wc -c < boilerplate-full.wasm.br | tr -d ' ') bytes"
 
       - name: Copy wasm_exec.js
         run: cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" .
@@ -103,4 +109,6 @@ jobs:
           path: |
             boilerplate.wasm
             boilerplate.wasm.br
+            boilerplate-full.wasm
+            boilerplate-full.wasm.br
             wasm_exec.js

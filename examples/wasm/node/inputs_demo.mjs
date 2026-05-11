@@ -19,7 +19,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 await import(join(__dirname, "wasm_exec.js"));
 
-const compressed = await readFile(join(__dirname, "boilerplate.wasm.br"));
+const compressed = await readFile(join(__dirname, "boilerplate-full.wasm.br"));
 const wasmBytes = await decompress(compressed);
 
 const go = new Go();
