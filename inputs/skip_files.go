@@ -2,8 +2,10 @@ package inputs
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
+	"os"
 	"path"
 	"path/filepath"
 	"strings"
@@ -180,10 +182,10 @@ func expandSkipGlob(ctx context.Context, loc templateLocation, pattern string, v
 
 		matches, globErr := zglob.Glob(joined)
 		if globErr != nil {
-			// zglob returns an error when nothing matched (and on real
-			// failures). An unmatched glob isn't a problem for the analyzer;
-			// only surface other errors.
-			if globErr.Error() == "file does not exist" {
+			// zglob returns os.ErrNotExist when nothing matched (and other
+			// errors on real failures). An unmatched glob isn't a problem for
+			// the analyzer; only surface other errors.
+			if errors.Is(globErr, os.ErrNotExist) {
 				return nil, nil
 			}
 

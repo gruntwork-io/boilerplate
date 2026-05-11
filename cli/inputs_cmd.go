@@ -85,16 +85,9 @@ func newInputsCommand() *cli.Command {
 	}
 }
 
-// runInputsMap is the action handler for `boilerplate inputs map`.
-//
-// It builds a minimal BoilerplateOptions, runs inputs.FromOptions, and writes
-// the JSON result to the cli app's Writer (stdout by default). On
-// unrecoverable failures (e.g., the template cannot be downloaded or the root
-// boilerplate.yml does not parse), it writes a JSON error object and exits
-// non-zero.
-//
-// Tests can intercept the output by setting app.Writer / app.ErrWriter before
-// calling app.Run; that is why we route through c.App rather than os.Stdout
+// runInputsMap is the action handler for `boilerplate inputs map`. Tests
+// inject stdout/stderr by setting app.Writer / app.ErrWriter before calling
+// app.Run, which is why output routes through c.App rather than os.Stdout
 // directly.
 func runInputsMap(c *cli.Context) error {
 	stdout := io.Writer(os.Stdout)
@@ -110,8 +103,6 @@ func runInputsMap(c *cli.Context) error {
 	return runInputsMapTo(c, stdout, stderr)
 }
 
-// runInputsMapTo is the testable variant of runInputsMap with explicit
-// stdout/stderr.
 func runInputsMapTo(c *cli.Context, stdout, stderr io.Writer) error {
 	vars, err := variables.ParseVars(c.StringSlice(options.OptVar), c.StringSlice(options.OptVarFile))
 	if err != nil {

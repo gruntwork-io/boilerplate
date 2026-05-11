@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"unicode/utf8"
 
 	"github.com/gruntwork-io/boilerplate/config"
@@ -137,13 +138,8 @@ func analyzeTree(
 		// down to nothing. There is no useful path to resolve; record a soft
 		// error and skip without attempting a stat.
 		if renderedURL == "" {
-			result.Errors = append(result.Errors, AnalysisError{
-				Kind:     "unresolvable_dependency",
-				Template: declaredIn,
-				Name:     dep.Name,
-				Message:  fmt.Sprintf("template-url for dependency %q rendered to empty string (likely missing input variables)", dep.Name),
-			})
-			info.depEdges = append(info.depEdges, nil)
+			info.recordDepFailure(result, "unresolvable_dependency", declaredIn, dep.Name,
+				fmt.Sprintf("template-url for dependency %q rendered to empty string (likely missing input variables)", dep.Name))
 
 			continue
 		}
@@ -163,13 +159,8 @@ func analyzeTree(
 		// Cycle detection.
 		cycleKey := renderedURL
 		if _, busy := visiting[cycleKey]; busy {
-			result.Errors = append(result.Errors, AnalysisError{
-				Kind:     "cycle",
-				Template: declaredIn,
-				Name:     dep.Name,
-				Message:  fmt.Sprintf("dependency %q forms a cycle (template-url=%s)", dep.Name, renderedURL),
-			})
-			info.depEdges = append(info.depEdges, nil)
+			info.recordDepFailure(result, "cycle", declaredIn, dep.Name,
+				fmt.Sprintf("dependency %q forms a cycle (template-url=%s)", dep.Name, renderedURL))
 
 			continue
 		}
@@ -183,15 +174,7 @@ func analyzeTree(
 
 		if resolveErr != nil {
 			delete(visiting, cycleKey)
-
-			kind := "unresolvable_dependency"
-			result.Errors = append(result.Errors, AnalysisError{
-				Kind:     kind,
-				Template: declaredIn,
-				Name:     dep.Name,
-				Message:  resolveErr.Error(),
-			})
-			info.depEdges = append(info.depEdges, nil)
+			info.recordDepFailure(result, "unresolvable_dependency", declaredIn, dep.Name, resolveErr.Error())
 
 			continue
 		}
@@ -231,6 +214,19 @@ func analyzeTree(
 	}
 
 	return info, nil
+}
+
+// recordDepFailure records a soft error for a dependency that couldn't be
+// processed and keeps info.depEdges aligned with cfg.Dependencies by
+// appending a nil edge for the failed entry.
+func (info *templateInfo) recordDepFailure(result *Result, kind, declaredIn, depName, message string) {
+	result.Errors = append(result.Errors, AnalysisError{
+		Kind:     kind,
+		Template: declaredIn,
+		Name:     depName,
+		Message:  message,
+	})
+	info.depEdges = append(info.depEdges, nil)
 }
 
 // loadConfig reads and parses boilerplate.yml from loc.
@@ -713,6 +709,19 @@ func joinOutputPath(parent, child string) string {
 // path computation with that absolute prefix.
 const analysisOutputSentinel = "__boilerplate_analysis_output_sentinel__"
 
+// analysisOutputSentinelAbs returns the absolute form of analysisOutputSentinel
+// (i.e., cwd + sentinel) that the `outputFolder` helper produces at render
+// time. Cached because filepath.Abs allocates and renderForAnalysis runs
+// hundreds of times per analyze() call.
+var analysisOutputSentinelAbs = sync.OnceValue(func() string {
+	abs, err := filepath.Abs(analysisOutputSentinel)
+	if err != nil {
+		return ""
+	}
+
+	return abs
+})
+
 // missingValueLiteral is what Go's text/template prints for a missing key
 // when OnMissingKey=zero is used with map[string]any vars. This is a
 // documented quirk of text/template (see render/render_template_test.go);
@@ -761,7 +770,7 @@ func renderForAnalysis(ctx context.Context, templateFolder, contents string, var
 // (collapsed to ".") and the literal "<no value>" placeholder text/template
 // produces for missing map keys.
 func scrubAnalysisRender(rendered string) string {
-	if sentinelAbs, absErr := filepath.Abs(analysisOutputSentinel); absErr == nil {
+	if sentinelAbs := analysisOutputSentinelAbs(); sentinelAbs != "" {
 		rendered = strings.ReplaceAll(rendered, sentinelAbs, ".")
 	}
 
@@ -903,10 +912,6 @@ func collectStringRefs(v any, refs map[string]struct{}, result *Result, declared
 		for _, item := range x {
 			collectStringRefs(item, refs, result, declaredIn, name)
 		}
-	case map[any]any:
-		for _, item := range x {
-			collectStringRefs(item, refs, result, declaredIn, name)
-		}
 	}
 }
 
@@ -915,13 +920,6 @@ func collectStringRefs(v any, refs map[string]struct{}, result *Result, declared
 // applied through dependency edges and partials already expanded in fileRefs.
 func composeResult(root *templateInfo, result *Result) {
 	all := flatten(root)
-
-	// Build an index from (declaredIn, varName) to the templateInfo of that
-	// declaration's owning template. Used to resolve transitive edges.
-	indexByOwner := map[string]*templateInfo{}
-	for _, t := range all {
-		indexByOwner[t.declaredIn] = t
-	}
 
 	// Build undeclared-variable errors: any var referenced in any file but
 	// not declared in that template's chain (this template + all ancestors

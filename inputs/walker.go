@@ -36,7 +36,7 @@ func newTemplateRefs() *templateRefs {
 // (the body itself plus any {{ define "name" }} blocks). Each entry is the
 // parse tree for one of those templates.
 func parseTemplateAll(name, contents string) ([]*parse.Tree, error) {
-	tmpl := template.New(name).Funcs(stubFuncMap()).Option("missingkey=zero")
+	tmpl := template.New(name).Funcs(stubFuncs).Option("missingkey=zero")
 
 	parsed, err := tmpl.Parse(contents)
 	if err != nil {
@@ -165,16 +165,21 @@ func extractRefs(name, contents string) (*templateRefs, error) {
 	return refs, nil
 }
 
-// stubFuncMap builds a template.FuncMap that defines (with no-op
-// implementations) every identifier that boilerplate's render package exposes
-// to templates, plus all sprig helpers. This lets us call template.Parse on
-// arbitrary boilerplate templates without having to actually wire up the
-// real implementations — Parse only needs the identifiers to be known so
-// pipelines type-check.
+// stubFuncs defines (with no-op implementations) every identifier that
+// boilerplate's render package exposes to templates, plus all sprig helpers.
+// This lets us call template.Parse on arbitrary boilerplate templates without
+// having to actually wire up the real implementations — Parse only needs the
+// identifiers to be known so pipelines type-check.
 //
 // Critically, none of these stubs run during analysis: we never call Execute.
 // They exist purely so Parse does not reject identifiers it does not know.
-func stubFuncMap() template.FuncMap {
+//
+// Built once at package init and shared across every parseTemplateAll call;
+// text/template's Funcs() copies the map internally, so concurrent reuse is
+// safe.
+var stubFuncs = buildStubFuncs()
+
+func buildStubFuncs() template.FuncMap {
 	out := template.FuncMap{}
 
 	// Sprig functions: copy keys, replace each with a no-op stub of the right
