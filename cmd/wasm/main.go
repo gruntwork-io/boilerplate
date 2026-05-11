@@ -5,8 +5,11 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
+	"path"
+	"strings"
 	"syscall/js"
 	"testing/fstest"
 
@@ -102,8 +105,18 @@ func inputsMap(this js.Value, args []js.Value) any {
 		rootPath = "."
 	}
 
+	if rootPath != "." {
+		if err := validateBundlePath(rootPath); err != nil {
+			return js.Global().Get("Error").New(fmt.Sprintf("invalid rootPath %q: %v", rootPath, err))
+		}
+	}
+
 	mfs := fstest.MapFS{}
 	for p, contents := range bundle.Files {
+		if err := validateBundlePath(p); err != nil {
+			return js.Global().Get("Error").New(fmt.Sprintf("invalid bundle path %q: %v", p, err))
+		}
+
 		mfs[p] = &fstest.MapFile{Data: []byte(contents)}
 	}
 
@@ -123,4 +136,34 @@ func inputsMap(this js.Value, args []js.Value) any {
 	}
 
 	return string(out)
+}
+
+// validateBundlePath rejects paths that would muddle the analyzer's contract
+// that every key in templateBundle.Files is a canonical, forward-slash,
+// strictly-relative path anchored at the bundle root. Without this, two keys
+// could refer to the same logical file (producing duplicate entries in
+// Result.Files), or a key could appear to escape the bundle.
+func validateBundlePath(p string) error {
+	if p == "" {
+		return errors.New("empty path")
+	}
+
+	if strings.HasPrefix(p, "/") {
+		return errors.New("absolute paths not allowed")
+	}
+
+	if strings.ContainsRune(p, '\\') {
+		return errors.New("use forward slashes")
+	}
+
+	cleaned := path.Clean(p)
+	if cleaned != p {
+		return fmt.Errorf("non-canonical path; clean to %q", cleaned)
+	}
+
+	if cleaned == ".." || strings.HasPrefix(cleaned, "../") {
+		return errors.New("path escapes bundle root")
+	}
+
+	return nil
 }

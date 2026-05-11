@@ -58,12 +58,14 @@ func getUserInput(variable variables.Variable) (string, error) {
 	value := ""
 
 	var prompt survey.Prompt
+
 	switch variable.Type() {
 	case variables.String, variables.Int, variables.Float, variables.Bool, variables.List, variables.Map:
 		msg := fmt.Sprintf("Enter a value [type %s]", variable.Type())
 		if variable.Default() != nil {
 			msg = fmt.Sprintf("%s (default: %v)", msg, variable.Default())
 		}
+
 		prompt = &survey.Input{Message: msg}
 	case variables.Enum:
 		prompt = &survey.Select{
@@ -74,12 +76,14 @@ func getUserInput(variable variables.Variable) (string, error) {
 		if variable.Default() == nil {
 			return value, UnsupportedManualInputType{VariableName: variable.FullName(), Type: string(variable.Type())}
 		}
+
 		return value, nil
 	}
 
 	if err := survey.AskOne(prompt, &value); err != nil {
 		return value, err
 	}
+
 	return value, nil
 }
 

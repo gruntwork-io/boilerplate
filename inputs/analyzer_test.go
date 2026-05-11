@@ -578,6 +578,50 @@ dependencies:
 		"vars used in dep template-url should affect files in the resolved subtree")
 }
 
+func TestFromFS_TemplatedDepURLExcludedFromParentWalk(t *testing.T) {
+	t.Parallel()
+
+	// Regression: when a dependency's template-url is itself templated
+	// (`./modules/{{ .Flavor }}`), the parent walker must still skip the
+	// resolved subdirectory so the child's files don't bleed into the
+	// parent's analysis. Without this, the parent's Region would report
+	// `modules/blue/file.txt` as an affected file (the source path the
+	// walker visited), in addition to the legitimate output paths.
+	fsys := fstest.MapFS{
+		"boilerplate.yml": &fstest.MapFile{Data: []byte(`
+variables:
+  - name: Flavor
+  - name: Region
+dependencies:
+  - name: mod
+    template-url: ./modules/{{ .Flavor }}
+    output-folder: ./mod
+`)},
+		"root.txt": &fstest.MapFile{Data: []byte(`root {{ .Region }}`)},
+
+		"modules/blue/boilerplate.yml": &fstest.MapFile{Data: []byte(`
+variables:
+  - name: Region
+`)},
+		"modules/blue/file.txt": &fstest.MapFile{Data: []byte(`child {{ .Region }}`)},
+	}
+
+	res := runFS(t, fsys, map[string]any{"Flavor": "blue"})
+
+	// Region reaches root.txt (direct) and mod/file.txt (via name-match
+	// inheritance into the child). The child's *source* path
+	// modules/blue/file.txt must NOT appear: it isn't an output path of
+	// the parent template.
+	assert.ElementsMatch(t,
+		[]string{"root.txt", "mod/file.txt"},
+		res.Inputs[".:Region"].Files,
+		"parent Region should reach the dep's output path, not the source path the walker would otherwise descend into",
+	)
+
+	assert.NotContains(t, res.Files, "modules/blue/file.txt",
+		"the dep template's source path must not show up in the parent's file index")
+}
+
 func TestFromFS_SkipFilesPathLinksVar(t *testing.T) {
 	t.Parallel()
 

@@ -114,27 +114,22 @@ func analyzeTree(
 	partialRefs, partialErrs := analyzePartials(ctx, loc, cfg.Partials, vars)
 	result.Errors = append(result.Errors, partialErrs...)
 
-	if walkErr := analyzeFiles(ctx, loc, info, partialRefs, vars, result); walkErr != nil {
+	// Render every dependency's template-url once, so analyzeFiles' skip-dir
+	// computation and the recursion loop below see the same path. Without
+	// this, a templated template-url (e.g. `./modules/{{ .Flavor }}`) would
+	// fail to match an actual subdirectory in dependencySkipDirs and the
+	// walker would treat the child's files as if they belonged to the
+	// parent.
+	renderedDepURLs := preRenderDepURLs(ctx, loc, cfg.Dependencies, vars, declaredIn, result)
+
+	if walkErr := analyzeFiles(ctx, loc, info, partialRefs, vars, renderedDepURLs, result); walkErr != nil {
 		return nil, walkErr
 	}
 
 	for i := range cfg.Dependencies {
 		dep := &cfg.Dependencies[i]
 
-		// Render template-url and output-folder from parent vars.
-		renderedURL, renderErr := renderForAnalysis(ctx, loc.absDir, dep.TemplateURL, vars)
-		if renderErr != nil {
-			result.Errors = append(result.Errors, AnalysisError{
-				Kind:     KindFilenameRender,
-				Template: declaredIn,
-				Name:     dep.Name,
-				Message:  fmt.Sprintf("could not render template-url for dependency %q: %v", dep.Name, renderErr),
-			})
-
-			renderedURL = dep.TemplateURL
-		}
-
-		renderedURL = strings.TrimSpace(renderedURL)
+		renderedURL := renderedDepURLs[i]
 
 		// If the rendered URL is empty, the template-url was either blank or
 		// composed entirely of missing-variable placeholders that scrubbed
@@ -210,6 +205,42 @@ func analyzeTree(
 	}
 
 	return info, nil
+}
+
+// preRenderDepURLs renders each dependency's template-url against the
+// parent's vars. Failures are recorded once as soft errors here; the caller
+// reuses the resulting slice for both dependencySkipDirs and the dependency
+// recursion loop. On render failure, the entry falls back to the raw URL so
+// downstream behavior matches what the runtime would do when faced with the
+// same unrenderable string.
+//
+// The returned slice is always len(deps) long; entries for empty
+// template-urls are the empty string. Callers handle that.
+func preRenderDepURLs(ctx context.Context, loc templateLocation, deps []variables.Dependency, vars map[string]any, declaredIn string, result *Result) []string {
+	out := make([]string, len(deps))
+
+	for i := range deps {
+		dep := &deps[i]
+		if dep.TemplateURL == "" {
+			continue
+		}
+
+		rendered, err := renderForAnalysis(ctx, loc.absDir, dep.TemplateURL, vars)
+		if err != nil {
+			result.Errors = append(result.Errors, AnalysisError{
+				Kind:     KindFilenameRender,
+				Template: declaredIn,
+				Name:     dep.Name,
+				Message:  fmt.Sprintf("could not render template-url for dependency %q: %v", dep.Name, err),
+			})
+
+			rendered = dep.TemplateURL
+		}
+
+		out[i] = strings.TrimSpace(rendered)
+	}
+
+	return out
 }
 
 // recordDepFailure records a soft error for a dependency that couldn't be
@@ -322,7 +353,7 @@ func expandPartialRefs(m map[string]*templateRefs, maxIterations int) bool {
 	for i := 0; i < maxIterations; i++ {
 		changed := false
 
-		for name, refs := range m {
+		for _, refs := range m {
 			for inv := range refs.invocations {
 				other, ok := m[inv]
 				if !ok {
@@ -343,8 +374,6 @@ func expandPartialRefs(m map[string]*templateRefs, maxIterations int) bool {
 					}
 				}
 			}
-
-			m[name] = refs
 		}
 
 		if !changed {
@@ -432,14 +461,14 @@ func globPartialFiles(loc templateLocation, pattern string) ([]partialFile, erro
 // of subdirectories that hold local dependencies and skip them during the
 // walk; each dep gets analyzed independently when its turn comes via
 // analyzeTree.
-func analyzeFiles(ctx context.Context, loc templateLocation, info *templateInfo, partialRefs map[string]*templateRefs, vars map[string]any, result *Result) error {
+func analyzeFiles(ctx context.Context, loc templateLocation, info *templateInfo, partialRefs map[string]*templateRefs, vars map[string]any, renderedDepURLs []string, result *Result) error {
 	walkRoot := loc.dir
 	if walkRoot == "" {
 		walkRoot = "."
 	}
 
 	cfgPath := path.Join(loc.dir, config.BoilerplateConfigFile)
-	skipDirs := dependencySkipDirs(loc, info.cfg)
+	skipDirs := dependencySkipDirs(loc, info.cfg, renderedDepURLs)
 
 	skipFilter, skipErrs := processSkipFiles(ctx, loc, info.cfg.SkipFiles, vars)
 	result.Errors = append(result.Errors, skipErrs...)
@@ -560,19 +589,20 @@ func analyzeFiles(ctx context.Context, loc templateLocation, info *templateInfo,
 // avoid descending into nested templates — those are analyzed separately by
 // analyzeTree as their own units.
 //
-// Only local relative dependencies (template-url that is a relative path,
-// not a URL scheme) contribute to the skip set; remote dependencies live
-// outside the FS and never overlap with the walk anyway.
-func dependencySkipDirs(loc templateLocation, cfg *config.BoilerplateConfig) map[string]struct{} {
+// renderedURLs is parallel to cfg.Dependencies; using the rendered (rather
+// than raw) URL is what makes templated template-urls like
+// `./modules/{{ .Flavor }}` match the actual on-disk subdirectory. Only
+// local relative dependencies (template-url that is a relative path, not a
+// URL scheme) contribute to the skip set; remote dependencies live outside
+// the FS and never overlap with the walk anyway.
+func dependencySkipDirs(loc templateLocation, cfg *config.BoilerplateConfig, renderedURLs []string) map[string]struct{} {
 	out := map[string]struct{}{}
 	if cfg == nil {
 		return out
 	}
 
 	for i := range cfg.Dependencies {
-		dep := &cfg.Dependencies[i]
-
-		url := dep.TemplateURL
+		url := renderedURLs[i]
 		if url == "" || strings.Contains(url, "://") {
 			continue
 		}
