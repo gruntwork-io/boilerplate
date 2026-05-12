@@ -210,6 +210,23 @@ func collectBundle(
 		cfg = &config.BoilerplateConfig{}
 	}
 
+	// Apply this template's own variable defaults so deeper logic
+	// (for_each_reference, dep URL/output-folder rendering, recursive
+	// collectBundle calls) sees the same scope the runtime would.
+	// Without this, a dep that iterates via `for_each_reference: SomeList`
+	// where SomeList is declared in *this* boilerplate.yml's variables
+	// block — not in opts.Vars — silently degrades to a single
+	// un-iterated entry, and the renderer later blows up evaluating any
+	// dep-block default that references `.__each__`.
+	//
+	// This is intentionally a leniency point: defaults that depend on
+	// runtime-only context (helpers like `{{ shell }}`, runtime-resolved
+	// `.outputs`, or user inputs that weren't supplied) are skipped so
+	// the bundle still gets built for everything else. Strict
+	// evaluation continues to happen at render time via the renderer's
+	// applyConfigDefaults.
+	scope := applyDefaultsForBundle(ctx, loc, cfg, vars)
+
 	// Pre-render dep URLs so we can call resolver.Resolve below and so
 	// dependencySkipDirs sees the same string the analyzer does. The
 	// rendered URL is used ONLY for resolution / skip-dir computation;
@@ -222,7 +239,7 @@ func collectBundle(
 			continue
 		}
 
-		rendered, err := renderForAnalysis(ctx, loc.absDir, dep.TemplateURL, vars)
+		rendered, err := renderForAnalysis(ctx, loc.absDir, dep.TemplateURL, scope)
 		if err != nil {
 			rendered = dep.TemplateURL
 		}
@@ -336,7 +353,7 @@ func collectBundle(
 		// BundlePath but each carrying its own pre-rendered
 		// OutputFolder and the Each value the renderer must seed as
 		// `__each__` before evaluating dep-variable defaults.
-		forEachItems, feErr := resolveForEach(ctx, loc, dep, vars)
+		forEachItems, feErr := resolveForEach(ctx, loc, dep, scope)
 		if feErr != nil {
 			// A broken for_each expression is a soft failure: record it
 			// and emit a single un-iterated entry so warm dispatch can
@@ -360,10 +377,10 @@ func collectBundle(
 		}
 
 		for _, item := range iterations {
-			renderVars := vars
+			renderVars := scope
 			if isForEach {
-				renderVars = make(map[string]any, len(vars)+1)
-				maps.Copy(renderVars, vars)
+				renderVars = make(map[string]any, len(scope)+1)
+				maps.Copy(renderVars, scope)
 				renderVars[eachVarName] = item
 			}
 
@@ -395,7 +412,12 @@ func collectBundle(
 		// Recurse into the dep's bundle directory once: the file tree
 		// is identical across for_each iterations (only the rendered
 		// output-folder varies, and that's already captured above).
-		if recurErr := collectBundle(ctx, childLoc, childBundleDir, vars, resolver, bundle, notes, visiting, cleanups); recurErr != nil {
+		// Threading `scope` (not `vars`) here lets deeper deps' own
+		// for_each_reference / template-url / output-folder expressions
+		// resolve against this template's declared defaults — same as
+		// the runtime, where a child sees its parent's resolved
+		// variable values.
+		if recurErr := collectBundle(ctx, childLoc, childBundleDir, scope, resolver, bundle, notes, visiting, cleanups); recurErr != nil {
 			delete(visiting, cycleKey)
 
 			return recurErr
@@ -405,6 +427,57 @@ func collectBundle(
 	}
 
 	return nil
+}
+
+// applyDefaultsForBundle layers a template's variable defaults onto the
+// caller-supplied vars map and returns the combined scope. It mirrors
+// the renderer's applyConfigDefaults but is intentionally lenient: a
+// default that fails to render (because it depends on runtime-only
+// helpers or vars the user hasn't supplied) is silently skipped rather
+// than aborting bundle collection. The renderer evaluates defaults
+// strictly at render time, so any value that survives until then is
+// the user's problem; what matters here is that simple, static defaults
+// — most importantly, list variables that feed `for_each_reference`
+// expressions in declared dependencies — are present in scope when
+// collectBundle processes deeper deps.
+//
+// The input map is not mutated. Caller-supplied entries always win over
+// the config's defaults (same precedence the runtime uses for
+// non-interactive renders).
+func applyDefaultsForBundle(ctx context.Context, loc templateLocation, cfg *config.BoilerplateConfig, parentVars map[string]any) map[string]any {
+	out := make(map[string]any, len(parentVars)+len(cfg.Variables))
+	maps.Copy(out, parentVars)
+
+	for _, v := range cfg.Variables {
+		if _, set := out[v.Name()]; set {
+			continue
+		}
+
+		def := v.Default()
+		if def == nil {
+			continue
+		}
+
+		rendered, err := renderDefaultValue(ctx, loc, def, out)
+		if err != nil {
+			// Lenient by design: this default depends on something the
+			// producer can't resolve (a runtime helper, an unset user
+			// var, etc.). Leaving the variable unset is correct — the
+			// renderer will re-evaluate at render time and either
+			// succeed (if it has more context) or surface the error
+			// then.
+			continue
+		}
+
+		typed, typeErr := variables.ConvertType(rendered, v)
+		if typeErr != nil {
+			continue
+		}
+
+		out[v.Name()] = typed
+	}
+
+	return out
 }
 
 // resolveForEach computes the for_each iteration list for a dep, mirroring

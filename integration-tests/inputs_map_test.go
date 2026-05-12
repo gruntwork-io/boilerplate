@@ -539,6 +539,77 @@ func TestInputsMap_ForEachBundleSeedsEachIntoWarmRender(t *testing.T) {
 	}
 }
 
+// TestInputsMap_ForEachReferenceResolvesAgainstParentDefault is the
+// follow-up regression gate for the gruntwork-landing-zone bug:
+// pipelines-config-environments declares
+//
+//	for_each_reference: AWSCoreAccountsList
+//
+// where AWSCoreAccountsList is a list variable declared (with a default)
+// in the *parent* gruntwork-landing-zone boilerplate.yml — not in
+// opts.Vars. Pre-fix the bundle producer only saw user-supplied vars,
+// so resolveForEach couldn't find AWSCoreAccountsList, the producer
+// emitted a single un-iterated entry, and the renderer's scopeForDep
+// blew up evaluating the dep-block default
+// `FormattedAccountName: "{{ .__each__ }}"` with a missing-key error.
+//
+// The fix makes the producer apply each template's variable defaults to
+// the scope it threads into deeper deps, so for_each_reference can
+// resolve list variables that live in the boilerplate.yml itself.
+func TestInputsMap_ForEachReferenceResolvesAgainstParentDefault(t *testing.T) {
+	t.Parallel()
+
+	app := cli.CreateBoilerplateCli()
+
+	var stdout, stderr bytes.Buffer
+
+	app.Writer = &stdout
+	app.ErrWriter = &stderr
+
+	args := []string{
+		"boilerplate", "inputs", "map",
+		"--template-url", "../test-fixtures/inputs-test/for-each-reference",
+		"--include-bundle",
+	}
+
+	require.NoError(t, app.Run(args), "stderr=%s", stderr.String())
+
+	var got inputsMapResult
+	require.NoError(t, json.Unmarshal(stdout.Bytes(), &got), "stdout=%s", stdout.String())
+	require.NotNil(t, got.Bundle)
+	require.NotNil(t, got.Bundle.Dependencies)
+
+	// Producer-side: the for_each_reference dep must produce one entry
+	// per item in the parent template's declared list, with each entry
+	// carrying its Each value. Pre-fix this was a single entry with
+	// Each="".
+	rootDeps := got.Bundle.Dependencies["."]
+	require.Len(t, rootDeps, 3, "for_each_reference dep should iterate over the parent template's default list; got: %+v", rootDeps)
+
+	wantOrder := []string{"logs", "security", "shared"}
+	for i, want := range wantOrder {
+		assert.Equal(t, "envs", rootDeps[i].Name)
+		assert.Equal(t, want, rootDeps[i].Each)
+		assert.Equal(t, "envs/"+want, rootDeps[i].OutputFolder)
+	}
+
+	// Round-trip: feeding the bundle back through RenderFileFromFS must
+	// render every iteration without the "map has no entry for key
+	// __each__" failure.
+	mfs := fstest.MapFS{}
+	for k, v := range got.Bundle.Files {
+		mfs[k] = &fstest.MapFile{Data: []byte(v)}
+	}
+
+	for _, env := range wantOrder {
+		outputPath := "envs/" + env + "/account.hcl"
+		rendered, err := inputs.RenderFileFromFS(context.Background(), mfs, ".", outputPath, map[string]any{}, got.Bundle.Dependencies)
+		require.NoErrorf(t, err, "warm render of %q failed; bundle keys: %v", outputPath, mapKeys(got.Bundle.Files))
+		assert.Equalf(t, `account = "`+env+`"`+"\n", rendered,
+			"warm-rendered %q must match cold-render output", outputPath)
+	}
+}
+
 // TestInputsMap_RenderFileRejectsOldBundles is the dispatcher contract:
 // a bundle that arrives without a Dependencies index (older CLI) must
 // not silently fall through to the broken re-render path. The consumer

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io/fs"
+	"maps"
 	"path"
 	"strings"
 	"testing"
@@ -47,100 +48,106 @@ func buildDepsIndexFromFS(t *testing.T, fsys fstest.MapFS, rootPath string) map[
 	t.Helper()
 
 	idx := map[string][]ResolvedDep{}
-
-	walkErr := fs.WalkDir(fsys, rootPath, func(p string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-
-		if d.IsDir() || path.Base(p) != config.BoilerplateConfigFile {
-			return nil
-		}
-
-		data, readErr := fs.ReadFile(fsys, p)
-		if readErr != nil {
-			return readErr
-		}
-
-		cfg, parseErr := config.ParseBoilerplateConfig(data)
-		if parseErr != nil {
-			// Test fixtures with deliberately bad config still need to
-			// reach the renderer; treat parse failure here as "no deps"
-			// and let RenderFileFromFS surface the parse error from its
-			// own loadConfig call.
-			return nil
-		}
-
-		parentDir := path.Dir(p)
-		parentKey := parentDir
-		if parentKey == "" || parentKey == "." {
-			parentKey = "."
-		}
-
-		for i := range cfg.Dependencies {
-			dep := &cfg.Dependencies[i]
-			url := strings.TrimSpace(dep.TemplateURL)
-
-			if url == "" || strings.Contains(url, "://") {
-				continue
-			}
-
-			bundlePath := path.Clean(path.Join(parentDir, url))
-			if bundlePath == "" || bundlePath == "." {
-				continue
-			}
-
-			// Match producer semantics: deps that didn't resolve at
-			// bundle time aren't in the index. The renderer treats
-			// missing-from-index siblings as "skip and continue" and
-			// surfaces ErrOutputNotProduced when no sibling owns the
-			// path. Without this gate, the renderer would happily
-			// recurse into a phantom directory and fail much later with
-			// a confusing fs.Stat error.
-			if _, statErr := fs.Stat(fsys, bundlePath); statErr != nil {
-				continue
-			}
-
-			// A dep with for_each produces one ResolvedDep entry per
-			// iteration so the renderer can iterate them with __each__
-			// seeded. Mirror the producer rather than the test fixture's
-			// boilerplate.yml literally — otherwise the test path would
-			// drift from the bundle the CLI ships.
-			if len(dep.ForEach) > 0 {
-				for _, item := range dep.ForEach {
-					renderedOutputFolder, ofErr := renderForAnalysis(
-						context.Background(),
-						"",
-						dep.OutputFolder,
-						map[string]any{eachVarName: item},
-					)
-					if ofErr != nil {
-						renderedOutputFolder = dep.OutputFolder
-					}
-
-					idx[parentKey] = append(idx[parentKey], ResolvedDep{
-						Name:         dep.Name,
-						BundlePath:   bundlePath,
-						OutputFolder: strings.TrimSpace(renderedOutputFolder),
-						Each:         item,
-					})
-				}
-
-				continue
-			}
-
-			idx[parentKey] = append(idx[parentKey], ResolvedDep{
-				Name:         dep.Name,
-				BundlePath:   bundlePath,
-				OutputFolder: dep.OutputFolder,
-			})
-		}
-
-		return nil
-	})
-	require.NoError(t, walkErr)
+	collectDepsIndex(t, fsys, rootPath, map[string]any{}, idx)
 
 	return idx
+}
+
+// collectDepsIndex walks the dep tree starting at parentDir, threading
+// the scope of variable defaults already applied so a child's
+// for_each_reference can resolve against list variables declared in
+// the parent's boilerplate.yml. Mirrors collectBundle's recursion shape
+// (and the runtime's variable inheritance), but stays minimal: it just
+// builds the depsIndex that RenderFileFromFS consumes — no Files map,
+// no notes, no cycle tracking (test fixtures don't cycle).
+func collectDepsIndex(t *testing.T, fsys fstest.MapFS, parentDir string, parentScope map[string]any, idx map[string][]ResolvedDep) {
+	t.Helper()
+
+	cfgPath := path.Join(parentDir, config.BoilerplateConfigFile)
+
+	data, readErr := fs.ReadFile(fsys, cfgPath)
+	if readErr != nil {
+		// Fixtures may omit a boilerplate.yml at this level; that's
+		// fine — there are no deps to collect, the renderer will get
+		// the same shape via its own loadConfig.
+		return
+	}
+
+	cfg, parseErr := config.ParseBoilerplateConfig(data)
+	if parseErr != nil {
+		// Test fixtures with deliberately bad config still need to
+		// reach the renderer; treat parse failure here as "no deps".
+		return
+	}
+
+	// Apply this template's variable defaults so deeper for_each_reference
+	// lookups can see list variables declared in *this* boilerplate.yml.
+	scope := applyDefaultsForBundle(context.Background(), templateLocation{fsys: fsys, dir: parentDir}, cfg, parentScope)
+
+	parentKey := parentDir
+	if parentKey == "" || parentKey == "." {
+		parentKey = "."
+	}
+
+	for i := range cfg.Dependencies {
+		dep := &cfg.Dependencies[i]
+		url := strings.TrimSpace(dep.TemplateURL)
+
+		if url == "" || strings.Contains(url, "://") {
+			continue
+		}
+
+		bundlePath := path.Clean(path.Join(parentDir, url))
+		if bundlePath == "" || bundlePath == "." {
+			continue
+		}
+
+		// Match producer semantics: deps that didn't resolve at
+		// bundle time aren't in the index. The renderer treats
+		// missing-from-index siblings as "skip and continue" and
+		// surfaces ErrOutputNotProduced when no sibling owns the
+		// path.
+		if _, statErr := fs.Stat(fsys, bundlePath); statErr != nil {
+			continue
+		}
+
+		forEachItems, _ := resolveForEach(context.Background(), templateLocation{fsys: fsys, dir: parentDir}, dep, scope)
+
+		iterations := []string{""}
+		isForEach := len(forEachItems) > 0
+
+		if isForEach {
+			iterations = forEachItems
+		}
+
+		for _, item := range iterations {
+			renderVars := scope
+			if isForEach {
+				renderVars = make(map[string]any, len(scope)+1)
+				maps.Copy(renderVars, scope)
+				renderVars[eachVarName] = item
+			}
+
+			renderedOutputFolder, ofErr := renderForAnalysis(context.Background(), "", dep.OutputFolder, renderVars)
+			if ofErr != nil {
+				renderedOutputFolder = dep.OutputFolder
+			}
+
+			entry := ResolvedDep{
+				Name:         dep.Name,
+				BundlePath:   bundlePath,
+				OutputFolder: strings.TrimSpace(renderedOutputFolder),
+			}
+
+			if isForEach {
+				entry.Each = item
+			}
+
+			idx[parentKey] = append(idx[parentKey], entry)
+		}
+
+		collectDepsIndex(t, fsys, bundlePath, scope, idx)
+	}
 }
 
 // TestRenderFileFromFS_RootTemplateNoDeps is the simplest case: a single
@@ -756,4 +763,55 @@ dependencies:
 	require.Error(t, err, "plain dep must not see __each__ in scope")
 	assert.NotErrorIs(t, err, ErrOutputNotProduced,
 		"missing __each__ should surface as a render error, not a sentinel; got: %v", err)
+}
+
+// TestRenderFileFromFS_ForEachReferenceUsesParentDefault mirrors the
+// gruntwork-landing-zone shape: the parent template declares a list
+// variable (AWSCoreAccountsList) with a default. A child dep iterates
+// via for_each_reference pointing at that variable name, and the dep's
+// own variables block has a default referencing `.__each__`. Pre-fix
+// the bundle producer couldn't resolve the for_each_reference because
+// it only knew about user-supplied vars (not the parent template's
+// declared defaults), so it emitted a single non-iterated entry and
+// the renderer's scopeForDep blew up evaluating the `__each__`-using
+// default. The fix makes the producer apply config defaults so
+// for_each_reference can find list variables defined in the
+// boilerplate.yml itself.
+func TestRenderFileFromFS_ForEachReferenceUsesParentDefault(t *testing.T) {
+	t.Parallel()
+
+	fsys := fstest.MapFS{
+		"boilerplate.yml": &fstest.MapFile{Data: []byte(`
+variables:
+  - name: AccountsList
+    type: list
+    default:
+      - logs
+      - security
+      - shared
+dependencies:
+  - name: envs
+    template-url: ./envs
+    output-folder: "envs/{{ .__each__ }}"
+    for_each_reference: AccountsList
+    variables:
+      - name: FormattedAccountName
+        default: "{{ .__each__ }}"
+`)},
+		"envs/boilerplate.yml": &fstest.MapFile{Data: []byte(`
+variables:
+  - name: FormattedAccountName
+`)},
+		"envs/account.hcl": &fstest.MapFile{Data: []byte(`account = "{{ .FormattedAccountName }}"`)},
+	}
+
+	for _, env := range []string{"logs", "security", "shared"} {
+		t.Run(env, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := renderFile(t, fsys, "envs/"+env+"/account.hcl", map[string]any{})
+			require.NoError(t, err)
+			assert.Equal(t, `account = "`+env+`"`, got)
+		})
+	}
 }
