@@ -23,9 +23,16 @@ import (
 
 // templateInfo holds analysis output for a single template (one boilerplate.yml).
 type templateInfo struct {
-	cfg           *config.BoilerplateConfig
-	declared      map[string]variables.Variable
-	fileRefs      map[string]map[string]struct{}
+	cfg      *config.BoilerplateConfig
+	declared map[string]variables.Variable
+	fileRefs map[string]map[string]struct{}
+	// fileSources maps each output path produced by this template to the
+	// source template file that produced it. In OS mode the values are
+	// absolute disk paths; in FS mode they are slash-separated paths within
+	// loc.fsys. Output paths whose filename template failed to render are
+	// intentionally absent so callers can detect the dynamic-path case via
+	// the existing KindFilenameRender soft error.
+	fileSources   map[string]string
 	skipFilesRefs map[string]struct{}
 	loc           templateLocation
 	outputPath    string
@@ -46,9 +53,10 @@ type resolvedDep struct {
 
 func analyze(ctx context.Context, root templateLocation, vars map[string]any, resolver dependencyResolver) (*Result, error) {
 	result := &Result{
-		Inputs: map[string]InputEntry{},
-		Files:  map[string][]string{},
-		Errors: []AnalysisError{},
+		Inputs:  map[string]InputEntry{},
+		Files:   map[string][]string{},
+		Sources: map[string]string{},
+		Errors:  []AnalysisError{},
 	}
 
 	cleanups := []func(){}
@@ -97,12 +105,13 @@ func analyzeTree(
 	}
 
 	info := &templateInfo{
-		loc:        loc,
-		outputPath: outputPath,
-		declaredIn: declaredIn,
-		cfg:        cfg,
-		declared:   make(map[string]variables.Variable, len(cfg.Variables)),
-		fileRefs:   map[string]map[string]struct{}{},
+		loc:         loc,
+		outputPath:  outputPath,
+		declaredIn:  declaredIn,
+		cfg:         cfg,
+		declared:    make(map[string]variables.Variable, len(cfg.Variables)),
+		fileRefs:    map[string]map[string]struct{}{},
+		fileSources: map[string]string{},
 	}
 
 	for _, v := range cfg.Variables {
@@ -524,7 +533,7 @@ func analyzeFiles(ctx context.Context, loc templateLocation, info *templateInfo,
 			// CONTENTS are not affected by any input variable, but its PATH
 			// may still depend on one (e.g., logo at `{{ .Brand }}/logo.png`),
 			// in which case a change to that var relocates the file.
-			outPath := computeOutputPath(ctx, loc, info, p, vars, result)
+			outPath, filenameOK := computeOutputPath(ctx, loc, info, p, vars, result)
 			if outPath != "" {
 				if _, exists := info.fileRefs[outPath]; !exists {
 					info.fileRefs[outPath] = map[string]struct{}{}
@@ -532,6 +541,10 @@ func analyzeFiles(ctx context.Context, loc templateLocation, info *templateInfo,
 
 				for v := range extractFilenameRefs(loc, p, result) {
 					info.fileRefs[outPath][v] = struct{}{}
+				}
+
+				if filenameOK {
+					info.fileSources[outPath] = sourcePathFor(loc, p)
 				}
 			}
 
@@ -567,7 +580,7 @@ func analyzeFiles(ctx context.Context, loc templateLocation, info *templateInfo,
 			refs.vars[v] = struct{}{}
 		}
 
-		outPath := computeOutputPath(ctx, loc, info, p, vars, result)
+		outPath, filenameOK := computeOutputPath(ctx, loc, info, p, vars, result)
 		if outPath == "" {
 			return nil
 		}
@@ -578,6 +591,10 @@ func analyzeFiles(ctx context.Context, loc templateLocation, info *templateInfo,
 
 		for v := range refs.vars {
 			info.fileRefs[outPath][v] = struct{}{}
+		}
+
+		if filenameOK {
+			info.fileSources[outPath] = sourcePathFor(loc, p)
 		}
 
 		return nil
@@ -654,11 +671,18 @@ func extractFilenameRefs(loc templateLocation, inputPath string, result *Result)
 // relative to the root output root. The filename portion may itself contain
 // template syntax; we render it best-effort.
 //
+// Returns the joined output path plus a flag indicating whether the filename
+// rendered cleanly. The flag is false when renderForAnalysis returned an
+// error (and a KindFilenameRender entry was pushed onto result.Errors). The
+// caller uses it to decide whether to record a source mapping for this file;
+// dynamic-path files are omitted from Sources so consumers can detect them
+// via the existing soft-error entry rather than receiving a fabricated path.
+//
 // inputPath comes from fs.WalkDir, which always uses slash separators
 // regardless of OS, and loc.dir is similarly slash-separated. So path
 // manipulation here uses the path package, not path/filepath, to avoid
 // breaking on Windows where filepath uses backslash.
-func computeOutputPath(ctx context.Context, loc templateLocation, info *templateInfo, inputPath string, vars map[string]any, result *Result) string {
+func computeOutputPath(ctx context.Context, loc templateLocation, info *templateInfo, inputPath string, vars map[string]any, result *Result) (string, bool) {
 	// Path of the file relative to the template directory.
 	rel := slashRel(loc.dir, inputPath)
 
@@ -680,10 +704,25 @@ func computeOutputPath(ctx context.Context, loc templateLocation, info *template
 		})
 
 		rendered = rel
+
+		return joinOutputPath(info.outputPath, rendered), false
 	}
 
 	// Join with the template's output path within the root output tree.
-	return joinOutputPath(info.outputPath, rendered)
+	return joinOutputPath(info.outputPath, rendered), true
+}
+
+// sourcePathFor returns the path to record in Result.Sources for a file
+// found at inputPath inside loc.fsys. In OS mode this is an absolute disk
+// path, suitable for consumers that read the template body directly. In FS
+// mode loc.absDir is empty and we fall back to the slash-separated FS path,
+// which is the only meaningful identifier available without an on-disk root.
+func sourcePathFor(loc templateLocation, inputPath string) string {
+	if loc.absDir == "" {
+		return inputPath
+	}
+
+	return filepath.Join(loc.absDir, filepath.FromSlash(slashRel(loc.dir, inputPath)))
 }
 
 // joinOutputPath joins a parent output path with a child relative path,
@@ -1015,6 +1054,17 @@ func composeResult(root *templateInfo, result *Result) {
 
 	for f, bucket := range inverse {
 		result.Files[f] = sortedKeys(bucket)
+	}
+
+	// Project every template's per-file source mapping into the top-level
+	// Sources map. Each templateInfo only records files that rendered
+	// cleanly, so dynamic-path outputs (KindFilenameRender) are naturally
+	// absent here. Children may produce paths the root never sees and vice
+	// versa, so we walk the whole tree.
+	for _, t := range all {
+		for out, src := range t.fileSources {
+			result.Sources[out] = src
+		}
 	}
 }
 

@@ -1,0 +1,11 @@
+dependencies:
+  - name: envs
+    template-url: ./envs
+    output-folder: "pipelines-config/{{ .__each__ }}"
+    for_each:
+      - dev
+      - staging
+      - prod
+    variables:
+      - name: FormattedAccountName
+        default: "acct-{{ .__each__ }}"

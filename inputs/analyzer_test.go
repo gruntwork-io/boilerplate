@@ -683,6 +683,82 @@ skip_files:
 		"vars in skip_files.if should link to every file in the template")
 }
 
+// TestFromFS_SourcesMapsOutputsToSourcePaths exercises Result.Sources in FS
+// mode. Because there is no on-disk root, the values are slash-separated FS
+// paths, not absolute disk paths — but the contract that every file in
+// Result.Files (minus filename_render cases) has a corresponding Sources
+// entry holds the same way the CLI emits it.
+func TestFromFS_SourcesMapsOutputsToSourcePaths(t *testing.T) {
+	t.Parallel()
+
+	fsys := fstest.MapFS{
+		"boilerplate.yml": &fstest.MapFile{Data: []byte(`
+variables:
+  - name: Title
+dependencies:
+  - name: web
+    template-url: ./web
+    output-folder: ./web
+`)},
+		"README.md": &fstest.MapFile{Data: []byte(`# {{ .Title }}`)},
+		"web/boilerplate.yml": &fstest.MapFile{Data: []byte(`
+variables:
+  - name: Title
+`)},
+		"web/index.html": &fstest.MapFile{Data: []byte(`<h1>{{ .Title }}</h1>`)},
+	}
+
+	res := runFS(t, fsys, map[string]any{"Title": "hello"})
+
+	assert.Equal(t, "README.md", res.Sources["README.md"])
+	assert.Equal(t, "web/index.html", res.Sources["web/index.html"])
+
+	for outPath := range res.Files {
+		src, ok := res.Sources[outPath]
+		require.Truef(t, ok, "missing sources entry for %q", outPath)
+		require.NotEmptyf(t, src, "empty source for %q", outPath)
+	}
+}
+
+// TestFromFS_SourcesOmitsFilenameRenderFailures ensures that when a file's
+// templated name cannot be rendered (parse error), the analyzer records the
+// filename_render soft error and leaves the output absent from Sources.
+func TestFromFS_SourcesOmitsFilenameRenderFailures(t *testing.T) {
+	t.Parallel()
+
+	fsys := fstest.MapFS{
+		"boilerplate.yml": &fstest.MapFile{Data: []byte(`
+variables:
+  - name: Name
+`)},
+		"good.txt":  &fstest.MapFile{Data: []byte(`{{ .Name }}`)},
+		"bad-{{.tf": &fstest.MapFile{Data: []byte(`unused body`)},
+	}
+
+	res := runFS(t, fsys, map[string]any{"Name": "alice"})
+
+	// The good file got a source entry.
+	assert.Equal(t, "good.txt", res.Sources["good.txt"])
+
+	// The bad file produced a filename_render soft error and is omitted from
+	// Sources. It still appears in Files under its un-rendered name, which is
+	// what the analyzer falls back to.
+	hasFilenameRenderError := false
+
+	for _, e := range res.Errors {
+		if e.Kind == KindFilenameRender && e.File == "bad-{{.tf" {
+			hasFilenameRenderError = true
+			break
+		}
+	}
+
+	require.True(t, hasFilenameRenderError,
+		"expected a filename_render error for bad-{{.tf; got: %+v", res.Errors)
+
+	_, hasSource := res.Sources["bad-{{.tf"]
+	assert.False(t, hasSource, "filename_render case must not appear in sources")
+}
+
 func TestFinalizeResult_DeterministicOrdering(t *testing.T) {
 	t.Parallel()
 

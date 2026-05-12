@@ -35,6 +35,22 @@ type Result struct {
 	// would re-render that file.
 	Files map[string][]string `json:"files"`
 
+	// Sources maps each output path to the absolute path of the source
+	// template file that produced it. Consumers that re-render a single file
+	// (e.g., the WASM warm-dispatch path in runbooks) use this to locate the
+	// template body to feed into boilerplateRenderTemplate.
+	//
+	// In OS mode (CLI) the values are absolute disk paths; for templates
+	// pulled in via go-getter the path lives under the go-getter temp dir.
+	// In FS mode (WASM) the values are slash-separated paths within the
+	// supplied rootFS — no absolute disk path is available there.
+	//
+	// Files whose output path is dynamic and whose filename template failed
+	// to render (KindFilenameRender) are absent from Sources; the missing
+	// entry plus the existing soft error tells consumers to fall back to a
+	// full render rather than guess at a path.
+	Sources map[string]string `json:"sources"`
+
 	// Errors collects soft errors encountered during analysis. A non-empty
 	// list does not imply the run failed; callers should still consume Inputs
 	// and Files. Hard errors (parse failures of the boilerplate config tree

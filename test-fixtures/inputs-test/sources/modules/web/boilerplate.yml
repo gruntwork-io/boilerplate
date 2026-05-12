@@ -1,0 +1,4 @@
+variables:
+  - name: Title
+    description: Title for the web module's index page.
+    type: string

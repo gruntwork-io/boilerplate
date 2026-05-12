@@ -1,0 +1,7 @@
+variables:
+  - name: OrgName
+
+dependencies:
+  - name: catalog
+    template-url: "{{ templateFolder }}/../sibling-catalog"
+    output-folder: "./catalog"

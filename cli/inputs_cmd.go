@@ -38,6 +38,9 @@ The output schema is:
       "files": {
         "relative/path/to/file1": ["<template_path>:<input_name>", ...]
       },
+      "sources": {
+        "relative/path/to/file1": "<absolute_path_to_source_template_file>"
+      },
       "errors": [
         { "kind": "undeclared_variable", "template": "...", "name": "...", "file": "..." }
       ]
@@ -46,6 +49,14 @@ The output schema is:
 Keys in "inputs" are fully-qualified as <template_path>:<input_name>, where
 <template_path> is "." for the root template and the dependency's
 output-folder path (relative to the root output) for nested templates.
+
+Keys in "sources" mirror those in "files": each output path maps to the
+absolute filesystem path of the source template file that produces it.
+Templates resolved via go-getter (git::, https://, ...) live under a temp
+dir for the duration of the command; consumers needing the body should
+read it before the process exits. Output paths whose filename template
+failed to render are omitted from "sources" — the corresponding
+"filename_render" entry in "errors" signals that the path is dynamic.
 
 The command exits with a non-zero status only on unrecoverable parse failures.
 Soft errors (e.g., a referenced variable that is not declared in any
@@ -78,6 +89,10 @@ func newInputsCommand() *cli.Command {
 					&cli.StringSliceFlag{
 						Name:  options.OptVarFile,
 						Usage: "Load variable values from the YAML file `FILE`. May be specified more than once.",
+					},
+					&cli.BoolFlag{
+						Name:  options.OptIncludeBundle,
+						Usage: "Include a `bundle` field in the JSON output containing the contents of every text file in the resolved dependency tree. The bundle is suitable for feeding back into the WASM `boilerplateInputsMap` and `boilerplateRenderFile` functions for warm-dispatch rendering.",
 					},
 				},
 			},
@@ -129,14 +144,72 @@ func runInputsMapTo(c *cli.Context, stdout, stderr io.Writer) error {
 
 	logger := logging.New(stderr, logging.LevelWarn)
 
-	result, err := inputs.FromOptions(context.Background(), logger, opts)
+	ctx := context.Background()
+
+	result, err := inputs.FromOptions(ctx, logger, opts)
 	if err != nil {
 		writeJSONError(stdout, inputs.KindParse, err)
 		return cli.Exit("", 1)
 	}
 
+	// When --include-bundle is set, re-walk the resolved tree to collect
+	// file contents and emit them in a new `bundle` field. The bundle
+	// walk is independent of the analyzer pass: it would be cheaper to
+	// do both in one traversal, but keeping them decoupled avoids
+	// destabilizing the analyzer's existing contract (Result.Sources,
+	// Errors composition, etc.). For typical templates the second walk
+	// is negligible compared to go-getter download time.
+	var bundle *inputs.Bundle
+
+	if c.Bool(options.OptIncludeBundle) {
+		// Use a fresh opts for the bundle walk: FromOptions has by now
+		// populated opts.TemplateFolder with the resolved root (so
+		// resolveRootLocation inside BundleFromOptions takes the fast
+		// path for an already-local folder rather than re-running
+		// go-getter).
+		b, notes, bundleErr := inputs.BundleFromOptions(ctx, logger, opts)
+		if bundleErr != nil {
+			writeJSONError(stdout, inputs.KindParse, bundleErr)
+			return cli.Exit("", 1)
+		}
+
+		bundle = b
+
+		// Surface bundle notes via the existing errors[] array. They
+		// share the same Kind vocabulary, so consumers don't need to
+		// learn a second error shape.
+		for _, n := range notes {
+			result.Errors = append(result.Errors, inputs.AnalysisError{
+				Kind:    n.Kind,
+				Name:    n.Name,
+				Message: n.Message,
+			})
+		}
+	}
+
 	enc := json.NewEncoder(stdout)
 	enc.SetIndent("", "  ")
+
+	// When the bundle is requested, encode an envelope around result so
+	// the existing fields remain at the top level (back-compat for any
+	// consumer that doesn't read `bundle`). Without --include-bundle we
+	// emit the bare result, preserving the byte-for-byte pre-change
+	// output.
+	if bundle != nil {
+		envelope := struct {
+			*inputs.Result
+			Bundle *inputs.Bundle `json:"bundle"`
+		}{
+			Result: result,
+			Bundle: bundle,
+		}
+
+		if encErr := enc.Encode(envelope); encErr != nil {
+			return fmt.Errorf("encode result: %w", encErr)
+		}
+
+		return nil
+	}
 
 	if encErr := enc.Encode(result); encErr != nil {
 		return fmt.Errorf("encode result: %w", encErr)

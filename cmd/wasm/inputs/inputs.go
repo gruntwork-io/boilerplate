@@ -21,10 +21,13 @@ import (
 
 // templateBundle is the JSON shape accepted by Handler. Files is keyed by
 // path relative to RootPath and must include every boilerplate.yml in the
-// dependency tree.
+// dependency tree. Dependencies is forwarded only so a bundle round-trip
+// through `inputs map` → `renderFile` preserves it; this handler does not
+// consume the field.
 type templateBundle struct {
-	RootPath string            `json:"rootPath"`
-	Files    map[string]string `json:"files"`
+	RootPath     string                          `json:"rootPath"`
+	Files        map[string]string               `json:"files"`
+	Dependencies map[string][]inputs.ResolvedDep `json:"dependencies,omitempty"`
 }
 
 // Handler returns a js.Func that wraps inputs.FromFS. It is the WASM-side
