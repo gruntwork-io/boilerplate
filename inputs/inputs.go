@@ -18,6 +18,7 @@ import (
 	"path/filepath"
 	"sort"
 
+	"github.com/gruntwork-io/boilerplate/config"
 	"github.com/gruntwork-io/boilerplate/getterhelper"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/pkg/logging"
@@ -135,6 +136,25 @@ func FromOptions(ctx context.Context, l logging.Logger, opts *options.Boilerplat
 
 	if err != nil {
 		return nil, err
+	}
+
+	// Honor opts.OnMissingConfig at the root: when set to Exit, a missing
+	// boilerplate.yml at the resolved template-url is a hard error rather
+	// than an empty-result success. Children reached via declared
+	// dependencies are not subject to this check — a dep template-url that
+	// happens to point at a directory with no config still degrades to the
+	// "config-less template (no inputs)" path inside loadConfig, since
+	// failing the whole run on a single missing child would defeat the
+	// soft-error model the rest of the analyzer uses.
+	if opts.OnMissingConfig == options.Exit {
+		cfgPath := path.Join(rootLoc.dir, config.BoilerplateConfigFile)
+		if _, statErr := fs.Stat(rootLoc.fsys, cfgPath); statErr != nil {
+			if errors.Is(statErr, fs.ErrNotExist) {
+				return nil, fmt.Errorf("no %s found at template root (set --%s=ignore to allow)", config.BoilerplateConfigFile, options.OptMissingConfigAction)
+			}
+
+			return nil, fmt.Errorf("stat %s: %w", cfgPath, statErr)
+		}
 	}
 
 	resolver := &osResolver{logger: l}

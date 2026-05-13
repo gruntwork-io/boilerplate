@@ -19,8 +19,11 @@ import (
 // counterpart to `boilerplate inputs map`: it takes a templateBundle and a
 // JSON vars object, runs the static analysis described in the inputs
 // package, and returns the result as a JSON string. On error it returns an
-// Error. Remote dependency template-urls are not resolvable in WASM and
-// produce "unresolvable_dependency" entries in the result's errors array.
+// Error whose `kind` property holds a stable identifier — see the Kind*
+// constants in cmd/wasm/internal/bundlewasm — so JS callers can switch on
+// the failure mode without matching free-form messages. Remote dependency
+// template-urls are not resolvable in WASM and produce
+// "unresolvable_dependency" entries in the result's errors array.
 //
 // JS signature:
 //
@@ -30,29 +33,39 @@ func Handler() js.Func {
 		defer bundlewasm.RecoverPanic("inputsMap")
 
 		if len(args) < 2 {
-			return js.Global().Get("Error").New("boilerplateInputsMap requires 2 arguments: bundleJSON, varsJSON")
+			return taggedError(bundlewasm.KindStructural, "boilerplateInputsMap requires 2 arguments: bundleJSON, varsJSON")
 		}
 
 		bundle, err := bundlewasm.DecodeBundle(args[0].String())
 		if err != nil {
-			return js.Global().Get("Error").New(err.Error())
+			return taggedError(bundlewasm.KindStructural, err.Error())
 		}
 
 		var variables map[string]any
 		if err := json.Unmarshal([]byte(args[1].String()), &variables); err != nil {
-			return js.Global().Get("Error").New(fmt.Sprintf("failed to parse variables JSON: %v", err))
+			return taggedError(bundlewasm.KindStructural, fmt.Sprintf("failed to parse variables JSON: %v", err))
 		}
 
 		result, err := inputs.FromFS(context.Background(), bundle.FS, bundle.RootPath, variables)
 		if err != nil {
-			return js.Global().Get("Error").New(fmt.Sprintf("inputs analysis failed: %v", err))
+			return taggedError(bundlewasm.KindRender, fmt.Sprintf("inputs analysis failed: %v", err))
 		}
 
 		out, err := json.Marshal(result)
 		if err != nil {
-			return js.Global().Get("Error").New(fmt.Sprintf("failed to marshal result: %v", err))
+			return taggedError(bundlewasm.KindRender, fmt.Sprintf("failed to marshal result: %v", err))
 		}
 
 		return string(out)
 	})
+}
+
+// taggedError builds a JS Error with a `kind` property so callers can
+// switch on failure mode uniformly with the other WASM handlers
+// (renderfile, renderfiles, preparedbundle).
+func taggedError(kind, message string) js.Value {
+	errVal := js.Global().Get("Error").New(message)
+	errVal.Set("kind", kind)
+
+	return errVal
 }

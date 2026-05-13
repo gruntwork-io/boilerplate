@@ -208,7 +208,25 @@ func writeJSONError(w io.Writer, kind string, err error) {
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
 
-	if encErr := enc.Encode(doc); encErr != nil {
-		_, _ = fmt.Fprintf(w, "{\"errors\":[{\"kind\":\"encode\",\"message\":%q}]}\n", encErr.Error())
+	if encErr := enc.Encode(doc); encErr == nil {
+		return
 	}
+
+	// Fallback: build the document a second time using json.Marshal so the
+	// message is encoded with the same JSON-string-escaping rules — `%q`
+	// produces Go syntax, which is not byte-for-byte JSON-safe (e.g., it
+	// emits \xNN for non-ASCII bytes, which JSON parsers reject).
+	fallback, marshalErr := json.Marshal(struct {
+		Errors []inputs.AnalysisError `json:"errors"`
+	}{
+		Errors: []inputs.AnalysisError{
+			{Kind: "encode", Message: err.Error()},
+		},
+	})
+	if marshalErr != nil {
+		return
+	}
+
+	_, _ = w.Write(fallback)
+	_, _ = w.Write([]byte("\n"))
 }

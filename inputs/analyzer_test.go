@@ -316,12 +316,11 @@ variables:
 func TestFromFS_CycleDetection(t *testing.T) {
 	t.Parallel()
 
-	// Cycle detection keys on the literal template-url string; two templates
-	// that both declare a dependency at the same URL trigger the detector
-	// even without traversing back to a previously-seen directory. The
-	// inner template references itself by the same URL the outer template
-	// uses, which is the simplest reliable way to land in the cycle path
-	// (rather than the unresolvable_dependency path).
+	// Cycle detection keys on the resolved (parent.dir + renderedURL) path,
+	// so a true cycle is an `a` dep that points back to its own directory
+	// (`./a` resolves to `a` from inside `a`, which is still in the visiting
+	// set). This both exercises the detector and avoids the false-positive
+	// trap two siblings sharing a raw URL string used to fall into.
 	fsys := fstest.MapFS{
 		"boilerplate.yml": &fstest.MapFile{Data: []byte(`
 variables:
@@ -336,8 +335,8 @@ variables:
   - name: Bar
 dependencies:
   - name: aself
-    template-url: ./a
-    output-folder: ./a
+    template-url: .
+    output-folder: ./self
 `)},
 	}
 
@@ -353,7 +352,37 @@ dependencies:
 
 	require.Len(t, cycleErrs, 1, "expected exactly one cycle error; got all errors: %+v", res.Errors)
 	assert.Equal(t, "aself", cycleErrs[0].Name, "cycle error should name the offending dependency")
-	assert.Contains(t, cycleErrs[0].Message, "./a", "cycle error message should mention the cyclic template-url")
+}
+
+// TestFromFS_SiblingDepsSameURLAreNotACycle pins the regression for the
+// bug fixed alongside the cycle-key change: two siblings declaring the
+// same template-url under different output-folders are not a cycle, and
+// the analyzer must not report one.
+func TestFromFS_SiblingDepsSameURLAreNotACycle(t *testing.T) {
+	t.Parallel()
+
+	fsys := fstest.MapFS{
+		"boilerplate.yml": &fstest.MapFile{Data: []byte(`
+dependencies:
+  - name: first
+    template-url: ./shared
+    output-folder: ./out-first
+  - name: second
+    template-url: ./shared
+    output-folder: ./out-second
+`)},
+		"shared/boilerplate.yml": &fstest.MapFile{Data: []byte(`
+variables:
+  - name: Greeting
+`)},
+		"shared/hello.txt": &fstest.MapFile{Data: []byte(`{{ .Greeting }}`)},
+	}
+
+	res := runFS(t, fsys, map[string]any{})
+
+	for _, e := range res.Errors {
+		assert.NotEqual(t, "cycle", e.Kind, "two siblings sharing a template-url must not be a cycle: %+v", e)
+	}
 }
 
 func TestFromFS_PartialsExpandRefs(t *testing.T) {
@@ -785,4 +814,44 @@ func TestFinalizeResult_DeterministicOrdering(t *testing.T) {
 
 	sort.Strings(kinds)
 	assert.Equal(t, []string{"a", "z"}, kinds)
+}
+
+// TestFromFS_PartialExpansionLimit drives a fixture through analyze with
+// a deliberately low partial-expansion cap so KindPartialExpansionLimit
+// lands in Result.Errors. The chain a -> b -> c needs 2 iterations to
+// fully propagate c's references into a; a cap of 1 trips the soft error.
+func TestFromFS_PartialExpansionLimit(t *testing.T) {
+	prev := partialExpansionMaxIterations
+	partialExpansionMaxIterations = 1
+
+	t.Cleanup(func() {
+		partialExpansionMaxIterations = prev
+	})
+
+	fsys := fstest.MapFS{
+		"boilerplate.yml": &fstest.MapFile{Data: []byte(`
+variables:
+  - name: Deep
+partials:
+  - "_partials/*.tmpl"
+`)},
+		"_partials/a.tmpl": &fstest.MapFile{Data: []byte(`{{ define "a" }}{{ template "b" . }}{{ end }}`)},
+		"_partials/b.tmpl": &fstest.MapFile{Data: []byte(`{{ define "b" }}{{ template "c" . }}{{ end }}`)},
+		"_partials/c.tmpl": &fstest.MapFile{Data: []byte(`{{ define "c" }}{{ .Deep }}{{ end }}`)},
+		"main.txt":         &fstest.MapFile{Data: []byte(`{{ template "a" . }}`)},
+	}
+
+	res := runFS(t, fsys, map[string]any{})
+
+	var hit *AnalysisError
+
+	for i := range res.Errors {
+		if res.Errors[i].Kind == KindPartialExpansionLimit {
+			hit = &res.Errors[i]
+			break
+		}
+	}
+
+	require.NotNil(t, hit, "expected a KindPartialExpansionLimit error in Result.Errors, got: %+v", res.Errors)
+	assert.Contains(t, hit.Message, "partial-template invocation graph")
 }

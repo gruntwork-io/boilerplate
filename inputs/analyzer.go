@@ -163,8 +163,17 @@ func analyzeTree(
 			renderedOutputFolder = dep.OutputFolder
 		}
 
-		// Cycle detection.
+		// Cycle detection. Key on the resolved (parent.dir + renderedURL)
+		// path so two siblings declaring the same template-url under
+		// different output-folders don't collide, and so two parents that
+		// each declare `./common` resolve to distinct keys when they live
+		// at distinct directories. Remote URLs (with a scheme) keep their
+		// raw form since path.Join would mangle them.
 		cycleKey := renderedURL
+		if !strings.Contains(renderedURL, "://") {
+			cycleKey = path.Clean(path.Join(loc.dir, renderedURL))
+		}
+
 		if _, busy := visiting[cycleKey]; busy {
 			info.recordDepFailure(result, KindCycle, declaredIn, dep.Name,
 				fmt.Sprintf("dependency %q forms a cycle (template-url=%s)", dep.Name, renderedURL))
@@ -350,8 +359,10 @@ func analyzePartials(ctx context.Context, loc templateLocation, partialGlobs []s
 // partialExpansionMaxIterations bounds the number of fixed-point passes
 // expandPartialRefs may take. In practice the loop converges in a handful of
 // iterations even for complex templates; the cap is a safety net to keep a
-// bug or pathological input from spinning forever.
-const partialExpansionMaxIterations = 100
+// bug or pathological input from spinning forever. Declared as a var so
+// tests can lower it to drive the cap-hit branch without constructing a
+// fixture with 100+ chained partials.
+var partialExpansionMaxIterations = 100
 
 // expandPartialRefs computes the transitive closure of partial -> partial
 // invocations, so each entry in m has all variables it could reference if
@@ -436,9 +447,16 @@ func globPartialFiles(loc templateLocation, pattern string) ([]partialFile, erro
 		return out, nil
 	}
 
-	// FS mode.
+	// FS mode. Reject patterns whose cleaned join either escapes the FS
+	// root (`..` segments) or attempts an absolute lookup. The previous
+	// `HasPrefix(joined, "..")` check both rejected legitimate filenames
+	// like `..eslintrc.tmpl` and accepted absolute patterns like
+	// `/etc/passwd` (since path.Join("dir","/etc/passwd") yields
+	// "/etc/passwd").
 	joined := path.Join(loc.dir, pattern)
-	if strings.HasPrefix(joined, "..") || strings.Contains(joined, "/../") {
+	cleaned := path.Clean(joined)
+
+	if strings.HasPrefix(pattern, "/") || cleaned == ".." || strings.HasPrefix(cleaned, "../") {
 		return nil, fmt.Errorf("partial pattern %q escapes the FS root and is not supported in FS mode", pattern)
 	}
 
@@ -479,7 +497,15 @@ func analyzeFiles(ctx context.Context, loc templateLocation, info *templateInfo,
 	cfgPath := path.Join(loc.dir, config.BoilerplateConfigFile)
 	skipDirs := dependencySkipDirs(loc, info.cfg, renderedDepURLs)
 
-	skipFilter, skipErrs := processSkipFiles(ctx, loc, info.cfg.SkipFiles, vars)
+	// Evaluate skip rules against the template's resolved scope so a
+	// condition like `if: '{{ eq .Mode "strict" }}'` sees defaults declared
+	// in boilerplate.yml — matching what render_file.go does. Lenient mode
+	// drops defaults that fail to render rather than aborting analysis; a
+	// rule whose `if` references such a default falls back to inactive,
+	// which is the correct conservative default for the analyzer.
+	scope, _ := applyConfigDefaults(ctx, loc, info.cfg, vars, true)
+
+	skipFilter, skipErrs := processSkipFiles(ctx, loc, info.cfg.SkipFiles, scope)
 	result.Errors = append(result.Errors, skipErrs...)
 
 	// Record vars referenced in any skip_files expression so a change to
@@ -621,6 +647,17 @@ func dependencySkipDirs(loc templateLocation, cfg *config.BoilerplateConfig, ren
 	for i := range cfg.Dependencies {
 		url := renderedURLs[i]
 		if url == "" || strings.Contains(url, "://") {
+			continue
+		}
+
+		// Skip absolute paths: fs.WalkDir reports relative paths, so an
+		// absolute skip-dir entry would silently never match. Absolute URLs
+		// commonly come from `{{ templateFolder }}/../sibling`-style rendering
+		// in OS mode, where the dep's files live outside loc anyway and the
+		// walk would not see them. In FS mode an absolute path is invalid
+		// regardless. Either way, recording the entry is a no-op at best and
+		// misleading at worst.
+		if path.IsAbs(url) || filepath.IsAbs(url) {
 			continue
 		}
 
@@ -792,16 +829,23 @@ var analysisOutputSentinelAbs = sync.OnceValue(func() string {
 // for analysis purposes we treat missing values as empty strings.
 const missingValueLiteral = "<no value>"
 
-// renderForAnalysis renders a small template fragment (filename, glob, or
-// dep field) using the existing render pipeline with shell and hooks
-// disabled and missing-key behavior set to zero-value. This keeps side
+// renderForAnalysis renders a small path-shaped template fragment (filename,
+// glob, or dep field) using the existing render pipeline with shell and
+// hooks disabled and missing-key behavior set to zero-value. This keeps side
 // effects out of the analysis path while still matching what
 // `boilerplate template` would compute for the same inputs.
 //
 // The result is post-processed to (a) collapse the analysis output sentinel
 // back to "." so paths produced via {{ outputFolder }} stay relative, and
-// (b) strip the literal "<no value>" string that text/template emits for
-// missing keys.
+// (b) strip the literal "<no value>" placeholder text/template emits when a
+// `map[string]any` lookup hits a missing key (the documented quirk).
+//
+// The "<no value>" strip is suppressed when the source `contents` already
+// contains that literal — text/template passes literals through verbatim, so
+// stripping unconditionally would corrupt a template that legitimately
+// contained the substring. This matters only for the contrived case of a
+// path template like "<no value>foo.txt"; every real-world caller in this
+// package renders path-shaped fragments where the literal does not appear.
 //
 // templateFolder is the absolute path of the template folder when known
 // (empty in FS mode); it's only used by helpers that introspect the
@@ -826,19 +870,22 @@ func renderForAnalysis(ctx context.Context, templateFolder, contents string, var
 		return rendered, err
 	}
 
-	return scrubAnalysisRender(rendered), nil
+	return scrubAnalysisRender(contents, rendered), nil
 }
 
 // scrubAnalysisRender removes analysis-only artifacts from a rendered
 // template fragment: the absolute form of the outputFolder sentinel
-// (collapsed to ".") and the literal "<no value>" placeholder text/template
-// produces for missing map keys.
-func scrubAnalysisRender(rendered string) string {
+// (collapsed to ".") and the literal "<no value>" placeholder. The
+// missing-key strip is suppressed when source already contained the
+// literal — see renderForAnalysis for why.
+func scrubAnalysisRender(source, rendered string) string {
 	if sentinelAbs := analysisOutputSentinelAbs(); sentinelAbs != "" {
 		rendered = strings.ReplaceAll(rendered, sentinelAbs, ".")
 	}
 
-	rendered = strings.ReplaceAll(rendered, missingValueLiteral, "")
+	if !strings.Contains(source, missingValueLiteral) {
+		rendered = strings.ReplaceAll(rendered, missingValueLiteral, "")
+	}
 
 	return rendered
 }

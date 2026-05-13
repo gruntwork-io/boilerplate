@@ -272,8 +272,14 @@ func collectBundle(
 			continue
 		}
 
-		cycleKey := depURL
+		cycleKey := path.Clean(path.Join(loc.dir, depURL))
 		if _, busy := visiting[cycleKey]; busy {
+			*notes = append(*notes, BundleNote{
+				Kind:    KindCycle,
+				Name:    dep.Name,
+				Message: fmt.Sprintf("dependency %q forms a cycle (template-url=%s); skipped during bundling", dep.Name, depURL),
+			})
+
 			continue
 		}
 
