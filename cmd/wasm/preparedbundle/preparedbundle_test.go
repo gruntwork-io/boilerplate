@@ -1,4 +1,4 @@
-package preparedbundle
+package preparedbundle //nolint:testpackage
 
 import (
 	"context"
@@ -109,6 +109,7 @@ func TestBundleStore_ConcurrentAccess(t *testing.T) {
 	for i := 0; i < concurrency; i++ {
 		go func(i int) {
 			defer wg.Done()
+
 			ids[i] = store.Store(bundle)
 		}(i)
 	}
@@ -244,4 +245,3 @@ func TestParseBundle_EndToEndRendersThroughHandle(t *testing.T) {
 		assert.Equal(t, "Hello, world!", results[0].Content)
 	}
 }
-

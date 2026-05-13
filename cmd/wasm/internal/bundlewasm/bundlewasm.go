@@ -1,12 +1,8 @@
 // Package bundlewasm holds the pure-Go helpers shared by every full-build
-// WASM handler (cmd/wasm/inputs, renderfile, renderfiles, preparedbundle):
-// the bundle JSON shape, path validation, MapFS construction, the inputs
-// lifter, the error-kind taxonomy JS callers switch on, and the per-handler
-// boilerplate (panic recovery, result payload build).
-//
-// The package has no build tag so preparedbundle's pure-Go core can be
-// compiled and tested on the host platform. syscall/js types live in the
-// build-tagged sibling file.
+// WASM handler: the bundle JSON shape, path validation, MapFS construction,
+// the inputs lifter, error-kind taxonomy, and per-handler boilerplate.
+// syscall/js types live in the build-tagged sibling file so this package
+// stays buildable on the host platform.
 package bundlewasm
 
 import (
@@ -23,9 +19,7 @@ import (
 	"github.com/gruntwork-io/boilerplate/inputs"
 )
 
-// Error-kind strings JS callers switch on. boilerplateRenderFile sets
-// errVal.kind; boilerplateRenderFiles emits results[i].error.kind. Keep this
-// list in sync with the consumer (runbooks dispatcher).
+// Error-kind strings JS callers switch on.
 const (
 	KindOutputNotProduced    = "output_not_produced"
 	KindDependencyNotBundled = "dependency_not_in_bundle"
@@ -35,23 +29,22 @@ const (
 	KindStructural           = "structural"
 )
 
-// TemplateBundle is the JSON shape the JS bridge sends in: a flat
-// path→contents map of every bundle file, plus a producer-resolved
-// dependency tree. RootPath is the directory inside the bundle that holds
-// the parent template's boilerplate.yml — "." for root-anchored bundles.
+// TemplateBundle is the JSON shape the JS bridge sends in. RootPath is the
+// directory inside the bundle that holds the parent template's
+// boilerplate.yml — "." for root-anchored bundles.
 type TemplateBundle struct {
-	RootPath     string                          `json:"rootPath"`
 	Files        map[string]string               `json:"files"`
 	Dependencies map[string][]inputs.ResolvedDep `json:"dependencies,omitempty"`
+	RootPath     string                          `json:"rootPath"`
 }
 
 // Decoded is the validated, materialised form of TemplateBundle. The wire
 // `Files` map has been transcribed into FS so the original strings can
 // be reclaimed after DecodeBundle returns — meaningful at 500 KB bundles.
 type Decoded struct {
-	RootPath     string
 	Dependencies map[string][]inputs.ResolvedDep
 	FS           fs.FS
+	RootPath     string
 }
 
 type PerFileError struct {
@@ -62,9 +55,9 @@ type PerFileError struct {
 // PerFileResult is one entry in the bulk-render result array. Exactly one
 // of Content / Error is set; empty Content is a valid success.
 type PerFileResult struct {
+	Error   *PerFileError `json:"error,omitempty"`
 	Path    string        `json:"path"`
 	Content string        `json:"content,omitempty"`
-	Error   *PerFileError `json:"error,omitempty"`
 }
 
 type ResultPayload struct {
@@ -150,9 +143,7 @@ func DecodeBundle(bundleJSON string) (Decoded, error) {
 }
 
 // ParseAndLiftVars unmarshals a JSON object into a map and lifts top-level
-// "inputs" entries onto the root scope via LiftInputsToRoot. The two-step
-// is the shape every render handler needs; centralising it keeps the
-// three handlers in sync.
+// "inputs" entries onto the root scope.
 func ParseAndLiftVars(varsJSON string) (map[string]any, error) {
 	var raw map[string]any
 	if err := json.Unmarshal([]byte(varsJSON), &raw); err != nil {
@@ -177,19 +168,18 @@ func ParseOutputPaths(pathsJSON string) ([]string, error) {
 	return outputPaths, nil
 }
 
-// LiftInputsToRoot returns a new map that hoists every key under the
-// top-level "inputs" entry onto the root scope while preserving the
-// original "inputs" and "outputs" namespaces. Same contract the runbooks
-// consumer follows for cold render: `{{ .Foo }}` (legacy) and
-// `{{ .inputs.Foo }}` both reference the same value. Explicit root-scope
-// entries win over lifted ones (matching the variables package's
-// CLI-flag-over-var-file precedence).
+// LiftInputsToRoot hoists keys under "inputs" onto the root scope while
+// preserving the "inputs" and "outputs" namespaces. Explicit root-scope
+// entries win over lifted ones.
 func LiftInputsToRoot(raw map[string]any) map[string]any {
 	if raw == nil {
 		return map[string]any{}
 	}
 
 	inputsBlock, _ := raw["inputs"].(map[string]any)
+	if len(inputsBlock) == 0 {
+		return raw
+	}
 
 	out := make(map[string]any, len(raw)+len(inputsBlock))
 	maps.Copy(out, raw)

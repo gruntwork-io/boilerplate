@@ -15,12 +15,7 @@ import (
 	"github.com/gruntwork-io/boilerplate/variables"
 )
 
-// eachVarName is the parent-scope key that boilerplate sets to the current
-// for_each iteration value before rendering a dep's output-folder /
-// template-url / variables block. We mirror the constant here (rather than
-// importing templates/ which would create an import cycle) so the bundle
-// producer can construct an iteration-aware scope the same way the runtime
-// does.
+// eachVarName mirrors templates.eachVarName — keep in sync.
 const eachVarName = "__each__"
 
 // Bundle is a snapshot of every text file in the resolved boilerplate
@@ -36,8 +31,7 @@ const eachVarName = "__each__"
 // a template-url that uses {{ templateFolder }} resolves to an absolute
 // disk path that has no defensible meaning inside a virtual filesystem.
 type Bundle struct {
-	RootPath string            `json:"rootPath"`
-	Files    map[string]string `json:"files"`
+	Files map[string]string `json:"files"`
 
 	// Dependencies maps a parent template's bundle directory ("." for
 	// the root, or another ResolvedDep.BundlePath for nested deps) to
@@ -45,80 +39,47 @@ type Bundle struct {
 	// unresolvable local deps do NOT appear here; consumers must treat
 	// their omission as a hint to force cold render.
 	//
-	// Required for warm rendering of any template with deps. Older
-	// bundles (no Dependencies field) are produced by pre-fix CLIs; the
-	// consumer (RenderFileFromFS) refuses to render against them.
+	// Required for warm rendering of any template with deps.
+	// RenderFileFromFS rejects bundles missing this field.
 	Dependencies map[string][]ResolvedDep `json:"dependencies,omitempty"`
+
+	RootPath string `json:"rootPath"`
 }
 
-// ResolvedDep is the bundle-time-resolved location and output-folder for
-// a single declared dependency. The CLI computes these once during
-// collectBundle using the parent template's real absDir and writes them
-// into the bundle so no consumer ever has to re-render the dep's
-// `template-url` (which is meaningless inside an in-memory bundle).
-//
-// A dep declared with `for_each` (or `for_each_reference`) produces one
-// ResolvedDep entry per iteration. The entries share Name and BundlePath
-// but each carries its own pre-rendered OutputFolder and the Each value
-// the consumer must inject as `__each__` before evaluating that iteration's
-// dep-variable defaults.
+// ResolvedDep is the bundle-time-resolved location and output-folder for one
+// declared dependency. A for_each dep produces one entry per iteration,
+// sharing Name + BundlePath but with distinct OutputFolder + Each.
 type ResolvedDep struct {
 	Name string `json:"name"`
 
 	// BundlePath is the dep's directory inside Bundle.Files.
 	// Forward-slash, strictly-relative, validateBundlePath-clean.
-	// Stable regardless of what `{{ templateFolder }}` resolved to at
-	// bundle time.
 	BundlePath string `json:"bundlePath"`
 
-	// OutputFolder is the dep's `output-folder` field, pre-rendered
-	// against the parent scope at bundle time. Consumers use this to
-	// compute output paths for files emitted by this dep, exactly like
-	// the runtime does. For for_each deps, the parent scope used at
-	// render time included `__each__` set to Each below — matching the
-	// runtime's per-iteration scope.
+	// OutputFolder is pre-rendered against the parent scope at bundle time.
 	OutputFolder string `json:"outputFolder"`
 
-	// Each is the for_each iteration value carried into the child scope
-	// as `__each__`. Empty for non-for_each deps. The consumer must seed
-	// this into the parent scope under the `__each__` key before
-	// evaluating the dep's variables block — otherwise dep-variable
-	// defaults that reference `.__each__` will fail with a missing-key
-	// error.
+	// Each is the for_each iteration value the consumer must seed into the
+	// parent scope as `__each__` before evaluating dep-variable defaults.
+	// Empty for non-for_each deps.
 	Each string `json:"each,omitempty"`
 }
 
-// ErrRemoteDependencyInBundle is returned when BundleFromOptions
-// encounters a remote dependency URL during walking. Warm dispatch cannot
-// resolve remote deps (no go-getter in WASM), so the bundle is incomplete
-// and the caller should treat the affected outputs as cold-only. The
-// error is non-fatal at the bundle level — BundleFromOptions still returns
-// a Bundle containing whatever local deps it could resolve — but is
-// surfaced so the CLI can include it in the JSON output's existing
-// errors[] array.
+// ErrRemoteDependencyInBundle is non-fatal at the bundle level: the bundle
+// is returned with whatever local deps did resolve, and the caller treats
+// the affected outputs as cold-only.
 var ErrRemoteDependencyInBundle = errors.New("remote dependency cannot be bundled")
 
-// bundleDepsDir is the reserved directory name under which every
-// dependency's files are placed inside a bundle. Using a fixed prefix
-// (rather than the dep's rendered template-url) gives the bundle
-// path-context-free addressing — a parent's `{{ templateFolder }}/..`
-// no longer leaks into bundle keys.
-//
-// Templates with a real directory literally named `_deps` would have
-// been broken pre-fix anyway (their files would have collided with
-// nonsense produced by the old joinBundlePath logic); the producer
-// reserves the name and the producer is the only writer to the bundle.
+// bundleDepsDir is the reserved directory holding every dependency's files
+// inside a bundle. A fixed prefix keeps bundle keys free of any leakage
+// from `{{ templateFolder }}` in the parent.
 const bundleDepsDir = "_deps"
 
-// BundleFromOptions resolves the root template (via go-getter if needed)
-// and walks the dep tree, collecting every boilerplate.yml and every text
-// template file. Remote dependencies are NOT followed; they appear as
-// dangling references in the bundle. The caller can detect this by
-// inspecting BundleResult.RemoteDeps.
-//
-// Cleanup of any go-getter-fetched temp directories is performed before
-// this function returns — Files contains the file contents as strings,
-// not references to disk, so the bundle remains usable after cleanup.
+// BundleFromOptions resolves the root template (via go-getter if needed) and
+// walks the dep tree, collecting every boilerplate.yml and text template file.
+// Remote dependencies are not followed. Any go-getter temp directories are
+// cleaned up before returning; Files holds contents as strings, so the bundle
+// remains usable.
 func BundleFromOptions(ctx context.Context, l logging.Logger, opts *options.BoilerplateOptions) (*Bundle, []BundleNote, error) {
 	rootLoc, cleanup, err := resolveRootLocation(l, opts)
 	if cleanup != nil {
@@ -156,11 +117,8 @@ func BundleFromOptions(ctx context.Context, l logging.Logger, opts *options.Boil
 	return bundle, notes, nil
 }
 
-// BundleNote is a soft diagnostic surfaced during bundle collection.
-// Distinct from the analyzer's AnalysisError because the bundle's failure
-// modes are narrower: a dep was remote (skipped), a dep didn't resolve
-// locally, or a config failed to parse. The CLI maps these into the
-// existing inputs.AnalysisError shape so the JSON contract stays uniform.
+// BundleNote is a soft diagnostic surfaced during bundle collection. The CLI
+// maps these into inputs.AnalysisError so the JSON contract stays uniform.
 type BundleNote struct {
 	Kind    string
 	Name    string
@@ -219,13 +177,9 @@ func collectBundle(
 	// un-iterated entry, and the renderer later blows up evaluating any
 	// dep-block default that references `.__each__`.
 	//
-	// This is intentionally a leniency point: defaults that depend on
-	// runtime-only context (helpers like `{{ shell }}`, runtime-resolved
-	// `.outputs`, or user inputs that weren't supplied) are skipped so
-	// the bundle still gets built for everything else. Strict
-	// evaluation continues to happen at render time via the renderer's
-	// applyConfigDefaults.
-	scope := applyDefaultsForBundle(ctx, loc, cfg, vars)
+	// Lenient: defaults that depend on runtime-only context are skipped
+	// so the bundle still builds. Strict evaluation happens at render time.
+	scope, _ := applyConfigDefaults(ctx, loc, cfg, vars, true)
 
 	// Pre-render dep URLs so we can call resolver.Resolve below and so
 	// dependencySkipDirs sees the same string the analyzer does. The
@@ -332,6 +286,7 @@ func collectBundle(
 
 		if resolveErr != nil {
 			delete(visiting, cycleKey)
+
 			*notes = append(*notes, BundleNote{
 				Kind:    KindUnresolvableDependency,
 				Name:    dep.Name,
@@ -341,18 +296,11 @@ func collectBundle(
 			continue
 		}
 
-		// childBundleDir lives under the parent's bundle directory at a
-		// deterministic slug so the resulting key is stable and free of
-		// any path arithmetic against the rendered template-url.
 		childBundleDir := path.Join(parentBundleKey, bundleDepsDir, sanitizeDepName(dep.Name))
 
-		// Compute the dep's for_each iteration values (if any) against
-		// the parent scope. A dep with no iteration produces a single
-		// ResolvedDep entry with Each="" — the existing pre-fix shape.
-		// A dep with N iterations produces N entries sharing Name +
-		// BundlePath but each carrying its own pre-rendered
-		// OutputFolder and the Each value the renderer must seed as
-		// `__each__` before evaluating dep-variable defaults.
+		// A dep with no iteration produces a single ResolvedDep entry with
+		// Each=""; N iterations produce N entries sharing Name + BundlePath
+		// but each carrying its own OutputFolder + Each.
 		forEachItems, feErr := resolveForEach(ctx, loc, dep, scope)
 		if feErr != nil {
 			// A broken for_each expression is a soft failure: record it
@@ -427,57 +375,6 @@ func collectBundle(
 	}
 
 	return nil
-}
-
-// applyDefaultsForBundle layers a template's variable defaults onto the
-// caller-supplied vars map and returns the combined scope. It mirrors
-// the renderer's applyConfigDefaults but is intentionally lenient: a
-// default that fails to render (because it depends on runtime-only
-// helpers or vars the user hasn't supplied) is silently skipped rather
-// than aborting bundle collection. The renderer evaluates defaults
-// strictly at render time, so any value that survives until then is
-// the user's problem; what matters here is that simple, static defaults
-// — most importantly, list variables that feed `for_each_reference`
-// expressions in declared dependencies — are present in scope when
-// collectBundle processes deeper deps.
-//
-// The input map is not mutated. Caller-supplied entries always win over
-// the config's defaults (same precedence the runtime uses for
-// non-interactive renders).
-func applyDefaultsForBundle(ctx context.Context, loc templateLocation, cfg *config.BoilerplateConfig, parentVars map[string]any) map[string]any {
-	out := make(map[string]any, len(parentVars)+len(cfg.Variables))
-	maps.Copy(out, parentVars)
-
-	for _, v := range cfg.Variables {
-		if _, set := out[v.Name()]; set {
-			continue
-		}
-
-		def := v.Default()
-		if def == nil {
-			continue
-		}
-
-		rendered, err := renderDefaultValue(ctx, loc, def, out)
-		if err != nil {
-			// Lenient by design: this default depends on something the
-			// producer can't resolve (a runtime helper, an unset user
-			// var, etc.). Leaving the variable unset is correct — the
-			// renderer will re-evaluate at render time and either
-			// succeed (if it has more context) or surface the error
-			// then.
-			continue
-		}
-
-		typed, typeErr := variables.ConvertType(rendered, v)
-		if typeErr != nil {
-			continue
-		}
-
-		out[v.Name()] = typed
-	}
-
-	return out
 }
 
 // resolveForEach computes the for_each iteration list for a dep, mirroring

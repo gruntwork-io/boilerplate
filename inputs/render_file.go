@@ -54,24 +54,14 @@ var (
 // written, and no I/O occurs outside rootFS. It is the WASM warm-dispatch
 // counterpart to running `boilerplate template` against a single file.
 //
-// depsIndex is the bundle's pre-computed dependency layout (see
-// Bundle.Dependencies). It MUST be supplied. Without it, the consumer
-// would have to re-render each dep's `template-url` against an in-memory
-// fs where helpers like `{{ templateFolder }}` are meaningless — which is
-// the precise bug this signature change exists to prevent. Older bundles
-// (pre-fix CLIs) won't carry a Dependencies field; the consumer rejects
-// them with ErrDependencyNotInBundle so callers route to cold render.
-// Templates with no deps may pass an empty map; nil is reserved for the
-// "old bundle" error path.
+// depsIndex is the bundle's pre-computed dependency layout. It MUST be
+// non-nil — helpers like `{{ templateFolder }}` are meaningless when re-
+// rendering a dep's `template-url` against an in-memory fs. An empty map
+// is fine for templates with no deps; nil yields ErrDependencyNotInBundle.
 //
-// userVars is the merged scope supplied by the caller. For nested deps it
-// is layered onto each dep's declared defaults (user wins). A var
-// referenced by a template but absent from both userVars and any dep
-// default produces a render error via missingkey=error.
-//
-// On success it returns the rendered file contents. Failure modes are
-// signaled via the sentinel errors declared above and may be checked with
-// errors.Is.
+// userVars is layered onto each dep's declared defaults (user wins). A var
+// referenced by a template but absent from both produces a render error
+// via missingkey=error.
 func RenderFileFromFS(ctx context.Context, rootFS fs.FS, rootPath, outputPath string, userVars map[string]any, depsIndex map[string][]ResolvedDep) (string, error) {
 	if rootPath == "" {
 		rootPath = "."
@@ -79,11 +69,11 @@ func RenderFileFromFS(ctx context.Context, rootFS fs.FS, rootPath, outputPath st
 
 	outputPath = path.Clean(strings.TrimLeft(strings.TrimSpace(outputPath), "/"))
 	if outputPath == "" || outputPath == "." {
-		return "", fmt.Errorf("outputPath must be a non-empty relative path")
+		return "", errors.New("outputPath must be a non-empty relative path")
 	}
 
 	if depsIndex == nil {
-		return "", fmt.Errorf("%w: bundle has no Dependencies index; re-produce the bundle with `boilerplate inputs map --include-bundle` from a newer CLI", ErrDependencyNotInBundle)
+		return "", fmt.Errorf("%w: bundle has no Dependencies index", ErrDependencyNotInBundle)
 	}
 
 	rootLoc := templateLocation{fsys: rootFS, dir: rootPath}
@@ -102,22 +92,9 @@ func RenderFileFromFS(ctx context.Context, rootFS fs.FS, rootPath, outputPath st
 	return rendered, nil
 }
 
-// renderFileWalk recursively descends from loc, building scope and looking
-// for the source file that produces outputPath. Returns the rendered
-// content if outputPath is owned by this template or any of its
-// descendants. The found flag distinguishes "this subtree produced
-// outputPath and here's the bytes" from "this subtree did not produce
-// outputPath; keep searching".
-//
-// outputPath is the canonical, slash-separated path relative to the root
-// output root. currentOutputPath tracks where this template's output lands
-// inside that root ("." for the root template, the dep's resolved
-// output-folder for deps). currentBundlePath tracks the parent key into
-// depsIndex — "." at the root, otherwise the previous dep's BundlePath.
-//
-// vars is the scope for THIS template — i.e., the parent's scope with this
-// template's variable defaults already applied. The first call (root) just
-// gets userVars; recursive calls layer on each dep's resolution.
+// renderFileWalk descends from loc looking for the source file that produces
+// outputPath. currentOutputPath is where this template's output lands;
+// currentBundlePath is the parent key into depsIndex.
 func renderFileWalk(
 	ctx context.Context,
 	loc templateLocation,
@@ -133,11 +110,7 @@ func renderFileWalk(
 		return "", false, err
 	}
 
-	// Apply this template's own boilerplate.yml defaults to the scope.
-	// Non-interactive semantics: user-supplied wins, otherwise the default
-	// is used. Variables with neither produce a missing-key render error
-	// downstream — same as `boilerplate template --non-interactive`.
-	scope, err := applyConfigDefaults(ctx, loc, cfg, vars)
+	scope, err := applyConfigDefaults(ctx, loc, cfg, vars, false)
 	if err != nil {
 		return "", false, err
 	}
@@ -147,11 +120,8 @@ func renderFileWalk(
 		return "", false, err
 	}
 
-	// Process this template's skip_files. We need it both to verify
-	// outputPath isn't excluded and to skip source files that would not be
-	// produced. An unrenderable skip rule could change which file (if
-	// any) we treat as the owner of outputPath, so surface every failure
-	// rather than the first.
+	// Surface every skip-rule failure rather than the first: an unrenderable
+	// rule could change which file we treat as owning outputPath.
 	skipFilter, skipErrs := processSkipFiles(ctx, loc, cfg.SkipFiles, scope)
 	if len(skipErrs) > 0 {
 		msgs := make([]string, len(skipErrs))
@@ -162,15 +132,8 @@ func renderFileWalk(
 		return "", false, fmt.Errorf("skip_files processing failed: %s", strings.Join(msgs, "; "))
 	}
 
-	// Skip-dirs are computed from the deps index's BundlePath entries.
-	// Each dep's files live under that path inside loc.fsys; the walker
-	// must avoid descending into them so they don't bleed into the
-	// parent's owns-this-path determination.
 	skipDirs := bundleDepSkipDirs(depsIndex[currentBundlePath])
 
-	// First, see if this template owns outputPath. Walk its files (skipping
-	// dep subtrees) and check each one's computed output path against
-	// outputPath. If we find a match, render and return.
 	rendered, ownedHere, err := findAndRenderInThisTemplate(ctx, loc, scope, partials, skipFilter, skipDirs, currentOutputPath, outputPath)
 	if err != nil {
 		return "", false, err
@@ -198,22 +161,13 @@ func renderFileWalk(
 			continue
 		}
 
-		// A for_each dep produces N ResolvedDep entries (same Name +
-		// BundlePath, different OutputFolder + Each); a normal dep
-		// produces one. Iterate every matching entry so each iteration's
-		// scope is built with __each__ seeded into the parent — the
-		// runtime semantic the WASM path was previously missing.
+		// A for_each dep produces N ResolvedDep entries (same Name + BundlePath,
+		// different OutputFolder + Each); a normal dep produces one.
 		matched := lookupDeps(depsIndex, currentBundlePath, dep.Name)
 		if len(matched) == 0 {
-			// Producer didn't bundle this dep. Two reasons it could be
-			// missing: (a) it was a remote URL or otherwise unresolvable
-			// at bundle time, (b) the bundle predates this fix. Either
-			// way the consumer's contract is to surface
-			// ErrDependencyNotInBundle so the dispatcher routes to cold.
-			// Skip to the next sibling — a later dep may still own
-			// outputPath; if none does we return ErrOutputNotProduced
-			// from the top of RenderFileFromFS, which the dispatcher
-			// also treats as a fall-through signal.
+			// Producer didn't bundle this dep (e.g. unresolvable remote URL).
+			// A later sibling may still own outputPath; if none does the top
+			// caller returns ErrOutputNotProduced.
 			continue
 		}
 
@@ -456,6 +410,7 @@ func findAndRenderInThisTemplate(
 // produce it warm, fall back to cold" and ErrDynamicFilename triggers that.
 func filenameLikelyMatches(unrenderedRel, currentOutputPath, outputPath string) bool {
 	target := outputPath
+
 	if currentOutputPath != "" && currentOutputPath != "." {
 		prefix := strings.TrimSuffix(currentOutputPath, "/") + "/"
 		if !strings.HasPrefix(outputPath, prefix) {
@@ -470,21 +425,15 @@ func filenameLikelyMatches(unrenderedRel, currentOutputPath, outputPath string) 
 	return strings.Count(unrenderedRel, "/") == strings.Count(target, "/")
 }
 
-// applyConfigDefaults applies a boilerplate.yml's declared variable
-// defaults to the parent scope, mirroring the non-interactive branch of
-// config.GetVariablesWithContext. The result is a fresh map; the input is
-// not mutated.
+// applyConfigDefaults applies a boilerplate.yml's variable defaults to the
+// parent scope. The result is a fresh map; the input is not mutated.
+// Caller-supplied entries win; variables with no value AND no default are
+// left unset and produce missing-key errors downstream if referenced.
 //
-// Precedence (highest first):
-//  1. Value already in parentVars (user-supplied or inherited).
-//  2. The variable's `default` field, rendered against the working scope.
-//
-// Variables with no value AND no default are left unset; a downstream
-// render that references them will fail with the usual missing-key error.
-// We intentionally don't error here — a variable may be declared in the
-// config but unused by the source file we're about to render, and erroring
-// on every such case would make warm dispatch fragile.
-func applyConfigDefaults(ctx context.Context, loc templateLocation, cfg *config.BoilerplateConfig, parentVars map[string]any) (map[string]any, error) {
+// If lenient is true, defaults that fail to render or type-convert are
+// silently dropped (used during bundle collection where the producer
+// may not have enough context to evaluate every default).
+func applyConfigDefaults(ctx context.Context, loc templateLocation, cfg *config.BoilerplateConfig, parentVars map[string]any, lenient bool) (map[string]any, error) {
 	out := make(map[string]any, len(parentVars)+len(cfg.Variables))
 
 	maps.Copy(out, parentVars)
@@ -499,16 +448,21 @@ func applyConfigDefaults(ctx context.Context, loc templateLocation, cfg *config.
 			continue
 		}
 
-		// Render templated defaults against the scope built so far. Match
-		// the runtime semantics where defaults can interpolate previously
-		// declared variables.
 		resolved, err := renderDefaultValue(ctx, loc, def, out)
 		if err != nil {
+			if lenient {
+				continue
+			}
+
 			return nil, fmt.Errorf("rendering default for variable %q: %w", v.Name(), err)
 		}
 
 		typed, typeErr := variables.ConvertType(resolved, v)
 		if typeErr != nil {
+			if lenient {
+				continue
+			}
+
 			return nil, fmt.Errorf("converting default for variable %q: %w", v.Name(), typeErr)
 		}
 

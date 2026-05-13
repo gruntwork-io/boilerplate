@@ -37,6 +37,15 @@ type inputsMapResult struct {
 
 	Sources map[string]string `json:"sources"`
 
+	// Bundle is populated only when --include-bundle is set. It's
+	// optional so existing test cases that don't pass the flag can
+	// continue decoding the response into this struct.
+	Bundle *struct {
+		Files        map[string]string               `json:"files"`
+		Dependencies map[string][]inputs.ResolvedDep `json:"dependencies"`
+		RootPath     string                          `json:"rootPath"`
+	} `json:"bundle,omitempty"`
+
 	Errors []struct {
 		Kind     string `json:"kind"`
 		Template string `json:"template,omitempty"`
@@ -44,15 +53,6 @@ type inputsMapResult struct {
 		File     string `json:"file,omitempty"`
 		Message  string `json:"message,omitempty"`
 	} `json:"errors"`
-
-	// Bundle is populated only when --include-bundle is set. It's
-	// optional so existing test cases that don't pass the flag can
-	// continue decoding the response into this struct.
-	Bundle *struct {
-		RootPath     string                          `json:"rootPath"`
-		Files        map[string]string               `json:"files"`
-		Dependencies map[string][]inputs.ResolvedDep `json:"dependencies"`
-	} `json:"bundle,omitempty"`
 }
 
 // TestInputsMap_TransitiveFixture drives the `boilerplate inputs map`
@@ -625,7 +625,7 @@ func TestInputsMap_RenderFileRejectsOldBundles(t *testing.T) {
 
 	_, err := inputs.RenderFileFromFS(context.Background(), mfs, ".", "hello.txt", map[string]any{}, nil)
 	require.Error(t, err)
-	assert.True(t, errors.Is(err, inputs.ErrDependencyNotInBundle),
+	assert.ErrorIs(t, err, inputs.ErrDependencyNotInBundle,
 		"nil deps index must trip the too-old-bundle guard; got: %v", err)
 }
 

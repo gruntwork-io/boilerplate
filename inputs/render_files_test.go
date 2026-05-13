@@ -2,7 +2,6 @@ package inputs //nolint:testpackage
 
 import (
 	"context"
-	"errors"
 	"testing"
 	"testing/fstest"
 
@@ -105,9 +104,9 @@ variables:
 	assert.Equal(t, "broken.txt", got[1].Path)
 	// The broken-template error is wrapped, not one of the routing
 	// sentinels — the WASM boundary classifies it as "render".
-	assert.False(t, errors.Is(got[1].Err, ErrOutputNotProduced))
-	assert.False(t, errors.Is(got[1].Err, ErrDynamicFilename))
-	assert.False(t, errors.Is(got[1].Err, ErrSkipFilesExcluded))
+	require.NotErrorIs(t, got[1].Err, ErrOutputNotProduced)
+	require.NotErrorIs(t, got[1].Err, ErrDynamicFilename)
+	require.NotErrorIs(t, got[1].Err, ErrSkipFilesExcluded)
 
 	require.NoError(t, got[2].Err)
 	assert.Equal(t, "bye, alice", got[2].Content)
@@ -159,7 +158,7 @@ func TestRenderFilesFromFS_UnknownPathInlineNotAbort(t *testing.T) {
 	assert.Equal(t, "real", got[0].Content)
 
 	require.Error(t, got[1].Err)
-	assert.True(t, errors.Is(got[1].Err, ErrOutputNotProduced),
+	assert.ErrorIs(t, got[1].Err, ErrOutputNotProduced,
 		"unknown sibling must produce ErrOutputNotProduced inline; got: %v", got[1].Err)
 }
 
@@ -189,7 +188,7 @@ skip_files:
 	assert.Equal(t, `region = "us-east-1"`, got[0].Content)
 
 	require.Error(t, got[1].Err)
-	assert.True(t, errors.Is(got[1].Err, ErrSkipFilesExcluded),
+	assert.ErrorIs(t, got[1].Err, ErrSkipFilesExcluded,
 		"excluded file must produce ErrSkipFilesExcluded inline; got: %v", got[1].Err)
 }
 

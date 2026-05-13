@@ -63,9 +63,6 @@ Soft errors (e.g., a referenced variable that is not declared in any
 boilerplate.yml in scope) appear in the "errors" array and do not change the
 exit code.`
 
-// newInputsCommand returns the "inputs" command with its "map" subcommand.
-// It is exported only via CreateBoilerplateCli; defining it here keeps the
-// subcommand wiring out of the main CLI file.
 func newInputsCommand() *cli.Command {
 	return &cli.Command{
 		Name:  "inputs",
@@ -100,10 +97,7 @@ func newInputsCommand() *cli.Command {
 	}
 }
 
-// runInputsMap is the action handler for `boilerplate inputs map`. Tests
-// inject stdout/stderr by setting app.Writer / app.ErrWriter before calling
-// app.Run, which is why output routes through c.App rather than os.Stdout
-// directly.
+// runInputsMap routes output through c.App so tests can inject stdout/stderr.
 func runInputsMap(c *cli.Context) error {
 	stdout := io.Writer(os.Stdout)
 	if c.App != nil && c.App.Writer != nil {
@@ -152,21 +146,9 @@ func runInputsMapTo(c *cli.Context, stdout, stderr io.Writer) error {
 		return cli.Exit("", 1)
 	}
 
-	// When --include-bundle is set, re-walk the resolved tree to collect
-	// file contents and emit them in a new `bundle` field. The bundle
-	// walk is independent of the analyzer pass: it would be cheaper to
-	// do both in one traversal, but keeping them decoupled avoids
-	// destabilizing the analyzer's existing contract (Result.Sources,
-	// Errors composition, etc.). For typical templates the second walk
-	// is negligible compared to go-getter download time.
 	var bundle *inputs.Bundle
 
 	if c.Bool(options.OptIncludeBundle) {
-		// Use a fresh opts for the bundle walk: FromOptions has by now
-		// populated opts.TemplateFolder with the resolved root (so
-		// resolveRootLocation inside BundleFromOptions takes the fast
-		// path for an already-local folder rather than re-running
-		// go-getter).
 		b, notes, bundleErr := inputs.BundleFromOptions(ctx, logger, opts)
 		if bundleErr != nil {
 			writeJSONError(stdout, inputs.KindParse, bundleErr)
@@ -175,9 +157,6 @@ func runInputsMapTo(c *cli.Context, stdout, stderr io.Writer) error {
 
 		bundle = b
 
-		// Surface bundle notes via the existing errors[] array. They
-		// share the same Kind vocabulary, so consumers don't need to
-		// learn a second error shape.
 		for _, n := range notes {
 			result.Errors = append(result.Errors, inputs.AnalysisError{
 				Kind:    n.Kind,
@@ -190,11 +169,6 @@ func runInputsMapTo(c *cli.Context, stdout, stderr io.Writer) error {
 	enc := json.NewEncoder(stdout)
 	enc.SetIndent("", "  ")
 
-	// When the bundle is requested, encode an envelope around result so
-	// the existing fields remain at the top level (back-compat for any
-	// consumer that doesn't read `bundle`). Without --include-bundle we
-	// emit the bare result, preserving the byte-for-byte pre-change
-	// output.
 	if bundle != nil {
 		envelope := struct {
 			*inputs.Result

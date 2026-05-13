@@ -52,12 +52,14 @@ func TestLiftInputsToRoot(t *testing.T) {
 
 	t.Run("no_inputs_block_is_passthrough", func(t *testing.T) {
 		t.Parallel()
+
 		got := bundlewasm.LiftInputsToRoot(map[string]any{"A": "1"})
 		assert.Equal(t, map[string]any{"A": "1"}, got)
 	})
 
 	t.Run("inputs_block_is_lifted", func(t *testing.T) {
 		t.Parallel()
+
 		got := bundlewasm.LiftInputsToRoot(map[string]any{
 			"inputs": map[string]any{"Region": "us-east-1"},
 		})
@@ -66,6 +68,7 @@ func TestLiftInputsToRoot(t *testing.T) {
 
 	t.Run("root_wins_over_lifted", func(t *testing.T) {
 		t.Parallel()
+
 		got := bundlewasm.LiftInputsToRoot(map[string]any{
 			"Region": "explicit",
 			"inputs": map[string]any{"Region": "lifted"},
@@ -94,6 +97,7 @@ func TestValidateBundlePath(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
+
 			err := bundlewasm.ValidateBundlePath(tc.path)
 			if tc.wantErr == "" {
 				assert.NoError(t, err)
@@ -113,6 +117,7 @@ func TestParseAndLiftVars(t *testing.T) {
 
 	t.Run("rejects_invalid_json", func(t *testing.T) {
 		t.Parallel()
+
 		_, err := bundlewasm.ParseAndLiftVars(`not json`)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to parse variables JSON")
@@ -120,6 +125,7 @@ func TestParseAndLiftVars(t *testing.T) {
 
 	t.Run("lifts_inputs_block", func(t *testing.T) {
 		t.Parallel()
+
 		got, err := bundlewasm.ParseAndLiftVars(`{"inputs":{"Region":"us-east-1"}}`)
 		require.NoError(t, err)
 		assert.Equal(t, "us-east-1", got["Region"])
@@ -133,6 +139,7 @@ func TestParseOutputPaths(t *testing.T) {
 
 	t.Run("rejects_invalid_json", func(t *testing.T) {
 		t.Parallel()
+
 		_, err := bundlewasm.ParseOutputPaths(`not json`)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to parse outputPaths JSON")
@@ -140,6 +147,7 @@ func TestParseOutputPaths(t *testing.T) {
 
 	t.Run("rejects_empty_array", func(t *testing.T) {
 		t.Parallel()
+
 		_, err := bundlewasm.ParseOutputPaths(`[]`)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "non-empty array")
@@ -147,6 +155,7 @@ func TestParseOutputPaths(t *testing.T) {
 
 	t.Run("accepts_populated_array", func(t *testing.T) {
 		t.Parallel()
+
 		got, err := bundlewasm.ParseOutputPaths(`["a.txt","b.txt"]`)
 		require.NoError(t, err)
 		assert.Equal(t, []string{"a.txt", "b.txt"}, got)

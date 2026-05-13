@@ -160,7 +160,7 @@ variables:
 // iteration so the delta is visible.
 func BenchmarkPreparedBundle_RepeatedRenders(b *testing.B) {
 	const (
-		fileCount = 64
+		fileCount    = 64
 		pathsPerCall = 9
 	)
 
@@ -204,7 +204,7 @@ func BenchmarkPreparedBundle_RepeatedRenders(b *testing.B) {
 // pair will catch it.
 func BenchmarkRenderFilesFromFS_RepeatedRenders(b *testing.B) {
 	const (
-		fileCount = 64
+		fileCount    = 64
 		pathsPerCall = 9
 	)
 

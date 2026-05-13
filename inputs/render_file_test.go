@@ -2,7 +2,6 @@ package inputs //nolint:testpackage
 
 import (
 	"context"
-	"errors"
 	"io/fs"
 	"maps"
 	"path"
@@ -82,7 +81,7 @@ func collectDepsIndex(t *testing.T, fsys fstest.MapFS, parentDir string, parentS
 
 	// Apply this template's variable defaults so deeper for_each_reference
 	// lookups can see list variables declared in *this* boilerplate.yml.
-	scope := applyDefaultsForBundle(context.Background(), templateLocation{fsys: fsys, dir: parentDir}, cfg, parentScope)
+	scope, _ := applyConfigDefaults(context.Background(), templateLocation{fsys: fsys, dir: parentDir}, cfg, parentScope, true)
 
 	parentKey := parentDir
 	if parentKey == "" || parentKey == "." {
@@ -312,7 +311,7 @@ func TestRenderFileFromFS_UnknownOutputPath(t *testing.T) {
 
 	_, err := renderFile(t, fsys, "does-not-exist.txt", map[string]any{})
 	require.Error(t, err)
-	assert.True(t, errors.Is(err, ErrOutputNotProduced), "expected ErrOutputNotProduced, got: %v", err)
+	assert.ErrorIs(t, err, ErrOutputNotProduced, "expected ErrOutputNotProduced, got: %v", err)
 }
 
 // TestRenderFileFromFS_MissingLocalDep verifies the renderer's behavior
@@ -337,7 +336,7 @@ dependencies:
 
 	_, err := renderFile(t, fsys, "missing/anything.txt", map[string]any{})
 	require.Error(t, err)
-	assert.True(t, errors.Is(err, ErrOutputNotProduced), "expected ErrOutputNotProduced for a dep the producer didn't bundle, got: %v", err)
+	assert.ErrorIs(t, err, ErrOutputNotProduced, "expected ErrOutputNotProduced for a dep the producer didn't bundle, got: %v", err)
 }
 
 // TestRenderFileFromFS_RemoteDepURL verifies remote URLs are omitted
@@ -358,7 +357,7 @@ dependencies:
 
 	_, err := renderFile(t, fsys, "remote/file.txt", map[string]any{})
 	require.Error(t, err)
-	assert.True(t, errors.Is(err, ErrOutputNotProduced), "expected ErrOutputNotProduced for a remote dep absent from the bundle, got: %v", err)
+	assert.ErrorIs(t, err, ErrOutputNotProduced, "expected ErrOutputNotProduced for a remote dep absent from the bundle, got: %v", err)
 }
 
 // TestRenderFileFromFS_DynamicFilename verifies that a file whose name
@@ -382,7 +381,7 @@ variables:
 	// resolve which output path it should produce.
 	_, err := renderFile(t, fsys, "bad-{{.tf", map[string]any{"Name": "alice"})
 	require.Error(t, err)
-	assert.True(t, errors.Is(err, ErrDynamicFilename), "expected ErrDynamicFilename, got: %v", err)
+	assert.ErrorIs(t, err, ErrDynamicFilename, "expected ErrDynamicFilename, got: %v", err)
 }
 
 // TestRenderFileFromFS_SkipFilesExcluded verifies that requesting a file
@@ -404,7 +403,7 @@ skip_files:
 
 	_, err := renderFile(t, fsys, "secrets.txt", map[string]any{"Region": "us-east-1"})
 	require.Error(t, err)
-	assert.True(t, errors.Is(err, ErrSkipFilesExcluded), "expected ErrSkipFilesExcluded, got: %v", err)
+	assert.ErrorIs(t, err, ErrSkipFilesExcluded, "expected ErrSkipFilesExcluded, got: %v", err)
 }
 
 // TestRenderFileFromFS_SkippedDepNotEntered verifies the runtime semantic
@@ -427,7 +426,7 @@ dependencies:
 
 	_, err := renderFile(t, fsys, "optional/x.txt", map[string]any{})
 	require.Error(t, err)
-	assert.True(t, errors.Is(err, ErrOutputNotProduced), "expected ErrOutputNotProduced (because skipped), got: %v", err)
+	assert.ErrorIs(t, err, ErrOutputNotProduced, "expected ErrOutputNotProduced (because skipped), got: %v", err)
 }
 
 // TestRenderFileFromFS_HooksAreNotExecuted verifies the spec contract that
@@ -553,7 +552,7 @@ func TestRenderFileFromFS_NilDepsIndexRejectsOldBundles(t *testing.T) {
 
 	_, err := RenderFileFromFS(context.Background(), fsys, ".", "hello.txt", map[string]any{}, nil)
 	require.Error(t, err)
-	assert.True(t, errors.Is(err, ErrDependencyNotInBundle),
+	assert.ErrorIs(t, err, ErrDependencyNotInBundle,
 		"a nil depsIndex must produce ErrDependencyNotInBundle so consumers route to cold; got: %v", err)
 }
 
@@ -656,8 +655,8 @@ dependencies:
 	// sentinel errors.
 	_, err := renderFile(t, fsys, "dep/out.txt", map[string]any{"Shared": "value"})
 	require.Error(t, err)
-	assert.False(t, errors.Is(err, ErrOutputNotProduced))
-	assert.False(t, errors.Is(err, ErrSkipFilesExcluded))
+	require.NotErrorIs(t, err, ErrOutputNotProduced)
+	require.NotErrorIs(t, err, ErrSkipFilesExcluded)
 }
 
 // TestRenderFileFromFS_ForEachSeedsEachInDepVariableDefaults is the
