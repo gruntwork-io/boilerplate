@@ -1,0 +1,12 @@
+# Templates and their rendered output are compared byte-for-byte in tests.
+# Windows checkout with core.autocrlf=true would otherwise rewrite LF to CRLF
+# and break those comparisons.
+* text eol=lf
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.tar binary
+*.gz binary
