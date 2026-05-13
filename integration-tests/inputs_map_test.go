@@ -640,7 +640,7 @@ func newCLIForErrTest() *urfavecli.App {
 	return app
 }
 
-// TestInputsMap_InvalidVarSyntaxIsHardError pins that an unparseable
+// TestInputsMap_InvalidVarSyntaxIsHardError pins that an unparsable
 // --var lands a JSON error doc with kind=parse_args on stdout and a
 // non-zero exit. The CLI promises this for tooling that consumes the
 // error envelope.
@@ -672,7 +672,7 @@ func TestInputsMap_InvalidVarSyntaxIsHardError(t *testing.T) {
 }
 
 // TestInputsMap_MalformedVarFileIsHardError pins that a --var-file
-// pointing at unparseable YAML lands the same parse_args envelope.
+// pointing at unparsable YAML lands the same parse_args envelope.
 func TestInputsMap_MalformedVarFileIsHardError(t *testing.T) {
 	t.Parallel()
 
