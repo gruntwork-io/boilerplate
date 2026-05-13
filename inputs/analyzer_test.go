@@ -2,12 +2,18 @@ package inputs //nolint:testpackage
 
 import (
 	"context"
+	"io"
+	"os"
+	"path/filepath"
 	"sort"
 	"testing"
 	"testing/fstest"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/gruntwork-io/boilerplate/options"
+	"github.com/gruntwork-io/boilerplate/pkg/logging"
 )
 
 // runFS is a small helper: it invokes FromFS against an in-memory FS and
@@ -16,6 +22,42 @@ func runFS(t *testing.T, fsys fstest.MapFS, vars map[string]any) *Result {
 	t.Helper()
 
 	res, err := FromFS(context.Background(), fsys, ".", vars)
+	require.NoError(t, err)
+
+	return res
+}
+
+// writeOSTree materializes a fstest.MapFS-style tree to disk under a
+// t.TempDir() and returns the directory. Used by OS-mode tests that need to
+// exercise FromOptions / osResolver (which require real on-disk paths).
+func writeOSTree(t *testing.T, files map[string]string) string {
+	t.Helper()
+
+	dir := t.TempDir()
+
+	for relPath, contents := range files {
+		full := filepath.Join(dir, filepath.FromSlash(relPath))
+		require.NoError(t, os.MkdirAll(filepath.Dir(full), 0o755))
+		require.NoError(t, os.WriteFile(full, []byte(contents), 0o644))
+	}
+
+	return dir
+}
+
+// runOS is the OS-mode counterpart to runFS.
+func runOS(t *testing.T, root string, vars map[string]any) *Result {
+	t.Helper()
+
+	opts := &options.BoilerplateOptions{
+		TemplateFolder: root,
+		Vars:           vars,
+		NonInteractive: true,
+		NoHooks:        true,
+		NoShell:        true,
+		OnMissingKey:   options.ZeroValue,
+	}
+
+	res, err := FromOptions(context.Background(), logging.New(io.Discard, logging.LevelError), opts)
 	require.NoError(t, err)
 
 	return res
@@ -352,6 +394,84 @@ dependencies:
 
 	require.Len(t, cycleErrs, 1, "expected exactly one cycle error; got all errors: %+v", res.Errors)
 	assert.Equal(t, "aself", cycleErrs[0].Name, "cycle error should name the offending dependency")
+}
+
+// TestFromOptions_NestedDepsSameRelativeURLAreNotACycle pins the
+// regression for the OS-mode cycle-key bug: in OS mode loc.dir is always
+// "." (osResolver re-roots os.DirFS at each child's absolute path), so a
+// cycle key built from loc.dir + renderedURL collapses two structurally
+// distinct on-disk paths into the same key. The fix keys on the parent's
+// absDir (or the resolved absolute path) so a child whose template-url
+// happens to share its parent's relative path is not a cycle.
+func TestFromOptions_NestedDepsSameRelativeURLAreNotACycle(t *testing.T) {
+	t.Parallel()
+
+	// Layout:
+	//   <root>/boilerplate.yml         declares dep "./modules/web"
+	//   <root>/modules/web/boilerplate.yml declares dep "./modules/web"
+	//   <root>/modules/web/modules/web/boilerplate.yml  (leaf)
+	// Every level uses the relative URL "./modules/web", but the absolute
+	// paths are all different, so this is NOT a cycle.
+	root := writeOSTree(t, map[string]string{
+		"boilerplate.yml": `
+dependencies:
+  - name: web
+    template-url: ./modules/web
+    output-folder: ./modules/web
+`,
+		"modules/web/boilerplate.yml": `
+dependencies:
+  - name: web
+    template-url: ./modules/web
+    output-folder: ./modules/web
+`,
+		"modules/web/modules/web/boilerplate.yml": `
+variables:
+  - name: Greeting
+`,
+		"modules/web/modules/web/hello.txt": `{{ .Greeting }}`,
+	})
+
+	res := runOS(t, root, map[string]any{})
+
+	for _, e := range res.Errors {
+		assert.NotEqual(t, "cycle", e.Kind, "two structurally distinct on-disk paths sharing a relative template-url must not be a cycle: %+v", e)
+	}
+}
+
+// TestFromOptions_TrueCycleStillDetected pins the OS-mode counterpart to
+// TestFromFS_CycleDetection so the cycle-key fix is confirmed not to
+// regress true-cycle detection.
+func TestFromOptions_TrueCycleStillDetected(t *testing.T) {
+	t.Parallel()
+
+	root := writeOSTree(t, map[string]string{
+		"boilerplate.yml": `
+dependencies:
+  - name: a
+    template-url: ./a
+    output-folder: ./a
+`,
+		"a/boilerplate.yml": `
+dependencies:
+  - name: aself
+    template-url: .
+    output-folder: ./self
+`,
+	})
+
+	res := runOS(t, root, map[string]any{})
+
+	var cycleErrs []AnalysisError
+
+	for _, e := range res.Errors {
+		if e.Kind == "cycle" {
+			cycleErrs = append(cycleErrs, e)
+		}
+	}
+
+	require.Len(t, cycleErrs, 1, "expected exactly one cycle error in OS mode; got: %+v", res.Errors)
+	assert.Equal(t, "aself", cycleErrs[0].Name)
 }
 
 // TestFromFS_SiblingDepsSameURLAreNotACycle pins the regression for the
@@ -816,10 +936,111 @@ func TestFinalizeResult_DeterministicOrdering(t *testing.T) {
 	assert.Equal(t, []string{"a", "z"}, kinds)
 }
 
+// TestFromFS_EmptyFileTreatedAsBinary pins parity with the runtime
+// fileutil.IsTextFile, which returns false for empty files. Empty bodies
+// take the binary branch in the analyzer, which still picks up filename
+// refs — so an empty file at a templated path is still tracked under
+// the input that drives the filename. Empty files with static paths are
+// correctly absent from result.Files (no input affects them).
+func TestFromFS_EmptyFileTreatedAsBinary(t *testing.T) {
+	t.Parallel()
+
+	fsys := fstest.MapFS{
+		"boilerplate.yml": &fstest.MapFile{Data: []byte(`
+variables:
+  - name: Pkg
+`)},
+		// Empty body, templated path: must still appear under the rendered
+		// path with Pkg as a path ref.
+		"{{.Pkg}}/__init__.py": &fstest.MapFile{Data: []byte(``)},
+	}
+
+	res := runFS(t, fsys, map[string]any{"Pkg": "mypkg"})
+
+	assert.Contains(t, res.Inputs[".:Pkg"].Files, "mypkg/__init__.py",
+		"empty file with templated path should still record the filename ref")
+	assert.Contains(t, res.Files, "mypkg/__init__.py",
+		"empty file with templated path should appear in the inverse files index")
+	assert.Empty(t, res.Errors, "empty file should not produce a parse error")
+}
+
+// TestFromFS_PartialsCrossReference pins the convergence of two partials
+// that invoke each other. expandPartialRefs mutates the per-template ref
+// sets in place during iteration, so a cycle in the invocation graph must
+// not loop forever — both partials should end up with the union of refs
+// across both bodies.
+func TestFromFS_PartialsCrossReference(t *testing.T) {
+	t.Parallel()
+
+	fsys := fstest.MapFS{
+		"boilerplate.yml": &fstest.MapFile{Data: []byte(`
+variables:
+  - name: Foo
+  - name: Bar
+partials:
+  - _partials/*.tmpl
+`)},
+		// "a" references Foo and invokes "b"; "b" references Bar and invokes
+		// "a". After convergence both partials should reach both vars.
+		"_partials/a.tmpl": &fstest.MapFile{Data: []byte(`{{ define "a" }}{{ .Foo }}{{ template "b" . }}{{ end }}`)},
+		"_partials/b.tmpl": &fstest.MapFile{Data: []byte(`{{ define "b" }}{{ .Bar }}{{ template "a" . }}{{ end }}`)},
+		// main invokes "a" only, but should still see both Foo and Bar.
+		"main.txt": &fstest.MapFile{Data: []byte(`{{ template "a" . }}`)},
+	}
+
+	res := runFS(t, fsys, map[string]any{})
+
+	for _, e := range res.Errors {
+		assert.NotEqual(t, KindPartialExpansionLimit, e.Kind, "cross-referencing partials must converge: %+v", e)
+	}
+
+	assert.Contains(t, res.Inputs[".:Foo"].Files, "main.txt", "Foo should reach main.txt via partial a")
+	assert.Contains(t, res.Inputs[".:Bar"].Files, "main.txt", "Bar should reach main.txt via partial a -> b")
+}
+
+// TestFromFS_PartialParseErrorIsSoft pins that a parse error in a partial
+// surfaces as a KindParse soft error and does NOT abort the rest of
+// analysis — partials with valid bodies still expand, and unrelated files
+// are still walked.
+func TestFromFS_PartialParseErrorIsSoft(t *testing.T) {
+	t.Parallel()
+
+	fsys := fstest.MapFS{
+		"boilerplate.yml": &fstest.MapFile{Data: []byte(`
+variables:
+  - name: Greeting
+partials:
+  - _partials/*.tmpl
+`)},
+		// Unbalanced action — text/template's Parse fails.
+		"_partials/broken.tmpl": &fstest.MapFile{Data: []byte(`{{ define "broken" }}{{ .Foo `)},
+		// Unrelated, valid file that exercises the declared input.
+		"main.txt": &fstest.MapFile{Data: []byte(`{{ .Greeting }}`)},
+	}
+
+	res := runFS(t, fsys, map[string]any{})
+
+	var parseErrs []AnalysisError
+
+	for _, e := range res.Errors {
+		if e.Kind == KindParse {
+			parseErrs = append(parseErrs, e)
+		}
+	}
+
+	require.NotEmpty(t, parseErrs, "expected a KindParse soft error for the broken partial, got: %+v", res.Errors)
+	assert.Equal(t, []string{"main.txt"}, res.Inputs[".:Greeting"].Files,
+		"broken partial must not block analysis of unrelated files")
+}
+
 // TestFromFS_PartialExpansionLimit drives a fixture through analyze with
 // a deliberately low partial-expansion cap so KindPartialExpansionLimit
 // lands in Result.Errors. The chain a -> b -> c needs 2 iterations to
 // fully propagate c's references into a; a cap of 1 trips the soft error.
+// Mutates the package-level partialExpansionMaxIterations, so it cannot run
+// in parallel with other tests in this package that walk the analyzer.
+//
+//nolint:paralleltest
 func TestFromFS_PartialExpansionLimit(t *testing.T) {
 	prev := partialExpansionMaxIterations
 	partialExpansionMaxIterations = 1

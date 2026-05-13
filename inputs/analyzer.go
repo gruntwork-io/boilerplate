@@ -163,16 +163,7 @@ func analyzeTree(
 			renderedOutputFolder = dep.OutputFolder
 		}
 
-		// Cycle detection. Key on the resolved (parent.dir + renderedURL)
-		// path so two siblings declaring the same template-url under
-		// different output-folders don't collide, and so two parents that
-		// each declare `./common` resolve to distinct keys when they live
-		// at distinct directories. Remote URLs (with a scheme) keep their
-		// raw form since path.Join would mangle them.
-		cycleKey := renderedURL
-		if !strings.Contains(renderedURL, "://") {
-			cycleKey = path.Clean(path.Join(loc.dir, renderedURL))
-		}
+		cycleKey := computeCycleKey(loc, renderedURL)
 
 		if _, busy := visiting[cycleKey]; busy {
 			info.recordDepFailure(result, KindCycle, declaredIn, dep.Name,
@@ -259,6 +250,31 @@ func preRenderDepURLs(ctx context.Context, loc templateLocation, deps []variable
 	}
 
 	return out
+}
+
+// computeCycleKey returns a stable identifier for a dependency target,
+// computable before the dep is resolved so the cycle check can short-circuit
+// before calling resolver.Resolve. The key incorporates the parent's
+// absolute disk path (OS mode) or fs-relative path (FS mode) so two
+// distinct on-disk siblings whose template-url values clean to the same
+// relative string produce distinct keys — without this, OS-mode
+// `loc.dir == "."` would make every relative URL collide with itself
+// across parents and false-detect cycles. Remote URLs (with a scheme) keep
+// their raw form since path.Join would mangle them.
+func computeCycleKey(parent templateLocation, renderedURL string) string {
+	if strings.Contains(renderedURL, "://") {
+		return renderedURL
+	}
+
+	if filepath.IsAbs(renderedURL) {
+		return filepath.Clean(renderedURL)
+	}
+
+	if parent.absDir != "" {
+		return filepath.Clean(filepath.Join(parent.absDir, renderedURL))
+	}
+
+	return path.Clean(path.Join(parent.dir, renderedURL))
 }
 
 // recordDepFailure records a soft error for a dependency that couldn't be

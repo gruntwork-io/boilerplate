@@ -29,6 +29,7 @@ boilerplate inputs map --template-url URL [--var NAME=VALUE ...] [--var-file PAT
 | `--template-url URL` | yes | Path or [go-getter](https://github.com/hashicorp/go-getter) URL of the root template. Same resolution rules as `boilerplate template`. |
 | `--var NAME=VALUE` | no | Set a variable for filename rendering and value-expression evaluation. May be repeated. |
 | `--var-file PATH` | no | Load variables from a YAML file. May be repeated. |
+| `--include-bundle` | no | Include a `bundle` field in the output containing every text file in the resolved dependency tree, suitable for feeding back into the WASM `boilerplateInputsMap` and `boilerplateRenderFile` functions. |
 
 <Aside type="note">
   Vars supplied here are only used to render output filenames and value
@@ -53,6 +54,9 @@ boilerplate inputs map --template-url URL [--var NAME=VALUE ...] [--var-file PAT
   "files": {
     "relative/path/to/file1": ["<template_path>:<input_name>", "..."]
   },
+  "sources": {
+    "relative/path/to/file1": "<absolute_path_to_source_template_file>"
+  },
   "errors": [
     { "kind": "undeclared_variable", "template": "...", "name": "...", "file": "..." }
   ]
@@ -64,6 +68,54 @@ Keys in `inputs` are fully-qualified as `<template_path>:<input_name>`, where
 output-folder path (relative to the root output) for nested templates. `files`
 is the inverse index, listing every input whose value would re-render that
 file. Both `files` lists are deterministically sorted.
+
+`sources` mirrors the keys of `files`: each output path maps to the absolute
+filesystem path of the source template file that produces it. Templates resolved
+via go-getter (`git::`, `https://`, …) live under a temp directory for the
+duration of the command; consumers that need the body should read it before the
+process exits. Output paths whose filename template failed to render are absent
+from `sources` — the corresponding `filename_render` entry in `errors` signals
+that the path is dynamic.
+
+### `--include-bundle`
+
+When `--include-bundle` is supplied, the output gains a top-level `bundle`
+field:
+
+```jsonc
+{
+  "inputs":  { /* ... */ },
+  "files":   { /* ... */ },
+  "sources": { /* ... */ },
+  "errors":  [ /* ... */ ],
+  "bundle": {
+    "rootPath": ".",
+    "files": {
+      "boilerplate.yml": "...file contents...",
+      "_deps/<dep_name>/boilerplate.yml": "...",
+      "_deps/<dep_name>/main.tf": "..."
+    },
+    "dependencies": {
+      ".": [
+        {
+          "name": "<dep_name>",
+          "bundlePath": "_deps/<dep_name>",
+          "outputFolder": "<rendered_output_folder>",
+          "each": "<for_each_value, omitted for non-for_each deps>"
+        }
+      ]
+    }
+  }
+}
+```
+
+The `bundle` object is the wire format accepted by the WASM
+`boilerplateInputsMap`, `boilerplateRenderFile`, and prepared-bundle handlers.
+Every dep's files live at a deterministic, bundle-relative directory under the
+reserved `_deps/` prefix — not at their on-disk `template-url` — so a bundle
+can be replayed inside a virtual filesystem. Remote deps and unresolvable local
+deps are omitted from `dependencies`; consumers should treat their absence as a
+signal to fall back to a full cold render for the affected outputs.
 
 ## Soft errors
 

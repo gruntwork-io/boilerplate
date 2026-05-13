@@ -15,6 +15,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	urfavecli "github.com/urfave/cli/v2"
 
 	"github.com/gruntwork-io/boilerplate/cli"
 	"github.com/gruntwork-io/boilerplate/inputs"
@@ -627,6 +628,135 @@ func TestInputsMap_RenderFileRejectsOldBundles(t *testing.T) {
 	require.Error(t, err)
 	assert.ErrorIs(t, err, inputs.ErrDependencyNotInBundle,
 		"nil deps index must trip the too-old-bundle guard; got: %v", err)
+}
+
+// newCLIForErrTest returns a boilerplate CLI app wired so that
+// cli.Exit-style failures return as errors from app.Run instead of
+// calling os.Exit, which would terminate the test binary.
+func newCLIForErrTest() *urfavecli.App {
+	app := cli.CreateBoilerplateCli()
+	app.ExitErrHandler = func(_ *urfavecli.Context, _ error) {} // suppress os.Exit
+
+	return app
+}
+
+// TestInputsMap_InvalidVarSyntaxIsHardError pins that an unparseable
+// --var lands a JSON error doc with kind=parse_args on stdout and a
+// non-zero exit. The CLI promises this for tooling that consumes the
+// error envelope.
+func TestInputsMap_InvalidVarSyntaxIsHardError(t *testing.T) {
+	t.Parallel()
+
+	app := newCLIForErrTest()
+
+	var stdout, stderr bytes.Buffer
+
+	app.Writer = &stdout
+	app.ErrWriter = &stderr
+
+	args := []string{
+		"boilerplate", "inputs", "map",
+		"--template-url", "../test-fixtures/inputs-test/transitive",
+		// Missing `=` separator — variables.ParseVars will reject this.
+		"--var", "noequalshere",
+	}
+
+	err := app.Run(args)
+	require.Error(t, err, "stdout=%s stderr=%s", stdout.String(), stderr.String())
+
+	var doc inputsMapResult
+	require.NoErrorf(t, json.Unmarshal(stdout.Bytes(), &doc), "stdout=%s", stdout.String())
+
+	require.Len(t, doc.Errors, 1, "expected exactly one parse_args error in JSON envelope: %+v", doc.Errors)
+	assert.Equal(t, "parse_args", doc.Errors[0].Kind)
+}
+
+// TestInputsMap_MalformedVarFileIsHardError pins that a --var-file
+// pointing at unparseable YAML lands the same parse_args envelope.
+func TestInputsMap_MalformedVarFileIsHardError(t *testing.T) {
+	t.Parallel()
+
+	tmpDir := t.TempDir()
+	badVarFile := filepath.Join(tmpDir, "bad.yml")
+
+	// Unbalanced bracket — YAML parsing fails.
+	require.NoError(t, os.WriteFile(badVarFile, []byte("foo: [bar"), 0o644))
+
+	app := newCLIForErrTest()
+
+	var stdout, stderr bytes.Buffer
+
+	app.Writer = &stdout
+	app.ErrWriter = &stderr
+
+	args := []string{
+		"boilerplate", "inputs", "map",
+		"--template-url", "../test-fixtures/inputs-test/transitive",
+		"--var-file", badVarFile,
+	}
+
+	err := app.Run(args)
+	require.Error(t, err, "stdout=%s stderr=%s", stdout.String(), stderr.String())
+
+	var doc inputsMapResult
+	require.NoErrorf(t, json.Unmarshal(stdout.Bytes(), &doc), "stdout=%s", stdout.String())
+
+	require.Len(t, doc.Errors, 1, "expected one parse_args error: %+v", doc.Errors)
+	assert.Equal(t, "parse_args", doc.Errors[0].Kind)
+}
+
+// TestInputsMap_MissingBoilerplateYmlIsHardError pins that running against
+// a template directory with no boilerplate.yml produces a hard error and a
+// kind=parse JSON envelope (the CLI hard-codes OnMissingConfig=Exit).
+func TestInputsMap_MissingBoilerplateYmlIsHardError(t *testing.T) {
+	t.Parallel()
+
+	emptyDir := t.TempDir()
+
+	app := newCLIForErrTest()
+
+	var stdout, stderr bytes.Buffer
+
+	app.Writer = &stdout
+	app.ErrWriter = &stderr
+
+	args := []string{
+		"boilerplate", "inputs", "map",
+		"--template-url", emptyDir,
+	}
+
+	err := app.Run(args)
+	require.Error(t, err, "stdout=%s stderr=%s", stdout.String(), stderr.String())
+
+	var doc inputsMapResult
+	require.NoErrorf(t, json.Unmarshal(stdout.Bytes(), &doc), "stdout=%s", stdout.String())
+
+	require.Len(t, doc.Errors, 1, "expected one parse error: %+v", doc.Errors)
+	assert.Equal(t, "parse", doc.Errors[0].Kind)
+	assert.Contains(t, doc.Errors[0].Message, "boilerplate.yml",
+		"error should mention the missing config file")
+}
+
+// TestInputsMap_MissingTemplateURL pins that omitting the required
+// --template-url flag is rejected before analysis runs. urfave/cli
+// surfaces this as an error from app.Run; the JSON envelope is not
+// produced because the subcommand action never executes.
+func TestInputsMap_MissingTemplateURL(t *testing.T) {
+	t.Parallel()
+
+	app := newCLIForErrTest()
+
+	var stdout, stderr bytes.Buffer
+
+	app.Writer = &stdout
+	app.ErrWriter = &stderr
+
+	args := []string{"boilerplate", "inputs", "map"}
+
+	err := app.Run(args)
+	require.Error(t, err, "stdout=%s stderr=%s", stdout.String(), stderr.String())
+	assert.Contains(t, stderr.String()+err.Error(), "template-url",
+		"error must mention the missing required flag")
 }
 
 // validateBundleKeyForTest mirrors the rule the WASM bridge applies

@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"syscall/js"
 
+	"github.com/gruntwork-io/boilerplate/cmd/wasm/internal/bundlewasm"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/pkg/logging"
 	"github.com/gruntwork-io/boilerplate/render"
@@ -17,16 +18,21 @@ import (
 
 // Handler returns a js.Func that wraps render.RenderTemplateFromString.
 // Synchronous; suitable for callers that only need string rendering.
+//
+// JS signature:
+//
+//	boilerplateRenderTemplate(templateStr: string, varsJSON: string) -> string | Error
+//
+// On any failure returns a JS Error with `kind` set to the bundlewasm
+// taxonomy (`structural` for arg-count / vars-JSON-parse failures,
+// `render` for template-execution failures), so callers can switch on
+// err.kind uniformly with the other WASM handlers.
 func Handler() js.Func {
 	return js.FuncOf(func(this js.Value, args []js.Value) any {
-		defer func() {
-			if r := recover(); r != nil {
-				fmt.Println("boilerplate: recovered from panic:", r)
-			}
-		}()
+		defer bundlewasm.RecoverPanic("renderTemplate")
 
 		if len(args) < 2 {
-			return js.Global().Get("Error").New("boilerplateRenderTemplate requires 2 arguments: templateStr, varsJSON")
+			return bundlewasm.StructuralError("boilerplateRenderTemplate requires 2 arguments: templateStr, varsJSON")
 		}
 
 		templateStr := args[0].String()
@@ -34,7 +40,7 @@ func Handler() js.Func {
 
 		var variables map[string]any
 		if err := json.Unmarshal([]byte(varsJSON), &variables); err != nil {
-			return js.Global().Get("Error").New(fmt.Sprintf("failed to parse variables JSON: %v", err))
+			return bundlewasm.StructuralError(fmt.Sprintf("failed to parse variables JSON: %v", err))
 		}
 
 		opts := &options.BoilerplateOptions{
@@ -46,7 +52,7 @@ func Handler() js.Func {
 
 		result, err := render.RenderTemplateFromString(logging.Discard(), "template", templateStr, variables, opts)
 		if err != nil {
-			return js.Global().Get("Error").New(fmt.Sprintf("template rendering failed: %v", err))
+			return bundlewasm.RenderError(fmt.Sprintf("template rendering failed: %v", err))
 		}
 
 		return result

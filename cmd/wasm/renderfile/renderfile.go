@@ -19,6 +19,9 @@ import (
 	"github.com/gruntwork-io/boilerplate/inputs"
 )
 
+// Required argument count for boilerplateRenderFile.
+const expectedArgs = 3
+
 // Handler returns a js.Func that wraps inputs.RenderFileFromFS.
 //
 // JS signature:
@@ -35,32 +38,30 @@ func Handler() js.Func {
 	return js.FuncOf(func(this js.Value, args []js.Value) any {
 		defer bundlewasm.RecoverPanic("renderFile")
 
-		if len(args) < 3 {
-			return js.Global().Get("Error").New("boilerplateRenderFile requires 3 arguments: bundleJSON, outputPath, varsJSON")
+		if len(args) < expectedArgs {
+			return bundlewasm.StructuralError("boilerplateRenderFile requires 3 arguments: bundleJSON, outputPath, varsJSON")
 		}
 
 		bundle, err := bundlewasm.DecodeBundle(args[0].String())
 		if err != nil {
-			return js.Global().Get("Error").New(err.Error())
+			return bundlewasm.StructuralError(err.Error())
 		}
 
 		outputPath := args[1].String()
 
 		vars, err := bundlewasm.ParseAndLiftVars(args[2].String())
 		if err != nil {
-			return js.Global().Get("Error").New(err.Error())
+			return bundlewasm.StructuralError(err.Error())
 		}
 
 		rendered, err := inputs.RenderFileFromFS(context.Background(), bundle.FS, bundle.RootPath, outputPath, vars, bundle.Dependencies)
 		if err != nil {
-			// Tag sentinel errors with stable kind: prefixes so JS callers
-			// can route specific failure modes to cold render without
-			// matching free-form strings.
+			// Tag sentinel errors with the bundlewasm kind taxonomy so JS
+			// callers can route specific failure modes to cold render
+			// without matching free-form strings.
 			kind := bundlewasm.ClassifyError(err)
-			errVal := js.Global().Get("Error").New(fmt.Sprintf("%s: %v", kind, err))
-			errVal.Set("kind", kind)
 
-			return errVal
+			return bundlewasm.TaggedError(kind, fmt.Sprintf("%s: %v", kind, err))
 		}
 
 		return rendered

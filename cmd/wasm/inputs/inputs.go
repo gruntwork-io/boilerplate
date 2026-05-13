@@ -15,6 +15,9 @@ import (
 	"github.com/gruntwork-io/boilerplate/inputs"
 )
 
+// Required argument count for boilerplateInputsMap.
+const expectedArgs = 2
+
 // Handler returns a js.Func that wraps inputs.FromFS. It is the WASM-side
 // counterpart to `boilerplate inputs map`: it takes a templateBundle and a
 // JSON vars object, runs the static analysis described in the inputs
@@ -32,40 +35,30 @@ func Handler() js.Func {
 	return js.FuncOf(func(this js.Value, args []js.Value) any {
 		defer bundlewasm.RecoverPanic("inputsMap")
 
-		if len(args) < 2 {
-			return taggedError(bundlewasm.KindStructural, "boilerplateInputsMap requires 2 arguments: bundleJSON, varsJSON")
+		if len(args) < expectedArgs {
+			return bundlewasm.StructuralError("boilerplateInputsMap requires 2 arguments: bundleJSON, varsJSON")
 		}
 
 		bundle, err := bundlewasm.DecodeBundle(args[0].String())
 		if err != nil {
-			return taggedError(bundlewasm.KindStructural, err.Error())
+			return bundlewasm.StructuralError(err.Error())
 		}
 
 		var variables map[string]any
 		if err := json.Unmarshal([]byte(args[1].String()), &variables); err != nil {
-			return taggedError(bundlewasm.KindStructural, fmt.Sprintf("failed to parse variables JSON: %v", err))
+			return bundlewasm.StructuralError(fmt.Sprintf("failed to parse variables JSON: %v", err))
 		}
 
 		result, err := inputs.FromFS(context.Background(), bundle.FS, bundle.RootPath, variables)
 		if err != nil {
-			return taggedError(bundlewasm.KindRender, fmt.Sprintf("inputs analysis failed: %v", err))
+			return bundlewasm.RenderError(fmt.Sprintf("inputs analysis failed: %v", err))
 		}
 
 		out, err := json.Marshal(result)
 		if err != nil {
-			return taggedError(bundlewasm.KindRender, fmt.Sprintf("failed to marshal result: %v", err))
+			return bundlewasm.RenderError(fmt.Sprintf("failed to marshal result: %v", err))
 		}
 
 		return string(out)
 	})
-}
-
-// taggedError builds a JS Error with a `kind` property so callers can
-// switch on failure mode uniformly with the other WASM handlers
-// (renderfile, renderfiles, preparedbundle).
-func taggedError(kind, message string) js.Value {
-	errVal := js.Global().Get("Error").New(message)
-	errVal.Set("kind", kind)
-
-	return errVal
 }

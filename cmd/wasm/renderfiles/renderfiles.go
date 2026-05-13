@@ -35,17 +35,19 @@ import (
 //	    varsJSON: string,
 //	) -> string | Error
 //
-// On structural failure (arg count, unparseable bundle/paths/vars JSON,
+// On structural failure (arg count, unparsable bundle/paths/vars JSON,
 // invalid bundle path, empty paths array) returns a JS Error with
 // .kind === "structural". On any non-structural outcome returns a
 // JSON-encoded string of bundlewasm.ResultPayload — including the
 // all-paths-failed case. Per-path errors live inside results[i].error
 // with the same .kind taxonomy used by boilerplateRenderFile.
+const expectedArgs = 3
+
 func Handler() js.Func {
 	return js.FuncOf(func(this js.Value, args []js.Value) any {
 		defer bundlewasm.RecoverPanic("renderFiles")
 
-		if len(args) < 3 {
+		if len(args) < expectedArgs {
 			return bundlewasm.StructuralError("boilerplateRenderFiles requires 3 arguments: bundleJSON, outputPathsJSON, varsJSON")
 		}
 
