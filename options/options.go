@@ -18,6 +18,7 @@ const OptDisableDependencyPrompt = "disable-dependency-prompt"
 const OptManifest = "manifest"
 const OptManifestFile = "manifest-file"
 const OptParallelism = "parallelism"
+const OptIncludeBundle = "include-bundle"
 
 // BoilerplateOptions represents the command-line options for the boilerplate app
 type BoilerplateOptions struct {

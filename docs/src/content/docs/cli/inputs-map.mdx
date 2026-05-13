@@ -1,0 +1,219 @@
+---
+title: "Subcommand: inputs map"
+sidebar:
+  order: 2
+description: Statically analyze a template to map declared input variables to the output files they affect.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+The `boilerplate inputs map` subcommand analyzes a template at `--template-url`
+and prints a JSON object describing which output files are affected by each
+declared input variable. **The command never renders or writes any output
+files**; it parses each template's AST to compute the mapping.
+
+This is useful for tooling that needs to know what to re-render when a single
+input changes — for example, a UI that previews live diffs as the user edits a
+form, or a CI job that decides which downstream artifacts to invalidate.
+
+## Usage
+
+```bash
+boilerplate inputs map --template-url URL [--var NAME=VALUE ...] [--var-file PATH ...]
+```
+
+## Flags
+
+| Flag | Required | Description |
+|------|----------|-------------|
+| `--template-url URL` | yes | Path or [go-getter](https://github.com/hashicorp/go-getter) URL of the root template. Same resolution rules as `boilerplate template`. |
+| `--var NAME=VALUE` | no | Set a variable for filename rendering and value-expression evaluation. May be repeated. |
+| `--var-file PATH` | no | Load variables from a YAML file. May be repeated. |
+| `--include-bundle` | no | Include a `bundle` field in the output containing every text file in the resolved dependency tree, suitable for feeding back into the WASM `boilerplateInputsMap` and `boilerplateRenderFile` functions. |
+
+<Aside type="note">
+  Vars supplied here are only used to render output filenames and value
+  expressions in the dependency graph (so reported paths match what
+  `boilerplate template` would produce). They are never used to *render* file
+  bodies — the analyzer parses ASTs only.
+</Aside>
+
+## Output schema
+
+```jsonc
+{
+  "inputs": {
+    "<template_path>:<input_name>": {
+      "name": "<input_name>",
+      "declared_in": "<template_path>",
+      "files": ["relative/path/to/file1", "..."],
+      "type": "string|bool|int|list|map|...",
+      "description": "<from boilerplate.yml if present>"
+    }
+  },
+  "files": {
+    "relative/path/to/file1": ["<template_path>:<input_name>", "..."]
+  },
+  "sources": {
+    "relative/path/to/file1": "<absolute_path_to_source_template_file>"
+  },
+  "errors": [
+    { "kind": "undeclared_variable", "template": "...", "name": "...", "file": "..." }
+  ]
+}
+```
+
+Keys in `inputs` are fully-qualified as `<template_path>:<input_name>`, where
+`<template_path>` is `.` for the root template and the dependency's
+output-folder path (relative to the root output) for nested templates. `files`
+is the inverse index, listing every input whose value would re-render that
+file. Both `files` lists are deterministically sorted.
+
+`sources` mirrors the keys of `files`: each output path maps to the absolute
+filesystem path of the source template file that produces it. Templates resolved
+via go-getter (`git::`, `https://`, …) live under a temp directory for the
+duration of the command; consumers that need the body should read it before the
+process exits. Output paths whose filename template failed to render are absent
+from `sources` — the corresponding `filename_render` entry in `errors` signals
+that the path is dynamic.
+
+### `--include-bundle`
+
+When `--include-bundle` is supplied, the output gains a top-level `bundle`
+field:
+
+```jsonc
+{
+  "inputs":  { /* ... */ },
+  "files":   { /* ... */ },
+  "sources": { /* ... */ },
+  "errors":  [ /* ... */ ],
+  "bundle": {
+    "rootPath": ".",
+    "files": {
+      "boilerplate.yml": "...file contents...",
+      "_deps/<dep_name>/boilerplate.yml": "...",
+      "_deps/<dep_name>/main.tf": "..."
+    },
+    "dependencies": {
+      ".": [
+        {
+          "name": "<dep_name>",
+          "bundlePath": "_deps/<dep_name>",
+          "outputFolder": "<rendered_output_folder>",
+          "each": "<for_each_value, omitted for non-for_each deps>"
+        }
+      ]
+    }
+  }
+}
+```
+
+The `bundle` object is the wire format accepted by the WASM
+`boilerplateInputsMap`, `boilerplateRenderFile`, and prepared-bundle handlers.
+Every dep's files live at a deterministic, bundle-relative directory under the
+reserved `_deps/` prefix — not at their on-disk `template-url` — so a bundle
+can be replayed inside a virtual filesystem. Remote deps and unresolvable local
+deps are omitted from `dependencies`; consumers should treat their absence as a
+signal to fall back to a full cold render for the affected outputs.
+
+## Soft errors
+
+The command exits non-zero only on unrecoverable failures (the template can't
+be downloaded, the root `boilerplate.yml` doesn't parse). Recoverable issues
+land in the `errors` array and do not change the exit code. Defined `kind`
+values:
+
+| Kind | Meaning |
+|------|---------|
+| `undeclared_variable` | A variable was referenced in a template body but is not declared in any `boilerplate.yml` in scope. |
+| `cycle` | A dependency cycle was detected. |
+| `unresolvable_dependency` | A remote URL was found in WASM/FS-only mode, or a path could not be resolved. |
+| `filename_render` | A template-bearing filename failed to render. |
+| `parse` | A template body or value expression failed to parse. |
+| `skip_files` | A `skip_files` entry's `path`, `not_path`, or `if` condition failed to render or expand. |
+| `partial_expansion_limit` | The partial-template invocation graph did not converge within the analyzer's iteration cap; transitive references through deeply-nested partials may be missing. |
+
+## What the analyzer accounts for
+
+- **Direct references**: `{{ .Foo }}` in a template body.
+- **Conditionals, loops, and `with` blocks**: variables referenced inside
+  `{{ if }}`, `{{ range }}`, and `{{ with }}` are tracked.
+- **Partials**: `{{ template "name" . }}` invocations are expanded transitively
+  using the templates declared in `partials:` globs.
+- **Filename templating**: a file named `{{.Name}}.txt` is reported under its
+  rendered filename, using the supplied `--var` / `--var-file` values.
+- **Dependencies**:
+  - Explicit value expressions (`dependencies[].variables[].default: "{{ .Region }}"`)
+    propagate parent variables into child inputs by name.
+  - Implicit name-match inheritance (parent and child both declare a variable
+    of the same name) propagates the parent's value, unless the dependency
+    sets `dont-inherit-variables: true` or provides an explicit override.
+- **`skip_files`**: any file the runtime would skip is also excluded from the
+  analyzer's output. Globs use `zglob` on disk for parity with the runtime
+  (including `**` patterns); in WASM/FS-only mode, only `*` and `?` are
+  supported and `**` patterns surface a `skip_files` soft error.
+- **Built-ins**: identifiers exposed by the render engine
+  (`BoilerplateConfigVars`, `BoilerplateConfigDeps`, `This`, `__each__`) are
+  filtered out of the result.
+
+## Example
+
+Given the fixture at `test-fixtures/inputs-test/transitive`:
+
+```yaml
+# boilerplate.yml
+variables:
+  - name: Region
+  - name: ProjectName
+dependencies:
+  - name: vpc
+    template-url: ./modules/vpc
+    output-folder: ./modules/vpc
+    variables:
+      - name: AwsRegion
+        default: "{{ .Region }}"
+```
+
+```yaml
+# modules/vpc/boilerplate.yml
+variables:
+  - name: AwsRegion
+```
+
+Running:
+
+```bash
+boilerplate inputs map --template-url ./test-fixtures/inputs-test/transitive
+```
+
+produces:
+
+```jsonc
+{
+  "inputs": {
+    ".:Region": {
+      "name": "Region",
+      "declared_in": ".",
+      "files": ["README.md", "modules/vpc/main.tf"],
+      "type": "string"
+    },
+    ".:ProjectName": { /* ... */ },
+    "modules/vpc:AwsRegion": {
+      "name": "AwsRegion",
+      "declared_in": "modules/vpc",
+      "files": ["modules/vpc/main.tf"],
+      "type": "string"
+    }
+  },
+  "files": {
+    "README.md": [".:ProjectName", ".:Region"],
+    "modules/vpc/main.tf": [".:Region", "modules/vpc:AwsRegion"]
+  },
+  "errors": []
+}
+```
+
+Note that `Region` reaches `modules/vpc/main.tf` even though the file
+references `AwsRegion`, not `Region` — the explicit value expression
+`default: "{{ .Region }}"` records that edge.

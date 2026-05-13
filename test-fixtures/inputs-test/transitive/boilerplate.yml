@@ -1,0 +1,16 @@
+variables:
+  - name: Region
+    description: AWS region for the entire stack.
+    type: string
+
+  - name: ProjectName
+    description: Project name used in resource tagging.
+    type: string
+
+dependencies:
+  - name: vpc
+    template-url: ./modules/vpc
+    output-folder: ./modules/vpc
+    variables:
+      - name: AwsRegion
+        default: "{{ .Region }}"

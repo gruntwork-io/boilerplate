@@ -1,0 +1,9 @@
+variables:
+  - name: ProjectName
+    description: Project name used in resource tagging.
+    type: string
+
+dependencies:
+  - name: web
+    template-url: ./modules/web
+    output-folder: ./modules/web

@@ -101,7 +101,7 @@ func CreateTemplateHelpers(ctx context.Context, l logging.Logger, templatePath s
 
 		"templateIsDefined": wrapIsDefinedWithTemplate(tmpl),
 
-		"templateFolder":        func() (string, error) { return filepath.Abs(opts.TemplateFolder) },
+		"templateFolder":        func() (string, error) { return absTemplateFolder(opts.TemplateFolder) },
 		"templateUrl":           func() string { return opts.TemplateURL },
 		"outputFolder":          func() (string, error) { return filepath.Abs(opts.OutputFolder) },
 		"relPath":               relPath,
@@ -904,4 +904,21 @@ type InvalidTypeForMethodArgument struct {
 
 func (err InvalidTypeForMethodArgument) Error() string {
 	return fmt.Sprintf("Method %s expects type %s, but got %s", err.MethodName, err.ExpectedType, err.ActualType)
+}
+
+// absTemplateFolder returns the absolute disk path of the supplied
+// template folder. When the renderer is driven from an in-memory bundle
+// (WASM warm dispatch via inputs.RenderFileFromFS) opts.TemplateFolder is
+// empty; calling filepath.Abs("") would silently return the host
+// process's cwd — which is an arbitrary path that has nothing to do with
+// the bundle and broke every dependency template-url that used
+// `{{ templateFolder }}`. In that case return "" so the renderer fails
+// loud (or callers see an empty path) rather than producing wrong bytes
+// derived from cwd.
+func absTemplateFolder(templateFolder string) (string, error) {
+	if templateFolder == "" {
+		return "", nil
+	}
+
+	return filepath.Abs(templateFolder)
 }

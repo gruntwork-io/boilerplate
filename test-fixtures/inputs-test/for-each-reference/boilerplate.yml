@@ -1,0 +1,17 @@
+variables:
+  - name: AccountsList
+    type: list
+    description: "List of accounts iterated by the envs dep."
+    default:
+      - logs
+      - security
+      - shared
+
+dependencies:
+  - name: envs
+    template-url: ./envs
+    output-folder: "envs/{{ .__each__ }}"
+    for_each_reference: AccountsList
+    variables:
+      - name: FormattedAccountName
+        default: "{{ .__each__ }}"

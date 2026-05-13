@@ -3,8 +3,10 @@ vendor
 .terragrunt
 .DS_Store
 *.iml
+.claude
 boilerplate
-boilerplate.wasm
-boilerplate.wasm.br
+boilerplate*.wasm
+boilerplate*.wasm.br
 wasm_exec.js
+/bin
 /wasm

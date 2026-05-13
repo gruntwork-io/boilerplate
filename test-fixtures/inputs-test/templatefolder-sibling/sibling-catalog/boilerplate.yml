@@ -1,0 +1,4 @@
+variables:
+  - name: OrgName
+  - name: Region
+    default: "us-east-1"
