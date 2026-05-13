@@ -149,13 +149,17 @@ func renderFileWalk(
 
 	// Process this template's skip_files. We need it both to verify
 	// outputPath isn't excluded and to skip source files that would not be
-	// produced.
+	// produced. An unrenderable skip rule could change which file (if
+	// any) we treat as the owner of outputPath, so surface every failure
+	// rather than the first.
 	skipFilter, skipErrs := processSkipFiles(ctx, loc, cfg.SkipFiles, scope)
 	if len(skipErrs) > 0 {
-		// Surface the first skip_files error rather than silently
-		// proceeding; an unrenderable skip rule could otherwise change
-		// which file (if any) we treat as the owner of outputPath.
-		return "", false, fmt.Errorf("skip_files processing failed: %s", skipErrs[0].Message)
+		msgs := make([]string, len(skipErrs))
+		for i, e := range skipErrs {
+			msgs[i] = e.Message
+		}
+
+		return "", false, fmt.Errorf("skip_files processing failed: %s", strings.Join(msgs, "; "))
 	}
 
 	// Skip-dirs are computed from the deps index's BundlePath entries.

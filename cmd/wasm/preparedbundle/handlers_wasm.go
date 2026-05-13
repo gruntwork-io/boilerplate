@@ -6,8 +6,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"syscall/js"
+
+	"github.com/gruntwork-io/boilerplate/cmd/wasm/internal/bundlewasm"
 )
 
 // Handlers is the trio of js.Funcs the full WASM build registers as
@@ -35,112 +36,63 @@ func New() Handlers {
 	}
 }
 
-// prepareHandler parses bundleJSON, validates every path the producer
-// recorded, and stores the resulting PreparedBundle in store. Returns
-// the handle ID on success, a structural JS Error on failure.
 func prepareHandler(store *bundleStore) js.Func {
 	return js.FuncOf(func(this js.Value, args []js.Value) any {
-		defer func() {
-			if r := recover(); r != nil {
-				fmt.Fprintln(os.Stderr, "boilerplate: recovered from panic in prepareBundle:", r)
-			}
-		}()
+		defer bundlewasm.RecoverPanic("prepareBundle")
 
 		if len(args) < 1 {
-			return structuralError("boilerplatePrepareBundle requires 1 argument: bundleJSON")
+			return bundlewasm.StructuralError("boilerplatePrepareBundle requires 1 argument: bundleJSON")
 		}
 
-		bundleJSON := args[0].String()
-
-		prepared, prepErr := parseBundle(bundleJSON)
-		if prepErr != nil {
-			return structuralError(prepErr.Error())
+		prepared, err := parseBundle(args[0].String())
+		if err != nil {
+			return bundlewasm.StructuralError(err.Error())
 		}
 
 		return store.Store(prepared)
 	})
 }
 
-// renderFilesWithHandleHandler resolves the handle, parses the paths
-// and vars arguments, and runs the prepared bundle's RenderFiles. The
-// per-path error / classifier path is identical to
-// cmd/wasm/renderfiles so the consumer's existing per-kind dispatch
-// keeps working.
 func renderFilesWithHandleHandler(store *bundleStore) js.Func {
 	return js.FuncOf(func(this js.Value, args []js.Value) any {
-		defer func() {
-			if r := recover(); r != nil {
-				fmt.Fprintln(os.Stderr, "boilerplate: recovered from panic in renderFilesWithHandle:", r)
-			}
-		}()
+		defer bundlewasm.RecoverPanic("renderFilesWithHandle")
 
 		if len(args) < 3 {
-			return structuralError("boilerplateRenderFilesWithHandle requires 3 arguments: handle, pathsJSON, varsJSON")
+			return bundlewasm.StructuralError("boilerplateRenderFilesWithHandle requires 3 arguments: handle, pathsJSON, varsJSON")
 		}
 
 		handle := args[0].String()
-		pathsJSON := args[1].String()
-		varsJSON := args[2].String()
 
 		bundle := store.Get(handle)
 		if bundle == nil {
-			return structuralError(fmt.Sprintf("unknown or released bundle handle %q", handle))
+			return bundlewasm.StructuralError(fmt.Sprintf("unknown or released bundle handle %q", handle))
 		}
 
-		var outputPaths []string
-		if err := json.Unmarshal([]byte(pathsJSON), &outputPaths); err != nil {
-			return structuralError(fmt.Sprintf("failed to parse outputPaths JSON: %v", err))
+		outputPaths, err := bundlewasm.ParseOutputPaths(args[1].String())
+		if err != nil {
+			return bundlewasm.StructuralError(err.Error())
 		}
 
-		if len(outputPaths) == 0 {
-			return structuralError("outputPaths must be a non-empty array")
+		vars, err := bundlewasm.ParseAndLiftVars(args[2].String())
+		if err != nil {
+			return bundlewasm.StructuralError(err.Error())
 		}
-
-		var rawVars map[string]any
-		if err := json.Unmarshal([]byte(varsJSON), &rawVars); err != nil {
-			return structuralError(fmt.Sprintf("failed to parse variables JSON: %v", err))
-		}
-
-		vars := liftInputsToRoot(rawVars)
 
 		raw := bundle.RenderFiles(context.Background(), outputPaths, vars)
-
-		payload := resultPayload{Results: make([]perFileResult, 0, len(raw))}
-		for _, r := range raw {
-			if r.Err != nil {
-				kind := classifyError(r.Err)
-				payload.Results = append(payload.Results, perFileResult{
-					Path: r.Path,
-					Error: &perFileError{
-						Kind:    kind,
-						Message: fmt.Sprintf("%s: %v", kind, r.Err),
-					},
-				})
-
-				continue
-			}
-
-			payload.Results = append(payload.Results, perFileResult{Path: r.Path, Content: r.Content})
-		}
+		payload := bundlewasm.BuildResultPayload(raw)
 
 		out, err := json.Marshal(payload)
 		if err != nil {
-			return structuralError(fmt.Sprintf("failed to marshal results: %v", err))
+			return bundlewasm.StructuralError(fmt.Sprintf("failed to marshal results: %v", err))
 		}
 
 		return string(out)
 	})
 }
 
-// releaseHandler removes the handle from the store. Idempotent (the
-// store does the work; the handler is a thin wrapper).
 func releaseHandler(store *bundleStore) js.Func {
 	return js.FuncOf(func(this js.Value, args []js.Value) any {
-		defer func() {
-			if r := recover(); r != nil {
-				fmt.Fprintln(os.Stderr, "boilerplate: recovered from panic in releaseBundle:", r)
-			}
-		}()
+		defer bundlewasm.RecoverPanic("releaseBundle")
 
 		if len(args) < 1 {
 			return js.Undefined()
@@ -150,15 +102,4 @@ func releaseHandler(store *bundleStore) js.Func {
 
 		return js.Undefined()
 	})
-}
-
-// structuralError builds the JS Error object for the structural path,
-// matching the shape boilerplateRenderFiles uses. Same .kind taxonomy
-// so callers can switch on .kind regardless of which entry point
-// produced it.
-func structuralError(msg string) js.Value {
-	errVal := js.Global().Get("Error").New(msg)
-	errVal.Set("kind", "structural")
-
-	return errVal
 }

@@ -3,14 +3,13 @@ package preparedbundle
 import (
 	"context"
 	"encoding/json"
-	"errors"
-	"strings"
 	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/gruntwork-io/boilerplate/cmd/wasm/internal/bundlewasm"
 	"github.com/gruntwork-io/boilerplate/inputs"
 )
 
@@ -134,7 +133,7 @@ func TestBundleStore_ConcurrentAccess(t *testing.T) {
 func TestParseBundle_RoundTripsValidShape(t *testing.T) {
 	t.Parallel()
 
-	bundle := templateBundle{
+	bundle := bundlewasm.TemplateBundle{
 		RootPath: ".",
 		Files: map[string]string{
 			"boilerplate.yml": "",
@@ -200,7 +199,7 @@ func TestParseBundle_RejectsBadFilePath(t *testing.T) {
 func TestParseBundle_RejectsBadDepBundlePath(t *testing.T) {
 	t.Parallel()
 
-	bundle := templateBundle{
+	bundle := bundlewasm.TemplateBundle{
 		RootPath: ".",
 		Files:    map[string]string{},
 		Dependencies: map[string][]inputs.ResolvedDep{
@@ -246,99 +245,3 @@ func TestParseBundle_EndToEndRendersThroughHandle(t *testing.T) {
 	}
 }
 
-// TestClassifyError pins the kind taxonomy the JS caller switches on.
-// Same shape as cmd/wasm/renderfiles; duplicating the assertion here
-// guards against the two diverging.
-func TestClassifyError(t *testing.T) {
-	t.Parallel()
-
-	cases := []struct {
-		name string
-		err  error
-		want string
-	}{
-		{"output_not_produced", inputs.ErrOutputNotProduced, "output_not_produced"},
-		{"dependency_not_in_bundle", inputs.ErrDependencyNotInBundle, "dependency_not_in_bundle"},
-		{"dynamic_filename", inputs.ErrDynamicFilename, "dynamic_filename"},
-		{"skip_files_excluded", inputs.ErrSkipFilesExcluded, "skip_files_excluded"},
-		{"generic_render_error", errors.New("template execution failed"), "render"},
-	}
-
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			assert.Equal(t, tc.want, classifyError(tc.err))
-		})
-	}
-}
-
-// TestLiftInputsToRoot pins the variable-flattening behavior shared
-// across the three WASM render packages: top-level "inputs" entries
-// are lifted to the root scope so `{{ .Foo }}` works alongside
-// `{{ .inputs.Foo }}`, and explicit root-scope keys win over lifted
-// ones.
-func TestLiftInputsToRoot(t *testing.T) {
-	t.Parallel()
-
-	t.Run("nil_returns_empty", func(t *testing.T) {
-		t.Parallel()
-		assert.Empty(t, liftInputsToRoot(nil))
-	})
-
-	t.Run("no_inputs_block_is_passthrough", func(t *testing.T) {
-		t.Parallel()
-		got := liftInputsToRoot(map[string]any{"A": "1"})
-		assert.Equal(t, map[string]any{"A": "1"}, got)
-	})
-
-	t.Run("inputs_block_is_lifted", func(t *testing.T) {
-		t.Parallel()
-		got := liftInputsToRoot(map[string]any{
-			"inputs": map[string]any{"Region": "us-east-1"},
-		})
-		assert.Equal(t, "us-east-1", got["Region"], "inputs.Region must be lifted to .Region")
-	})
-
-	t.Run("root_wins_over_lifted", func(t *testing.T) {
-		t.Parallel()
-		got := liftInputsToRoot(map[string]any{
-			"Region": "explicit",
-			"inputs": map[string]any{"Region": "lifted"},
-		})
-		assert.Equal(t, "explicit", got["Region"], "explicit root-scope key must win over inputs-lifted value")
-	})
-}
-
-// TestValidateBundlePath spot-checks the path rule. Same rule applied
-// by cmd/wasm/inputs, cmd/wasm/renderfile, and cmd/wasm/renderfiles —
-// keeping the duplicated implementation in sync is the whole point.
-func TestValidateBundlePath(t *testing.T) {
-	t.Parallel()
-
-	cases := []struct {
-		name    string
-		path    string
-		wantErr string // empty means no error
-	}{
-		{"valid_relative", "foo/bar.txt", ""},
-		{"valid_root", "x.txt", ""},
-		{"empty", "", "empty path"},
-		{"absolute", "/etc/passwd", "absolute"},
-		{"backslash", "foo\\bar", "forward slashes"},
-		{"non_canonical", "foo//bar", "non-canonical"},
-		{"escapes_root", "../outside", "escapes bundle root"},
-	}
-
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			err := validateBundlePath(tc.path)
-			if tc.wantErr == "" {
-				assert.NoError(t, err)
-			} else {
-				require.Error(t, err)
-				assert.Contains(t, strings.ToLower(err.Error()), tc.wantErr)
-			}
-		})
-	}
-}

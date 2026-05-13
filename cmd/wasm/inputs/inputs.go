@@ -8,27 +8,12 @@ package inputs
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"os"
-	"path"
-	"strings"
 	"syscall/js"
-	"testing/fstest"
 
+	"github.com/gruntwork-io/boilerplate/cmd/wasm/internal/bundlewasm"
 	"github.com/gruntwork-io/boilerplate/inputs"
 )
-
-// templateBundle is the JSON shape accepted by Handler. Files is keyed by
-// path relative to RootPath and must include every boilerplate.yml in the
-// dependency tree. Dependencies is forwarded only so a bundle round-trip
-// through `inputs map` → `renderFile` preserves it; this handler does not
-// consume the field.
-type templateBundle struct {
-	RootPath     string                          `json:"rootPath"`
-	Files        map[string]string               `json:"files"`
-	Dependencies map[string][]inputs.ResolvedDep `json:"dependencies,omitempty"`
-}
 
 // Handler returns a js.Func that wraps inputs.FromFS. It is the WASM-side
 // counterpart to `boilerplate inputs map`: it takes a templateBundle and a
@@ -42,52 +27,23 @@ type templateBundle struct {
 //	boilerplateInputsMap(bundleJSON: string, varsJSON: string) -> string | Error
 func Handler() js.Func {
 	return js.FuncOf(func(this js.Value, args []js.Value) any {
-		defer func() {
-			if r := recover(); r != nil {
-				fmt.Fprintln(os.Stderr, "boilerplate: recovered from panic in inputsMap:", r)
-			}
-		}()
+		defer bundlewasm.RecoverPanic("inputsMap")
 
 		if len(args) < 2 {
 			return js.Global().Get("Error").New("boilerplateInputsMap requires 2 arguments: bundleJSON, varsJSON")
 		}
 
-		ctx := context.Background()
-		bundleJSON := args[0].String()
-		varsJSON := args[1].String()
-
-		var bundle templateBundle
-
-		if err := json.Unmarshal([]byte(bundleJSON), &bundle); err != nil {
-			return js.Global().Get("Error").New(fmt.Sprintf("failed to parse bundle JSON: %v", err))
-		}
-
-		rootPath := bundle.RootPath
-		if rootPath == "" {
-			rootPath = "."
-		}
-
-		if rootPath != "." {
-			if err := validateBundlePath(rootPath); err != nil {
-				return js.Global().Get("Error").New(fmt.Sprintf("invalid rootPath %q: %v", rootPath, err))
-			}
-		}
-
-		mfs := fstest.MapFS{}
-		for p, contents := range bundle.Files {
-			if err := validateBundlePath(p); err != nil {
-				return js.Global().Get("Error").New(fmt.Sprintf("invalid bundle path %q: %v", p, err))
-			}
-
-			mfs[p] = &fstest.MapFile{Data: []byte(contents)}
+		bundle, err := bundlewasm.DecodeBundle(args[0].String())
+		if err != nil {
+			return js.Global().Get("Error").New(err.Error())
 		}
 
 		var variables map[string]any
-		if err := json.Unmarshal([]byte(varsJSON), &variables); err != nil {
+		if err := json.Unmarshal([]byte(args[1].String()), &variables); err != nil {
 			return js.Global().Get("Error").New(fmt.Sprintf("failed to parse variables JSON: %v", err))
 		}
 
-		result, err := inputs.FromFS(ctx, mfs, rootPath, variables)
+		result, err := inputs.FromFS(context.Background(), bundle.FS, bundle.RootPath, variables)
 		if err != nil {
 			return js.Global().Get("Error").New(fmt.Sprintf("inputs analysis failed: %v", err))
 		}
@@ -99,34 +55,4 @@ func Handler() js.Func {
 
 		return string(out)
 	})
-}
-
-// validateBundlePath rejects paths that would muddle the analyzer's contract
-// that every key in templateBundle.Files is a canonical, forward-slash,
-// strictly-relative path anchored at the bundle root. Without this, two keys
-// could refer to the same logical file (producing duplicate entries in
-// Result.Files), or a key could appear to escape the bundle.
-func validateBundlePath(p string) error {
-	if p == "" {
-		return errors.New("empty path")
-	}
-
-	if strings.HasPrefix(p, "/") {
-		return errors.New("absolute paths not allowed")
-	}
-
-	if strings.ContainsRune(p, '\\') {
-		return errors.New("use forward slashes")
-	}
-
-	cleaned := path.Clean(p)
-	if cleaned != p {
-		return fmt.Errorf("non-canonical path; clean to %q", cleaned)
-	}
-
-	if cleaned == ".." || strings.HasPrefix(cleaned, "../") {
-		return errors.New("path escapes bundle root")
-	}
-
-	return nil
 }
