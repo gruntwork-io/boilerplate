@@ -56,7 +56,7 @@ func newBundleStore() *bundleStore {
 
 // Store registers b and returns the opaque handle ID the JS caller
 // holds onto. The ID format is intentionally undocumented so callers
-// can't depend on it — today it's "pb-<n>" with n monotonic.
+// can't depend on it.
 func (s *bundleStore) Store(b *inputs.PreparedBundle) string {
 	id := "pb-" + strconv.FormatUint(s.nextID.Add(1), 10)
 
