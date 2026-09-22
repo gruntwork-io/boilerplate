@@ -6,7 +6,7 @@ default: build
 build: $(shell find . \( -type f -name '*.go' -print \))
 	set -xe ;\
 	vtag=$$(git describe --tags --abbrev=12 --dirty --broken) ;\
-	go build -o boilerplate -ldflags "-X github.com/gruntwork-io/boilerplate/version.Version=$${vtag} -extldflags '-static'" .
+	CGO_ENABLED=0 go build -o boilerplate -ldflags "-X github.com/gruntwork-io/boilerplate/version.Version=$${vtag}" .
 
 clean:
 	rm -f boilerplate

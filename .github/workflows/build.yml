@@ -51,13 +51,16 @@ jobs:
         env:
           GOOS: ${{ matrix.os }}
           GOARCH: ${{ matrix.arch }}
+          # Cross-compiles already disable cgo implicitly, but linux/amd64 is the
+          # host platform and would otherwise link net/os/user against glibc.
+          CGO_ENABLED: "0"
         run: |
           OUTPUT="bin/boilerplate_${GOOS}_${GOARCH}"
           if [[ "${GOOS}" == "windows" ]]; then
             OUTPUT="${OUTPUT}.exe"
           fi
           go build -o "${OUTPUT}" \
-            -ldflags "-s -w -X github.com/gruntwork-io/boilerplate/version.Version=${GITHUB_REF_NAME} -extldflags '-static'" \
+            -ldflags "-s -w -X github.com/gruntwork-io/boilerplate/version.Version=${GITHUB_REF_NAME}" \
             .
 
       - name: Upload Build Artifact
