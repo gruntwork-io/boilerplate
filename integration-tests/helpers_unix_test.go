@@ -28,5 +28,5 @@ func assertDirectoriesEqual(t *testing.T, folderWithExpectedContents string, fol
 		Command: "diff",
 		Args:    []string{"-r", "-u", tmpFolder, folderWithActualContents},
 	}
-	shell.RunCommand(t, cmd)
+	shell.RunCommandContext(t, t.Context(), &cmd)
 }
