@@ -751,7 +751,7 @@ func formatYAMLBytes(t *testing.T, ymlData []byte) []byte {
 	t.Helper()
 
 	ymlBuffer := bytes.NewBuffer(ymlData)
-	formattedYml, err := yamlfmt.Format(ymlBuffer)
+	formattedYml, err := yamlfmt.Format(ymlBuffer, false)
 	require.NoError(t, err)
 
 	return formattedYml
