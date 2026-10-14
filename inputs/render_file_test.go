@@ -739,13 +739,7 @@ dependencies:
 	assert.Equal(t, "hello from beta", got)
 }
 
-// TestRenderFileFromFS_OutputFolderUsesRenderVars covers a dep whose
-// output-folder is built from vars the caller supplies at render time. The
-// bundle producer renders output folders without them, so it records
-// "{{ outputFolder }}/{{ .AccountName }}/networking/vpc" as
-// ".//networking/vpc". The dep's file must render at the folder the runtime
-// writes it to, and never at the collapsed path, where a warm consumer would
-// otherwise write a stray copy.
+// TestRenderFileFromFS_OutputFolderUsesRenderVars covers vars in output-folder.
 func TestRenderFileFromFS_OutputFolderUsesRenderVars(t *testing.T) {
 	t.Parallel()
 
@@ -772,9 +766,7 @@ dependencies:
 	require.ErrorIs(t, err, ErrOutputNotProduced)
 }
 
-// TestRenderFileFromFS_UnrenderableOutputFolderRoutesToCold verifies that a
-// dep whose output-folder names a var the caller didn't supply is routed to
-// cold render rather than placed at the folder the bundle collapsed it to.
+// TestRenderFileFromFS_UnrenderableOutputFolderRoutesToCold covers unset vars.
 func TestRenderFileFromFS_UnrenderableOutputFolderRoutesToCold(t *testing.T) {
 	t.Parallel()
 
