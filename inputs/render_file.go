@@ -9,7 +9,6 @@ import (
 	"maps"
 	"net/url"
 	"path"
-	"regexp"
 	"strings"
 	"text/template"
 
@@ -252,12 +251,18 @@ func descendIntoDep(
 	return renderFileWalk(ctx, childLoc, childOutputPath, resolved.BundlePath, outputPath, childScope, depsIndex, visiting)
 }
 
-// templateFolderHelperRe matches {{ templateFolder }}, not .templateFolderName.
-var templateFolderHelperRe = regexp.MustCompile(`(^|[^.\w])templateFolder\b`)
-
 // renderDepOutputFolder renders output-folder with the vars the bundle lacked.
 func renderDepOutputFolder(ctx context.Context, parentLoc templateLocation, dep *variables.Dependency, resolved *ResolvedDep, scope map[string]any) (string, error) {
-	if !strings.Contains(dep.OutputFolder, "{{") || templateFolderHelperRe.MatchString(dep.OutputFolder) {
+	if !strings.Contains(dep.OutputFolder, "{{") {
+		return resolved.OutputFolder, nil
+	}
+
+	refs, err := extractRefs("output-folder", dep.OutputFolder)
+	if err != nil {
+		return "", err
+	}
+
+	if _, ok := refs.funcs["templateFolder"]; ok {
 		return resolved.OutputFolder, nil
 	}
 
@@ -276,11 +281,19 @@ func renderDepOutputFolder(ctx context.Context, parentLoc templateLocation, dep 
 		return "", err
 	}
 
-	if sentinelAbs := analysisOutputSentinelAbs(); sentinelAbs != "" {
-		rendered = strings.ReplaceAll(rendered, sentinelAbs, ".")
+	rendered = strings.TrimSpace(rendered)
+
+	sentinelAbs := analysisOutputSentinelAbs()
+	if sentinelAbs == "" || !strings.Contains(rendered, sentinelAbs) {
+		return rendered, nil
 	}
 
-	return strings.TrimSpace(rendered), nil
+	rest, ok := strings.CutPrefix(rendered, sentinelAbs)
+	if !ok || strings.Contains(rest, sentinelAbs) || (rest != "" && rest[0] != '/') {
+		return "", fmt.Errorf("unsupported use of {{ outputFolder }} in %q", dep.OutputFolder)
+	}
+
+	return "." + rest, nil
 }
 
 // lookupDeps returns every ResolvedDep entry under (parentBundlePath, depName)

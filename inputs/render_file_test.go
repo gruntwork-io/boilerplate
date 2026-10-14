@@ -785,6 +785,69 @@ dependencies:
 	require.ErrorIs(t, err, ErrDynamicFilename)
 }
 
+// TestRenderFileFromFS_TemplateFolderAsPathText covers a templateFolder dir.
+func TestRenderFileFromFS_TemplateFolderAsPathText(t *testing.T) {
+	t.Parallel()
+
+	fsys := fstest.MapFS{
+		"boilerplate.yml": &fstest.MapFile{Data: []byte(`
+variables:
+  - name: AccountName
+dependencies:
+  - name: vpc
+    template-url: ./vpc
+    output-folder: "{{ .AccountName }}/templateFolder/vpc"
+`)},
+		"vpc/boilerplate.yml": &fstest.MapFile{Data: []byte(``)},
+		"vpc/terragrunt.hcl":  &fstest.MapFile{Data: []byte(`vpc = true`)},
+	}
+
+	got, err := renderFile(t, fsys, "data-dev/templateFolder/vpc/terragrunt.hcl", map[string]any{"AccountName": "data-dev"})
+	require.NoError(t, err)
+	assert.Equal(t, `vpc = true`, got)
+}
+
+// TestRenderFileFromFS_TemplateFolderUsesBundleFolder covers the helper call.
+func TestRenderFileFromFS_TemplateFolderUsesBundleFolder(t *testing.T) {
+	t.Parallel()
+
+	fsys := fstest.MapFS{
+		"boilerplate.yml": &fstest.MapFile{Data: []byte(`
+dependencies:
+  - name: vpc
+    template-url: ./vpc
+    output-folder: "{{ templateFolder }}/../vpc"
+`)},
+		"vpc/boilerplate.yml": &fstest.MapFile{Data: []byte(``)},
+		"vpc/terragrunt.hcl":  &fstest.MapFile{Data: []byte(`vpc = true`)},
+	}
+
+	idx := map[string][]ResolvedDep{".": {{Name: "vpc", BundlePath: "vpc", OutputFolder: "from-bundle"}}}
+
+	got, err := RenderFileFromFS(context.Background(), fsys, ".", "from-bundle/terragrunt.hcl", map[string]any{}, idx)
+	require.NoError(t, err)
+	assert.Equal(t, `vpc = true`, got)
+}
+
+// TestRenderFileFromFS_OutputFolderSuffixRoutesToCold covers a suffixed folder.
+func TestRenderFileFromFS_OutputFolderSuffixRoutesToCold(t *testing.T) {
+	t.Parallel()
+
+	fsys := fstest.MapFS{
+		"boilerplate.yml": &fstest.MapFile{Data: []byte(`
+dependencies:
+  - name: backup
+    template-url: ./backup
+    output-folder: "{{ outputFolder }}-backup"
+`)},
+		"backup/boilerplate.yml": &fstest.MapFile{Data: []byte(``)},
+		"backup/main.tf":         &fstest.MapFile{Data: []byte(`backup = true`)},
+	}
+
+	_, err := renderFile(t, fsys, ".-backup/main.tf", map[string]any{})
+	require.ErrorIs(t, err, ErrDynamicFilename)
+}
+
 // TestRenderFileFromFS_NoForEachDoesNotLeakEachIntoScope guards the
 // non-iterating path: a plain dep must NOT see a `__each__` value in its
 // scope, even if a sibling dep is for_each-driven, because __each__ is
