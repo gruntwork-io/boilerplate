@@ -26,12 +26,15 @@ type templateRefs struct {
 	// invocations is the set of named templates this template invokes via
 	// {{ template "name" . }}, used to expand partials transitively.
 	invocations map[string]struct{}
+	// funcs is the set of helpers called, e.g. {{ templateFolder }}.
+	funcs map[string]struct{}
 }
 
 func newTemplateRefs() *templateRefs {
 	return &templateRefs{
 		vars:        map[string]struct{}{},
 		invocations: map[string]struct{}{},
+		funcs:       map[string]struct{}{},
 	}
 }
 
@@ -144,11 +147,13 @@ func walkArg(node parse.Node, refs *templateRefs) {
 		// {{ (something).Foo.Bar }} — walk the inner node; the chain's field
 		// accesses do not introduce new top-level vars.
 		walkArg(n.Node, refs)
+	case *parse.IdentifierNode:
+		refs.funcs[n.Ident] = struct{}{}
 	}
 
-	// Other node kinds (StringNode, NumberNode, BoolNode, IdentifierNode,
-	// VariableNode for $-prefixed locals, NilNode, DotNode) do not introduce
-	// references to declared inputs.
+	// Other node kinds (StringNode, NumberNode, BoolNode, VariableNode for
+	// $-prefixed locals, NilNode, DotNode) do not introduce references to
+	// declared inputs.
 }
 
 // extractRefs is a convenience helper that parses contents and returns the
