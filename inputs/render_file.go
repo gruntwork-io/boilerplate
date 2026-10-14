@@ -9,6 +9,7 @@ import (
 	"maps"
 	"net/url"
 	"path"
+	"regexp"
 	"strings"
 	"text/template"
 
@@ -231,7 +232,13 @@ func descendIntoDep(
 	}
 
 	childLoc := templateLocation{fsys: parentLoc.fsys, dir: resolved.BundlePath}
-	childOutputPath := joinOutputPath(currentOutputPath, resolved.OutputFolder)
+
+	outputFolder, folderErr := renderDepOutputFolder(ctx, parentLoc, dep, resolved, scopeForChild)
+	if folderErr != nil {
+		return "", false, fmt.Errorf("%w: output-folder of dependency %q: %w", ErrDynamicFilename, dep.Name, folderErr)
+	}
+
+	childOutputPath := joinOutputPath(currentOutputPath, outputFolder)
 
 	// Build child's scope: start from parent's (possibly __each__-seeded)
 	// scope filtered/mapped by the dep's declared variables block
@@ -243,6 +250,49 @@ func descendIntoDep(
 	}
 
 	return renderFileWalk(ctx, childLoc, childOutputPath, resolved.BundlePath, outputPath, childScope, depsIndex, visiting)
+}
+
+// templateFolderHelperRe matches a call to the {{ templateFolder }} helper,
+// but not a variable that merely has it in its name (.templateFolderName).
+var templateFolderHelperRe = regexp.MustCompile(`(^|[^.\w])templateFolder\b`)
+
+// renderDepOutputFolder renders a dep's output-folder against the scope the
+// caller's vars produced. The bundle's ResolvedDep.OutputFolder was rendered
+// at bundle time without those vars, so every variable it references
+// collapsed to "": "{{ outputFolder }}/{{ .AccountName }}/vpc" was recorded
+// as "./vpc", and trusting it would place the dep's files outside the folder
+// the runtime writes them to.
+//
+// A folder that calls {{ templateFolder }} keeps the bundle's value: that
+// helper resolves against the template's directory on disk, which only the
+// producer had.
+func renderDepOutputFolder(ctx context.Context, parentLoc templateLocation, dep *variables.Dependency, resolved *ResolvedDep, scope map[string]any) (string, error) {
+	if !strings.Contains(dep.OutputFolder, "{{") || templateFolderHelperRe.MatchString(dep.OutputFolder) {
+		return resolved.OutputFolder, nil
+	}
+
+	// {{ outputFolder }} is the parent's output folder, which the caller
+	// joins on, so render it as the analysis sentinel and collapse it to ".".
+	opts := &options.BoilerplateOptions{
+		TemplateFolder:  parentLoc.absDir,
+		OutputFolder:    analysisOutputSentinel,
+		NonInteractive:  true,
+		NoHooks:         true,
+		NoShell:         true,
+		OnMissingKey:    options.ExitWithError,
+		OnMissingConfig: options.Ignore,
+	}
+
+	rendered, err := render.RenderTemplateFromStringWithContext(ctx, logging.Discard(), "output-folder", dep.OutputFolder, scope, opts)
+	if err != nil {
+		return "", err
+	}
+
+	if sentinelAbs := analysisOutputSentinelAbs(); sentinelAbs != "" {
+		rendered = strings.ReplaceAll(rendered, sentinelAbs, ".")
+	}
+
+	return strings.TrimSpace(rendered), nil
 }
 
 // lookupDeps returns every ResolvedDep entry under (parentBundlePath, depName)
