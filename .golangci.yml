@@ -1,5 +1,3 @@
-# This file is generated from https://github.com/gruntwork-io/terragrunt/blob/main/.golangci.yml
-# It is automatically updated weekly via the update-lint-config workflow. Do not edit manually.
 version: "2"
 run:
   go: "1.27"
