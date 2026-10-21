@@ -14,14 +14,6 @@ clean:
 lint:
 	golangci-lint run ./...
 
-update-lint-config: SHELL:=/bin/bash
-update-lint-config:
-	curl -s https://raw.githubusercontent.com/gruntwork-io/terragrunt/main/.golangci.yml --output .golangci.yml
-	tmpfile=$$(mktemp) ;\
-	{ echo '# This file is generated from https://github.com/gruntwork-io/terragrunt/blob/main/.golangci.yml' ;\
-	  echo '# It is automatically updated weekly via the update-lint-config workflow. Do not edit manually.' ;\
-	  cat .golangci.yml; } > $${tmpfile} && mv $${tmpfile} .golangci.yml
-
 test:
 	go test -v ./...
 
@@ -55,4 +47,4 @@ wasm: compress-wasm copy-wasm-exec
 	@echo "WASM build complete:"
 	@ls -lh $(WASM_DIR)/boilerplate.wasm $(WASM_DIR)/boilerplate.wasm.br $(WASM_DIR)/boilerplate-full.wasm $(WASM_DIR)/boilerplate-full.wasm.br
 
-.PHONY: lint test default update-lint-config build-wasm build-wasm-lite build-wasm-full compress-wasm copy-wasm-exec wasm
+.PHONY: lint test default build-wasm build-wasm-lite build-wasm-full compress-wasm copy-wasm-exec wasm
