@@ -433,6 +433,98 @@ func TestCamelCaseLower(t *testing.T) {
 	}
 }
 
+func TestCamelCaseNormalized(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		input    string
+		expected string
+	}{
+		{"", ""},
+		{"     ", ""},
+		{"foo", "Foo"},
+		{"FOO", "Foo"},
+		{" \t  foo   \t", "Foo"},
+		{"FooBarBaz", "FooBarBaz"},
+		{"Fo", "Fo"},
+		{"fooID", "FooId"},
+		{"FoB", "FoB"},
+		{"oFo", "OFo"},
+		{"FoBa", "FoBa"},
+		{"oFoBa", "OFoBa"},
+		{"oFoB", "OFoB"},
+		{"Foo123B1234Baz1234", "Foo123B1234Baz1234"},
+		{"Foo_Bar_Baz", "FooBarBaz"},
+		{"FooIDbarBaz", "FooIdbarBaz"},
+		{"FOOIDbarBaz", "FooidbarBaz"},
+		{" A B C ", "ABC"},
+		{"foo bar baz", "FooBarBaz"},
+		{"foo \t \tbar   baz \t", "FooBarBaz"},
+		{"foo_bar_baz", "FooBarBaz"},
+		{"_foo_bar_baz_", "FooBarBaz"},
+		{"foo-bar-baz", "FooBarBaz"},
+		{"foo--bar----baz", "FooBarBaz"},
+		{"foo__bar____baz", "FooBarBaz"},
+		{" Foo Bar Baz ", "FooBarBaz"},
+		{" Foo Bar_BazBlah ", "FooBarBazBlah"},
+		{" Foo.Bar.Baz", "FooBarBaz"},
+		{"#@!Foo@#$@$Bar>>>>>Baz", "FooBarBaz"},
+		{"foo BAR baz!", "FooBarBaz"},
+		{"user ID", "UserId"},
+	}
+
+	for _, testCase := range testCases {
+		actual := camelCaseNormalized(testCase.input)
+		assert.Equal(t, testCase.expected, actual, "When calling camelCaseNormalized on '%s', expected '%s', but got '%s'", testCase.input, testCase.expected, actual)
+	}
+}
+
+func TestCamelCaseNormalizedLower(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		input    string
+		expected string
+	}{
+		{"", ""},
+		{"     ", ""},
+		{"foo", "foo"},
+		{"FOO", "foo"},
+		{" \t  foo   \t", "foo"},
+		{"FooBarBaz", "fooBarBaz"},
+		{"Fo", "fo"},
+		{"fooID", "fooId"},
+		{"FoB", "foB"},
+		{"oFo", "oFo"},
+		{"FoBa", "foBa"},
+		{"oFoBa", "oFoBa"},
+		{"oFoB", "oFoB"},
+		{"Foo123B1234Baz1234", "foo123B1234Baz1234"},
+		{"Foo_Bar_Baz", "fooBarBaz"},
+		{"FooIDbarBaz", "fooIdbarBaz"},
+		{"FOOIDbarBaz", "fooidbarBaz"},
+		{" A B C ", "aBC"},
+		{"foo bar baz", "fooBarBaz"},
+		{"foo \t \tbar   baz \t", "fooBarBaz"},
+		{"foo_bar_baz", "fooBarBaz"},
+		{"_foo_bar_baz_", "fooBarBaz"},
+		{"foo-bar-baz", "fooBarBaz"},
+		{"foo--bar----baz", "fooBarBaz"},
+		{"foo__bar____baz", "fooBarBaz"},
+		{" Foo Bar Baz ", "fooBarBaz"},
+		{" Foo Bar_BazBlah ", "fooBarBazBlah"},
+		{" Foo.Bar.Baz", "fooBarBaz"},
+		{"#@!Foo@#$@$Bar>>>>>Baz", "fooBarBaz"},
+		{"foo BAR baz!", "fooBarBaz"},
+		{"user ID", "userId"},
+	}
+
+	for _, testCase := range testCases {
+		actual := camelCaseNormalizedLower(testCase.input)
+		assert.Equal(t, testCase.expected, actual, "When calling camelCaseNormalizedLower on '%s', expected '%s', but got '%s'", testCase.input, testCase.expected, actual)
+	}
+}
+
 func TestLowerFirst(t *testing.T) {
 	t.Parallel()
 
