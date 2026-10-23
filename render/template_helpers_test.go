@@ -455,8 +455,8 @@ func TestCamelCaseNormalized(t *testing.T) {
 		{"oFoB", "OFoB"},
 		{"Foo123B1234Baz1234", "Foo123B1234Baz1234"},
 		{"Foo_Bar_Baz", "FooBarBaz"},
-		{"FooIDbarBaz", "FooIdbarBaz"},
-		{"FOOIDbarBaz", "FooidbarBaz"},
+		{"FooIDbarBaz", "FooIDbarBaz"},
+		{"FOOIDbarBaz", "FooiDbarBaz"},
 		{" A B C ", "ABC"},
 		{"foo bar baz", "FooBarBaz"},
 		{"foo \t \tbar   baz \t", "FooBarBaz"},
@@ -471,6 +471,13 @@ func TestCamelCaseNormalized(t *testing.T) {
 		{"#@!Foo@#$@$Bar>>>>>Baz", "FooBarBaz"},
 		{"foo BAR baz!", "FooBarBaz"},
 		{"user ID", "UserId"},
+		{"XMLHttpRequest", "XmlHttpRequest"},
+		{"HTTPServer", "HttpServer"},
+		{"getHTTPResponseCode", "GetHttpResponseCode"},
+		{"café", "Café"},
+		{"crème brûlée", "CrèmeBrûlée"},
+		{"Éric ÉTÉ", "ÉricÉté"},
+		{"日本 語", "日本語"},
 	}
 
 	for _, testCase := range testCases {
@@ -501,8 +508,8 @@ func TestCamelCaseNormalizedLower(t *testing.T) {
 		{"oFoB", "oFoB"},
 		{"Foo123B1234Baz1234", "foo123B1234Baz1234"},
 		{"Foo_Bar_Baz", "fooBarBaz"},
-		{"FooIDbarBaz", "fooIdbarBaz"},
-		{"FOOIDbarBaz", "fooidbarBaz"},
+		{"FooIDbarBaz", "fooIDbarBaz"},
+		{"FOOIDbarBaz", "fooiDbarBaz"},
 		{" A B C ", "aBC"},
 		{"foo bar baz", "fooBarBaz"},
 		{"foo \t \tbar   baz \t", "fooBarBaz"},
@@ -517,6 +524,13 @@ func TestCamelCaseNormalizedLower(t *testing.T) {
 		{"#@!Foo@#$@$Bar>>>>>Baz", "fooBarBaz"},
 		{"foo BAR baz!", "fooBarBaz"},
 		{"user ID", "userId"},
+		{"XMLHttpRequest", "xmlHttpRequest"},
+		{"HTTPServer", "httpServer"},
+		{"getHTTPResponseCode", "getHttpResponseCode"},
+		{"café", "café"},
+		{"crème brûlée", "crèmeBrûlée"},
+		{"Éric ÉTÉ", "éricÉté"},
+		{"日本 語", "日本語"},
 	}
 
 	for _, testCase := range testCases {

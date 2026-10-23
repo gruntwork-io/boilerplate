@@ -53,6 +53,16 @@ var camelCaseRegex = regexp.MustCompile(
 	"(^([[:lower:]]|[[:digit:]])+)|" + // Handle lower camel case
 		"([[:upper:]]*([[:lower:]]|[[:digit:]]|$)*)") // Handle normal camel case
 
+// camelCaseUnicodeRegex works like camelCaseRegex, but with Unicode classes, so letters such as é or 語 stay in their
+// word. camelCaseRegex is kept as is because snakeCase and dasherize depend on its output.
+var camelCaseUnicodeRegex = regexp.MustCompile(
+	`(^[\p{Ll}\p{Lo}\p{Lm}\p{Nd}]+)|` + // Handle lower camel case
+		`(\p{Lu}*([\p{Ll}\p{Lo}\p{Lm}\p{Nd}]|$)*)`) // Handle normal camel case
+
+// acronymBoundaryRegex finds the end of an acronym followed by a word, such as "LHt" in "XMLHttp", so a space can be
+// inserted between them ("XML Http").
+var acronymBoundaryRegex = regexp.MustCompile(`(\p{Lu})(\p{Lu}[\p{Ll}\p{Lo}\p{Lm}])`)
+
 // TemplateHelper represents all boilerplate template helpers. They get the path of the template they are rendering as
 // the first arg, the Boilerplate Options as the second arg, and then any arguments the user passed when calling the
 // helper.
@@ -526,14 +536,16 @@ func camelCaseLower(str string) string {
 }
 
 // Convert a string to camel case, dropping all punctuation and whitespace and normalizing the case of each word. E.g.
-// "foo BAR baz!" becomes "FooBarBaz" and "fooID" becomes "FooId".
+// "foo BAR baz!" becomes "FooBarBaz", "fooID" becomes "FooId" and "XMLHttpRequest" becomes "XmlHttpRequest".
 func camelCaseNormalized(str string) string {
 	trimmed := trimWhiteSpaceAndPunctuation(str)
 	collapsed := collapseWhiteSpaceAndPunctuationToDelimiter(trimmed, " ")
 
-	// Split on both whitespace and camel case boundaries (see camelCaseRegex), so "FooBar" stays "FooBar" instead of
-	// becoming "Foobar"
-	words := camelCaseRegex.FindAllString(collapsed, -1)
+	separated := acronymBoundaryRegex.ReplaceAllString(collapsed, "$1 $2")
+
+	// Split on both whitespace and camel case boundaries (see camelCaseUnicodeRegex), so "FooBar" stays "FooBar"
+	// instead of becoming "Foobar"
+	words := camelCaseUnicodeRegex.FindAllString(separated, -1)
 
 	normalized := make([]string, 0, len(words))
 	for _, word := range words {
