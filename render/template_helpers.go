@@ -54,10 +54,11 @@ var camelCaseRegex = regexp.MustCompile(
 		"([[:upper:]]*([[:lower:]]|[[:digit:]]|$)*)") // Handle normal camel case
 
 // camelCaseUnicodeRegex works like camelCaseRegex, but with Unicode classes, so letters such as é or 語 stay in their
-// word. camelCaseRegex is kept as is because snakeCase and dasherize depend on its output.
+// word. Marks (\p{M}) are combining signs such as a decomposed accent or a Devanagari vowel sign, so they continue the
+// current word. camelCaseRegex is kept as is because snakeCase and dasherize depend on its output.
 var camelCaseUnicodeRegex = regexp.MustCompile(
-	`(^[\p{Ll}\p{Lo}\p{Lm}\p{Nd}]+)|` + // Handle lower camel case
-		`(\p{Lu}*([\p{Ll}\p{Lo}\p{Lm}\p{Nd}]|$)*)`) // Handle normal camel case
+	`(^[\p{Ll}\p{Lo}\p{Lm}\p{Nd}\p{M}]+)|` + // Handle lower camel case
+		`((\p{Lu}\p{M}*)*([\p{Ll}\p{Lo}\p{Lm}\p{Nd}\p{M}]|$)*)`) // Handle normal camel case
 
 // acronymBoundaryRegex finds the end of an acronym followed by a word, such as "LHt" in "XMLHttp", so a space can be
 // inserted between them ("XML Http").

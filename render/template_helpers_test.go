@@ -478,6 +478,9 @@ func TestCamelCaseNormalized(t *testing.T) {
 		{"crème brûlée", "CrèmeBrûlée"},
 		{"Éric ÉTÉ", "ÉricÉté"},
 		{"日本 語", "日本語"},
+		{"हिन्दी", "हिन्दी"},
+		{"cafe\u0301", "Cafe\u0301"},
+		{"E\u0301ric E\u0301TE\u0301", "E\u0301ricE\u0301te\u0301"},
 	}
 
 	for _, testCase := range testCases {
@@ -531,6 +534,9 @@ func TestCamelCaseNormalizedLower(t *testing.T) {
 		{"crème brûlée", "crèmeBrûlée"},
 		{"Éric ÉTÉ", "éricÉté"},
 		{"日本 語", "日本語"},
+		{"हिन्दी", "हिन्दी"},
+		{"cafe\u0301", "cafe\u0301"},
+		{"E\u0301ric E\u0301TE\u0301", "e\u0301ricE\u0301te\u0301"},
 	}
 
 	for _, testCase := range testCases {
