@@ -35,7 +35,9 @@ You can also chain multiple helpers together:
 | Function | Description | Example |
 |----------|-------------|---------|
 | `dasherize` | Convert to dash-separated lowercase | `{{ "Foo Bar" \| dasherize }}` → `foo-bar` |
-| `camelCaseLower` | Lower camelCase | `{{ "foo-bar" \| camelCaseLower }}` → `fooBar` |
+| `camelCaseLower` | Lower camelCase, preserving acronyms | `{{ "foo BAR" \| camelCaseLower }}` → `fooBAR` |
+| `camelCaseNormalized` | CamelCase, lower casing the rest of each word | `{{ "foo BAR" \| camelCaseNormalized }}` → `FooBar` |
+| `camelCaseNormalizedLower` | Lower camelCase, lower casing the rest of each word | `{{ "foo BAR" \| camelCaseNormalizedLower }}` → `fooBar` |
 | `replaceOne` | Replace first occurrence | `{{ "aab" \| replaceOne "a" "b" }}` → `bab` |
 
 ### Sprig string functions
