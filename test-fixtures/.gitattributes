@@ -10,3 +10,6 @@
 *.zip binary
 *.tar binary
 *.gz binary
+# An executable with no extension, so no pattern above covers it. It contains
+# CRLF byte pairs that `* text` would strip.
+util-test/is-text-file/binary-file binary

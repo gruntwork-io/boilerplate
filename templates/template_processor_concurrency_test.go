@@ -301,7 +301,7 @@ hooks:
 
 	var forEachYAMLSb strings.Builder
 	for _, item := range items {
-		forEachYAMLSb.WriteString(fmt.Sprintf("      - %s\n", item))
+		fmt.Fprintf(&forEachYAMLSb, "      - %s\n", item)
 	}
 
 	forEachYAML += forEachYAMLSb.String()
@@ -469,7 +469,7 @@ func createForEachFixture(t *testing.T, items []string) *options.BoilerplateOpti
 
 	var forEachYAMLSb strings.Builder
 	for _, item := range items {
-		forEachYAMLSb.WriteString(fmt.Sprintf("      - %s\n", item))
+		fmt.Fprintf(&forEachYAMLSb, "      - %s\n", item)
 	}
 
 	forEachYAML += forEachYAMLSb.String()

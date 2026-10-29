@@ -231,7 +231,13 @@ func descendIntoDep(
 	}
 
 	childLoc := templateLocation{fsys: parentLoc.fsys, dir: resolved.BundlePath}
-	childOutputPath := joinOutputPath(currentOutputPath, resolved.OutputFolder)
+
+	outputFolder, folderErr := renderDepOutputFolder(ctx, parentLoc, dep, resolved, scopeForChild)
+	if folderErr != nil {
+		return "", false, fmt.Errorf("%w: output-folder of dependency %q: %w", ErrDynamicFilename, dep.Name, folderErr)
+	}
+
+	childOutputPath := joinOutputPath(currentOutputPath, outputFolder)
 
 	// Build child's scope: start from parent's (possibly __each__-seeded)
 	// scope filtered/mapped by the dep's declared variables block
@@ -243,6 +249,51 @@ func descendIntoDep(
 	}
 
 	return renderFileWalk(ctx, childLoc, childOutputPath, resolved.BundlePath, outputPath, childScope, depsIndex, visiting)
+}
+
+// renderDepOutputFolder renders output-folder with the vars the bundle lacked.
+func renderDepOutputFolder(ctx context.Context, parentLoc templateLocation, dep *variables.Dependency, resolved *ResolvedDep, scope map[string]any) (string, error) {
+	if !strings.Contains(dep.OutputFolder, "{{") {
+		return resolved.OutputFolder, nil
+	}
+
+	refs, err := extractRefs("output-folder", dep.OutputFolder)
+	if err != nil {
+		return "", err
+	}
+
+	if _, ok := refs.funcs["templateFolder"]; ok {
+		return resolved.OutputFolder, nil
+	}
+
+	opts := &options.BoilerplateOptions{
+		TemplateFolder:  parentLoc.absDir,
+		OutputFolder:    analysisOutputSentinel,
+		NonInteractive:  true,
+		NoHooks:         true,
+		NoShell:         true,
+		OnMissingKey:    options.ExitWithError,
+		OnMissingConfig: options.Ignore,
+	}
+
+	rendered, err := render.RenderTemplateFromStringWithContext(ctx, logging.Discard(), "output-folder", dep.OutputFolder, scope, opts)
+	if err != nil {
+		return "", err
+	}
+
+	rendered = strings.TrimSpace(rendered)
+
+	sentinelAbs := analysisOutputSentinelAbs()
+	if sentinelAbs == "" || !strings.Contains(rendered, sentinelAbs) {
+		return rendered, nil
+	}
+
+	rest, ok := strings.CutPrefix(rendered, sentinelAbs)
+	if !ok || strings.Contains(rest, sentinelAbs) || (rest != "" && rest[0] != '/') {
+		return "", fmt.Errorf("unsupported use of {{ outputFolder }} in %q", dep.OutputFolder)
+	}
+
+	return "." + rest, nil
 }
 
 // lookupDeps returns every ResolvedDep entry under (parentBundlePath, depName)
