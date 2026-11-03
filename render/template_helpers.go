@@ -53,6 +53,17 @@ var camelCaseRegex = regexp.MustCompile(
 	"(^([[:lower:]]|[[:digit:]])+)|" + // Handle lower camel case
 		"([[:upper:]]*([[:lower:]]|[[:digit:]]|$)*)") // Handle normal camel case
 
+// camelCaseUnicodeRegex works like camelCaseRegex, but with Unicode classes, so letters such as é or 語 stay in their
+// word. Marks (\p{M}) are combining signs such as a decomposed accent or a Devanagari vowel sign, so they continue the
+// current word. camelCaseRegex is kept as is because snakeCase and dasherize depend on its output.
+var camelCaseUnicodeRegex = regexp.MustCompile(
+	`(^[\p{Ll}\p{Lo}\p{Lm}\p{Nd}\p{M}]+)|` + // Handle lower camel case
+		`((\p{Lu}\p{M}*)*([\p{Ll}\p{Lo}\p{Lm}\p{Nd}\p{M}]|$)*)`) // Handle normal camel case
+
+// acronymBoundaryRegex finds the end of an acronym followed by a word, such as "LHt" in "XMLHttp", so a space can be
+// inserted between them ("XML Http").
+var acronymBoundaryRegex = regexp.MustCompile(`(\p{Lu})(\p{Lu}[\p{Ll}\p{Lo}\p{Lm}])`)
+
 // TemplateHelper represents all boilerplate template helpers. They get the path of the template they are rendering as
 // the first arg, the Boilerplate Options as the second arg, and then any arguments the user passed when calling the
 // helper.
@@ -83,13 +94,15 @@ func CreateTemplateHelpers(ctx context.Context, l logging.Logger, templatePath s
 		"times":  wrapFloatFloatToFloatFunction(func(arg1 float64, arg2 float64) float64 { return arg1 * arg2 }),
 		"divide": wrapFloatFloatToFloatFunction(func(arg1 float64, arg2 float64) float64 { return arg1 / arg2 }),
 
-		"dasherize":             dasherize,
-		"camelCaseLower":        camelCaseLower,
-		"replaceOne":            func(old string, new string, str string) string { return strings.Replace(str, old, new, 1) },
-		"trimPrefixBoilerplate": trimPrefix,
-		"trimSuffixBoilerplate": trimSuffix,
-		"toYaml":                toYaml,
-		"fromYaml":              fromYaml,
+		"dasherize":                dasherize,
+		"camelCaseLower":           camelCaseLower,
+		"camelCaseNormalized":      camelCaseNormalized,
+		"camelCaseNormalizedLower": camelCaseNormalizedLower,
+		"replaceOne":               func(old string, new string, str string) string { return strings.Replace(str, old, new, 1) },
+		"trimPrefixBoilerplate":    trimPrefix,
+		"trimSuffixBoilerplate":    trimSuffix,
+		"toYaml":                   toYaml,
+		"fromYaml":                 fromYaml,
 
 		"numRange":   slice,
 		"keysSorted": keys,
@@ -494,7 +507,8 @@ func snakeCase(str string) string {
 	return toDelimitedString(str, "_")
 }
 
-// Convert a string to camel case, dropping all punctuation and whitespace. E.g. "foo BAR baz!" becomes "FooBarBaz".
+// Convert a string to camel case, dropping all punctuation and whitespace and preserving acronyms. E.g. "foo BAR baz!"
+// becomes "FooBARBaz" and "fooID" becomes "FooID". See camelCaseNormalized to lower case the rest of each word.
 func camelCase(str string) string {
 	// First, we strip any leading or trailing white space, underscores, or dashes
 	trimmed := trimWhiteSpaceAndPunctuation(str)
@@ -516,10 +530,36 @@ func camelCase(str string) string {
 	return strings.Join(capitalized, "")
 }
 
-// Convert a string to camel case where the first letter is lower case, dropping all punctuation and whitespace. E.g.
-// "foo BAR baz!" becomes "fooBarBaz".
+// Convert a string to camel case where the first letter is lower case, dropping all punctuation and whitespace and
+// preserving acronyms. E.g. "foo BAR baz!" becomes "fooBARBaz".
 func camelCaseLower(str string) string {
 	return lowerFirst(camelCase(str))
+}
+
+// Convert a string to camel case, dropping all punctuation and whitespace and normalizing the case of each word. E.g.
+// "foo BAR baz!" becomes "FooBarBaz", "fooID" becomes "FooId" and "XMLHttpRequest" becomes "XmlHttpRequest".
+func camelCaseNormalized(str string) string {
+	trimmed := trimWhiteSpaceAndPunctuation(str)
+	collapsed := collapseWhiteSpaceAndPunctuationToDelimiter(trimmed, " ")
+
+	separated := acronymBoundaryRegex.ReplaceAllString(collapsed, "$1 $2")
+
+	// Split on both whitespace and camel case boundaries (see camelCaseUnicodeRegex), so "FooBar" stays "FooBar"
+	// instead of becoming "Foobar"
+	words := camelCaseUnicodeRegex.FindAllString(separated, -1)
+
+	normalized := make([]string, 0, len(words))
+	for _, word := range words {
+		normalized = append(normalized, upperFirst(strings.ToLower(word)))
+	}
+
+	return strings.Join(normalized, "")
+}
+
+// Convert a string to camel case where the first letter is lower case, dropping all punctuation and whitespace and
+// normalizing the case of each word. E.g. "foo BAR baz!" becomes "fooBarBaz".
+func camelCaseNormalizedLower(str string) string {
+	return lowerFirst(camelCaseNormalized(str))
 }
 
 // Returns a copy of str with the first character converted to lower case. E.g. "FOO" becomes "fOO".
