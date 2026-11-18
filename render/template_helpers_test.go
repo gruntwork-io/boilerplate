@@ -433,6 +433,118 @@ func TestCamelCaseLower(t *testing.T) {
 	}
 }
 
+func TestCamelCaseNormalized(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		input    string
+		expected string
+	}{
+		{"", ""},
+		{"     ", ""},
+		{"foo", "Foo"},
+		{"FOO", "Foo"},
+		{" \t  foo   \t", "Foo"},
+		{"FooBarBaz", "FooBarBaz"},
+		{"Fo", "Fo"},
+		{"fooID", "FooId"},
+		{"FoB", "FoB"},
+		{"oFo", "OFo"},
+		{"FoBa", "FoBa"},
+		{"oFoBa", "OFoBa"},
+		{"oFoB", "OFoB"},
+		{"Foo123B1234Baz1234", "Foo123B1234Baz1234"},
+		{"Foo_Bar_Baz", "FooBarBaz"},
+		{"FooIDbarBaz", "FooIDbarBaz"},
+		{"FOOIDbarBaz", "FooiDbarBaz"},
+		{" A B C ", "ABC"},
+		{"foo bar baz", "FooBarBaz"},
+		{"foo \t \tbar   baz \t", "FooBarBaz"},
+		{"foo_bar_baz", "FooBarBaz"},
+		{"_foo_bar_baz_", "FooBarBaz"},
+		{"foo-bar-baz", "FooBarBaz"},
+		{"foo--bar----baz", "FooBarBaz"},
+		{"foo__bar____baz", "FooBarBaz"},
+		{" Foo Bar Baz ", "FooBarBaz"},
+		{" Foo Bar_BazBlah ", "FooBarBazBlah"},
+		{" Foo.Bar.Baz", "FooBarBaz"},
+		{"#@!Foo@#$@$Bar>>>>>Baz", "FooBarBaz"},
+		{"foo BAR baz!", "FooBarBaz"},
+		{"user ID", "UserId"},
+		{"XMLHttpRequest", "XmlHttpRequest"},
+		{"HTTPServer", "HttpServer"},
+		{"getHTTPResponseCode", "GetHttpResponseCode"},
+		{"café", "Café"},
+		{"crème brûlée", "CrèmeBrûlée"},
+		{"Éric ÉTÉ", "ÉricÉté"},
+		{"日本 語", "日本語"},
+		{"हिन्दी", "हिन्दी"},
+		{"cafe\u0301", "Cafe\u0301"},
+		{"E\u0301ric E\u0301TE\u0301", "E\u0301ricE\u0301te\u0301"},
+	}
+
+	for _, testCase := range testCases {
+		actual := camelCaseNormalized(testCase.input)
+		assert.Equal(t, testCase.expected, actual, "When calling camelCaseNormalized on '%s', expected '%s', but got '%s'", testCase.input, testCase.expected, actual)
+	}
+}
+
+func TestCamelCaseNormalizedLower(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		input    string
+		expected string
+	}{
+		{"", ""},
+		{"     ", ""},
+		{"foo", "foo"},
+		{"FOO", "foo"},
+		{" \t  foo   \t", "foo"},
+		{"FooBarBaz", "fooBarBaz"},
+		{"Fo", "fo"},
+		{"fooID", "fooId"},
+		{"FoB", "foB"},
+		{"oFo", "oFo"},
+		{"FoBa", "foBa"},
+		{"oFoBa", "oFoBa"},
+		{"oFoB", "oFoB"},
+		{"Foo123B1234Baz1234", "foo123B1234Baz1234"},
+		{"Foo_Bar_Baz", "fooBarBaz"},
+		{"FooIDbarBaz", "fooIDbarBaz"},
+		{"FOOIDbarBaz", "fooiDbarBaz"},
+		{" A B C ", "aBC"},
+		{"foo bar baz", "fooBarBaz"},
+		{"foo \t \tbar   baz \t", "fooBarBaz"},
+		{"foo_bar_baz", "fooBarBaz"},
+		{"_foo_bar_baz_", "fooBarBaz"},
+		{"foo-bar-baz", "fooBarBaz"},
+		{"foo--bar----baz", "fooBarBaz"},
+		{"foo__bar____baz", "fooBarBaz"},
+		{" Foo Bar Baz ", "fooBarBaz"},
+		{" Foo Bar_BazBlah ", "fooBarBazBlah"},
+		{" Foo.Bar.Baz", "fooBarBaz"},
+		{"#@!Foo@#$@$Bar>>>>>Baz", "fooBarBaz"},
+		{"foo BAR baz!", "fooBarBaz"},
+		{"user ID", "userId"},
+		{"XMLHttpRequest", "xmlHttpRequest"},
+		{"HTTPServer", "httpServer"},
+		{"getHTTPResponseCode", "getHttpResponseCode"},
+		{"café", "café"},
+		{"crème brûlée", "crèmeBrûlée"},
+		{"Éric ÉTÉ", "éricÉté"},
+		{"日本 語", "日本語"},
+		{"हिन्दी", "हिन्दी"},
+		{"cafe\u0301", "cafe\u0301"},
+		{"E\u0301ric E\u0301TE\u0301", "e\u0301ricE\u0301te\u0301"},
+	}
+
+	for _, testCase := range testCases {
+		actual := camelCaseNormalizedLower(testCase.input)
+		assert.Equal(t, testCase.expected, actual, "When calling camelCaseNormalizedLower on '%s', expected '%s', but got '%s'", testCase.input, testCase.expected, actual)
+	}
+}
+
 func TestLowerFirst(t *testing.T) {
 	t.Parallel()
 
