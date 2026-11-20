@@ -276,7 +276,7 @@ func TestGetVariablesUserValuesAreNotRendered(t *testing.T) {
 		NonInteractive: true,
 		OnMissingKey:   options.ExitWithError,
 		Vars: map[string]any{
-			"Name": `{{ shell "echo" "evil" }}`,
+			"Name": `{{ shell "echo" "rendered" }}`,
 			"Tags": map[string]any{"team": `{{ env "HOME" }}`},
 		},
 		VarDefaults: map[string]any{
@@ -295,10 +295,10 @@ func TestGetVariablesUserValuesAreNotRendered(t *testing.T) {
 	actual, err := GetVariables(logging.Discard(), opts, boilerplateConfig, &BoilerplateConfig{}, &variables.Dependency{})
 
 	require.NoError(t, err)
-	assert.Equal(t, `{{ shell "echo" "evil" }}`, actual["Name"])
+	assert.Equal(t, `{{ shell "echo" "rendered" }}`, actual["Name"])
 	assert.Equal(t, map[string]any{"team": `{{ env "HOME" }}`}, actual["Tags"])
-	assert.Equal(t, `prefix-{{ shell "echo" "evil" }}`, actual["Derived"])
-	assert.Equal(t, []any{`dep-{{ shell "echo" "evil" }}`}, actual["FromDep"])
+	assert.Equal(t, `prefix-{{ shell "echo" "rendered" }}`, actual["Derived"])
+	assert.Equal(t, []any{`dep-{{ shell "echo" "rendered" }}`}, actual["FromDep"])
 }
 
 func TestGetVariableInteractiveWithDefaultSkipsPrompt(t *testing.T) {

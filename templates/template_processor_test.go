@@ -213,9 +213,9 @@ func TestCloneVariablesForDependency(t *testing.T) {
 				variables.NewListVariable("childList").WithDefault([]any{"{{ .ChildOnly }}"}),
 				variables.NewStringVariable("user").WithDefault("{{ .foo }}"),
 			}},
-			variables:         map[string]any{"foo": "bar", "user": `{{ shell "evil" }}`},
+			variables:         map[string]any{"foo": "bar", "user": `{{ shell "echo" "rendered" }}`},
 			optsVars:          map[string]any{},
-			expectedVariables: map[string]any{"foo": "bar", "list": []any{"bar-item"}, "user": `{{ shell "evil" }}`},
+			expectedVariables: map[string]any{"foo": "bar", "list": []any{"bar-item"}, "user": `{{ shell "echo" "rendered" }}`},
 			expectedDefaults:  map[string]any{"childList": []any{"{{ .ChildOnly }}"}},
 		},
 	}
