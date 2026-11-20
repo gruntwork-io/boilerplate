@@ -200,8 +200,8 @@ func processPartials(ctx context.Context, l logging.Logger, partials []string, o
 // processHooks processes the given list of hooks, which are scripts that should be executed at the command-line
 func processHooks(ctx context.Context, l logging.Logger, hooks []variables.Hook, opts *options.BoilerplateOptions, vars map[string]any) error {
 	if len(hooks) == 0 || opts.NoHooks {
-		if opts.NoHooks {
-			l.Debugf("Hooks are disabled, skipping %d hook(s)", len(hooks))
+		if opts.NoHooks && len(hooks) > 0 {
+			l.Infof("Hooks are disabled, skipping %d hook(s)", len(hooks))
 		}
 
 		return nil
@@ -253,6 +253,10 @@ func processHooks(ctx context.Context, l logging.Logger, hooks []variables.Hook,
 			if shouldSetExecuteAll {
 				executeAll = true
 			}
+		} else {
+			// No prompt is shown on this path (non-interactive, "all", or previously confirmed), so record what is
+			// about to run in the log instead.
+			logHookDetails(l, hookDetails)
 		}
 
 		// Execute the hook
@@ -347,7 +351,8 @@ func handlePreviousHookConfirmation(l logging.Logger, hookKey string, hookAnswer
 
 // handleHookUserConfirmation prompts the user for confirmation and handles the response
 func handleHookUserConfirmation(l logging.Logger, hookDetails string, hookKey string, hookAnswers map[string]bool) (bool, bool, error) {
-	printHookDetails(l, hookDetails)
+	// Printed directly rather than logged so the user always sees what they are approving, whatever the log level.
+	prompt.PrintDetails("Hook details:", hookDetails)
 
 	resp, err := prompt.PromptUserForYesNoAll("Execute hook?")
 	if err != nil {
@@ -384,13 +389,13 @@ func generateHookKey(hookDetails string) string {
 	return fmt.Sprintf("hook_%x", hash)
 }
 
-// printHookDetails prints the details of a hook that will be executed
-func printHookDetails(l logging.Logger, hookDetails string) {
-	l.Debugf("Hook details:")
+// logHookDetails logs the details of a hook that is being executed without a confirmation prompt
+func logHookDetails(l logging.Logger, hookDetails string) {
+	l.Infof("Executing hook without prompting:")
 
 	lines := strings.SplitSeq(hookDetails, "\n")
 	for line := range lines {
-		l.Debugf("  %s", line)
+		l.Infof("  %s", line)
 	}
 }
 

@@ -19,6 +19,7 @@ const OptManifest = "manifest"
 const OptManifestFile = "manifest-file"
 const OptParallelism = "parallelism"
 const OptIncludeBundle = "include-bundle"
+const OptLogLevel = "log-level"
 
 // BoilerplateOptions represents the command-line options for the boilerplate app
 type BoilerplateOptions struct {

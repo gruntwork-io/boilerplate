@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"strings"
 )
 
 // Logger receives boilerplate's diagnostic output. Implementations must be safe for
@@ -55,6 +56,25 @@ func (l Level) String() string {
 		return "error"
 	default:
 		return fmt.Sprintf("level(%d)", int(l))
+	}
+}
+
+// AllLevelNames lists the names accepted by ParseLevel, in ascending order of severity.
+var AllLevelNames = []string{"debug", "info", "warn", "error"}
+
+// ParseLevel converts a level name (debug, info, warn, error; case-insensitive) to a Level.
+func ParseLevel(name string) (Level, error) {
+	switch strings.ToLower(strings.TrimSpace(name)) {
+	case "debug":
+		return LevelDebug, nil
+	case "info":
+		return LevelInfo, nil
+	case "warn", "warning":
+		return LevelWarn, nil
+	case "error":
+		return LevelError, nil
+	default:
+		return LevelInfo, fmt.Errorf("invalid log level %q: must be one of %v", name, AllLevelNames)
 	}
 }
 

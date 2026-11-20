@@ -9,6 +9,9 @@ func PromptUserForInput(p string) (string, error) {
 	return "", fmt.Errorf("interactive prompts are not supported in WASM")
 }
 
+// PrintDetails is a no-op for WASM builds where interactive prompts are not supported.
+func PrintDetails(title string, details string) {}
+
 // PromptUserForYesNo is a stub for WASM builds where interactive prompts are not supported.
 func PromptUserForYesNo(p string) (bool, error) {
 	return false, fmt.Errorf("interactive prompts are not supported in WASM")

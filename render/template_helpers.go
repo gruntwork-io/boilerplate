@@ -655,15 +655,15 @@ func generateShellCommandKey(args []string, envVars []string, workingDir string)
 	return fmt.Sprintf("shell_%x", hash)
 }
 
-// printShellCommandDetails prints the details of a shell command that will be executed.
-func printShellCommandDetails(l logging.Logger, args []string, envVars []string, workingDir string) {
-	l.Debugf("Shell command details:")
+// logShellCommandDetails logs the details of a shell command that is being executed without a confirmation prompt.
+func logShellCommandDetails(l logging.Logger, args []string, envVars []string, workingDir string) {
+	l.Infof("Executing shell command without prompting:")
 
 	details := formatShellCommandDetails(args, envVars, workingDir)
 
 	lines := strings.SplitSeq(details, "\n")
 	for line := range lines {
-		l.Debugf("  %s", line)
+		l.Infof("  %s", line)
 	}
 }
 
@@ -688,6 +688,7 @@ func shell(ctx context.Context, l logging.Logger, templatePath string, opts *opt
 		opts.ShellCommandAnswers[shellKey] = true
 
 		l.Debugf("Executing shell command (non-interactive mode)")
+		logShellCommandDetails(l, args, envVars, workingDir)
 
 		return shellcmd.RunShellCommandAndGetOutputWithContext(ctx, l, workingDir, envVars, args...)
 	}
@@ -700,12 +701,14 @@ func shell(ctx context.Context, l logging.Logger, templatePath string, opts *opt
 		}
 
 		l.Debugf("Executing shell command (%s)", "previously confirmed or all confirmed")
+		logShellCommandDetails(l, args, envVars, workingDir)
 
 		return shellcmd.RunShellCommandAndGetOutputWithContext(ctx, l, workingDir, envVars, args...)
 	}
 
-	// Handle user confirmation
-	printShellCommandDetails(l, args, envVars, workingDir)
+	// Handle user confirmation. The details are printed directly rather than logged so the user always sees what
+	// they are approving, whatever the log level.
+	prompt.PrintDetails("Shell command details:", formatShellCommandDetails(args, envVars, workingDir))
 
 	resp, err := prompt.PromptUserForYesNoAll("Execute shell command?")
 	if err != nil {
