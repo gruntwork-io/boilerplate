@@ -174,6 +174,7 @@ func TestCloneVariablesForDependency(t *testing.T) {
 		variables         map[string]any
 		optsVars          map[string]any
 		expectedVariables map[string]any
+		expectedDefaults  map[string]any
 		dependency        *variables.Dependency
 	}{
 		{
@@ -206,6 +207,17 @@ func TestCloneVariablesForDependency(t *testing.T) {
 			optsVars:          map[string]any{"dep1.abc": "should-modify-name", "dep2.def": "should-copy-unmodified"},
 			expectedVariables: map[string]any{},
 		},
+		{
+			dependency: &variables.Dependency{Name: "dep1", TemplateURL: "../dep1", OutputFolder: "../out1", Variables: []variables.Variable{
+				variables.NewListVariable("list").WithDefault([]any{"{{ .foo }}-item"}),
+				variables.NewListVariable("childList").WithDefault([]any{"{{ .ChildOnly }}"}),
+				variables.NewStringVariable("user").WithDefault("{{ .foo }}"),
+			}},
+			variables:         map[string]any{"foo": "bar", "user": `{{ shell "echo" "rendered" }}`},
+			optsVars:          map[string]any{},
+			expectedVariables: map[string]any{"foo": "bar", "list": []any{"bar-item"}, "user": `{{ shell "echo" "rendered" }}`},
+			expectedDefaults:  map[string]any{"childList": []any{"{{ .ChildOnly }}"}},
+		},
 	}
 
 	for _, testCase := range testCases {
@@ -215,9 +227,10 @@ func TestCloneVariablesForDependency(t *testing.T) {
 
 			opts := testutil.CreateTestOptionsWithOutput("/template/path/", "/output/path/")
 			opts.Vars = tt.optsVars
-			actualVariables, err := cloneVariablesForDependency(t.Context(), logging.Discard(), opts, tt.dependency, nil, tt.variables, nil)
+			actualVariables, actualDefaults, err := cloneVariablesForDependency(t.Context(), logging.Discard(), opts, tt.dependency, nil, tt.variables, nil)
 			require.NoError(t, err)
 			assert.Equal(t, tt.expectedVariables, actualVariables, "Dependency: %s", tt.dependency)
+			assert.Equal(t, tt.expectedDefaults, actualDefaults)
 		})
 	}
 }

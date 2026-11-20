@@ -81,7 +81,7 @@ func RenderTemplateFromStringWithContext(ctx context.Context, l logging.Logger, 
 }
 
 // RenderVariables will render each of the variables that need to be rendered by running it through the go templating
-// syntax. Variable values are allowed to use Go templating syntax (e.g. to reference other variables), so this function
+// syntax. Only pass variable defaults from boilerplate.yml: user-supplied values must never be rendered. This function
 // loops over each variable value, renders each one, and returns a new map of rendered variables.
 //
 // This function supports nested variables references, but uses a heuristic based approach. Ideally, we can parse the Go
@@ -105,7 +105,7 @@ func RenderVariables(
 }
 
 // RenderVariablesWithContext will render each of the variables that need to be rendered by running it through the go templating
-// syntax. Variable values are allowed to use Go templating syntax (e.g. to reference other variables), so this function
+// syntax. Only pass variable defaults from boilerplate.yml: user-supplied values must never be rendered. This function
 // loops over each variable value, renders each one, and returns a new map of rendered variables.
 //
 // This function supports nested variables references, but uses a heuristic based approach. Ideally, we can parse the Go
@@ -225,6 +225,11 @@ func attemptRenderVariables(
 	}
 
 	return out, allRenderErr
+}
+
+// RenderValue renders every string in value, recursing into lists and maps. Only pass defaults from boilerplate.yml.
+func RenderValue(ctx context.Context, l logging.Logger, opts *options.BoilerplateOptions, value any, variables map[string]any) (any, error) {
+	return attemptRenderVariable(ctx, l, opts, value, variables)
 }
 
 // attemptRenderVariable renders a single variable, using the provided renderedVariables to resolve any variable

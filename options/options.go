@@ -23,6 +23,7 @@ const OptIncludeBundle = "include-bundle"
 // BoilerplateOptions represents the command-line options for the boilerplate app
 type BoilerplateOptions struct {
 	Vars                    map[string]any
+	VarDefaults             map[string]any // Template-authored defaults; rendered as templates, unlike Vars.
 	ShellCommandAnswers     map[string]bool
 	OnMissingConfig         MissingConfigAction
 	TemplateFolder          string

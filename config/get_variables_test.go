@@ -101,7 +101,7 @@ func TestGetVariableNoMatchNonInteractive(t *testing.T) {
 	variable := variables.NewStringVariable("foo")
 	opts := testutil.CreateTestOptionsForShell(true, false)
 
-	_, err := getVariable(logging.Discard(), variable, opts)
+	_, _, err := getVariable(logging.Discard(), variable, opts)
 
 	require.Error(t, err)
 	assert.ErrorIs(t, err, MissingVariableWithNonInteractiveMode("foo"), "Expected a MissingVariableWithNonInteractiveMode error but got %s", reflect.TypeOf(err))
@@ -120,11 +120,12 @@ func TestGetVariableInVarsNonInteractive(t *testing.T) {
 		},
 	}
 
-	actual, err := getVariable(logging.Discard(), variable, opts)
+	actual, isDefault, err := getVariable(logging.Discard(), variable, opts)
 	expected := "bar"
 
 	require.NoError(t, err)
 	assert.Equal(t, expected, actual)
+	assert.False(t, isDefault)
 }
 
 func TestGetVariableDefaultNonInteractive(t *testing.T) {
@@ -140,11 +141,12 @@ func TestGetVariableDefaultNonInteractive(t *testing.T) {
 		},
 	}
 
-	actual, err := getVariable(logging.Discard(), variable, opts)
+	actual, isDefault, err := getVariable(logging.Discard(), variable, opts)
 	expected := "bar"
 
 	require.NoError(t, err)
 	assert.Equal(t, expected, actual)
+	assert.True(t, isDefault)
 }
 
 func TestGetVariablesNoVariables(t *testing.T) {
@@ -267,6 +269,38 @@ func TestGetVariablesMatchFromVarsAndDefaults(t *testing.T) {
 	assert.Equal(t, expected, actual)
 }
 
+func TestGetVariablesUserValuesAreNotRendered(t *testing.T) {
+	t.Parallel()
+
+	opts := &options.BoilerplateOptions{
+		NonInteractive: true,
+		OnMissingKey:   options.ExitWithError,
+		Vars: map[string]any{
+			"Name": `{{ shell "echo" "rendered" }}`,
+			"Tags": map[string]any{"team": `{{ env "HOME" }}`},
+		},
+		VarDefaults: map[string]any{
+			"Name":    []any{"must-not-override-user-value"},
+			"FromDep": []any{"dep-{{ .Name }}"},
+		},
+	}
+	boilerplateConfig := &BoilerplateConfig{
+		Variables: []variables.Variable{
+			variables.NewStringVariable("Name"),
+			variables.NewMapVariable("Tags"),
+			variables.NewStringVariable("Derived").WithDefault("prefix-{{ .Name }}"),
+		},
+	}
+
+	actual, err := GetVariables(logging.Discard(), opts, boilerplateConfig, &BoilerplateConfig{}, &variables.Dependency{})
+
+	require.NoError(t, err)
+	assert.Equal(t, `{{ shell "echo" "rendered" }}`, actual["Name"])
+	assert.Equal(t, map[string]any{"team": `{{ env "HOME" }}`}, actual["Tags"])
+	assert.Equal(t, `prefix-{{ shell "echo" "rendered" }}`, actual["Derived"])
+	assert.Equal(t, []any{`dep-{{ shell "echo" "rendered" }}`}, actual["FromDep"])
+}
+
 func TestGetVariableInteractiveWithDefaultSkipsPrompt(t *testing.T) {
 	t.Parallel()
 
@@ -276,7 +310,7 @@ func TestGetVariableInteractiveWithDefaultSkipsPrompt(t *testing.T) {
 		Vars:           map[string]any{},
 	}
 
-	actual, err := getVariable(logging.Discard(), variable, opts)
+	actual, _, err := getVariable(logging.Discard(), variable, opts)
 	require.NoError(t, err)
 	assert.Equal(t, "default-val", actual)
 }
@@ -295,7 +329,7 @@ func TestGetVariableInteractiveWithDefaultAndConfirmDoesNotSkipPrompt(t *testing
 		Vars:           map[string]any{},
 	}
 
-	actual, err := getVariable(logging.Discard(), variable, opts)
+	actual, _, err := getVariable(logging.Discard(), variable, opts)
 	require.NoError(t, err)
 	assert.Equal(t, "default-val", actual)
 }
@@ -309,7 +343,7 @@ func TestGetVariableInteractiveFormulaDefaultSkipsPrompt(t *testing.T) {
 		Vars:           map[string]any{},
 	}
 
-	actual, err := getVariable(logging.Discard(), variable, opts)
+	actual, _, err := getVariable(logging.Discard(), variable, opts)
 	require.NoError(t, err)
 	assert.Equal(t, "{{ .Primary }}", actual)
 }

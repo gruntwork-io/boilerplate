@@ -13,8 +13,8 @@ import (
 	"github.com/gruntwork-io/boilerplate/variables"
 )
 
-// Get the value for the given variable by prompting the user.
-func getVariableFromUser(l logging.Logger, variable variables.Variable, invalidEntries variables.InvalidEntries) (any, error) {
+// Get the value for the given variable by prompting the user, and whether the default was used.
+func getVariableFromUser(l logging.Logger, variable variables.Variable, invalidEntries variables.InvalidEntries) (any, bool, error) {
 	// Add a newline for legibility and padding
 	fmt.Println()
 
@@ -24,7 +24,7 @@ func getVariableFromUser(l logging.Logger, variable variables.Variable, invalidE
 
 	value, err := getUserInput(variable)
 	if err != nil {
-		return value, err
+		return value, false, err
 	}
 	// If any of the variable's validation rules are not satisfied by the user's submission,
 	// store the validation errors in a map. We'll then recursively call get_variable_from_user
@@ -47,10 +47,10 @@ func getVariableFromUser(l logging.Logger, variable variables.Variable, invalidE
 	if value == "" {
 		// TODO: what if the user wanted an empty string instead of the default?
 		l.Debugf("Using default value for variable '%s': %v", variable.FullName(), variable.Default())
-		return variable.Default(), nil
+		return variable.Default(), true, nil
 	}
 
-	return value, nil
+	return value, false, nil
 }
 
 func getUserInput(variable variables.Variable) (string, error) {
