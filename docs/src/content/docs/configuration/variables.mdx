@@ -185,6 +185,10 @@ variables:
     default: "{{ "{{" }} .AppName {{ "}}" }}-container"
 ```
 
+<Aside type="caution">
+Only `default` values in `boilerplate.yml` are rendered as templates. Values supplied from outside the template are always used literally. That covers `--var`, `--var-file`, dependency `var_files`, environment variables, interactive prompts, and variables a dependency inherits from its parent. For example, `--var 'Name={{ "{{" }} .Other {{ "}}" }}'` sets `Name` to the literal string `{{ "{{" }} .Other {{ "}}" }}`.
+</Aside>
+
 ## Defaults in Interactive Mode
 
 In interactive mode, variables that have a `default` value are **not prompted** — they silently use the default. This matches the behavior of `--non-interactive` mode and avoids issues with defaults that contain Go template expressions (e.g., `{{ "{{" }} .AppName {{ "}}" }}`), which would otherwise be shown as raw template strings in the prompt.

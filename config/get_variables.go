@@ -53,13 +53,18 @@ func GetVariablesWithContext(ctx context.Context, l logging.Logger, opts *option
 	thisTemplateProps["CurrentDep"] = thisDep
 	renderedVariables["This"] = thisTemplateProps
 
-	// The variables up to this point don't need any additional processing as they are builtin. User defined variables
-	// can reference and use Go template syntax, so we pass them through a rendering pipeline to ensure they are
-	// evaluated to values that can be used in the rest of the templates.
-	variablesToRender := map[string]any{}
+	// Only defaults from boilerplate.yml are rendered as templates. User-supplied values (--var, --var-file,
+	// environment, prompts, and vars inherited by dependencies) are used literally and never rendered.
+	userVariables := map[string]any{}
+	defaultVariables := map[string]any{}
 
-	// Collect the variable values that have been passed in from the command line.
-	maps.Copy(variablesToRender, opts.Vars)
+	maps.Copy(userVariables, opts.Vars)
+
+	for name, value := range opts.VarDefaults {
+		if _, ok := userVariables[name]; !ok {
+			defaultVariables[name] = value
+		}
+	}
 
 	// Collect the variable values that are defined in the config and get the value.
 	variablesInConfig := boilerplateConfig.GetVariablesMap()
@@ -98,17 +103,21 @@ func GetVariablesWithContext(ctx context.Context, l logging.Logger, opts *option
 	for _, keyOrderPair := range keyAndOrderPairs {
 		variable := variablesInConfig[keyOrderPair.Key]
 
-		unmarshalled, err := GetValueForVariable(l, variable, variablesInConfig, variablesToRender, opts, 0)
+		value, isDefault, err := GetValueForVariable(l, variable, variablesInConfig, userVariables, defaultVariables, opts, 0)
 		if err != nil {
 			return nil, err
 		}
 
-		variablesToRender[variable.Name()] = unmarshalled
+		if isDefault {
+			defaultVariables[variable.Name()] = value
+		} else {
+			userVariables[variable.Name()] = value
+		}
 	}
 
-	// Pass all the user provided variables through a rendering pipeline to ensure they are evaluated down to
-	// primitives.
-	newlyRenderedVariables, err := render.RenderVariablesWithContext(ctx, l, opts, variablesToRender, renderedVariables)
+	maps.Copy(renderedVariables, userVariables)
+
+	newlyRenderedVariables, err := render.RenderVariablesWithContext(ctx, l, opts, defaultVariables, renderedVariables)
 	if err != nil {
 		return nil, err
 	}
@@ -128,41 +137,42 @@ func GetVariablesWithContext(ctx context.Context, l logging.Logger, opts *option
 	return renderedVariables, nil
 }
 
+// GetValueForVariable returns the value for the given variable and whether it is a default from boilerplate.yml.
+// Only defaults may be rendered as templates; all other values must be used literally.
 func GetValueForVariable(
 	l logging.Logger,
 	variable variables.Variable,
 	variablesInConfig map[string]variables.Variable,
-	valuesForPreviousVariables map[string]any,
+	userValues map[string]any,
+	defaultValues map[string]any,
 	opts *options.BoilerplateOptions,
 	referenceDepth int,
-) (any, error) {
+) (any, bool, error) {
 	if referenceDepth > MaxReferenceDepth {
-		return nil, CyclicalReference{VariableName: variable.Name(), ReferenceName: variable.Reference()}
+		return nil, false, CyclicalReference{VariableName: variable.Name(), ReferenceName: variable.Reference()}
 	}
 
-	value, alreadyExists := valuesForPreviousVariables[variable.Name()]
-	if alreadyExists {
-		return value, nil
+	if value, isDefault, ok := lookupValue(variable.Name(), userValues, defaultValues); ok {
+		return value, isDefault, nil
 	}
 
 	if variable.Reference() != "" {
-		refValue, refExists := valuesForPreviousVariables[variable.Reference()]
-		if refExists {
-			return refValue, nil
+		if value, isDefault, ok := lookupValue(variable.Reference(), userValues, defaultValues); ok {
+			return value, isDefault, nil
 		}
 
 		reference, containsReference := variablesInConfig[variable.Reference()]
 		if !containsReference {
-			return nil, MissingReference{VariableName: variable.Name(), ReferenceName: variable.Reference()}
+			return nil, false, MissingReference{VariableName: variable.Name(), ReferenceName: variable.Reference()}
 		}
 
-		return GetValueForVariable(l, reference, variablesInConfig, valuesForPreviousVariables, opts, referenceDepth+1)
+		return GetValueForVariable(l, reference, variablesInConfig, userValues, defaultValues, opts, referenceDepth+1)
 	}
 
 	// Run the value we receive from getVariable through validations, ensuring values provided by --var-files will also be checked
-	value, err := getVariable(l, variable, opts)
+	value, isDefault, err := getVariable(l, variable, opts)
 	if err != nil {
-		return value, err
+		return value, isDefault, err
 	}
 
 	var result *multierror.Error
@@ -173,26 +183,38 @@ func GetValueForVariable(
 		result = multierror.Append(result, err)
 	}
 
-	return value, result.ErrorOrNil()
+	return value, isDefault, result.ErrorOrNil()
 }
 
-// Get a value for the given variable. The value can come from the user (if the non-interactive option isn't set), the
-// default value in the config, or a command line option.
-func getVariable(l logging.Logger, variable variables.Variable, opts *options.BoilerplateOptions) (any, error) {
+func lookupValue(name string, userValues, defaultValues map[string]any) (any, bool, bool) {
+	if value, ok := userValues[name]; ok {
+		return value, false, true
+	}
+
+	if value, ok := defaultValues[name]; ok {
+		return value, true, true
+	}
+
+	return nil, false, false
+}
+
+// Get a value for the given variable, and whether it is the default from the config. The value can come from the user
+// (if the non-interactive option isn't set), the default value in the config, or a command line option.
+func getVariable(l logging.Logger, variable variables.Variable, opts *options.BoilerplateOptions) (any, bool, error) {
 	valueFromVars, valueSpecifiedInVars := getVariableFromVars(variable, opts)
 
 	switch {
 	case valueSpecifiedInVars:
 		l.Debugf("Using value specified via command line options for variable '%s': %s", variable.FullName(), valueFromVars)
-		return valueFromVars, nil
+		return valueFromVars, false, nil
 	case opts.NonInteractive && variable.Default() != nil:
 		l.Debugf("Using default value for variable '%s': %v", variable.FullName(), variable.Default())
-		return variable.Default(), nil
+		return variable.Default(), true, nil
 	case opts.NonInteractive:
-		return nil, MissingVariableWithNonInteractiveMode(variable.FullName())
+		return nil, false, MissingVariableWithNonInteractiveMode(variable.FullName())
 	case variable.Default() != nil && !variable.Confirm():
 		l.Debugf("Using default value for variable '%s': %v", variable.FullName(), variable.Default())
-		return variable.Default(), nil
+		return variable.Default(), true, nil
 	default:
 		return getVariableFromUser(l, variable, variables.InvalidEntries{})
 	}

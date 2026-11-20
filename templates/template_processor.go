@@ -672,13 +672,14 @@ func cloneOptionsForDependency(
 		renderedVarFiles = append(renderedVarFiles, renderedVarFilePath)
 	}
 
-	vars, err := cloneVariablesForDependency(ctx, l, originalOpts, dependency, variablesInConfig, variables, renderedVarFiles)
+	vars, varDefaults, err := cloneVariablesForDependency(ctx, l, originalOpts, dependency, variablesInConfig, variables, renderedVarFiles)
 	if err != nil {
 		return nil, err
 	}
 
 	return &options.BoilerplateOptions{
 		Vars:                    vars,
+		VarDefaults:             varDefaults,
 		TemplateURL:             templateURL,
 		TemplateFolder:          templateFolder,
 		OutputFolder:            outputFolder,
@@ -702,6 +703,9 @@ func cloneOptionsForDependency(
 //     DontInheritVariables is set.
 //   - Variables defined from VarFiles set on the dependency.
 //   - Variables defaults set on the dependency.
+//
+// Dependency defaults that can't be rendered here are returned separately, for the dependency to render
+// with its own variables.
 func cloneVariablesForDependency(
 	ctx context.Context,
 	l logging.Logger,
@@ -710,7 +714,7 @@ func cloneVariablesForDependency(
 	variablesInConfig map[string]variables.Variable,
 	originalVariables map[string]any,
 	renderedVarFiles []string,
-) (map[string]any, error) {
+) (map[string]any, map[string]any, error) {
 	// Clone the opts so that we attempt to get the value for the variable, and we can error on any variable that is set
 	// on a dependency and the value can't be computed.
 	dependencyOpts := &options.BoilerplateOptions{
@@ -737,6 +741,8 @@ func cloneVariablesForDependency(
 	// handled later.
 	newVariables := map[string]any{}
 
+	var varDefaults map[string]any
+
 	if !dependency.DontInheritVariables {
 		for key, value := range originalVariables {
 			dependencyName, _ := variables.SplitIntoDependencyNameAndVariableName(key)
@@ -748,30 +754,44 @@ func cloneVariablesForDependency(
 
 	varFileVars, err := variables.ParseVars(nil, renderedVarFiles)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+
+	strictOpts := *opts
+	strictOpts.OnMissingKey = options.ExitWithError
 
 	currentVariables := util.MergeMaps(originalVariables, varFileVars)
 	for _, variable := range dependency.Variables {
-		varValue, err := config.GetValueForVariable(
+		varValue, isDefault, err := config.GetValueForVariable(
 			l,
 			variable,
 			variablesInConfig,
 			currentVariables,
+			varDefaults,
 			dependencyOpts,
 			0,
 		)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		// If the value is a string, render it
-		if strValue, ok := varValue.(string); ok {
-			renderedValue, err := render.RenderTemplateFromStringWithContext(ctx, l, opts.TemplateFolder, strValue, currentVariables, opts)
-			if err != nil {
-				return nil, err
+
+		if isDefault {
+			rendered, renderErr := render.RenderValue(ctx, l, &strictOpts, varValue, currentVariables)
+			if renderErr != nil {
+				// Needs the dependency's own variables, so the dependency renders it. It is left out of
+				// currentVariables so later defaults that use it are deferred too.
+				if varDefaults == nil {
+					varDefaults = map[string]any{}
+				}
+
+				varDefaults[variable.Name()] = varValue
+				delete(newVariables, variable.Name())
+				delete(currentVariables, variable.Name())
+
+				continue
 			}
 
-			varValue = renderedValue
+			varValue = rendered
 		}
 
 		newVariables[variable.Name()] = varValue
@@ -784,7 +804,7 @@ func cloneVariablesForDependency(
 	newVariables = util.MergeMaps(newVariables, varFileVars)
 
 	if dependency.DontInheritVariables {
-		return newVariables, nil
+		return newVariables, varDefaults, nil
 	}
 
 	// Now handle the CLI passed variables. Note that we handle dependency namespaced values separately, as they have
@@ -806,7 +826,7 @@ func cloneVariablesForDependency(
 		}
 	}
 
-	return newVariables, nil
+	return newVariables, varDefaults, nil
 }
 
 // Prompt the user to verify if the given dependency should be executed and return true if they confirm. If
