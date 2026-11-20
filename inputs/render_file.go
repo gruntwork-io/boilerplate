@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/fs"
 	"maps"
+	"math"
 	"net/url"
 	"path"
 	"strings"
@@ -481,16 +482,33 @@ func filenameLikelyMatches(unrenderedRel, currentOutputPath, outputPath string) 
 // Caller-supplied entries win; variables with no value AND no default are
 // left unset and produce missing-key errors downstream if referenced.
 //
+// Caller-supplied entries are converted to the type the variable declares,
+// as config.GetVariables does at runtime. A dependency's variables block
+// renders `default: "{{ .List }}"` to text, so without this a list, map,
+// int, float or bool reaches the dependency's templates as a string.
+//
 // If lenient is true, defaults that fail to render or type-convert are
-// silently dropped (used during bundle collection where the producer
-// may not have enough context to evaluate every default).
+// silently dropped, and caller-supplied entries that fail to convert are
+// kept as they are (used during bundle collection where the producer may
+// not have enough context to evaluate every default).
 func applyConfigDefaults(ctx context.Context, loc templateLocation, cfg *config.BoilerplateConfig, parentVars map[string]any, lenient bool) (map[string]any, error) {
 	out := make(map[string]any, len(parentVars)+len(cfg.Variables))
 
 	maps.Copy(out, parentVars)
 
 	for _, v := range cfg.Variables {
-		if _, set := out[v.Name()]; set {
+		if value, set := out[v.Name()]; set {
+			typed, typeErr := convertSetValue(value, v)
+			if typeErr != nil {
+				if lenient {
+					continue
+				}
+
+				return nil, fmt.Errorf("converting value for variable %q: %w", v.Name(), typeErr)
+			}
+
+			out[v.Name()] = typed
+
 			continue
 		}
 
@@ -522,6 +540,35 @@ func applyConfigDefaults(ctx context.Context, loc templateLocation, cfg *config.
 
 	return out, nil
 }
+
+// convertSetValue gives a value that was already in scope (from the caller
+// or from a parent template) the type v declares. Strings are parsed the way
+// variables.ConvertType parses them at runtime, including Go's printed form
+// of a list or map. An integral float64 becomes an int for an int variable,
+// because JSON-decoded vars carry every number as float64 and Go prints a
+// large one in exponent form ("1e+06"), which a dependency's int variable
+// could not parse back. Other values pass through unchanged.
+func convertSetValue(value any, v variables.Variable) (any, error) {
+	switch v.Type() {
+	case variables.List, variables.Map, variables.Int, variables.Float, variables.Bool:
+	default:
+		return value, nil
+	}
+
+	switch typed := value.(type) {
+	case string:
+		return variables.ConvertType(typed, v)
+	case float64:
+		if v.Type() == variables.Int && typed == math.Trunc(typed) && math.Abs(typed) <= maxExactFloatInt {
+			return int(typed), nil
+		}
+	}
+
+	return value, nil
+}
+
+// maxExactFloatInt is the largest integer a float64 holds exactly (2^53).
+const maxExactFloatInt = 1 << 53
 
 // renderDefaultValue runs templated leaf strings inside def through the
 // template engine. Non-string leaves pass through untouched. Mirrors

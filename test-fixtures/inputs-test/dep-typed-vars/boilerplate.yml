@@ -1,0 +1,33 @@
+variables:
+  - name: Regions
+    type: list
+    default: ["eastus", "eastus2"]
+  - name: Budget
+    type: int
+    default: 1000000
+  - name: Ratio
+    type: float
+    default: 2.5
+  - name: Enabled
+    type: bool
+    default: false
+  - name: Tags
+    type: map
+    default:
+      team: platform
+
+dependencies:
+  - name: child
+    template-url: ./child
+    output-folder: .
+    variables:
+      - name: Regions
+        default: "{{ .Regions }}"
+      - name: Budget
+        default: "{{ .Budget }}"
+      - name: Ratio
+        default: "{{ .Ratio }}"
+      - name: Enabled
+        default: "{{ .Enabled }}"
+      - name: Tags
+        default: "{{ .Tags }}"
