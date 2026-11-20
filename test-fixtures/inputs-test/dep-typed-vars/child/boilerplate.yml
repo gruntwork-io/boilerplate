@@ -1,0 +1,11 @@
+variables:
+  - name: Regions
+    type: list
+  - name: Budget
+    type: int
+  - name: Ratio
+    type: float
+  - name: Enabled
+    type: bool
+  - name: Tags
+    type: map

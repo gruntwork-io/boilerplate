@@ -923,3 +923,113 @@ variables:
 		})
 	}
 }
+
+// TestRenderFileFromFS_DependencyVarsGetDeclaredType covers each typed
+// variable a parent passes to a dependency as `default: "{{ .Name }}"`.
+// The default renders to text; the dependency's declared type must turn it
+// back into a value, as config.GetVariables does at runtime.
+func TestRenderFileFromFS_DependencyVarsGetDeclaredType(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		vars     map[string]any
+		name     string
+		varType  string
+		body     string
+		expected string
+	}{
+		{
+			name:     "list",
+			varType:  "list",
+			vars:     map[string]any{"Value": []any{"eastus", "eastus2"}},
+			body:     `{{ range .Value }}[{{ . }}]{{ end }}`,
+			expected: "[eastus][eastus2]",
+		},
+		{
+			name:     "map",
+			varType:  "map",
+			vars:     map[string]any{"Value": map[string]any{"env": "prod", "team": "infra"}},
+			body:     `{{ range $key, $value := .Value }}{{ $key }}={{ $value }};{{ end }}`,
+			expected: "env=prod;team=infra;",
+		},
+		{
+			name:     "int",
+			varType:  "int",
+			vars:     map[string]any{"Value": float64(3)},
+			body:     `{{ if eq .Value 3 }}three{{ end }}`,
+			expected: "three",
+		},
+		{
+			// A JSON-decoded number is a float64, which Go prints as
+			// "1e+06" once it is large enough.
+			name:     "large int",
+			varType:  "int",
+			vars:     map[string]any{"Value": float64(1000000)},
+			body:     `{{ .Value }}`,
+			expected: "1000000",
+		},
+		{
+			name:     "float",
+			varType:  "float",
+			vars:     map[string]any{"Value": 2.5},
+			body:     `{{ printf "%.2f" .Value }}`,
+			expected: "2.50",
+		},
+		{
+			name:     "bool",
+			varType:  "bool",
+			vars:     map[string]any{"Value": false},
+			body:     `{{ if .Value }}on{{ else }}off{{ end }}`,
+			expected: "off",
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
+
+			fsys := fstest.MapFS{
+				"boilerplate.yml": &fstest.MapFile{Data: []byte(`
+variables:
+  - name: Value
+    type: ` + testCase.varType + `
+dependencies:
+  - name: child
+    template-url: ./child
+    output-folder: ./child
+    variables:
+      - name: Value
+        default: "{{ .Value }}"
+`)},
+				"child/boilerplate.yml": &fstest.MapFile{Data: []byte(`
+variables:
+  - name: Value
+    type: ` + testCase.varType + `
+`)},
+				"child/out.txt": &fstest.MapFile{Data: []byte(testCase.body)},
+			}
+
+			got, err := renderFile(t, fsys, "child/out.txt", testCase.vars)
+			require.NoError(t, err)
+			assert.Equal(t, testCase.expected, got)
+		})
+	}
+}
+
+// TestRenderFileFromFS_UnconvertibleValueIsError matches the CLI: a value
+// that cannot be read as the variable's declared type fails the render.
+func TestRenderFileFromFS_UnconvertibleValueIsError(t *testing.T) {
+	t.Parallel()
+
+	fsys := fstest.MapFS{
+		"boilerplate.yml": &fstest.MapFile{Data: []byte(`
+variables:
+  - name: Count
+    type: int
+`)},
+		"out.txt": &fstest.MapFile{Data: []byte(`{{ .Count }}`)},
+	}
+
+	_, err := renderFile(t, fsys, "out.txt", map[string]any{"Count": "three"})
+	require.ErrorContains(t, err, `converting value for variable "Count"`)
+}
