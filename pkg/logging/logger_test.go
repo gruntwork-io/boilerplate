@@ -155,3 +155,21 @@ func TestConcurrentEmit(t *testing.T) {
 
 	wg.Wait()
 }
+
+func TestParseLevel(t *testing.T) {
+	t.Parallel()
+
+	for name, want := range map[string]logging.Level{
+		"debug": logging.LevelDebug, "INFO": logging.LevelInfo, "Warn": logging.LevelWarn,
+		"warning": logging.LevelWarn, "error": logging.LevelError,
+	} {
+		got, err := logging.ParseLevel(name)
+		if err != nil || got != want {
+			t.Errorf("ParseLevel(%q) = %v, %v; want %v", name, got, err, want)
+		}
+	}
+
+	if _, err := logging.ParseLevel("verbose"); err == nil {
+		t.Error("ParseLevel(\"verbose\") should return an error")
+	}
+}

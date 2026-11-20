@@ -109,6 +109,11 @@ func CreateBoilerplateCli() *cli.App {
 			Name:  options.OptManifestFile,
 			Usage: "Write the manifest to `FILE` instead of the default location. Implies --manifest. Format is auto-detected from extension (.yaml/.yml for YAML, otherwise JSON).",
 		},
+		&cli.StringFlag{
+			Name:  options.OptLogLevel,
+			Value: logging.LevelInfo.String(),
+			Usage: fmt.Sprintf("Only log messages at `LEVEL` or above. Must be one of: %v.", logging.AllLevelNames),
+		},
 		&cli.IntFlag{
 			Name:  options.OptParallelism,
 			Value: runtime.NumCPU(),
@@ -142,7 +147,12 @@ func runApp(cliContext *cli.Context) error {
 	// The root boilerplate.yml is not itself a dependency, so we pass an empty Dependency.
 	emptyDep := variables.Dependency{}
 
-	l := logging.New(os.Stdout, logging.LevelInfo)
+	logLevel, err := logging.ParseLevel(cliContext.String(options.OptLogLevel))
+	if err != nil {
+		return err
+	}
+
+	l := logging.New(os.Stdout, logLevel)
 
 	result, err := templates.ProcessTemplateWithContext(ctx, l, opts, opts, &emptyDep)
 	if err != nil {

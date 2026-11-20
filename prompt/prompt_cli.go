@@ -25,6 +25,17 @@ func PromptUserForInput(prompt string) (string, error) {
 	return strings.TrimSpace(text), nil
 }
 
+// PrintDetails writes a titled, indented block of details straight to the terminal. It is used to show the user exactly
+// what a confirmation prompt is asking them to approve, so it deliberately bypasses the logger: the details must be
+// visible no matter what log level is configured.
+func PrintDetails(title string, details string) {
+	fmt.Println(color.BoldGreen(title))
+
+	for line := range strings.SplitSeq(details, "\n") {
+		fmt.Println("  " + line)
+	}
+}
+
 // PromptUserForYesNo prompts the user for a yes/no response and returns true if they entered yes.
 func PromptUserForYesNo(prompt string) (bool, error) {
 	resp, err := PromptUserForInput(prompt + " (y/n) ")
