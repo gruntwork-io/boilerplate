@@ -354,3 +354,25 @@ func TestProcessTemplateFolderSkipsOutputFolderInsideTemplate(t *testing.T) {
 	// Only the real template file should be rendered; the output folder must not be processed as a template.
 	assert.Equal(t, []string{"test.txt"}, generated)
 }
+
+func TestProcessTemplateFolderDoesNotSkipTemplateWhenOutputContainsIt(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	templateDir := filepath.Join(root, "templates")
+	outputDir := root
+	require.NoError(t, os.MkdirAll(templateDir, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(templateDir, "test.txt"), []byte("hello"), 0644))
+
+	opts := &options.BoilerplateOptions{
+		TemplateFolder:  templateDir,
+		OutputFolder:    outputDir,
+		NonInteractive:  true,
+		OnMissingKey:    options.ExitWithError,
+		OnMissingConfig: options.Exit,
+	}
+
+	generated, err := processTemplateFolder(t.Context(), logging.Discard(), &config.BoilerplateConfig{}, opts, map[string]any{}, nil)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"test.txt"}, generated)
+}

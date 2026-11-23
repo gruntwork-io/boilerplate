@@ -882,7 +882,10 @@ func processTemplateFolder(
 		case isInsideOutputFolder(path, opts):
 			// Do not descend into the output folder when it lives inside the template folder, otherwise
 			// previously generated (or in-progress) output would be rendered a second time.
-			return filepath.SkipDir
+			if d != nil && d.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
 		case shouldSkipPath(path, opts, processedSkipFiles):
 			l.Debugf("Skipping %s", path)
 			return nil
@@ -1088,7 +1091,14 @@ func isInsideOutputFolder(path string, opts *options.BoilerplateOptions) bool {
 		return false
 	}
 
-	if absPath == absTemplate || absOutput == absTemplate {
+	if absPath == absTemplate {
+		return false
+	}
+
+	// Only skip output nested inside the template tree. An output folder that
+	// contains the template folder must not suppress the template entries.
+	relOutput, err := filepath.Rel(absTemplate, absOutput)
+	if err != nil || relOutput == "." || relOutput == ".." || strings.HasPrefix(relOutput, ".."+string(filepath.Separator)) {
 		return false
 	}
 
