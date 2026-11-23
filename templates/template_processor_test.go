@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/gruntwork-io/boilerplate/config"
 	"github.com/gruntwork-io/boilerplate/options"
 	"github.com/gruntwork-io/boilerplate/pkg/logging"
 	"github.com/gruntwork-io/boilerplate/testutil"
@@ -326,4 +327,30 @@ func TestForEachReferenceRendersAsTemplate(t *testing.T) {
 		_, err := os.Stat(filepath.Join(tempDir, expected))
 		require.NoError(t, err)
 	}
+}
+
+func TestProcessTemplateFolderSkipsOutputFolderInsideTemplate(t *testing.T) {
+	t.Parallel()
+
+	templateDir := t.TempDir()
+	outputDir := filepath.Join(templateDir, "out")
+
+	// The output folder lives inside the template folder and already holds a previously generated file.
+	require.NoError(t, os.MkdirAll(outputDir, 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(templateDir, "test.txt"), []byte("hello"), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(outputDir, "generated.txt"), []byte("old"), 0644))
+
+	opts := &options.BoilerplateOptions{
+		TemplateFolder:  templateDir,
+		OutputFolder:    outputDir,
+		NonInteractive:  true,
+		OnMissingKey:    options.ExitWithError,
+		OnMissingConfig: options.Exit,
+	}
+
+	generated, err := processTemplateFolder(t.Context(), logging.Discard(), &config.BoilerplateConfig{}, opts, map[string]any{}, nil)
+	require.NoError(t, err)
+
+	// Only the real template file should be rendered; the output folder must not be processed as a template.
+	assert.Equal(t, []string{"test.txt"}, generated)
 }
