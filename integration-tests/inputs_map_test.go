@@ -786,3 +786,93 @@ func validateBundleKeyForTest(p string) error {
 
 	return nil
 }
+
+// TestInputsMap_DependencyVarsKeepDeclaredTypesInWarmRender pins warm/cold
+// parity for typed variables passed to a dependency as
+// `default: "{{ .Regions }}"`. That default renders to Go's printed form
+// ("[eastus eastus2]"); the CLI converts it back to the type the
+// dependency's boilerplate.yml declares, so warm render must too, or
+// `range .Regions` fails with "range can't iterate over [eastus eastus2]"
+// and `if .Enabled` treats "false" as true. Warm vars are JSON-decoded, as
+// the WASM bridge does, so every number arrives as float64.
+func TestInputsMap_DependencyVarsKeepDeclaredTypesInWarmRender(t *testing.T) {
+	t.Parallel()
+
+	const templateURL = "../test-fixtures/inputs-test/dep-typed-vars"
+
+	testCases := []struct {
+		name     string
+		varsYAML string
+		varsJSON string
+		expected string
+	}{
+		{
+			name:     "defaults",
+			varsYAML: "{}\n",
+			varsJSON: `{}`,
+			expected: "regions = [\"eastus\", \"eastus2\"]\nbudget  = 1000001\nratio   = 2.50\nenabled = \"no\"\ntag_team = \"platform\"\n",
+		},
+		{
+			name: "caller values",
+			varsYAML: "Regions: [westus, centralus]\nBudget: 2000000\nRatio: 0.75\nEnabled: true\n" +
+				"Tags:\n  env: prod\n  team: infra\n",
+			varsJSON: `{"Regions":["westus","centralus"],"Budget":2000000,"Ratio":0.75,"Enabled":true,` +
+				`"Tags":{"env":"prod","team":"infra"}}`,
+			expected: "regions = [\"westus\", \"centralus\"]\nbudget  = 2000001\nratio   = 0.75\nenabled = \"yes\"\n" +
+				"tag_env = \"prod\"\ntag_team = \"infra\"\n",
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
+
+			varFile := filepath.Join(t.TempDir(), "vars.yml")
+			require.NoError(t, os.WriteFile(varFile, []byte(testCase.varsYAML), 0o600))
+
+			outputFolder := t.TempDir()
+			coldApp := cli.CreateBoilerplateCli()
+			require.NoError(t, coldApp.Run([]string{
+				"boilerplate",
+				"--template-url", templateURL,
+				"--output-folder", outputFolder,
+				"--var-file", varFile,
+				"--non-interactive",
+			}))
+
+			cold, err := os.ReadFile(filepath.Join(outputFolder, "main.hcl"))
+			require.NoError(t, err)
+			assert.Equal(t, testCase.expected, string(cold), "cold render")
+
+			mapApp := cli.CreateBoilerplateCli()
+
+			var stdout, stderr bytes.Buffer
+
+			mapApp.Writer = &stdout
+			mapApp.ErrWriter = &stderr
+
+			require.NoError(t, mapApp.Run([]string{
+				"boilerplate", "inputs", "map",
+				"--template-url", templateURL,
+				"--var-file", varFile,
+				"--include-bundle",
+			}), "stderr=%s", stderr.String())
+
+			var got inputsMapResult
+			require.NoError(t, json.Unmarshal(stdout.Bytes(), &got), "stdout=%s", stdout.String())
+			require.NotNil(t, got.Bundle)
+
+			mfs := fstest.MapFS{}
+			for key, contents := range got.Bundle.Files {
+				mfs[key] = &fstest.MapFile{Data: []byte(contents)}
+			}
+
+			var vars map[string]any
+			require.NoError(t, json.Unmarshal([]byte(testCase.varsJSON), &vars))
+
+			warm, err := inputs.RenderFileFromFS(context.Background(), mfs, got.Bundle.RootPath, "main.hcl", vars, got.Bundle.Dependencies)
+			require.NoError(t, err)
+			assert.Equal(t, string(cold), warm, "warm render must match cold render")
+		})
+	}
+}
