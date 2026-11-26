@@ -355,6 +355,30 @@ func TestProcessTemplateFolderSkipsOutputFolderInsideTemplate(t *testing.T) {
 	assert.Equal(t, []string{"test.txt"}, generated)
 }
 
+func TestProcessTemplateFolderDoesNotSkipSiblingsForSymlinkOutputFolder(t *testing.T) {
+	t.Parallel()
+
+	templateDir := t.TempDir()
+	outputTarget := t.TempDir()
+	outputDir := filepath.Join(templateDir, "out")
+	require.NoError(t, os.WriteFile(filepath.Join(templateDir, "test.txt"), []byte("hello"), 0644))
+	if err := os.Symlink(outputTarget, outputDir); err != nil {
+		t.Skipf("cannot create directory symlink: %v", err)
+	}
+
+	opts := &options.BoilerplateOptions{
+		TemplateFolder:  templateDir,
+		OutputFolder:    outputDir,
+		NonInteractive:  true,
+		OnMissingKey:    options.ExitWithError,
+		OnMissingConfig: options.Exit,
+	}
+
+	generated, err := processTemplateFolder(t.Context(), logging.Discard(), &config.BoilerplateConfig{}, opts, map[string]any{}, nil)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"test.txt"}, generated)
+}
+
 func TestProcessTemplateFolderDoesNotSkipTemplateWhenOutputContainsIt(t *testing.T) {
 	t.Parallel()
 
