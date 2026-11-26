@@ -879,6 +879,13 @@ func processTemplateFolder(
 		path = filepath.ToSlash(path)
 
 		switch {
+		case isInsideOutputFolder(path, opts):
+			// Do not descend into the output folder when it lives inside the template folder, otherwise
+			// previously generated (or in-progress) output would be rendered a second time.
+			if d != nil && d.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
 		case shouldSkipPath(path, opts, processedSkipFiles):
 			l.Debugf("Skipping %s", path)
 			return nil
@@ -1064,6 +1071,38 @@ func shouldSkipPath(path string, opts *options.BoilerplateOptions, processedSkip
 
 	// Then check if the path is the template folder root or the boilerplate config.
 	return canonicalPath == canonicalTemplateFolder || canonicalPath == canonicalBoilerplateConfigPath
+}
+
+// isInsideOutputFolder returns true if the given path is the output folder or lies within it. The template folder
+// itself is never treated as inside the output folder, even when the two are the same directory.
+func isInsideOutputFolder(path string, opts *options.BoilerplateOptions) bool {
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return false
+	}
+
+	absOutput, err := filepath.Abs(opts.OutputFolder)
+	if err != nil {
+		return false
+	}
+
+	absTemplate, err := filepath.Abs(opts.TemplateFolder)
+	if err != nil {
+		return false
+	}
+
+	if absPath == absTemplate {
+		return false
+	}
+
+	// Only skip output nested inside the template tree. An output folder that
+	// contains the template folder must not suppress the template entries.
+	relOutput, err := filepath.Rel(absTemplate, absOutput)
+	if err != nil || relOutput == "." || relOutput == ".." || strings.HasPrefix(relOutput, ".."+string(filepath.Separator)) {
+		return false
+	}
+
+	return absPath == absOutput || strings.HasPrefix(absPath, absOutput+string(filepath.Separator))
 }
 
 // pathInAnySkipPath returns true if the given path matches any one of the path attributes in the skip file list.
